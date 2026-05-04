@@ -1,26 +1,113 @@
 @import "tailwindcss";
 
+/* ============================================
+   CIA 2026 — Painel · Design tokens
+   Paleta extraída do chaveamento oficial
+   ============================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand */
+  --gold: #d7c69d;
+  --gold-bright: #f0e0bb;
+  --gold-dark: #c3a270;
+  --green: #5fb446;
+  --green-bright: #6fc955;
+  --green-dim: #3a7a2a;
+  --orange: #f59e0b;
+  --magenta: #c07adb;
+  --cyan: #5bb8d4;
+
+  /* Surface (light) */
+  --background: #fafaf7;
+  --foreground: #18181b;
+  --muted: #f4f4f0;
+  --muted-foreground: #71717a;
+  --border: #e4e4dc;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --primary: var(--green-dim);
+  --primary-foreground: #ffffff;
+  --accent: var(--gold-dark);
+  --accent-foreground: #18181b;
+  --destructive: #dc2626;
+  --warning: var(--orange);
+  --success: var(--green);
+
+  /* Status colors */
+  --status-aguardando: #94a3b8;
+  --status-pendente: #f59e0b;
+  --status-em-andamento: #3b82f6;
+  --status-pausado: #a855f7;
+  --status-bloqueado: #dc2626;
+  --status-pronto: var(--green);
+  --status-publicado: var(--green-dim);
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --border: #27272a;
+  --card: #111111;
+  --card-foreground: #fafafa;
+  --primary: var(--green-bright);
+  --primary-foreground: #0a0a0a;
+  --accent: var(--gold-bright);
+  --accent-foreground: #0a0a0a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-gold: var(--gold);
+  --color-gold-bright: var(--gold-bright);
+  --color-gold-dark: var(--gold-dark);
+  --color-green-cia: var(--green);
+  --color-green-bright: var(--green-bright);
+  --color-green-dim: var(--green-dim);
+
+  --font-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-display), serif;
+  --font-mono: var(--font-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Star pattern do CIA — sutil no fundo */
+.cia-bg-stars {
+  background-image:
+    radial-gradient(circle at 25% 25%, var(--gold) 1px, transparent 1.5px),
+    radial-gradient(circle at 75% 75%, var(--gold) 1px, transparent 1.5px);
+  background-size: 60px 60px, 80px 80px;
+  background-position: 0 0, 30px 40px;
+  opacity: 0.04;
+}
+
+/* Scrollbar minimalista */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--muted); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }

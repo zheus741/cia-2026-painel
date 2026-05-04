@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { CiaLogo } from '@/components/cia-logo'
@@ -61,6 +62,11 @@ export default async function Home() {
               {profile?.role ?? 'aguardando perfil'}
             </p>
           </div>
+          <Link href="/admin">
+            <Button variant="accent" size="sm">
+              Cadastros
+            </Button>
+          </Link>
           <form action={signOut}>
             <Button type="submit" variant="outline" size="sm">
               Sair

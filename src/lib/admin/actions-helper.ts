@@ -65,7 +65,15 @@ export async function safe<T>(
     const data = await fn()
     return { ok: true, data }
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Erro desconhecido.'
+    // PostgrestError (Supabase) is a plain object — not instanceof Error
+    let msg = 'Erro desconhecido.'
+    if (e instanceof Error) {
+      msg = e.message
+    } else if (e && typeof e === 'object') {
+      const pe = e as Record<string, unknown>
+      msg = String(pe.message ?? pe.details ?? pe.hint ?? pe.code ?? 'Erro desconhecido.')
+    }
+    console.error('[safe]', e)
     return { ok: false, error: msg }
   }
 }

@@ -129,9 +129,12 @@ const CANAL_OPTIONS = [
   { value: 'outro',             label: 'Outro' },
 ]
 
-const EDICAO_ID = '00000000-0000-0000-0000-000000000001'
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Converte '' e '__none__' em null (sentinelas dos <Select> sem opção). */
+function nullIfNone(v: string): string | null {
+  return v === '' || v === '__none__' ? null : v
+}
 
 function estagioAtivo(estagios?: Estagio[]): Estagio | null {
   if (!estagios?.length) return null
@@ -227,6 +230,7 @@ function ConteudoCard({
 interface ConteudoDialogProps {
   open: boolean
   onClose: () => void
+  edicaoId: string
   dias: Dia[]
   setores: Setor[]
   patrocinadores: Patrocin[]
@@ -235,7 +239,7 @@ interface ConteudoDialogProps {
   defaultStatus?: string
 }
 
-function ConteudoDialog({ open, onClose, dias, setores, patrocinadores, templates, editing, defaultStatus }: ConteudoDialogProps) {
+function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores, templates, editing, defaultStatus }: ConteudoDialogProps) {
   const router = useRouter()
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -276,16 +280,16 @@ function ConteudoDialog({ open, onClose, dias, setores, patrocinadores, template
     setError(null)
     try {
       const payload: ConteudoPayload & { link_publicado?: string } = {
-        edicao_id:            EDICAO_ID,
+        edicao_id:            edicaoId,
         titulo:               titulo.trim(),
         tipo,
         status,
         prioridade:           Number(prioridade),
-        dia_id:               diaId || null,
-        setor_id:             setorId || null,
-        patrocinador_id:      patroId || null,
-        canal_publicacao:     canal || null,
-        pipeline_template_id: tplId || null,
+        dia_id:               nullIfNone(diaId),
+        setor_id:             nullIfNone(setorId),
+        patrocinador_id:      nullIfNone(patroId),
+        canal_publicacao:     nullIfNone(canal),
+        pipeline_template_id: nullIfNone(tplId),
         briefing:             briefing || null,
         ...(link ? { link_publicado: link } : {}),
       }
@@ -517,6 +521,7 @@ function KanbanColumn({
 // ── Main KanbanBoard ──────────────────────────────────────────────────────────
 
 interface KanbanBoardProps {
+  edicaoId:      string
   conteudos:     Conteudo[]
   dias:          Dia[]
   setores:       Setor[]
@@ -524,7 +529,7 @@ interface KanbanBoardProps {
   templates:     Template[]
 }
 
-export function KanbanBoard({ conteudos: initial, dias, setores, patrocinadores, templates }: KanbanBoardProps) {
+export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, templates }: KanbanBoardProps) {
   const router = useRouter()
   const [conteudos, setConteudos] = React.useState(initial)
   const [search, setSearch]       = React.useState('')
@@ -665,6 +670,7 @@ export function KanbanBoard({ conteudos: initial, dias, setores, patrocinadores,
       <ConteudoDialog
         open={dialog.open}
         onClose={() => setDialog({ open: false })}
+        edicaoId={edicaoId}
         dias={dias}
         setores={setores}
         patrocinadores={patrocinadores}

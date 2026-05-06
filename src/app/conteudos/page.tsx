@@ -5,12 +5,14 @@ export default async function ConteudosPage() {
   const supabase = await createClient()
 
   const [
+    { data: edicoes },
     { data: conteudos },
     { data: dias },
     { data: setores },
     { data: patrocinadores },
     { data: templates },
   ] = await Promise.all([
+    supabase.from('edicoes').select('id').eq('ativa', true).maybeSingle().then(r => ({ data: r.data })),
     supabase
       .from('conteudos')
       .select(`
@@ -44,6 +46,7 @@ export default async function ConteudosPage() {
       {/* Board (takes remaining height) */}
       <div className="min-h-0 flex-1">
         <KanbanBoard
+          edicaoId={(edicoes as { id: string } | null)?.id ?? ''}
           conteudos={(conteudos ?? []) as unknown as Conteudo[]}
           dias={(dias ?? []) as Dia[]}
           setores={(setores ?? []) as Setor[]}

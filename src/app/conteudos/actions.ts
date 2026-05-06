@@ -29,10 +29,14 @@ export async function createConteudo(payload: ConteudoPayload) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    // Strip columns that may not exist yet in the DB (added via migration)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { horario_previsto, responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, ...safePayload } = payload
+
     const { data: conteudo, error } = await supabase
       .from('conteudos')
       .insert({
-        ...payload,
+        ...safePayload,
         status:     payload.status    ?? 'rascunho',
         prioridade: payload.prioridade ?? 3,
         criado_por: user?.id ?? null,
@@ -48,9 +52,12 @@ export async function createConteudo(payload: ConteudoPayload) {
 export async function updateConteudo(id: string, payload: Partial<ConteudoPayload>) {
   return safe(async () => {
     const supabase = await createClient()
+    // Strip columns that may not exist yet in the DB
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { horario_previsto, responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, ...safePayload } = payload as ConteudoPayload
     const { error } = await supabase
       .from('conteudos')
-      .update(payload)
+      .update(safePayload)
       .eq('id', id)
     if (error) throw error
   })

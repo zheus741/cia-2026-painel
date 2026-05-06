@@ -1,0 +1,64 @@
+name: Backup Diário — CIA 2026
+
+on:
+  schedule:
+    # Roda todo dia às 03:00 BRT (06:00 UTC)
+    - cron: '0 6 * * *'
+  # Permite rodar manualmente pela aba Actions no GitHub
+  workflow_dispatch:
+
+jobs:
+  backup:
+    name: Exportar dados do Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Exportar tabela conteudos
+        run: |
+          curl -sf \
+            "$SUPABASE_URL/rest/v1/conteudos?select=*&order=criado_em.asc" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Accept: application/json" \
+            -o conteudos.json
+          echo "Conteudos: $(cat conteudos.json | python3 -c 'import sys,json; data=json.load(sys.stdin); print(len(data))')" rows
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Exportar tabela profiles
+        run: |
+          curl -sf \
+            "$SUPABASE_URL/rest/v1/profiles?select=id,nome,email,role,funcao_principal,ativo&order=nome.asc" \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Accept: application/json" \
+            -o profiles.json
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Criar arquivo de metadata
+        run: |
+          DATE=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          TOTAL=$(cat conteudos.json | python3 -c 'import sys,json; data=json.load(sys.stdin); print(len(data))')
+          cat > backup_info.json << EOF
+          {
+            "backup_em": "$DATE",
+            "total_conteudos": $TOTAL,
+            "fonte": "CIA 2026 Painel — Supabase"
+          }
+          EOF
+          echo "✅ Backup gerado em $DATE com $TOTAL conteúdos"
+
+      - name: Salvar como artifact (retido por 90 dias)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            conteudos.json
+            profiles.json
+            backup_info.json
+          retention-days: 90
+          if-no-files-found: error

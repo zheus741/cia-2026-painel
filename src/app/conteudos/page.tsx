@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { KanbanBoard, type Conteudo, type Dia, type Setor, type Patrocin, type Perfil } from './KanbanBoard'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Download } from 'lucide-react'
 
 export default async function ConteudosPage() {
   const supabase = await createClient()
@@ -46,13 +46,24 @@ export default async function ConteudosPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Sub-header */}
-      <div className="shrink-0 border-b border-[var(--border)] px-6 py-4">
-        <h1 className="text-lg font-bold cia-gold-text" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-          Kanban de Conteúdo
-        </h1>
-        <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
-          Arraste os cards para mudar o status · clique para ver os detalhes
-        </p>
+      <div className="shrink-0 border-b border-[var(--border)] px-6 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold cia-gold-text" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+            Kanban de Conteúdo
+          </h1>
+          <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+            Arraste os cards para mudar o status · clique para ver os detalhes
+          </p>
+        </div>
+        <a
+          href="/api/backup"
+          download
+          title="Baixar backup JSON de todos os conteúdos"
+          className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted-foreground)] transition-colors hover:border-[var(--green-dim)] hover:text-[var(--green-bright)]"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Backup
+        </a>
       </div>
 
       {/* Erro visível se a query de conteúdos falhar */}

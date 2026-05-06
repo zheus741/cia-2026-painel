@@ -1,19 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
 import { KanbanBoard, type Conteudo, type Dia, type Setor, type Patrocin, type Perfil } from './KanbanBoard'
+import { AlertCircle } from 'lucide-react'
 
 export default async function ConteudosPage() {
   const supabase = await createClient()
 
   const [
-    { data: edicoes },
-    { data: conteudos },
-    { data: dias },
-    { data: setores },
-    { data: patrocinadores },
-    { data: perfis },
+    edicaoRes,
+    conteudosRes,
+    diasRes,
+    setoresRes,
+    patrocinRes,
+    perfisRes,
   ] = await Promise.all([
-    supabase.from('edicoes').select('id').eq('ativa', true).maybeSingle().then(r => ({ data: r.data })),
-
+    supabase.from('edicoes').select('id').eq('ativa', true).maybeSingle(),
     supabase
       .from('conteudos')
       .select(`
@@ -34,12 +34,17 @@ export default async function ConteudosPage() {
       `)
       .order('prioridade', { ascending: true })
       .order('criado_em', { ascending: false }),
-
     supabase.from('dias_evento').select('id, nome_dia, data').order('data'),
     supabase.from('setores').select('id, nome').order('nome'),
     supabase.from('patrocinadores').select('id, nome').eq('ativo', true).order('nome'),
     supabase.from('profiles').select('id, nome, foto_url').eq('ativo', true).order('nome'),
   ])
+
+  // Log all errors server-side
+  if (conteudosRes.error) console.error('[conteudos] query error:', JSON.stringify(conteudosRes.error))
+  if (diasRes.error)      console.error('[dias] query error:', JSON.stringify(diasRes.error))
+  if (setoresRes.error)   console.error('[setores] query error:', JSON.stringify(setoresRes.error))
+  if (perfisRes.error)    console.error('[perfis] query error:', JSON.stringify(perfisRes.error))
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -53,15 +58,30 @@ export default async function ConteudosPage() {
         </p>
       </div>
 
+      {/* Erro visível se a query de conteúdos falhar */}
+      {conteudosRes.error && (
+        <div className="mx-6 mt-4 flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/30 px-4 py-3 text-sm text-red-400">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-semibold">Erro ao carregar conteúdos</p>
+            <p className="mt-0.5 font-mono text-xs text-red-300/80">
+              {(conteudosRes.error as { message?: string }).message
+                ?? (conteudosRes.error as { details?: string }).details
+                ?? JSON.stringify(conteudosRes.error)}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Board */}
       <div className="min-h-0 flex-1">
         <KanbanBoard
-          edicaoId={(edicoes as { id: string } | null)?.id ?? ''}
-          conteudos={(conteudos ?? []) as unknown as Conteudo[]}
-          dias={(dias ?? []) as Dia[]}
-          setores={(setores ?? []) as Setor[]}
-          patrocinadores={(patrocinadores ?? []) as Patrocin[]}
-          perfis={(perfis ?? []) as Perfil[]}
+          edicaoId={edicaoRes.data?.id ?? ''}
+          conteudos={(conteudosRes.data ?? []) as unknown as Conteudo[]}
+          dias={(diasRes.data ?? []) as Dia[]}
+          setores={(setoresRes.data ?? []) as Setor[]}
+          patrocinadores={(patrocinRes.data ?? []) as Patrocin[]}
+          perfis={(perfisRes.data ?? []) as Perfil[]}
         />
       </div>
     </div>

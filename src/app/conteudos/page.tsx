@@ -19,7 +19,8 @@ export default async function ConteudosPage() {
         id, titulo, tipo, status, prioridade,
         dia_id, setor_id, patrocinador_id, canal_publicacao,
         briefing, link_publicado, pipeline_template_id,
-        dia:dia_id (nome_dia),
+        dia:dia_id (nome_dia, data),
+        setor:setor_id (nome),
         patrocinador:patrocinador_id (nome),
         estagios_conteudo (id, estagio, status, ordem, dono:dono_id (nome))
       `)

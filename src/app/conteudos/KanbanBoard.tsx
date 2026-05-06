@@ -4,10 +4,11 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Pencil, Trash2, Loader2, AlertCircle, ChevronRight,
-  ChevronLeft, Search, Filter,
+  ChevronLeft, Search, Filter, Eye, Calendar, Layers,
+  ExternalLink, CheckCircle2, Circle, Clock, ArrowRight,
+  Tag, Users, Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -39,7 +40,8 @@ export interface Conteudo {
   briefing:         string | null
   link_publicado:   string | null
   pipeline_template_id: string | null
-  dia?:             { nome_dia: string } | null
+  dia?:             { nome_dia: string; data: string } | null
+  setor?:           { nome: string } | null
   patrocinador?:    { nome: string } | null
   estagios?:        Estagio[]
 }
@@ -86,12 +88,28 @@ const TIPO_COLOR: Record<string, string> = {
   cobertura_ao_vivo: 'bg-red-500/15 text-red-300 border-red-500/30',
 }
 
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  rascunho:    { label: 'Rascunho',    color: 'text-[var(--muted-foreground)] bg-[var(--muted)] border-[var(--border)]' },
+  em_producao: { label: 'Em produção', color: 'text-blue-300 bg-blue-500/10 border-blue-500/30' },
+  publicado:   { label: 'Publicado',   color: 'text-[var(--green-bright)] bg-[var(--green)]/10 border-[var(--green)]/30' },
+  arquivado:   { label: 'Arquivado',   color: 'text-[var(--muted-foreground)] bg-[var(--muted)]/50 border-[var(--border)]/50' },
+  cancelado:   { label: 'Cancelado',   color: 'text-red-400 bg-red-500/10 border-red-500/30' },
+}
+
 const PRIORIDADE_COLOR: Record<number, string> = {
   1: 'bg-red-500',
   2: 'bg-orange-400',
   3: 'bg-yellow-400',
   4: 'bg-blue-400',
   5: 'bg-[var(--muted-foreground)]',
+}
+
+const PRIORIDADE_LABEL: Record<number, string> = {
+  1: '🔴 Alta',
+  2: '🟠 Importante',
+  3: '🟡 Normal',
+  4: '🔵 Baixa',
+  5: '⚪ Quando der',
 }
 
 const ESTAGIO_LABEL: Record<string, string> = {
@@ -104,6 +122,15 @@ const ESTAGIO_LABEL: Record<string, string> = {
   aprovacao_coord:'Aprv. Coord',
   aprovacao_patro:'Aprv. Patro',
   publicacao:     'Publicação',
+}
+
+const ESTAGIO_STATUS_CONFIG: Record<string, { icon: React.ElementType; color: string }> = {
+  pronto:       { icon: CheckCircle2, color: 'text-[var(--green-bright)]' },
+  em_andamento: { icon: Zap,          color: 'text-yellow-400' },
+  pendente:     { icon: Circle,       color: 'text-[var(--muted-foreground)]' },
+  aguardando:   { icon: Clock,        color: 'text-[var(--muted-foreground)]/50' },
+  pausado:      { icon: Clock,        color: 'text-orange-400' },
+  bloqueado:    { icon: AlertCircle,  color: 'text-red-400' },
 }
 
 const TIPO_CONTEUDO_OPTIONS = [
@@ -128,6 +155,8 @@ const CANAL_OPTIONS = [
   { value: 'whatsapp_status',   label: 'WhatsApp Status' },
   { value: 'outro',             label: 'Outro' },
 ]
+
+const CANAL_LABEL: Record<string, string> = Object.fromEntries(CANAL_OPTIONS.map(o => [o.value, o.label]))
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -154,20 +183,42 @@ function ConteudoCard({
   onEdit,
   onDelete,
   onMove,
+  onView,
+  isBeingDragged,
 }: {
   c: Conteudo
   onEdit: () => void
   onDelete: () => void
   onMove: (status: string) => void
+  onView: () => void
+  isBeingDragged: boolean
 }) {
   const estagio = estagioAtivo(c.estagios)
   const hasPrev = !!PREV_STATUS[c.status]
   const hasNext = !!NEXT_STATUS[c.status]
 
+  function handleDragStart(e: React.DragEvent) {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ id: c.id, srcStatus: c.status }))
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
   return (
-    <div className="group relative rounded-lg border border-[var(--border)] bg-[var(--card)] p-3 transition-all hover:border-[var(--green)]/40 hover:shadow-[0_0_12px_rgba(74,138,92,0.08)]">
-      {/* Priority dot */}
-      <div className={cn('absolute left-0 top-3 w-1 rounded-r', PRIORIDADE_COLOR[c.prioridade] ?? 'bg-[var(--muted)]')} style={{ height: 28 }} />
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onClick={onView}
+      className={cn(
+        'group relative rounded-lg border border-[var(--border)] bg-[var(--card)] p-3',
+        'cursor-grab active:cursor-grabbing select-none',
+        'transition-all hover:border-[var(--green)]/40 hover:shadow-[0_0_12px_rgba(74,138,92,0.08)]',
+        isBeingDragged && 'opacity-30 scale-[0.97] border-dashed pointer-events-none',
+      )}
+    >
+      {/* Priority stripe */}
+      <div
+        className={cn('absolute left-0 top-3 w-1 rounded-r', PRIORIDADE_COLOR[c.prioridade] ?? 'bg-[var(--muted)]')}
+        style={{ height: 28 }}
+      />
 
       <div className="pl-2">
         {/* Header */}
@@ -188,8 +239,15 @@ function ConteudoCard({
             </span>
           )}
           {c.link_publicado && (
-            <a href={c.link_publicado} target="_blank" rel="noopener noreferrer"
-              className="text-[var(--green-bright)] underline underline-offset-2">ver post</a>
+            <a
+              href={c.link_publicado}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[var(--green-bright)] underline underline-offset-2"
+            >
+              ver post
+            </a>
           )}
         </div>
 
@@ -198,22 +256,37 @@ function ConteudoCard({
           {hasPrev && (
             <button
               title="Voltar status"
-              onClick={() => onMove(PREV_STATUS[c.status])}
+              onClick={(e) => { e.stopPropagation(); onMove(PREV_STATUS[c.status]) }}
               className="rounded p-1 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             >
               <ChevronLeft className="h-3 w-3" />
             </button>
           )}
-          <button onClick={onEdit} title="Editar" className="rounded p-1 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
+          <button
+            onClick={(e) => { e.stopPropagation(); onView() }}
+            title="Ver detalhes"
+            className="rounded p-1 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--green-bright)]"
+          >
+            <Eye className="h-3 w-3" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit() }}
+            title="Editar"
+            className="rounded p-1 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+          >
             <Pencil className="h-3 w-3" />
           </button>
-          <button onClick={onDelete} title="Excluir" className="rounded p-1 hover:bg-red-500/20 text-[var(--muted-foreground)] hover:text-red-400">
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete() }}
+            title="Excluir"
+            className="rounded p-1 hover:bg-red-500/20 text-[var(--muted-foreground)] hover:text-red-400"
+          >
             <Trash2 className="h-3 w-3" />
           </button>
           {hasNext && (
             <button
               title="Avançar status"
-              onClick={() => onMove(NEXT_STATUS[c.status])}
+              onClick={(e) => { e.stopPropagation(); onMove(NEXT_STATUS[c.status]) }}
               className="ml-auto rounded p-1 hover:bg-[var(--green)]/20 text-[var(--muted-foreground)] hover:text-[var(--green-bright)]"
             >
               <ChevronRight className="h-3 w-3" />
@@ -225,7 +298,201 @@ function ConteudoCard({
   )
 }
 
-// ── Dialog criar/editar ───────────────────────────────────────────────────────
+// ── View dialog ───────────────────────────────────────────────────────────────
+
+function ConteudoViewDialog({
+  conteudo,
+  onClose,
+  onEdit,
+  onDelete,
+  onAdvanceEstagio,
+}: {
+  conteudo: Conteudo | null
+  onClose: () => void
+  onEdit: () => void
+  onDelete: () => void
+  onAdvanceEstagio: (conteudoId: string, estagioId: string) => void
+}) {
+  if (!conteudo) return null
+  const c = conteudo
+  const statusCfg = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.rascunho
+  const sortedEstagios = [...(c.estagios ?? [])].sort((a, b) => a.ordem - b.ordem)
+
+  return (
+    <Dialog open={!!conteudo} onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0 gap-0">
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <div className="sticky top-0 z-10 border-b border-[var(--border)] px-5 py-4"
+          style={{ background: 'rgba(6,12,7,0.95)', backdropFilter: 'blur(12px)' }}>
+          <div className="flex items-start gap-3">
+            <span className={cn('mt-0.5 shrink-0 rounded border px-2 py-0.5 text-[11px] font-semibold', TIPO_COLOR[c.tipo] ?? '')}>
+              {TIPO_LABEL[c.tipo] ?? c.tipo}
+            </span>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-sm font-bold leading-snug text-[var(--foreground)]" style={{ fontFamily: 'Orbitron, monospace' }}>
+                {c.titulo}
+              </h2>
+              <div className="mt-1 flex items-center gap-2 flex-wrap">
+                <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider', statusCfg.color)}>
+                  {statusCfg.label}
+                </span>
+                <span className="text-[10px] text-[var(--muted-foreground)]">
+                  {PRIORIDADE_LABEL[c.prioridade]}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Body ───────────────────────────────────────────────────────── */}
+        <div className="space-y-5 px-5 py-4">
+
+          {/* Metadata grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {c.dia && (
+              <MetaRow icon={Calendar} label="Dia" value={`${c.dia.nome_dia} · ${c.dia.data}`} />
+            )}
+            {c.canal_publicacao && (
+              <MetaRow icon={Layers} label="Canal" value={CANAL_LABEL[c.canal_publicacao] ?? c.canal_publicacao} />
+            )}
+            {c.setor && (
+              <MetaRow icon={Tag} label="Setor" value={c.setor.nome} />
+            )}
+            {c.patrocinador && (
+              <MetaRow icon={Users} label="Patrocinador" value={c.patrocinador.nome} highlight />
+            )}
+          </div>
+
+          {/* Briefing */}
+          {c.briefing ? (
+            <div>
+              <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Briefing</p>
+              <div
+                className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-xs leading-relaxed text-[var(--foreground)] whitespace-pre-wrap"
+              >
+                {c.briefing}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-[var(--border)] p-4 text-center">
+              <p className="text-xs text-[var(--muted-foreground)]/60">Sem briefing · adicione via edição</p>
+            </div>
+          )}
+
+          {/* Pipeline stages */}
+          {sortedEstagios.length > 0 && (
+            <div>
+              <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Pipeline</p>
+              <div className="space-y-1.5">
+                {sortedEstagios.map((e, i) => {
+                  const cfg = ESTAGIO_STATUS_CONFIG[e.status] ?? ESTAGIO_STATUS_CONFIG.aguardando
+                  const Icon = cfg.icon
+                  const isActive = e.status === 'em_andamento' || e.status === 'pendente'
+                  return (
+                    <div
+                      key={e.id}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded-lg border px-3 py-2',
+                        e.status === 'pronto'
+                          ? 'border-[var(--green)]/20 bg-[var(--green)]/5'
+                          : isActive
+                          ? 'border-yellow-500/20 bg-yellow-500/5'
+                          : 'border-[var(--border)] bg-transparent opacity-60',
+                      )}
+                    >
+                      <Icon className={cn('h-3.5 w-3.5 shrink-0', cfg.color)} />
+                      <span className="flex-1 text-xs font-medium text-[var(--foreground)]">
+                        {ESTAGIO_LABEL[e.estagio] ?? e.estagio}
+                      </span>
+                      {e.dono && (
+                        <span className="text-[10px] text-[var(--muted-foreground)]">{e.dono.nome}</span>
+                      )}
+                      {isActive && (
+                        <button
+                          onClick={() => onAdvanceEstagio(c.id, e.id)}
+                          className="flex items-center gap-1 rounded border border-[var(--green)]/30 bg-[var(--green)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--green-bright)] hover:bg-[var(--green)]/20 transition-colors"
+                        >
+                          Concluir <ArrowRight className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                      <span className={cn('text-[10px] font-semibold', cfg.color)}>
+                        {e.status === 'pronto' ? '✓' : String(i + 1).padStart(2, '0')}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Link publicado */}
+          {c.link_publicado && (
+            <div>
+              <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Post publicado</p>
+              <a
+                href={c.link_publicado}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-lg border border-[var(--green)]/20 bg-[var(--green)]/5 px-3 py-2 text-xs text-[var(--green-bright)] hover:border-[var(--green)]/40 transition-colors"
+              >
+                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 truncate">{c.link_publicado}</span>
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* ── Footer ─────────────────────────────────────────────────────── */}
+        <div className="sticky bottom-0 flex items-center justify-between border-t border-[var(--border)] px-5 py-3"
+          style={{ background: 'rgba(6,12,7,0.95)', backdropFilter: 'blur(12px)' }}>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => { onClose(); setTimeout(onDelete, 150) }}
+            className="text-xs"
+          >
+            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+            Excluir
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => { onClose(); setTimeout(onEdit, 150) }}
+          >
+            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+            Editar conteúdo
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function MetaRow({
+  icon: Icon,
+  label,
+  value,
+  highlight,
+}: {
+  icon: React.ElementType
+  label: string
+  value: string
+  highlight?: boolean
+}) {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 px-3 py-2">
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" />
+      <div className="min-w-0">
+        <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">{label}</p>
+        <p className={cn('text-xs font-semibold truncate', highlight ? 'text-[var(--gold)]' : 'text-[var(--foreground)]')}>
+          {value}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ── Create/Edit dialog ────────────────────────────────────────────────────────
 
 interface ConteudoDialogProps {
   open: boolean
@@ -422,7 +689,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
             <Label className="mb-1.5 block text-xs">Briefing / Descrição</Label>
             <textarea
               className="w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)] resize-none"
-              rows={3}
+              rows={4}
               placeholder="O que precisa ser capturado, editado, publicado..."
               value={briefing}
               onChange={(e) => setBriefing(e.target.value)}
@@ -464,6 +731,12 @@ function KanbanColumn({
   onEdit,
   onDelete,
   onMove,
+  onView,
+  isDragOver,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  dragId,
 }: {
   col: (typeof COLUNAS)[number]
   conteudos: Conteudo[]
@@ -471,9 +744,39 @@ function KanbanColumn({
   onEdit: (c: Conteudo) => void
   onDelete: (c: Conteudo) => void
   onMove: (c: Conteudo, status: string) => void
+  onView: (c: Conteudo) => void
+  isDragOver: boolean
+  onDragOver: () => void
+  onDragLeave: () => void
+  onDrop: (cardId: string, srcStatus: string) => void
+  dragId: string | null
 }) {
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    onDragOver()
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    try {
+      const { id, srcStatus } = JSON.parse(e.dataTransfer.getData('text/plain'))
+      onDrop(id, srcStatus)
+    } catch { /* ignore */ }
+  }
+
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-[var(--border)] bg-[var(--card)]/40">
+    <div
+      className={cn(
+        'flex w-72 shrink-0 flex-col rounded-xl border transition-all duration-150',
+        isDragOver
+          ? 'border-[var(--green)]/60 bg-[var(--green)]/5 shadow-[0_0_24px_rgba(74,138,92,0.12)]'
+          : 'border-[var(--border)] bg-[var(--card)]/40',
+      )}
+      onDragOver={handleDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={handleDrop}
+    >
       {/* Column header */}
       <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
         <div className={cn('h-2 w-2 rounded-full', col.dot)} />
@@ -491,8 +794,8 @@ function KanbanColumn({
       </div>
 
       {/* Cards */}
-      <div className="flex-1 space-y-2 overflow-y-auto p-3" style={{ maxHeight: 'calc(100vh - 260px)' }}>
-        {conteudos.length === 0 ? (
+      <div className="flex flex-1 flex-col space-y-2 overflow-y-auto p-3" style={{ maxHeight: 'calc(100vh - 260px)' }}>
+        {conteudos.length === 0 && !isDragOver ? (
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
             <p className="text-xs text-[var(--muted-foreground)]/60">Vazio</p>
             <button
@@ -510,8 +813,17 @@ function KanbanColumn({
               onEdit={() => onEdit(c)}
               onDelete={() => onDelete(c)}
               onMove={(s) => onMove(c, s)}
+              onView={() => onView(c)}
+              isBeingDragged={dragId === c.id}
             />
           ))
+        )}
+
+        {/* Drop zone indicator */}
+        {isDragOver && (
+          <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-[var(--green)]/50 py-4 text-[10px] font-semibold uppercase tracking-widest text-[var(--green-bright)] animate-pulse">
+            ✦ Soltar aqui
+          </div>
         )}
       </div>
     </div>
@@ -532,16 +844,22 @@ interface KanbanBoardProps {
 export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, templates }: KanbanBoardProps) {
   const router = useRouter()
   const [conteudos, setConteudos] = React.useState(initial)
-  const [search, setSearch]       = React.useState('')
-  const [filterDia, setFilterDia] = React.useState('')
+  const [search, setSearch]         = React.useState('')
+  const [filterDia, setFilterDia]   = React.useState('')
   const [filterTipo, setFilterTipo] = React.useState('')
 
+  // Drag state
+  const [dragId, setDragId]     = React.useState<string | null>(null)
+  const [dragOver, setDragOver] = React.useState<string | null>(null)
+
+  // Dialog state
   const [dialog, setDialog] = React.useState<{
     open: boolean
     editing?: Conteudo
     defaultStatus?: string
   }>({ open: false })
 
+  const [viewCard, setViewCard]         = React.useState<Conteudo | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<Conteudo | null>(null)
   const [deleting, setDeleting]         = React.useState(false)
   const [moving, setMoving]             = React.useState<string | null>(null)
@@ -552,9 +870,9 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
   // Filter
   const filtered = React.useMemo(() => {
     let list = conteudos
-    if (search)    list = list.filter((c) => c.titulo.toLowerCase().includes(search.toLowerCase()))
-    if (filterDia) list = list.filter((c) => c.dia_id === filterDia)
-    if (filterTipo)list = list.filter((c) => c.tipo === filterTipo)
+    if (search)     list = list.filter((c) => c.titulo.toLowerCase().includes(search.toLowerCase()))
+    if (filterDia && filterDia !== '__all__')  list = list.filter((c) => c.dia_id === filterDia)
+    if (filterTipo && filterTipo !== '__all__') list = list.filter((c) => c.tipo === filterTipo)
     return list
   }, [conteudos, search, filterDia, filterTipo])
 
@@ -564,6 +882,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     setMoving(null)
     if (res.ok) {
       setConteudos((prev) => prev.map((x) => x.id === c.id ? { ...x, status } : x))
+      if (viewCard?.id === c.id) setViewCard(v => v ? { ...v, status } : v)
     }
   }
 
@@ -576,11 +895,35 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     setDeleteTarget(null)
   }
 
+  async function handleAdvanceEstagio(conteudoId: string, estagioId: string) {
+    await advanceEstagio(conteudoId, estagioId)
+    router.refresh()
+  }
+
+  function handleDrop(colStatus: string, cardId: string, srcStatus: string) {
+    if (srcStatus === colStatus) { setDragId(null); setDragOver(null); return }
+    const card = conteudos.find(c => c.id === cardId)
+    if (!card) return
+    handleMove(card, colStatus)
+    setDragId(null)
+    setDragOver(null)
+  }
+
   const total      = filtered.length
   const publicados = filtered.filter((c) => c.status === 'publicado').length
 
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full"
+      onDragStart={(e) => {
+        // Capture which card started dragging
+        try {
+          const { id } = JSON.parse(e.dataTransfer.getData('text/plain'))
+          setDragId(id)
+        } catch { setDragId(null) }
+      }}
+      onDragEnd={() => { setDragId(null); setDragOver(null) }}
+    >
 
       {/* ── Filter bar ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] px-6 py-3 bg-[var(--card)]/40 backdrop-blur-sm">
@@ -652,6 +995,12 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
                 onEdit={(c) => setDialog({ open: true, editing: c })}
                 onDelete={(c) => setDeleteTarget(c)}
                 onMove={handleMove}
+                onView={(c) => setViewCard(c)}
+                isDragOver={dragOver === col.status}
+                onDragOver={() => setDragOver(col.status)}
+                onDragLeave={() => setDragOver((prev) => prev === col.status ? null : prev)}
+                onDrop={(id, src) => handleDrop(col.status, id, src)}
+                dragId={dragId}
               />
             )
           })}
@@ -660,13 +1009,26 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
 
       {/* Loading overlay on move */}
       {moving && (
-        <div className="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-[var(--card)] border border-[var(--border)] px-4 py-2 text-xs text-[var(--foreground)] shadow-lg">
+        <div className="fixed bottom-4 right-4 flex items-center gap-2 rounded-lg bg-[var(--card)] border border-[var(--border)] px-4 py-2 text-xs text-[var(--foreground)] shadow-lg z-50">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--green-bright)]" />
           Movendo…
         </div>
       )}
 
-      {/* Add/Edit dialog */}
+      {/* View dialog */}
+      <ConteudoViewDialog
+        conteudo={viewCard}
+        onClose={() => setViewCard(null)}
+        onEdit={() => {
+          if (viewCard) { setDialog({ open: true, editing: viewCard }); setViewCard(null) }
+        }}
+        onDelete={() => {
+          if (viewCard) { setDeleteTarget(viewCard); setViewCard(null) }
+        }}
+        onAdvanceEstagio={handleAdvanceEstagio}
+      />
+
+      {/* Create/Edit dialog */}
       <ConteudoDialog
         open={dialog.open}
         onClose={() => setDialog({ open: false })}

@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { CrudClient, type ColumnDef, type FieldDef } from '@/components/admin/crud-client'
-import { Badge } from '@/components/ui/badge'
 import { createEdicao, updateEdicao, deleteEdicao } from './actions'
 
 interface Edicao {
@@ -11,6 +10,8 @@ interface Edicao {
   data_inicio: string
   data_fim: string
   ativa: boolean
+  periodo: string
+  status_text: string
 }
 
 const fields: FieldDef[] = [
@@ -25,36 +26,26 @@ const fields: FieldDef[] = [
 const columns: ColumnDef<Edicao>[] = [
   { key: 'nome', label: 'Nome' },
   { key: 'cidade', label: 'Cidade' },
-  {
-    key: 'periodo',
-    label: 'Período',
-    render: (r) => `${r.data_inicio} → ${r.data_fim}`,
-  },
-  {
-    key: 'ativa',
-    label: 'Status',
-    render: (r) => (r.ativa ? <Badge variant="success">Ativa</Badge> : <Badge variant="secondary">Inativa</Badge>),
-  },
+  { key: 'periodo', label: 'Período' },
+  { key: 'status_text', label: 'Status' },
 ]
 
 export default async function EdicoesPage() {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('edicoes')
-    .select('id, nome, ano, cidade, data_inicio, data_fim, ativa')
-    .order('ano', { ascending: false })
+  const { data } = await supabase.from('edicoes').select('id, nome, ano, cidade, data_inicio, data_fim, ativa').order('ano', { ascending: false })
+
+  const processed = (data ?? []).map((r) => ({
+    ...r,
+    periodo: `${r.data_inicio} → ${r.data_fim}`,
+    status_text: r.ativa ? 'Ativa' : 'Inativa',
+  })) as Edicao[]
 
   return (
     <CrudClient<Edicao>
-      entityLabel="Edição"
-      entityLabelPlural="Edições"
+      entityLabel="Edição" entityLabelPlural="Edições"
       description="Cada edição é um evento (ano). A ativa é a fonte das demais entidades."
-      columns={columns}
-      fields={fields}
-      data={(data ?? []) as Edicao[]}
-      onCreate={createEdicao}
-      onUpdate={updateEdicao}
-      onDelete={deleteEdicao}
+      columns={columns} fields={fields} data={processed}
+      onCreate={createEdicao} onUpdate={updateEdicao} onDelete={deleteEdicao}
     />
   )
 }

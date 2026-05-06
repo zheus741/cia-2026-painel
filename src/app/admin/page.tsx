@@ -1,19 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
-import { Settings, Calendar, Map, Users, Trophy, Music, PartyPopper, Heart, GitBranch, Tag, UserCog } from 'lucide-react'
+import { Settings, Calendar, Map, Users, Trophy, Music, PartyPopper, Heart, GitBranch, Tag, UserCog, Swords, ClipboardList, Camera } from 'lucide-react'
 import Link from 'next/link'
 
 const cards = [
-  { label: 'Edições', href: '/admin/edicoes', icon: Settings, table: 'edicoes' },
-  { label: 'Dias', href: '/admin/dias', icon: Calendar, table: 'dias_evento' },
-  { label: 'Setores', href: '/admin/setores', icon: Map, table: 'setores' },
-  { label: 'Modalidades', href: '/admin/modalidades', icon: Trophy, table: 'modalidades' },
-  { label: 'Equipes', href: '/admin/equipes', icon: Users, table: 'equipes' },
-  { label: 'Shows', href: '/admin/shows', icon: Music, table: 'shows' },
-  { label: 'Festas', href: '/admin/festas', icon: PartyPopper, table: 'festas' },
-  { label: 'Patrocinadores', href: '/admin/patrocinadores', icon: Heart, table: 'patrocinadores' },
-  { label: 'Pipelines', href: '/admin/pipelines', icon: GitBranch, table: 'pipeline_templates' },
-  { label: 'Tags', href: '/admin/tags', icon: Tag, table: 'tags' },
-  { label: 'Usuários', href: '/admin/usuarios', icon: UserCog, table: 'profiles' },
+  { label: 'Conteúdos', href: '/conteudos',            icon: Camera,        table: 'conteudos' },
+  { label: 'Jogos',     href: '/admin/jogos',           icon: Swords,        table: 'jogos' },
+  { label: 'Escala',    href: '/admin/escala',          icon: ClipboardList, table: 'turnos' },
+  { label: 'Edições',   href: '/admin/edicoes',         icon: Settings,      table: 'edicoes' },
+  { label: 'Dias',      href: '/admin/dias',            icon: Calendar,      table: 'dias_evento' },
+  { label: 'Setores',   href: '/admin/setores',         icon: Map,           table: 'setores' },
+  { label: 'Modalidades',href: '/admin/modalidades',    icon: Trophy,        table: 'modalidades' },
+  { label: 'Equipes',   href: '/admin/equipes',         icon: Users,         table: 'equipes' },
+  { label: 'Shows',     href: '/admin/shows',           icon: Music,         table: 'shows' },
+  { label: 'Festas',    href: '/admin/festas',          icon: PartyPopper,   table: 'festas' },
+  { label: 'Patrocinadores', href: '/admin/patrocinadores', icon: Heart,     table: 'patrocinadores' },
+  { label: 'Pipelines', href: '/admin/pipelines',       icon: GitBranch,     table: 'pipeline_templates' },
+  { label: 'Tags',      href: '/admin/tags',            icon: Tag,           table: 'tags' },
+  { label: 'Usuários',  href: '/admin/usuarios',        icon: UserCog,       table: 'profiles' },
 ] as const
 
 export default async function AdminHome() {

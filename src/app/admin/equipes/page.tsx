@@ -1,31 +1,29 @@
 import { createClient } from '@/lib/supabase/server'
 import { CrudClient, type ColumnDef, type FieldDef } from '@/components/admin/crud-client'
-import { Badge } from '@/components/ui/badge'
 import { createEquipe, updateEquipe, deleteEquipe } from './actions'
 
 interface Equipe {
   id: string
   nome: string
   slug: string | null
-  tipo: 'atletica' | 'cheer' | 'bateria'
+  tipo: string
   divisao: string | null
   universidade: string | null
   logo_url: string | null
   cor_primaria: string | null
+  tipo_label: string
+}
+
+const TIPO_LABEL: Record<string, string> = {
+  atletica: 'Atlética', cheer: 'Cheer', bateria: 'Bateria',
 }
 
 const fields: FieldDef[] = [
   { name: 'nome', label: 'Nome', type: 'text', required: true, placeholder: 'ENGENHARIA UFU' },
   {
-    name: 'tipo',
-    label: 'Tipo',
-    type: 'select',
-    required: true,
-    span: 'half',
+    name: 'tipo', label: 'Tipo', type: 'select', required: true, span: 'half',
     options: [
-      { value: 'atletica', label: 'Atlética' },
-      { value: 'cheer', label: 'Cheer' },
-      { value: 'bateria', label: 'Bateria' },
+      { value: 'atletica', label: 'Atlética' }, { value: 'cheer', label: 'Cheer' }, { value: 'bateria', label: 'Bateria' },
     ],
   },
   { name: 'divisao', label: 'Divisão / Nível', type: 'text', placeholder: '1ª Divisão / COED 2.1', span: 'half' },
@@ -36,58 +34,28 @@ const fields: FieldDef[] = [
   { name: 'observacoes', label: 'Observações', type: 'textarea' },
 ]
 
-const tipoBadge: Record<string, { variant: 'default' | 'accent' | 'success' | 'warning' | 'secondary'; label: string }> = {
-  atletica: { variant: 'success', label: 'Atlética' },
-  cheer: { variant: 'accent', label: 'Cheer' },
-  bateria: { variant: 'warning', label: 'Bateria' },
-}
-
 const columns: ColumnDef<Equipe>[] = [
-  {
-    key: 'nome',
-    label: 'Nome',
-    render: (r) => (
-      <div className="flex items-center gap-2">
-        {r.cor_primaria && (
-          <span
-            className="inline-block h-3 w-3 rounded-full border border-[var(--border)]"
-            style={{ background: r.cor_primaria }}
-          />
-        )}
-        <span className="font-medium">{r.nome}</span>
-      </div>
-    ),
-  },
-  {
-    key: 'tipo',
-    label: 'Tipo',
-    render: (r) => {
-      const t = tipoBadge[r.tipo]
-      return <Badge variant={t.variant}>{t.label}</Badge>
-    },
-  },
+  { key: 'nome', label: 'Nome' },
+  { key: 'tipo_label', label: 'Tipo' },
   { key: 'divisao', label: 'Divisão' },
   { key: 'universidade', label: 'Universidade' },
 ]
 
 export default async function EquipesPage() {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('equipes')
-    .select('id, nome, slug, tipo, divisao, universidade, logo_url, cor_primaria')
-    .order('nome')
+  const { data } = await supabase.from('equipes').select('id, nome, slug, tipo, divisao, universidade, logo_url, cor_primaria').order('nome')
+
+  const processed = (data ?? []).map((r) => ({
+    ...r,
+    tipo_label: TIPO_LABEL[r.tipo] ?? r.tipo,
+  })) as Equipe[]
 
   return (
     <CrudClient<Equipe>
-      entityLabel="Equipe"
-      entityLabelPlural="Equipes"
-      description="Atléticas, baterias e times de cheer participantes. Já carregamos 32 atléticas no seed."
-      columns={columns}
-      fields={fields}
-      data={(data ?? []) as Equipe[]}
-      onCreate={createEquipe}
-      onUpdate={updateEquipe}
-      onDelete={deleteEquipe}
+      entityLabel="Equipe" entityLabelPlural="Equipes"
+      description="Atléticas, baterias e times de cheer participantes. Já carregamos 89 equipes no seed."
+      columns={columns} fields={fields} data={processed}
+      onCreate={createEquipe} onUpdate={updateEquipe} onDelete={deleteEquipe}
     />
   )
 }

@@ -1,89 +1,124 @@
 @import "tailwindcss";
 
 /* ============================================
-   CIA 2026 — Painel · Design tokens
-   Paleta extraída do chaveamento oficial
+   CIA 2026 · PAINEL · Design System
+   "O Tempo Que Te Pertence"
+   Verde místico · ouro · noite profunda
    ============================================ */
 
+/* ── Fontes locais ─────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: 'Orbitron';
+  src: url('/assets/fonts/orbitron.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Rajdhani';
+  src: url('/assets/fonts/rajdhani-300.woff2') format('woff2');
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  src: url('/assets/fonts/rajdhani-400.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  src: url('/assets/fonts/rajdhani-500.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  src: url('/assets/fonts/rajdhani-600.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Rajdhani';
+  src: url('/assets/fonts/rajdhani-700.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'ShareTechMono';
+  src: url('/assets/fonts/share-tech-mono.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* ── Tokens de cor ─────────────────────────────────────────────────────────── */
 :root {
-  /* Brand */
-  --gold: #d7c69d;
-  --gold-bright: #f0e0bb;
-  --gold-dark: #c3a270;
-  --green: #5fb446;
-  --green-bright: #6fc955;
-  --green-dim: #3a7a2a;
-  --orange: #f59e0b;
-  --magenta: #c07adb;
-  --cyan: #5bb8d4;
+  /* Brand CIA */
+  --gold:          #c8973a;
+  --gold-bright:   #e8b94f;
+  --gold-dim:      #7a5c20;
+  --green:         #4a8a5c;
+  --green-bright:  #6ab87e;
+  --green-dim:     #2d5a3d;
+  --green-glow:    rgba(74, 138, 92, 0.35);
+  --terracotta:    #8b3a2a;
 
-  /* Surface (light) */
-  --background: #fafaf7;
-  --foreground: #18181b;
-  --muted: #f4f4f0;
-  --muted-foreground: #71717a;
-  --border: #e4e4dc;
-  --card: #ffffff;
-  --card-foreground: #18181b;
-  --primary: var(--green-dim);
+  /* Surface — escuro por padrão */
+  --background:         #060c07;
+  --foreground:         #c8dccb;
+  --muted:              #0d1a0f;
+  --muted-foreground:   #4e7055;
+  --border:             #1a2e1c;
+  --card:               #0d1a0f;
+  --card-foreground:    #c8dccb;
+
+  --primary:            var(--green);
   --primary-foreground: #ffffff;
-  --accent: var(--gold-dark);
-  --accent-foreground: #18181b;
-  --destructive: #dc2626;
-  --warning: var(--orange);
-  --success: var(--green);
+  --accent:             var(--gold);
+  --accent-foreground:  #060c07;
+  --destructive:        #c0392b;
+  --warning:            #d97706;
+  --success:            var(--green-bright);
 
-  /* Status colors */
-  --status-aguardando: #94a3b8;
-  --status-pendente: #f59e0b;
-  --status-em-andamento: #3b82f6;
-  --status-pausado: #a855f7;
-  --status-bloqueado: #dc2626;
-  --status-pronto: var(--green);
-  --status-publicado: var(--green-dim);
+  /* Status pipeline */
+  --status-aguardando:    #4a5568;
+  --status-pendente:      var(--gold);
+  --status-em-andamento:  #3b82f6;
+  --status-pausado:       #a855f7;
+  --status-bloqueado:     #dc2626;
+  --status-pronto:        var(--green-bright);
+  --status-publicado:     var(--green-dim);
 }
 
-.dark {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
-  --muted: #18181b;
-  --muted-foreground: #a1a1aa;
-  --border: #27272a;
-  --card: #111111;
-  --card-foreground: #fafafa;
-  --primary: var(--green-bright);
-  --primary-foreground: #0a0a0a;
-  --accent: var(--gold-bright);
-  --accent-foreground: #0a0a0a;
-}
-
+/* ── Tailwind theme ─────────────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-primary: var(--primary);
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-border:             var(--border);
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
+  --color-primary:            var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-warning: var(--warning);
-  --color-success: var(--success);
-  --color-gold: var(--gold);
-  --color-gold-bright: var(--gold-bright);
-  --color-gold-dark: var(--gold-dark);
-  --color-green-cia: var(--green);
-  --color-green-bright: var(--green-bright);
-  --color-green-dim: var(--green-dim);
+  --color-accent:             var(--accent);
+  --color-accent-foreground:  var(--accent-foreground);
+  --color-destructive:        var(--destructive);
+  --color-warning:            var(--warning);
+  --color-success:            var(--success);
+  --color-gold:               var(--gold);
+  --color-gold-bright:        var(--gold-bright);
+  --color-gold-dim:           var(--gold-dim);
+  --color-green-cia:          var(--green);
+  --color-green-bright:       var(--green-bright);
+  --color-green-dim:          var(--green-dim);
 
-  --font-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
-  --font-display: var(--font-display), serif;
-  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-sans:    'Rajdhani', system-ui, sans-serif;
+  --font-display: 'Orbitron', system-ui, sans-serif;
+  --font-mono:    'ShareTechMono', ui-monospace, monospace;
 }
 
+/* ── Base ───────────────────────────────────────────────────────────────────── */
 * {
   border-color: var(--border);
 }
@@ -91,23 +126,164 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans);
+  font-family: 'Rajdhani', system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 1rem;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Star pattern do CIA — sutil no fundo */
-.cia-bg-stars {
-  background-image:
-    radial-gradient(circle at 25% 25%, var(--gold) 1px, transparent 1.5px),
-    radial-gradient(circle at 75% 75%, var(--gold) 1px, transparent 1.5px);
-  background-size: 60px 60px, 80px 80px;
-  background-position: 0 0, 30px 40px;
-  opacity: 0.04;
+/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--background); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--green-dim); }
+
+/* ── Animações ──────────────────────────────────────────────────────────────── */
+@keyframes cia-spin-slow    { to { transform: rotate(360deg); } }
+@keyframes cia-spin-reverse { to { transform: rotate(-360deg); } }
+@keyframes cia-pulse-glow {
+  0%, 100% { opacity: 0.08; }
+  50%       { opacity: 0.18; }
+}
+@keyframes cia-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+@keyframes cia-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes cia-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Scrollbar minimalista */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--muted); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
-::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+.cia-spin-slow    { animation: cia-spin-slow    80s linear infinite; }
+.cia-spin-reverse { animation: cia-spin-reverse 120s linear infinite; }
+.cia-pulse-glow   { animation: cia-pulse-glow   5s ease-in-out infinite; }
+.cia-float        { animation: cia-float        7s ease-in-out infinite; }
+.cia-fade-in      { animation: cia-fade-in      0.5s ease-out both; }
+
+/* ── Composites CIA ─────────────────────────────────────────────────────────── */
+
+/* Grade de pontos */
+.cia-dot-grid {
+  background-image: radial-gradient(circle, rgba(74,138,92,0.25) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Glass card */
+.cia-glass {
+  background: rgba(13, 26, 15, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(74, 138, 92, 0.18);
+}
+
+/* Glass card dourado */
+.cia-glass-gold {
+  background: rgba(13, 26, 15, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(200, 151, 58, 0.25);
+}
+
+/* Brilho verde */
+.cia-glow {
+  box-shadow: 0 0 24px rgba(74, 138, 92, 0.20), 0 0 0 1px rgba(74, 138, 92, 0.12);
+}
+.cia-glow-gold {
+  box-shadow: 0 0 24px rgba(200, 151, 58, 0.20), 0 0 0 1px rgba(200, 151, 58, 0.15);
+}
+
+/* Gradiente de fundo padrão */
+.cia-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(74,138,92,0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 90% 80%,  rgba(74,138,92,0.06) 0%, transparent 70%),
+    var(--background);
+}
+
+/* Linha dourada */
+.cia-gold-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--gold-dim) 30%, var(--gold) 50%, var(--gold-dim) 70%, transparent 100%);
+}
+
+/* Texto dourado gradiente */
+.cia-gold-text {
+  background: linear-gradient(135deg, var(--gold-dim), var(--gold-bright), var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Texto verde gradiente */
+.cia-green-text {
+  background: linear-gradient(135deg, var(--green), var(--green-bright));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Shimmer dourado em texto */
+.cia-shimmer {
+  background: linear-gradient(90deg, var(--gold-dim) 0%, var(--gold-bright) 40%, var(--gold-dim) 60%, var(--gold-bright) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: cia-shimmer 4s linear infinite;
+}
+
+/* Vinheta escura nas bordas */
+.cia-vignette::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(6,12,7,0.85) 100%);
+  pointer-events: none;
+}
+
+/* Estrelas CIA (pontos dourados) */
+.cia-bg-stars {
+  background-image:
+    radial-gradient(circle at 20% 30%,  rgba(200,151,58,0.8) 1px, transparent 1.5px),
+    radial-gradient(circle at 70% 15%,  rgba(200,151,58,0.5) 1px, transparent 1.5px),
+    radial-gradient(circle at 85% 60%,  rgba(200,151,58,0.6) 1px, transparent 1.5px),
+    radial-gradient(circle at 40% 75%,  rgba(74,138,92,0.6)  1px, transparent 1.5px),
+    radial-gradient(circle at 10% 80%,  rgba(200,151,58,0.4) 1px, transparent 1.5px),
+    radial-gradient(circle at 55% 45%,  rgba(74,138,92,0.4)  1px, transparent 1.5px),
+    radial-gradient(circle at 90% 90%,  rgba(200,151,58,0.5) 1px, transparent 1.5px);
+  background-size: 120px 120px, 90px 90px, 150px 150px, 80px 80px, 200px 200px, 100px 100px, 140px 140px;
+}
+
+/* ── Leaflet map overrides ──────────────────────────────────────────────────── */
+.leaflet-container {
+  background: #0d1a0f;
+  font-family: 'Rajdhani', sans-serif;
+}
+.leaflet-tile-pane { filter: brightness(0.75) saturate(0.65) hue-rotate(100deg); }
+.leaflet-popup-content-wrapper {
+  background: rgba(13,26,15,0.95) !important;
+  border: 1px solid rgba(74,138,92,0.35) !important;
+  border-radius: 12px !important;
+  color: #c8dccb !important;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 0 24px rgba(74,138,92,0.18) !important;
+}
+.leaflet-popup-tip { background: rgba(13,26,15,0.95) !important; }
+.leaflet-popup-close-button { color: #4e7055 !important; }
+.leaflet-control-zoom a {
+  background: rgba(13,26,15,0.90) !important;
+  color: #6ab87e !important;
+  border-color: rgba(74,138,92,0.3) !important;
+}
+.leaflet-control-zoom a:hover { background: rgba(74,138,92,0.2) !important; }
+.leaflet-control-attribution {
+  background: rgba(6,12,7,0.7) !important;
+  color: #4e7055 !important;
+}
+.leaflet-control-attribution a { color: #4a8a5c !important; }

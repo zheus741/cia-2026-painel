@@ -1,0 +1,278 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import { Radio, CheckCircle2, XCircle, Minus, Plus } from 'lucide-react'
+import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo } from './actions'
+
+interface Jogo {
+  id: string
+  equipe_a_nome: string | null
+  equipe_b_nome: string | null
+  placar_a: number | null
+  placar_b: number | null
+  status: string
+  inicio: string | null
+  modalidade: { nome: string; icone: string } | null
+  setor: { nome: string } | null
+}
+
+function fmtTime(ts: string) {
+  return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+}
+
+function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
+  const [jogo, setJogo] = useState(initial)
+  const [isPending, startTransition] = useTransition()
+
+  const placarA = jogo.placar_a ?? 0
+  const placarB = jogo.placar_b ?? 0
+
+  function adjustScore(team: 'a' | 'b', delta: number) {
+    const na = team === 'a' ? Math.max(0, placarA + delta) : placarA
+    const nb = team === 'b' ? Math.max(0, placarB + delta) : placarB
+    setJogo((p) => ({ ...p, placar_a: na, placar_b: nb }))
+    startTransition(async () => {
+      await atualizarPlacar(jogo.id, na, nb)
+    })
+  }
+
+  function handleAoVivo() {
+    setJogo((p) => ({ ...p, status: 'ao_vivo', placar_a: 0, placar_b: 0 }))
+    startTransition(async () => { await setJogoAoVivo(jogo.id) })
+  }
+
+  function handleEncerrar() {
+    setJogo((p) => ({ ...p, status: 'encerrado' }))
+    startTransition(async () => { await encerrarJogo(jogo.id) })
+  }
+
+  function handleCancelar() {
+    setJogo((p) => ({ ...p, status: 'cancelado' }))
+    startTransition(async () => { await cancelarJogo(jogo.id) })
+  }
+
+  const isAoVivo = jogo.status === 'ao_vivo'
+  const isEncerrado = jogo.status === 'encerrado'
+  const isCancelado = jogo.status === 'cancelado'
+  const isAgendado = jogo.status === 'agendado'
+
+  return (
+    <div className={`relative rounded-xl border p-4 transition-all ${
+      isAoVivo
+        ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/10 shadow-[0_0_20px_rgba(74,138,92,0.08)]'
+        : isEncerrado
+        ? 'border-[var(--border)]/50 bg-[var(--card)]/40 opacity-70'
+        : isCancelado
+        ? 'border-red-800/30 bg-red-900/10 opacity-50'
+        : 'border-[var(--border)] bg-[var(--card)]/60'
+    }`}>
+      {isAoVivo && (
+        <div className="absolute right-3 top-3 flex items-center gap-1.5">
+          <Radio className="h-3 w-3 text-[var(--green-bright)] animate-pulse" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--green-bright)]">Ao vivo</span>
+        </div>
+      )}
+
+      {/* Meta */}
+      <div className="mb-3 flex items-center gap-2 text-[10px] text-[var(--muted-foreground)]">
+        {jogo.inicio && <span className="tabular-nums">{fmtTime(jogo.inicio)}</span>}
+        {jogo.modalidade && (
+          <>
+            <span>·</span>
+            <span>{jogo.modalidade.icone} {jogo.modalidade.nome}</span>
+          </>
+        )}
+        {jogo.setor && (
+          <>
+            <span>·</span>
+            <span>{jogo.setor.nome}</span>
+          </>
+        )}
+        {isEncerrado && (
+          <>
+            <span>·</span>
+            <span className="text-[var(--muted-foreground)]/60">Encerrado</span>
+          </>
+        )}
+        {isCancelado && (
+          <>
+            <span>·</span>
+            <span className="text-red-400">Cancelado</span>
+          </>
+        )}
+      </div>
+
+      {/* Placar */}
+      <div className="flex items-center gap-3">
+        {/* Equipe A */}
+        <div className="flex flex-1 flex-col items-center gap-2">
+          <p className="text-center text-sm font-semibold leading-snug">
+            {jogo.equipe_a_nome ?? 'Equipe A'}
+          </p>
+          {(isAoVivo || isEncerrado) && (
+            <div className="flex items-center gap-1">
+              {isAoVivo && (
+                <button
+                  onClick={() => adjustScore('a', -1)}
+                  disabled={isPending || placarA === 0}
+                  className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                >
+                  <Minus className="h-3 w-3" />
+                </button>
+              )}
+              <span className={`tabular-nums font-bold ${isAoVivo ? 'text-3xl' : 'text-2xl text-[var(--muted-foreground)]'}`}>
+                {placarA}
+              </span>
+              {isAoVivo && (
+                <button
+                  onClick={() => adjustScore('a', 1)}
+                  disabled={isPending}
+                  className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* VS / X */}
+        <div className="shrink-0 text-lg font-bold text-[var(--muted-foreground)]/40">×</div>
+
+        {/* Equipe B */}
+        <div className="flex flex-1 flex-col items-center gap-2">
+          <p className="text-center text-sm font-semibold leading-snug">
+            {jogo.equipe_b_nome ?? 'Equipe B'}
+          </p>
+          {(isAoVivo || isEncerrado) && (
+            <div className="flex items-center gap-1">
+              {isAoVivo && (
+                <button
+                  onClick={() => adjustScore('b', -1)}
+                  disabled={isPending || placarB === 0}
+                  className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                >
+                  <Minus className="h-3 w-3" />
+                </button>
+              )}
+              <span className={`tabular-nums font-bold ${isAoVivo ? 'text-3xl' : 'text-2xl text-[var(--muted-foreground)]'}`}>
+                {placarB}
+              </span>
+              {isAoVivo && (
+                <button
+                  onClick={() => adjustScore('b', 1)}
+                  disabled={isPending}
+                  className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Ações */}
+      {!isEncerrado && !isCancelado && (
+        <div className="mt-4 flex gap-2">
+          {isAgendado && (
+            <button
+              onClick={handleAoVivo}
+              disabled={isPending}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--green-dim)] py-2 text-xs font-semibold text-[var(--green-bright)] transition-colors hover:bg-[var(--green)] hover:text-black disabled:opacity-40"
+            >
+              <Radio className="h-3.5 w-3.5" />
+              Iniciar
+            </button>
+          )}
+          {isAoVivo && (
+            <button
+              onClick={handleEncerrar}
+              disabled={isPending}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--green-dim)]/40 bg-[var(--card)] py-2 text-xs font-semibold text-[var(--green-bright)] transition-colors hover:bg-[var(--green-dim)]/20 disabled:opacity-40"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Encerrar
+            </button>
+          )}
+          <button
+            onClick={handleCancelar}
+            disabled={isPending}
+            className="flex items-center justify-center gap-1 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--muted-foreground)] transition-colors hover:border-red-700/40 hover:text-red-400 disabled:opacity-30"
+          >
+            <XCircle className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface Props {
+  dias: { id: string; nome_dia: string; data: string }[]
+  jogosPorDia: Record<string, Jogo[]>
+  diaAtivo: string
+}
+
+export function PlacarBoard({ dias, jogosPorDia, diaAtivo }: Props) {
+  const [diaId, setDiaId] = useState(diaAtivo)
+  const jogos = jogosPorDia[diaId] ?? []
+
+  const aoVivo = jogos.filter((j) => j.status === 'ao_vivo').length
+  const agendados = jogos.filter((j) => j.status === 'agendado').length
+  const encerrados = jogos.filter((j) => j.status === 'encerrado').length
+
+  return (
+    <div className="space-y-6">
+      {/* Tabs de dias */}
+      <div className="flex flex-wrap gap-2">
+        {dias.map((dia) => {
+          const jogsDia = jogosPorDia[dia.id] ?? []
+          const vivo = jogsDia.some((j) => j.status === 'ao_vivo')
+          return (
+            <button
+              key={dia.id}
+              onClick={() => setDiaId(dia.id)}
+              className={`relative flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
+                diaId === dia.id
+                  ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
+                  : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              {vivo && (
+                <span className="h-2 w-2 rounded-full bg-[var(--green-bright)] shadow-[0_0_6px_rgba(106,184,126,0.8)] animate-pulse" />
+              )}
+              {dia.nome_dia}
+              <span className="text-[10px] text-[var(--muted-foreground)]">{jogsDia.length}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Stats rápidas */}
+      <div className="flex flex-wrap gap-4 text-sm">
+        {aoVivo > 0 && (
+          <span className="flex items-center gap-1.5 font-semibold text-[var(--green-bright)]">
+            <Radio className="h-3.5 w-3.5 animate-pulse" />
+            {aoVivo} ao vivo
+          </span>
+        )}
+        <span className="text-[var(--muted-foreground)]">{agendados} agendados</span>
+        <span className="text-[var(--muted-foreground)]">{encerrados} encerrados</span>
+      </div>
+
+      {/* Grid de jogos */}
+      {jogos.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[var(--border)] p-12 text-center">
+          <p className="text-sm text-[var(--muted-foreground)]">Nenhum jogo neste dia.</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {jogos.map((jogo) => (
+            <PlacarCard key={jogo.id} jogo={jogo} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

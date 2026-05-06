@@ -4,18 +4,21 @@ import { createClient } from '@/lib/supabase/server'
 import { safe } from '@/lib/admin/actions-helper'
 
 export interface ConteudoPayload {
-  edicao_id:            string
-  titulo:               string
-  tipo:                 string
-  status?:              string
-  prioridade?:          number
-  dia_id?:              string | null
-  setor_id?:            string | null
-  patrocinador_id?:     string | null
-  jogo_id?:             string | null
-  show_id?:             string | null
-  canal_publicacao?:    string | null
-  briefing?:            string | null
+  edicao_id:             string
+  titulo:                string
+  tipo:                  string
+  status?:               string
+  prioridade?:           number
+  dia_id?:               string | null
+  setor_id?:             string | null
+  patrocinador_id?:      string | null
+  jogo_id?:              string | null
+  show_id?:              string | null
+  festa_id?:             string | null
+  modalidade_id?:        string | null
+  canal_publicacao?:     string | null
+  briefing?:             string | null
+  horario_previsto?:     string | null
   pipeline_template_id?: string | null
 }
 

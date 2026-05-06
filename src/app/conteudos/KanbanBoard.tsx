@@ -6,7 +6,8 @@ import {
   Plus, Pencil, Trash2, Loader2, AlertCircle, ChevronRight,
   ChevronLeft, Search, Filter, Eye, Calendar, Layers,
   ExternalLink, CheckCircle2, Circle, Clock, ArrowRight,
-  Tag, Users, Zap,
+  Tag, Users, Zap, Trophy, Music, PartyPopper, Handshake,
+  Dumbbell, Radio, MapPin, Star,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -36,13 +37,22 @@ export interface Conteudo {
   dia_id:           string | null
   setor_id:         string | null
   patrocinador_id:  string | null
+  jogo_id:          string | null
+  show_id:          string | null
+  festa_id:         string | null
+  modalidade_id:    string | null
   canal_publicacao: string | null
   briefing:         string | null
+  horario_previsto: string | null
   link_publicado:   string | null
   pipeline_template_id: string | null
   dia?:             { nome_dia: string; data: string } | null
   setor?:           { nome: string } | null
   patrocinador?:    { nome: string } | null
+  jogo?:            { equipe_a_nome: string; equipe_b_nome: string; modalidade?: { nome: string; icone?: string } | null } | null
+  show?:            { nome: string; inicio?: string } | null
+  festa?:           { nome: string; tema?: string; inicio?: string } | null
+  modalidade?:      { nome: string; icone?: string } | null
   estagios?:        Estagio[]
 }
 
@@ -300,6 +310,71 @@ function ConteudoCard({
 
 // ── View dialog ───────────────────────────────────────────────────────────────
 
+/** Determina categoria e vínculo do conteúdo com base nos FKs. */
+function getCategoria(c: Conteudo): { label: string; emoji: string; color: string } | null {
+  if (c.jogo)       return { label: 'Esportivo',   emoji: '🏆', color: 'text-green-400 bg-green-500/10 border-green-500/25' }
+  if (c.show)       return { label: 'Show',         emoji: '🎤', color: 'text-purple-400 bg-purple-500/10 border-purple-500/25' }
+  if (c.festa)      return { label: 'Festivo',      emoji: '🎉', color: 'text-pink-400 bg-pink-500/10 border-pink-500/25' }
+  if (c.patrocinador) return { label: 'Patrocinado', emoji: '🤝', color: 'text-[var(--gold)] bg-[var(--gold-dim)]/20 border-[var(--gold-dim)]/30' }
+  if (c.modalidade) return { label: c.modalidade.nome, emoji: c.modalidade.icone ?? '🏅', color: 'text-blue-400 bg-blue-500/10 border-blue-500/25' }
+  return null
+}
+
+function getVinculo(c: Conteudo): string | null {
+  if (c.jogo)  return `${c.jogo.equipe_a_nome} × ${c.jogo.equipe_b_nome}`
+  if (c.show)  return c.show.nome
+  if (c.festa) return c.festa.tema ? `${c.festa.nome} · ${c.festa.tema}` : c.festa.nome
+  return null
+}
+
+function formatHorario(raw: string | null | undefined): string {
+  if (!raw) return ''
+  // Suporte a ISO timestamp ou "HH:MM"
+  if (raw.includes('T')) {
+    return new Date(raw).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+  }
+  return raw
+}
+
+// ── Prop row estilo referência ────────────────────────────────────────────────
+function PropRow({
+  icon: Icon,
+  label,
+  children,
+  accent,
+}: {
+  icon: React.ElementType
+  label: string
+  children: React.ReactNode
+  accent?: boolean
+}) {
+  return (
+    <div className={cn(
+      'grid items-center gap-3 border-b border-[var(--border)]/50 px-4 py-2.5',
+      'last:border-0',
+    )} style={{ gridTemplateColumns: '14px 100px 1fr' }}>
+      <Icon className={cn('h-3.5 w-3.5 shrink-0', accent ? 'text-[var(--gold)]' : 'text-[var(--muted-foreground)]')} />
+      <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--muted-foreground)]">{label}</span>
+      <div className="flex flex-wrap items-center gap-1.5">{children}</div>
+    </div>
+  )
+}
+
+function PropEmpty() {
+  return <span className="text-[11px] text-[var(--muted-foreground)]/40 italic">Vazio</span>
+}
+
+function Tag_({ children, color }: { children: React.ReactNode; color?: string }) {
+  return (
+    <span className={cn(
+      'inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-semibold',
+      color ?? 'text-[var(--foreground)] bg-[var(--muted)] border-[var(--border)]',
+    )}>
+      {children}
+    </span>
+  )
+}
+
 function ConteudoViewDialog({
   conteudo,
   onClose,
@@ -315,137 +390,187 @@ function ConteudoViewDialog({
 }) {
   if (!conteudo) return null
   const c = conteudo
-  const statusCfg = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.rascunho
+  const statusCfg   = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.rascunho
+  const categoria   = getCategoria(c)
+  const vinculo     = getVinculo(c)
   const sortedEstagios = [...(c.estagios ?? [])].sort((a, b) => a.ordem - b.ordem)
+  const concluidos  = sortedEstagios.filter(e => e.status === 'pronto').length
 
   return (
     <Dialog open={!!conteudo} onOpenChange={(v) => { if (!v) onClose() }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0 gap-0">
+      <DialogContent className="max-w-[480px] max-h-[92vh] overflow-y-auto p-0 gap-0"
+        style={{ background: 'rgba(8,16,9,0.98)' }}>
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="sticky top-0 z-10 border-b border-[var(--border)] px-5 py-4"
-          style={{ background: 'rgba(6,12,7,0.95)', backdropFilter: 'blur(12px)' }}>
-          <div className="flex items-start gap-3">
-            <span className={cn('mt-0.5 shrink-0 rounded border px-2 py-0.5 text-[11px] font-semibold', TIPO_COLOR[c.tipo] ?? '')}>
+        {/* ── Título ─────────────────────────────────────────────────────── */}
+        <div className="border-b border-[var(--border)] px-5 pt-5 pb-4">
+          <div className="mb-2 flex items-center gap-2">
+            <span className={cn('rounded border px-2 py-0.5 text-[10px] font-bold tracking-wide', TIPO_COLOR[c.tipo] ?? '')}>
               {TIPO_LABEL[c.tipo] ?? c.tipo}
             </span>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-sm font-bold leading-snug text-[var(--foreground)]" style={{ fontFamily: 'Orbitron, monospace' }}>
-                {c.titulo}
-              </h2>
-              <div className="mt-1 flex items-center gap-2 flex-wrap">
-                <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider', statusCfg.color)}>
-                  {statusCfg.label}
-                </span>
-                <span className="text-[10px] text-[var(--muted-foreground)]">
-                  {PRIORIDADE_LABEL[c.prioridade]}
-                </span>
-              </div>
-            </div>
+            <span className="text-[10px] text-[var(--muted-foreground)]/50 font-mono">#{c.id.slice(0, 6).toUpperCase()}</span>
           </div>
+          <h2 className="text-base font-bold leading-snug text-[var(--foreground)]"
+            style={{ fontFamily: 'Orbitron, monospace', letterSpacing: '0.04em' }}>
+            {c.titulo}
+          </h2>
         </div>
 
-        {/* ── Body ───────────────────────────────────────────────────────── */}
-        <div className="space-y-5 px-5 py-4">
+        {/* ── Propriedades ───────────────────────────────────────────────── */}
+        <div className="divide-y divide-[var(--border)]/0">
 
-          {/* Metadata grid */}
-          <div className="grid grid-cols-2 gap-3">
-            {c.dia && (
-              <MetaRow icon={Calendar} label="Dia" value={`${c.dia.nome_dia} · ${c.dia.data}`} />
-            )}
-            {c.canal_publicacao && (
-              <MetaRow icon={Layers} label="Canal" value={CANAL_LABEL[c.canal_publicacao] ?? c.canal_publicacao} />
-            )}
-            {c.setor && (
-              <MetaRow icon={Tag} label="Setor" value={c.setor.nome} />
-            )}
-            {c.patrocinador && (
-              <MetaRow icon={Users} label="Patrocinador" value={c.patrocinador.nome} highlight />
-            )}
-          </div>
+          <PropRow icon={CheckCircle2} label="Status">
+            <Tag_ color={statusCfg.color}>{statusCfg.label}</Tag_>
+          </PropRow>
 
-          {/* Briefing */}
-          {c.briefing ? (
-            <div>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Briefing</p>
-              <div
-                className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/30 p-3 text-xs leading-relaxed text-[var(--foreground)] whitespace-pre-wrap"
-              >
-                {c.briefing}
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-[var(--border)] p-4 text-center">
-              <p className="text-xs text-[var(--muted-foreground)]/60">Sem briefing · adicione via edição</p>
-            </div>
-          )}
+          <PropRow icon={Star} label="Prioridade">
+            {c.prioridade ? (
+              <Tag_>{PRIORIDADE_LABEL[c.prioridade]}</Tag_>
+            ) : <PropEmpty />}
+          </PropRow>
 
-          {/* Pipeline stages */}
+          <PropRow icon={Calendar} label="Dia">
+            {c.dia ? (
+              <span className="text-[11px] font-semibold text-[var(--foreground)]">
+                {c.dia.nome_dia} · <span className="font-mono text-[var(--muted-foreground)]">{c.dia.data}</span>
+              </span>
+            ) : <PropEmpty />}
+          </PropRow>
+
+          {/* HORÁRIO — campo mais importante */}
+          <PropRow icon={Clock} label="Horário" accent>
+            {c.horario_previsto ? (
+              <span className="font-mono text-base font-bold tracking-widest text-[var(--gold)]">
+                {formatHorario(c.horario_previsto)}
+              </span>
+            ) : <PropEmpty />}
+          </PropRow>
+
+          <PropRow icon={Trophy} label="Categoria">
+            {categoria ? (
+              <Tag_ color={categoria.color}>{categoria.emoji} {categoria.label}</Tag_>
+            ) : <PropEmpty />}
+          </PropRow>
+
+          <PropRow icon={Layers} label="Vinculado a">
+            {vinculo ? (
+              <span className="text-[11px] font-semibold text-[var(--foreground)]">{vinculo}</span>
+            ) : <PropEmpty />}
+          </PropRow>
+
+          <PropRow icon={Radio} label="Canal">
+            {c.canal_publicacao ? (
+              <Tag_>{CANAL_LABEL[c.canal_publicacao] ?? c.canal_publicacao}</Tag_>
+            ) : <PropEmpty />}
+          </PropRow>
+
+          <PropRow icon={MapPin} label="Setor">
+            {c.setor ? (
+              <span className="text-[11px] font-semibold text-[var(--foreground)]">{c.setor.nome}</span>
+            ) : <PropEmpty />}
+          </PropRow>
+
+          <PropRow icon={Handshake} label="Patrocinador" accent={!!c.patrocinador}>
+            {c.patrocinador ? (
+              <Tag_ color="text-[var(--gold)] bg-[var(--gold-dim)]/20 border-[var(--gold-dim)]/30">
+                🤝 {c.patrocinador.nome}
+              </Tag_>
+            ) : <PropEmpty />}
+          </PropRow>
+
           {sortedEstagios.length > 0 && (
-            <div>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Pipeline</p>
-              <div className="space-y-1.5">
-                {sortedEstagios.map((e, i) => {
-                  const cfg = ESTAGIO_STATUS_CONFIG[e.status] ?? ESTAGIO_STATUS_CONFIG.aguardando
-                  const Icon = cfg.icon
-                  const isActive = e.status === 'em_andamento' || e.status === 'pendente'
-                  return (
-                    <div
-                      key={e.id}
-                      className={cn(
-                        'flex items-center gap-2.5 rounded-lg border px-3 py-2',
-                        e.status === 'pronto'
-                          ? 'border-[var(--green)]/20 bg-[var(--green)]/5'
-                          : isActive
-                          ? 'border-yellow-500/20 bg-yellow-500/5'
-                          : 'border-[var(--border)] bg-transparent opacity-60',
-                      )}
-                    >
-                      <Icon className={cn('h-3.5 w-3.5 shrink-0', cfg.color)} />
-                      <span className="flex-1 text-xs font-medium text-[var(--foreground)]">
-                        {ESTAGIO_LABEL[e.estagio] ?? e.estagio}
-                      </span>
-                      {e.dono && (
-                        <span className="text-[10px] text-[var(--muted-foreground)]">{e.dono.nome}</span>
-                      )}
-                      {isActive && (
-                        <button
-                          onClick={() => onAdvanceEstagio(c.id, e.id)}
-                          className="flex items-center gap-1 rounded border border-[var(--green)]/30 bg-[var(--green)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--green-bright)] hover:bg-[var(--green)]/20 transition-colors"
-                        >
-                          Concluir <ArrowRight className="h-2.5 w-2.5" />
-                        </button>
-                      )}
-                      <span className={cn('text-[10px] font-semibold', cfg.color)}>
-                        {e.status === 'pronto' ? '✓' : String(i + 1).padStart(2, '0')}
-                      </span>
-                    </div>
-                  )
-                })}
+            <PropRow icon={Layers} label="Pipeline">
+              <span className="text-[11px] font-semibold text-[var(--foreground)]">
+                {concluidos}/{sortedEstagios.length} etapas
+              </span>
+              <div className="mt-1 flex gap-1 w-full col-span-full">
+                {sortedEstagios.map(e => (
+                  <div
+                    key={e.id}
+                    title={ESTAGIO_LABEL[e.estagio] ?? e.estagio}
+                    className={cn(
+                      'h-1.5 flex-1 rounded-full transition-colors',
+                      e.status === 'pronto'       ? 'bg-[var(--green-bright)]'  :
+                      e.status === 'em_andamento' ? 'bg-yellow-400'             :
+                      e.status === 'pendente'     ? 'bg-[var(--muted-foreground)]/40' :
+                      'bg-[var(--border)]/30'
+                    )}
+                  />
+                ))}
               </div>
-            </div>
-          )}
-
-          {/* Link publicado */}
-          {c.link_publicado && (
-            <div>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">Post publicado</p>
-              <a
-                href={c.link_publicado}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-lg border border-[var(--green)]/20 bg-[var(--green)]/5 px-3 py-2 text-xs text-[var(--green-bright)] hover:border-[var(--green)]/40 transition-colors"
-              >
-                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 truncate">{c.link_publicado}</span>
-              </a>
-            </div>
+            </PropRow>
           )}
         </div>
+
+        {/* ── Briefing ───────────────────────────────────────────────────── */}
+        <div className="border-t border-[var(--border)] px-4 py-3">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+            Briefing
+          </p>
+          {c.briefing ? (
+            <p className="whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 px-3 py-2.5 text-[12px] leading-relaxed text-[var(--foreground)]">
+              {c.briefing}
+            </p>
+          ) : (
+            <p className="text-xs italic text-[var(--muted-foreground)]/40">Sem briefing — adicione via edição.</p>
+          )}
+        </div>
+
+        {/* ── Etapas do pipeline ─────────────────────────────────────────── */}
+        {sortedEstagios.length > 0 && (
+          <div className="border-t border-[var(--border)] px-4 py-3">
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Etapas</p>
+            <div className="space-y-1.5">
+              {sortedEstagios.map((e) => {
+                const cfg = ESTAGIO_STATUS_CONFIG[e.status] ?? ESTAGIO_STATUS_CONFIG.aguardando
+                const Icon = cfg.icon
+                const isActive = e.status === 'em_andamento' || e.status === 'pendente'
+                return (
+                  <div key={e.id} className={cn(
+                    'flex items-center gap-2 rounded-lg border px-3 py-2',
+                    e.status === 'pronto'   ? 'border-[var(--green)]/20 bg-[var(--green)]/5' :
+                    isActive                ? 'border-yellow-500/20 bg-yellow-500/5' :
+                    'border-[var(--border)]/50 opacity-50',
+                  )}>
+                    <Icon className={cn('h-3.5 w-3.5 shrink-0', cfg.color)} />
+                    <span className="flex-1 text-[11px] font-medium text-[var(--foreground)]">
+                      {ESTAGIO_LABEL[e.estagio] ?? e.estagio}
+                    </span>
+                    {e.dono && (
+                      <span className="text-[10px] text-[var(--muted-foreground)]">{e.dono.nome}</span>
+                    )}
+                    {isActive && (
+                      <button
+                        onClick={() => onAdvanceEstagio(c.id, e.id)}
+                        className="flex items-center gap-1 rounded border border-[var(--green)]/30 bg-[var(--green)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--green-bright)] hover:bg-[var(--green)]/20 transition-colors"
+                      >
+                        Concluir <ArrowRight className="h-2.5 w-2.5" />
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Link publicado ─────────────────────────────────────────────── */}
+        {c.link_publicado && (
+          <div className="border-t border-[var(--border)] px-4 py-3">
+            <a
+              href={c.link_publicado}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-lg border border-[var(--green)]/20 bg-[var(--green)]/5 px-3 py-2 text-xs text-[var(--green-bright)] hover:border-[var(--green)]/40 transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1 truncate">{c.link_publicado}</span>
+            </a>
+          </div>
+        )}
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         <div className="sticky bottom-0 flex items-center justify-between border-t border-[var(--border)] px-5 py-3"
-          style={{ background: 'rgba(6,12,7,0.95)', backdropFilter: 'blur(12px)' }}>
+          style={{ background: 'rgba(6,12,7,0.97)', backdropFilter: 'blur(12px)' }}>
           <Button
             variant="destructive"
             size="sm"
@@ -460,35 +585,11 @@ function ConteudoViewDialog({
             onClick={() => { onClose(); setTimeout(onEdit, 150) }}
           >
             <Pencil className="mr-1.5 h-3.5 w-3.5" />
-            Editar conteúdo
+            Editar
           </Button>
         </div>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function MetaRow({
-  icon: Icon,
-  label,
-  value,
-  highlight,
-}: {
-  icon: React.ElementType
-  label: string
-  value: string
-  highlight?: boolean
-}) {
-  return (
-    <div className="flex items-start gap-2 rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 px-3 py-2">
-      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" />
-      <div className="min-w-0">
-        <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--muted-foreground)]">{label}</p>
-        <p className={cn('text-xs font-semibold truncate', highlight ? 'text-[var(--gold)]' : 'text-[var(--foreground)]')}>
-          {value}
-        </p>
-      </div>
-    </div>
   )
 }
 
@@ -516,6 +617,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
   const [status, setStatus_]        = React.useState(editing?.status ?? defaultStatus ?? 'rascunho')
   const [prioridade, setPrioridade] = React.useState(String(editing?.prioridade ?? 3))
   const [diaId, setDiaId]           = React.useState(editing?.dia_id ?? '')
+  const [horario, setHorario]       = React.useState(editing?.horario_previsto ?? '')
   const [setorId, setSetorId]       = React.useState(editing?.setor_id ?? '')
   const [patroId, setPatroId]       = React.useState(editing?.patrocinador_id ?? '')
   const [canal, setCanal]           = React.useState(editing?.canal_publicacao ?? '')
@@ -532,6 +634,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
       setStatus_(editing?.status ?? defaultStatus ?? 'rascunho')
       setPrioridade(String(editing?.prioridade ?? 3))
       setDiaId(editing?.dia_id ?? '')
+      setHorario(editing?.horario_previsto ?? '')
       setSetorId(editing?.setor_id ?? '')
       setPatroId(editing?.patrocinador_id ?? '')
       setCanal(editing?.canal_publicacao ?? '')
@@ -553,6 +656,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
         status,
         prioridade:           Number(prioridade),
         dia_id:               nullIfNone(diaId),
+        horario_previsto:     horario || null,
         setor_id:             nullIfNone(setorId),
         patrocinador_id:      nullIfNone(patroId),
         canal_publicacao:     nullIfNone(canal),
@@ -625,6 +729,22 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
               </Select>
             </div>
             <div>
+              <Label className="mb-1.5 flex items-center gap-1 text-xs text-[var(--gold)]">
+                <Clock className="h-3 w-3" />
+                Horário *
+              </Label>
+              <Input
+                type="time"
+                className="h-8 font-mono text-xs"
+                value={horario}
+                onChange={(e) => setHorario(e.target.value)}
+                placeholder="14:30"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <Label className="mb-1.5 block text-xs">Prioridade</Label>
               <Select value={prioridade} onValueChange={setPrioridade}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -637,6 +757,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
                 </SelectContent>
               </Select>
             </div>
+            <div>{/* spacer */}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

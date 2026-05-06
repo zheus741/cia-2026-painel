@@ -17,11 +17,15 @@ export default async function ConteudosPage() {
       .from('conteudos')
       .select(`
         id, titulo, tipo, status, prioridade,
-        dia_id, setor_id, patrocinador_id, canal_publicacao,
-        briefing, link_publicado, pipeline_template_id,
+        dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
+        canal_publicacao, briefing, horario_previsto, link_publicado, pipeline_template_id,
         dia:dia_id (nome_dia, data),
         setor:setor_id (nome),
         patrocinador:patrocinador_id (nome),
+        jogo:jogo_id (equipe_a_nome, equipe_b_nome, modalidade:modalidade_id (nome, icone)),
+        show:show_id (nome, inicio),
+        festa:festa_id (nome, tema, inicio),
+        modalidade:modalidade_id (nome, icone),
         estagios_conteudo (id, estagio, status, ordem, dono:dono_id (nome))
       `)
       .order('prioridade', { ascending: true })

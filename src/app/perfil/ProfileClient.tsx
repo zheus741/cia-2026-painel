@@ -119,16 +119,16 @@ export function ProfileClient({ userId, profile }: Props) {
         <div className="relative group">
           {/* Photo or initials */}
           <div
-            className="h-28 w-28 rounded-full ring-2 ring-[var(--green-dim)] overflow-hidden"
+            className="relative h-28 w-28 rounded-full ring-2 ring-[var(--green-dim)] overflow-hidden"
             style={{ background: 'rgba(45,90,61,0.3)' }}
           >
             {fotoUrl ? (
               <Image
                 src={fotoUrl}
                 alt={profile.nome}
-                width={112}
-                height={112}
-                className="h-full w-full object-cover"
+                fill
+                sizes="112px"
+                className="object-cover"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-[var(--green-bright)]"

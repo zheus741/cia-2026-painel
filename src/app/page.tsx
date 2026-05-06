@@ -229,15 +229,15 @@ export default async function Home() {
                 {profile?.role ? ROLE_LABEL[profile.role] : 'aguardando perfil'}
               </p>
             </div>
-            <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--green-dim)] transition-all group-hover:ring-[var(--green)]"
+            <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--green-dim)] transition-all group-hover:ring-[var(--green)]"
               style={{ background: 'rgba(45,90,61,0.4)' }}>
               {profile?.foto_url ? (
                 <Image
                   src={profile.foto_url}
                   alt={profile.nome ?? ''}
-                  width={36}
-                  height={36}
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="36px"
+                  className="object-cover"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-xs font-bold text-[var(--green-bright)]">

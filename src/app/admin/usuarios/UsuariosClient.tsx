@@ -50,8 +50,8 @@ function Avatar({ nome, foto_url }: { nome: string; foto_url: string | null }) {
 
   if (foto_url) {
     return (
-      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--green-dim)]/60">
-        <Image src={foto_url} alt={nome} width={40} height={40} className="h-full w-full object-cover" />
+      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--green-dim)]/60">
+        <Image src={foto_url} alt={nome} fill sizes="40px" className="object-cover" />
       </div>
     )
   }

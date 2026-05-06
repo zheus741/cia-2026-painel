@@ -54,9 +54,6 @@ export interface Conteudo {
   show?:            { nome: string; inicio?: string } | null
   festa?:           { nome: string; tema?: string; inicio?: string } | null
   modalidade?:      { nome: string; icone?: string } | null
-  responsavel_captacao?: Perfil | null
-  responsavel_design?:   Perfil | null
-  responsavel_edicao?:   Perfil | null
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -204,9 +201,10 @@ function MiniAvatar({ perfil, size = 20 }: { perfil: Perfil; size?: number }) {
 // ── Card ──────────────────────────────────────────────────────────────────────
 
 function ConteudoCard({
-  c, onEdit, onDelete, onMove, onView, isBeingDragged,
+  c, perfis, onEdit, onDelete, onMove, onView, isBeingDragged,
 }: {
   c: Conteudo
+  perfis: Perfil[]
   onEdit: () => void
   onDelete: () => void
   onMove: (status: string) => void
@@ -216,8 +214,13 @@ function ConteudoCard({
   const hasPrev = !!PREV_STATUS[c.status]
   const hasNext = !!NEXT_STATUS[c.status]
 
-  // Responsáveis atribuídos para exibir no card
-  const assignees = [c.responsavel_captacao, c.responsavel_design, c.responsavel_edicao]
+  // Responsáveis via lookup local no array de perfis
+  const findPerfil = (id: string | null) => id ? perfis.find(p => p.id === id) ?? null : null
+  const assignees = [
+    findPerfil(c.responsavel_captacao_id),
+    findPerfil(c.responsavel_design_id),
+    findPerfil(c.responsavel_edicao_id),
+  ]
     .filter((p): p is Perfil => !!p)
     .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i) // dedup
 
@@ -387,9 +390,10 @@ function PersonRow({ perfil, label }: { perfil: Perfil | null | undefined; label
 }
 
 function ConteudoViewDialog({
-  conteudo, onClose, onEdit, onDelete,
+  conteudo, perfis, onClose, onEdit, onDelete,
 }: {
   conteudo: Conteudo | null
+  perfis: Perfil[]
   onClose: () => void
   onEdit: () => void
   onDelete: () => void
@@ -399,6 +403,10 @@ function ConteudoViewDialog({
   const statusCfg = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.rascunho
   const categoria = getCategoria(c)
   const vinculo   = getVinculo(c)
+  const findPerfil = (id: string | null) => id ? perfis.find(p => p.id === id) ?? null : null
+  const captacao = findPerfil(c.responsavel_captacao_id)
+  const design   = findPerfil(c.responsavel_design_id)
+  const edicao   = findPerfil(c.responsavel_edicao_id)
 
   return (
     <Dialog open={!!conteudo} onOpenChange={(v) => { if (!v) onClose() }}>
@@ -474,21 +482,15 @@ function ConteudoViewDialog({
 
           {/* ── Responsáveis ────────────────────────────── */}
           <PropRow icon={Camera} label="Captação">
-            {c.responsavel_captacao
-              ? <PersonRow perfil={c.responsavel_captacao} label="Captação" />
-              : <Empty />}
+            {captacao ? <PersonRow perfil={captacao} label="Captação" /> : <Empty />}
           </PropRow>
 
           <PropRow icon={Palette} label="Design">
-            {c.responsavel_design
-              ? <PersonRow perfil={c.responsavel_design} label="Design" />
-              : <Empty />}
+            {design ? <PersonRow perfil={design} label="Design" /> : <Empty />}
           </PropRow>
 
           <PropRow icon={Film} label="Edição">
-            {c.responsavel_edicao
-              ? <PersonRow perfil={c.responsavel_edicao} label="Edição" />
-              : <Empty />}
+            {edicao ? <PersonRow perfil={edicao} label="Edição" /> : <Empty />}
           </PropRow>
         </div>
 
@@ -814,11 +816,12 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
 // ── Column ────────────────────────────────────────────────────────────────────
 
 function KanbanColumn({
-  col, conteudos, onAdd, onEdit, onDelete, onMove, onView,
+  col, conteudos, perfis, onAdd, onEdit, onDelete, onMove, onView,
   isDragOver, onDragOver, onDragLeave, onDrop, dragId,
 }: {
   col: (typeof COLUNAS)[number]
   conteudos: Conteudo[]
+  perfis: Perfil[]
   onAdd: () => void
   onEdit: (c: Conteudo) => void
   onDelete: (c: Conteudo) => void
@@ -883,6 +886,7 @@ function KanbanColumn({
             <ConteudoCard
               key={c.id}
               c={c}
+              perfis={perfis}
               onEdit={() => onEdit(c)}
               onDelete={() => onDelete(c)}
               onMove={(s) => onMove(c, s)}
@@ -1043,6 +1047,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
                 key={col.status}
                 col={col}
                 conteudos={colConteudos}
+                perfis={perfis}
                 onAdd={() => setDialog({ open: true, defaultStatus: col.status })}
                 onEdit={(c) => setDialog({ open: true, editing: c })}
                 onDelete={(c) => setDeleteTarget(c)}
@@ -1067,6 +1072,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
 
       <ConteudoViewDialog
         conteudo={viewCard}
+        perfis={perfis}
         onClose={() => setViewCard(null)}
         onEdit={() => { if (viewCard) { setDialog({ open: true, editing: viewCard }); setViewCard(null) } }}
         onDelete={() => { if (viewCard) { setDeleteTarget(viewCard); setViewCard(null) } }}

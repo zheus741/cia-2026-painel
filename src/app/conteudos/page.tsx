@@ -27,10 +27,7 @@ export default async function ConteudosPage() {
         jogo:jogo_id (equipe_a_nome, equipe_b_nome, modalidade:modalidade_id (nome, icone)),
         show:show_id (nome, inicio),
         festa:festa_id (nome, tema, inicio),
-        modalidade:modalidade_id (nome, icone),
-        responsavel_captacao:responsavel_captacao_id (id, nome, foto_url),
-        responsavel_design:responsavel_design_id (id, nome, foto_url),
-        responsavel_edicao:responsavel_edicao_id (id, nome, foto_url)
+        modalidade:modalidade_id (nome, icone)
       `)
       .order('prioridade', { ascending: true })
       .order('criado_em', { ascending: false }),

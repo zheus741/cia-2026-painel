@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { updateRole, updateFuncao, toggleAtivo } from './actions'
 import { Shield, UserCog, Users, Crown, Power, PowerOff } from 'lucide-react'
 
@@ -15,6 +16,7 @@ interface Usuario {
   telefone: string | null
   role: string
   funcao_principal: string | null
+  foto_url: string | null
   ativo: boolean
   criado_em: string
 }
@@ -40,13 +42,22 @@ const FUNCOES = [
   { value: 'design',      label: '🎨 Design' },
 ]
 
-function Iniciais({ nome }: { nome: string }) {
+function Avatar({ nome, foto_url }: { nome: string; foto_url: string | null }) {
   const parts = nome.trim().split(/\s+/)
-  const letras = parts.length >= 2
+  const letras = (parts.length >= 2
     ? parts[0][0] + parts[parts.length - 1][0]
-    : nome.slice(0, 2)
+    : nome.slice(0, 2)).toUpperCase()
+
+  if (foto_url) {
+    return (
+      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--green-dim)]/60">
+        <Image src={foto_url} alt={nome} width={40} height={40} className="h-full w-full object-cover" />
+      </div>
+    )
+  }
+
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--green-dim)]/30 ring-1 ring-[var(--green-dim)]/50 text-sm font-bold text-[var(--green-bright)] uppercase">
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--green-dim)]/30 ring-1 ring-[var(--green-dim)]/50 text-sm font-bold text-[var(--green-bright)]">
       {letras}
     </div>
   )
@@ -86,7 +97,7 @@ function UsuarioCard({ u, onUpdate }: { u: Usuario; onUpdate: () => void }) {
     }`}>
       {/* Linha superior */}
       <div className="flex items-start gap-3">
-        <Iniciais nome={u.nome} />
+        <Avatar nome={u.nome} foto_url={u.foto_url} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold leading-tight">{u.nome}</p>
           <p className="truncate text-xs text-[var(--muted-foreground)]">{u.email}</p>

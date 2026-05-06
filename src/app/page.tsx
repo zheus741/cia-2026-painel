@@ -66,7 +66,7 @@ export default async function Home() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('nome, role, funcao_principal')
+    .select('nome, role, funcao_principal, foto_url')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -218,14 +218,34 @@ export default async function Home() {
         <CiaLogo />
 
         <div className="flex items-center gap-4">
-          <div className="hidden text-right sm:block">
-            <p className="text-sm font-semibold text-[var(--foreground)]">
-              {profile?.nome ?? user.email}
-            </p>
-            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-foreground)]">
-              {profile?.role ? ROLE_LABEL[profile.role] : 'aguardando perfil'}
-            </p>
-          </div>
+
+          {/* Avatar → /perfil */}
+          <Link href="/perfil" title="Meu perfil" className="group flex items-center gap-3">
+            <div className="hidden text-right sm:block">
+              <p className="text-sm font-semibold text-[var(--foreground)] group-hover:text-[var(--green-bright)] transition-colors">
+                {profile?.nome ?? user.email}
+              </p>
+              <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-foreground)]">
+                {profile?.role ? ROLE_LABEL[profile.role] : 'aguardando perfil'}
+              </p>
+            </div>
+            <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--green-dim)] transition-all group-hover:ring-[var(--green)]"
+              style={{ background: 'rgba(45,90,61,0.4)' }}>
+              {profile?.foto_url ? (
+                <Image
+                  src={profile.foto_url}
+                  alt={profile.nome ?? ''}
+                  width={36}
+                  height={36}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs font-bold text-[var(--green-bright)]">
+                  {(profile?.nome ?? user.email ?? 'U').charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+          </Link>
 
           <Link
             href="/admin"

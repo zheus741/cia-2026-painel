@@ -340,8 +340,10 @@ export function MapaVenuesClient() {
     mapRef.current.flyTo([venue.lat, venue.lng], 16, { duration: 0.9 })
   }
 
+  // 3.5rem = 56px = h-14 (AppShell header). Bypasses the percentage-height
+  // chain through overflow-auto so Leaflet always gets a concrete pixel value.
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 8, padding: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 3.5rem)', gap: 8, padding: 8 }}>
 
       {/* Map + Panel row */}
       <div style={{ display: 'flex', flex: 1, gap: 8, minHeight: 0 }}>

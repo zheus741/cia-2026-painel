@@ -78,6 +78,8 @@ interface Props {
   coordPatrocinadores?: CoordPatrocinador[]
   coordConteudosPorPatrocinador?: { patrocinador_id: string | null; status: string }[]
   coordChecklistItens?: { id: string; status: string }[]
+  coordDiasEvento?: { id: string; data: string }[]
+  coordDiaAtualId?: string | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -512,6 +514,8 @@ export function HomeClient({
   coordPatrocinadores     = [],
   coordConteudosPorPatrocinador = [],
   coordChecklistItens     = [],
+  coordDiasEvento         = [],
+  coordDiaAtualId         = null,
 }: Props) {
   const pct = contentStats.total > 0
     ? Math.round((contentStats.publicado / contentStats.total) * 100)
@@ -861,6 +865,8 @@ export function HomeClient({
               patrocinadores={coordPatrocinadores}
               conteudosPorPatrocinador={coordConteudosPorPatrocinador}
               checklistItens={coordChecklistItens}
+              diasEvento={coordDiasEvento}
+              diaAtualId={coordDiaAtualId}
             />
           </div>
         )}

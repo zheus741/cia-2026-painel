@@ -136,6 +136,7 @@ export default async function Home() {
   let coordPatrocinadores:        CoordPatrocinador[]                                      = []
   let coordConteudosPorPatroc:    { patrocinador_id: string | null; status: string }[]     = []
   let coordChecklistItens:        { id: string; status: string }[]                         = []
+  let coordDiaAtualId:            string | null                                            = null
 
   if (isCoord) {
     // Resolve dia_id for today (Sao Paulo). Fall back to first event day if not found.
@@ -147,6 +148,7 @@ export default async function Home() {
     const diasList = (diasAll ?? []) as { id: string; data: string }[]
     const todayDia = diasList.find(d => d.data === todaySP) ?? diasList[0] ?? null
     const diaId    = todayDia?.id ?? null
+    coordDiaAtualId = diaId
 
     if (diaId) {
       const [
@@ -166,25 +168,22 @@ export default async function Home() {
           .eq('dia_id', diaId)
           .not('status', 'in', '(arquivado,cancelado)'),
 
-        // 2. Jogos today
+        // 2. Jogos — todos os 4 dias do evento
         supabase
           .from('jogos')
-          .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto')
-          .eq('dia_id', diaId)
+          .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id')
           .order('inicio'),
 
-        // 3. Shows today
+        // 3. Shows — todos os 4 dias do evento
         supabase
           .from('shows')
-          .select('id, nome, inicio, fim_previsto')
-          .eq('dia_id', diaId)
+          .select('id, nome, inicio, fim_previsto, dia_id')
           .order('inicio'),
 
-        // 4. Festas today
+        // 4. Festas — todos os 4 dias do evento
         supabase
           .from('festas')
-          .select('id, nome, inicio, fim_previsto')
-          .eq('dia_id', diaId)
+          .select('id, nome, inicio, fim_previsto, dia_id')
           .order('inicio'),
 
         // 5. Turnos today (distinct user_ids + setor_ids)
@@ -392,6 +391,8 @@ export default async function Home() {
         coordPatrocinadores={coordPatrocinadores}
         coordConteudosPorPatrocinador={coordConteudosPorPatroc}
         coordChecklistItens={coordChecklistItens}
+        coordDiasEvento={diasSorted}
+        coordDiaAtualId={coordDiaAtualId}
       />
     </div>
   )

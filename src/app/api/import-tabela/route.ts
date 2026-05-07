@@ -16,6 +16,8 @@ const MODALIDADE_MAP: Record<string, { nome: string; icone: string; duracao_min:
   BM:  { nome: 'Basquete Masculino',      icone: '🏀', duracao_min: 60 },
   BF:  { nome: 'Basquete Feminino',       icone: '🏀', duracao_min: 60 },
   FC:  { nome: 'Futebol de Campo',        icone: '🏟️', duracao_min: 90 },
+  F7M: { nome: 'Futebol 7 Masculino',    icone: '🥅', duracao_min: 60 },
+  F7F: { nome: 'Futebol 7 Feminino',     icone: '🥅', duracao_min: 60 },
 }
 
 const WEEKDAY_PT: Record<number, string> = {

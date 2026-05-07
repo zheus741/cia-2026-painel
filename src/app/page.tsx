@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { CiaLogo } from '@/components/cia-logo'
 import { signOut } from './actions'
-import { LogOut, ChevronRight } from 'lucide-react'
+import { LogOut, ChevronRight, Tv2 } from 'lucide-react'
 import { HomeClient } from './HomeClient'
 import type {
   CoordConteudoHoje,
@@ -351,6 +351,17 @@ export default async function Home() {
               )}
             </div>
           </Link>
+
+          <a
+            href="/tv"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all hover:bg-[rgba(46,107,66,0.10)]"
+            style={{ borderColor: 'rgba(46,107,66,0.25)', color: '#2e6b42' }}
+          >
+            <Tv2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Modo TV</span>
+          </a>
 
           <Link
             href="/admin"

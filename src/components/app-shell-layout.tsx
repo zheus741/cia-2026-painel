@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { CiaLogo } from '@/components/cia-logo'
 import { AdminSidebar } from '@/components/admin/sidebar'
 import { signOut } from '@/app/actions'
-import { LogOut, ChevronRight, Menu } from 'lucide-react'
+import { LogOut, ChevronRight, Menu, Tv2 } from 'lucide-react'
 
 const ROLE_LABEL: Record<string, string> = {
   admin:       'Admin',
@@ -96,6 +96,17 @@ export function AppShellLayout({ profile, userEmail, section, fullWidth = false,
 
         {/* Right: user pill + logout */}
         <div className="flex items-center gap-2">
+          <a
+            href="/tv"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all hover:bg-[rgba(46,107,66,0.10)]"
+            style={{ color: 'rgba(46,107,66,0.65)', border: '1px solid rgba(46,107,66,0.20)' }}
+            title="Abrir Modo TV"
+          >
+            <Tv2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">TV</span>
+          </a>
           <div
             className="flex items-center gap-2 rounded-full px-2.5 py-1.5"
             style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)' }}

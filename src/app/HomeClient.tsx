@@ -6,7 +6,7 @@ import {
   TrendingUp, AlertTriangle, Zap, ArrowRight,
   Camera, CheckSquare, ClipboardList, Swords, MapPin, Music,
   Heart, Lightbulb, BookOpen, Calendar, Cloud,
-  Droplets, Activity, Gauge, Layers, BarChart3, Radio, UserCircle,
+  Droplets, Activity, Gauge, Layers, BarChart3, Radio, UserCircle, Tv2,
 } from 'lucide-react'
 import { CoordDashboard } from './CoordDashboard'
 import type {
@@ -852,29 +852,45 @@ export function HomeClient({
           </div>
         </div>
 
-        {/* ── 04 / COORDENAÇÃO ───────────────────────────────── */}
-        {isCoord && (
-          <div>
-            <SectionHeader num="04" label="Coordenação" />
-            <CoordDashboard
-              conteudosHoje={coordConteudosHoje}
-              jogosHoje={coordJogosHoje}
-              showsHoje={coordShowsHoje}
-              festasHoje={coordFestasHoje}
-              turnosHoje={coordTurnosHoje}
-              patrocinadores={coordPatrocinadores}
-              conteudosPorPatrocinador={coordConteudosPorPatrocinador}
-              checklistItens={coordChecklistItens}
-              diasEvento={coordDiasEvento}
-              diaAtualId={coordDiaAtualId}
-            />
+        {/* ── 04 / CENTRO DE COMANDOS ────────────────────────── */}
+        <div>
+          <div className="flex items-center justify-between mb-[-4px]">
+            <SectionHeader num="04" label="Centro de Comandos" />
+            <a
+              href="/tv"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition-all hover:shadow-[0_0_12px_rgba(46,107,66,0.25)]"
+              style={{
+                borderColor: 'rgba(46,107,66,0.25)',
+                background: 'rgba(46,107,66,0.06)',
+                color: '#2e6b42',
+                marginBottom: 20,
+                flexShrink: 0,
+              }}
+            >
+              <Tv2 className="h-3.5 w-3.5" />
+              Modo TV
+            </a>
           </div>
-        )}
+          <CoordDashboard
+            conteudosHoje={coordConteudosHoje}
+            jogosHoje={coordJogosHoje}
+            showsHoje={coordShowsHoje}
+            festasHoje={coordFestasHoje}
+            turnosHoje={coordTurnosHoje}
+            patrocinadores={coordPatrocinadores}
+            conteudosPorPatrocinador={coordConteudosPorPatrocinador}
+            checklistItens={coordChecklistItens}
+            diasEvento={coordDiasEvento}
+            diaAtualId={coordDiaAtualId}
+          />
+        </div>
 
         {/* ── OPERACIONAL (operador role) ─────────────────────── */}
         {isOperador && (
           <div>
-            <SectionHeader num={isCoord ? '05' : '04'} label="Operacional" />
+            <SectionHeader num="05" label="Operacional" />
             <div className="grid gap-4 sm:grid-cols-2">
 
               {/* Minha escala */}

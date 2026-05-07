@@ -80,6 +80,7 @@ export default async function Home() {
 
   const isOperador = profile?.role === 'operador'
   const isCoord    = ['coordenacao', 'admin', 'lider_area'].includes(profile?.role ?? '')
+  // Centro de Comandos (seção 04) visível para TODOS — dados sempre buscados
 
   // "Today" in Sao Paulo time; fall back to event day 1 during pre-event
   const todaySP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
@@ -138,7 +139,7 @@ export default async function Home() {
   let coordChecklistItens:        { id: string; status: string }[]                         = []
   let coordDiaAtualId:            string | null                                            = null
 
-  if (isCoord) {
+  {
     // Resolve dia_id for today (Sao Paulo). Fall back to first event day if not found.
     const { data: diasAll } = await supabase
       .from('dias_evento')

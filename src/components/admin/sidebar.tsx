@@ -5,14 +5,13 @@ import { usePathname } from 'next/navigation'
 import {
   Calendar, Map, MapPin, Users, Trophy, Music, PartyPopper,
   Heart, GitBranch, Tag, UserCog, Settings, Swords, ClipboardList, Camera, CheckSquare,
-  Lightbulb, BookOpen, LayoutList, UserCircle, Radio, Share2,
+  Lightbulb, BookOpen, LayoutList, UserCircle, Radio,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const items = [
   { label: 'Conteúdos',      href: '/conteudos',             icon: Camera },
   { label: 'Placar Ao Vivo', href: '/placar',                icon: Radio },
-  { label: 'Redes',          href: '/redes',                 icon: Share2 },
   { label: 'Checklists',     href: '/checklist',             icon: CheckSquare },
   { label: 'Pautas',         href: '/pautas',                icon: Lightbulb },
   { label: 'Cronograma',     href: '/cronograma',            icon: LayoutList },

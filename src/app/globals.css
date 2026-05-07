@@ -215,7 +215,8 @@ body {
 /* Gradiente de fundo padrão */
 .cia-bg {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -5%, rgba(46,107,66,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(46,107,66,0.11) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 30% at 85% 60%, rgba(46,107,66,0.05) 0%, transparent 50%),
     var(--background);
 }
 
@@ -474,41 +475,65 @@ body {
 .cia-section-rule {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, var(--border), transparent);
+  background: linear-gradient(90deg, rgba(46,107,66,0.40), rgba(46,107,66,0.10), transparent);
 }
 
 /* ── Metric card — white, light ── */
 .cia-metric-card {
   position: relative;
-  border-radius: 16px;
   background: #ffffff;
-  border: 1px solid var(--border);
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-radius: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  isolation: isolate;
 }
 .cia-metric-card::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 10%,
-    rgba(46,107,66,0.18) 50%,
-    transparent 90%
-  );
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(145deg, rgba(46,107,66,0.30) 0%, rgba(207,221,210,0.50) 50%, rgba(46,107,66,0.12) 100%);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: -1;
 }
-
 .cia-metric-card-gold {
-  border-color: rgba(138, 95, 6, 0.18);
+  position: relative;
+  isolation: isolate;
 }
 .cia-metric-card-gold::before {
-  background: linear-gradient(
-    90deg,
-    transparent 10%,
-    rgba(138,95,6,0.18) 50%,
-    transparent 90%
-  );
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(145deg, rgba(138,95,6,0.35) 0%, rgba(240,221,176,0.40) 50%, rgba(138,95,6,0.15) 100%);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── Hero section — gradient bottom border ── */
+.cia-hero-section {
+  position: relative;
+}
+.cia-hero-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(46,107,66,0.35) 20%, rgba(46,107,66,0.55) 50%, rgba(46,107,66,0.35) 80%, transparent 100%);
+  pointer-events: none;
 }
 
 /* ── Module icon spring-in animation ── */

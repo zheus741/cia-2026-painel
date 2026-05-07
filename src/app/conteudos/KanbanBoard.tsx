@@ -430,7 +430,7 @@ function ConteudoViewDialog({
     <Dialog open={!!conteudo} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent
         className="max-w-[480px] max-h-[92vh] overflow-y-auto p-0 gap-0"
-        style={{ background: '#080e09' }}
+        style={{ background: 'var(--card)' }}
       >
         {/* Título */}
         <div className="border-b border-[var(--border)] px-5 pt-5 pb-4">
@@ -544,7 +544,7 @@ function ConteudoViewDialog({
         {/* Footer */}
         <div
           className="sticky bottom-0 flex items-center justify-between border-t border-[var(--border)] px-5 py-3"
-          style={{ background: 'rgba(6,12,7,0.97)', backdropFilter: 'blur(12px)' }}
+          style={{ background: 'rgba(241,245,242,0.97)', backdropFilter: 'blur(12px)' }}
         >
           <Button variant="destructive" size="sm" onClick={() => { onClose(); setTimeout(onDelete, 150) }} className="text-xs">
             <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Excluir

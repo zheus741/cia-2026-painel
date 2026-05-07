@@ -126,7 +126,7 @@ function StatsBar({
   return (
     <div
       className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border px-5 py-3 text-xs"
-      style={{ borderColor: 'rgba(74,138,92,0.2)', background: 'rgba(13,26,15,0.6)' }}
+      style={{ borderColor: 'rgba(46,107,66,0.18)', background: 'rgba(46,107,66,0.04)' }}
     >
       {stats.map((s, i) => (
         <div key={i} className="flex items-center gap-2">

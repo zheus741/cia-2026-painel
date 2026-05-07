@@ -98,18 +98,18 @@ const TIPO_LABELS: Record<string, string> = {
 }
 
 const MODULES = [
-  { icon: Camera,        label: 'Conteúdos',    href: '/conteudos'            },
-  { icon: Radio,         label: 'Placar',        href: '/placar'               },
-  { icon: CheckSquare,   label: 'Checklists',    href: '/checklist'            },
-  { icon: Lightbulb,     label: 'Pautas',        href: '/pautas'               },
-  { icon: Calendar,      label: 'Cronograma',    href: '/cronograma'           },
-  { icon: BookOpen,      label: 'Wiki',          href: '/wiki'                 },
-  { icon: UserCircle,    label: 'Minha Escala',  href: '/minha-escala'         },
-  { icon: ClipboardList, label: 'Escala',        href: '/admin/escala'         },
-  { icon: Swords,        label: 'Jogos',         href: '/admin/jogos'          },
-  { icon: MapPin,        label: 'Mapa',          href: '/mapa'                 },
-  { icon: Music,         label: 'Shows',         href: '/admin/shows'          },
-  { icon: Heart,         label: 'Patrocínios',   href: '/admin/patrocinadores' },
+  { icon: Camera,        label: 'Conteúdos',    href: '/conteudos',            grad: 'linear-gradient(145deg, #1e5c36 0%, #2e8b57 100%)' },
+  { icon: Radio,         label: 'Placar',        href: '/placar',               grad: 'linear-gradient(145deg, #14503a 0%, #1a7a4a 100%)' },
+  { icon: CheckSquare,   label: 'Checklists',    href: '/checklist',            grad: 'linear-gradient(145deg, #2e6b42 0%, #4aa066 100%)' },
+  { icon: Lightbulb,     label: 'Pautas',        href: '/pautas',               grad: 'linear-gradient(145deg, #7a5206 0%, #b07a0a 100%)' },
+  { icon: Calendar,      label: 'Cronograma',    href: '/cronograma',           grad: 'linear-gradient(145deg, #1a5c5c 0%, #2e8b8b 100%)' },
+  { icon: BookOpen,      label: 'Wiki',          href: '/wiki',                 grad: 'linear-gradient(145deg, #2e5c3a 0%, #3d7a52 100%)' },
+  { icon: UserCircle,    label: 'Minha Escala',  href: '/minha-escala',         grad: 'linear-gradient(145deg, #1e4d6b 0%, #2e6b8b 100%)' },
+  { icon: ClipboardList, label: 'Escala',        href: '/admin/escala',         grad: 'linear-gradient(145deg, #2e6b42 0%, #3d9e5c 100%)' },
+  { icon: Swords,        label: 'Jogos',         href: '/admin/jogos',          grad: 'linear-gradient(145deg, #5c2e2e 0%, #8b3a3a 100%)' },
+  { icon: MapPin,        label: 'Mapa',          href: '/mapa',                 grad: 'linear-gradient(145deg, #3a5c1e 0%, #5c8b2e 100%)' },
+  { icon: Music,         label: 'Shows',         href: '/admin/shows',          grad: 'linear-gradient(145deg, #4a2e6b 0%, #6b3a9e 100%)' },
+  { icon: Heart,         label: 'Patrocínios',   href: '/admin/patrocinadores', grad: 'linear-gradient(145deg, #6b1e42 0%, #9e2e5c 100%)' },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,12 +158,12 @@ function ModuleGrid() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px 8px' }}>
-      {MODULES.map(({ icon: Icon, label, href }, i) => {
+      {MODULES.map((mod, i) => {
         const isHov = hovered === i
         return (
           <Link
-            key={href}
-            href={href}
+            key={mod.href}
+            href={mod.href}
             style={{ textDecoration: 'none' }}
             onMouseEnter={() => setHovered(i)}
             onMouseLeave={() => setHovered(null)}
@@ -172,27 +172,27 @@ function ModuleGrid() {
               className="cia-module-in flex flex-col items-center"
               style={{ animationDelay: `${i * 35}ms` }}
             >
-              {/* Icon tile — flat, uniform */}
+              {/* Icon tile — gradient bg */}
               <div style={{
                 width: 52,
                 height: 52,
                 borderRadius: 14,
-                background: isHov ? 'rgba(74,138,92,0.13)' : 'rgba(74,138,92,0.06)',
-                border: `1px solid ${isHov ? 'rgba(46,107,66,0.22)' : 'rgba(74,138,92,0.12)'}`,
+                background: mod.grad,
+                opacity: isHov ? 1 : 0.82,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
-                transform: isHov ? 'translateY(-4px)' : 'translateY(0)',
+                transform: isHov ? 'translateY(-4px) scale(1.06)' : 'translateY(0) scale(1)',
                 transition: 'all 0.22s cubic-bezier(0.34,1.4,0.64,1)',
-                boxShadow: isHov ? '0 8px 20px rgba(74,138,92,0.15)' : 'none',
+                boxShadow: isHov ? '0 10px 24px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.10)' : '0 2px 6px rgba(0,0,0,0.08)',
               }}>
-                <Icon style={{
+                <mod.icon style={{
                   width: 20,
                   height: 20,
-                  color: isHov ? '#2e6b42' : 'rgba(46,107,66,0.55)',
-                  transition: 'color 0.18s ease',
-                  strokeWidth: 1.6,
+                  color: 'rgba(255,255,255,0.92)',
+                  transition: 'opacity 0.18s ease',
+                  strokeWidth: 1.7,
                 }} />
               </div>
 
@@ -204,16 +204,16 @@ function ModuleGrid() {
                 letterSpacing: '0.01em',
                 textAlign: 'center',
                 lineHeight: 1.2,
-                color: isHov ? '#2e6b42' : 'rgba(46,107,66,0.60)',
+                color: isHov ? '#2e6b42' : 'rgba(46,107,66,0.70)',
                 transition: 'color 0.18s ease',
-                fontFamily: 'Rajdhani, sans-serif',
+                fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
                 display: 'block',
                 width: 60,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
               }}>
-                {label}
+                {mod.label}
               </span>
             </div>
           </Link>
@@ -539,10 +539,10 @@ export function HomeClient({
       {/* ══════════════════════════════════════════════════════════
           HERO — branding + countdown + quick module access
           ══════════════════════════════════════════════════════════ */}
-      <section style={{
+      <section className="cia-hero-section" style={{
         position: 'relative',
         overflow: 'hidden',
-        borderBottom: '1px solid rgba(74,138,92,0.10)',
+        borderBottom: 'none',
       }}>
         {/* Animated gradient orbs */}
         <div
@@ -693,8 +693,8 @@ export function HomeClient({
                     style={{
                       flex: 1,
                       borderRadius: 11,
-                      border: '1px solid rgba(74,138,92,0.13)',
-                      background: 'rgba(46,107,66,0.07)',
+                      border: '1px solid rgba(46,107,66,0.20)',
+                      background: 'linear-gradient(145deg, rgba(46,107,66,0.08) 0%, rgba(61,122,82,0.04) 100%)',
                       padding: '7px 5px',
                       textAlign: 'center',
                     }}

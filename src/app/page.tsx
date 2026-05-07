@@ -318,7 +318,7 @@ export default async function Home() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header
         className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] px-4 sm:px-6"
-        style={{ background: '#060c07' }}
+        style={{ background: 'var(--background)' }}
       >
         <CiaLogo />
 

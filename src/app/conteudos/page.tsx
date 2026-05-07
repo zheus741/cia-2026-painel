@@ -29,8 +29,9 @@ export default async function ConteudosPage() {
         festa:festa_id (nome, tema, inicio),
         modalidade:modalidade_id (nome, icone)
       `)
-      .order('prioridade', { ascending: true })
-      .order('criado_em', { ascending: false }),
+      .order('dia_id',           { ascending: true,  nullsFirst: false })
+      .order('horario_previsto', { ascending: true,  nullsFirst: false })
+      .order('prioridade',       { ascending: true }),
     supabase.from('dias_evento').select('id, nome_dia, data').order('data'),
     supabase.from('setores').select('id, nome').order('nome'),
     supabase.from('patrocinadores').select('id, nome').eq('ativo', true).order('nome'),

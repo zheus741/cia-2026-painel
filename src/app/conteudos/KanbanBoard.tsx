@@ -151,6 +151,20 @@ const CANAL_CONFIG: Record<string, {
 
 const CANAL_OPTIONS = Object.entries(CANAL_CONFIG).map(([value, { label }]) => ({ value, label }))
 
+// ── Ordenação cronológica ─────────────────────────────────────────────────────
+function sortCronologico(a: Conteudo, b: Conteudo): number {
+  // Sem dia → vai ao final
+  const diaA = a.dia?.data ?? '9999-99-99'
+  const diaB = b.dia?.data ?? '9999-99-99'
+  if (diaA !== diaB) return diaA.localeCompare(diaB)
+  // Mesmo dia → ordena por horário (sem horário vai ao final do dia)
+  const horA = a.horario_previsto ?? '99:99'
+  const horB = b.horario_previsto ?? '99:99'
+  if (horA !== horB) return horA.localeCompare(horB)
+  // Desempate por prioridade
+  return a.prioridade - b.prioridade
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function nullIfNone(v: string): string | null {
@@ -1082,7 +1096,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       <div className="flex-1 overflow-x-auto">
         <div className="flex gap-4 p-6 min-w-max">
           {COLUNAS.map(col => {
-            const colConteudos = filtered.filter(c => c.status === col.status).sort((a, b) => a.prioridade - b.prioridade)
+            const colConteudos = filtered.filter(c => c.status === col.status).sort(sortCronologico)
             return (
               <KanbanColumn
                 key={col.status}

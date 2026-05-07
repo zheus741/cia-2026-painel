@@ -144,28 +144,7 @@ export async function AppShell({ children, section, fullWidth = false }: AppShel
 
           {/* Logout */}
           <form action={signOut}>
-            <button
-              type="submit"
-              className="flex h-7 w-7 items-center justify-center rounded-full transition-all"
-              title="Sair"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.07)',
-                color: 'rgba(155,185,160,0.5)',
-              }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLButtonElement
-                el.style.background = 'rgba(192,57,43,0.15)'
-                el.style.borderColor = 'rgba(192,57,43,0.30)'
-                el.style.color = '#f87171'
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLButtonElement
-                el.style.background = 'rgba(255,255,255,0.04)'
-                el.style.borderColor = 'rgba(255,255,255,0.07)'
-                el.style.color = 'rgba(155,185,160,0.5)'
-              }}
-            >
+            <button type="submit" className="mac-logout-btn" title="Sair">
               <LogOut className="h-3.5 w-3.5" />
             </button>
           </form>

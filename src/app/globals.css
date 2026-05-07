@@ -351,6 +351,27 @@ body {
   outline-offset: 2px;
 }
 
+/* Logout button */
+.mac-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  color: rgba(155,185,160,0.5);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mac-logout-btn:hover {
+  background: rgba(192,57,43,0.15);
+  border-color: rgba(192,57,43,0.30);
+  color: #f87171;
+}
+
 /* ── Leaflet map overrides ──────────────────────────────────────────────────── */
 .leaflet-container {
   background: #0d1a0f;

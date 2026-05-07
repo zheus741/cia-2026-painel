@@ -370,6 +370,44 @@ body {
   color: #c0392b;
 }
 
+/* ── Sidebar collapsed (desktop only) ──────────────────────────────────────── */
+@media (min-width: 768px) {
+  .mac-sidebar {
+    width: 220px;
+  }
+  .mac-sidebar[data-collapsed="true"] {
+    width: 52px !important;
+  }
+  /* Hide text labels + active dot when collapsed */
+  .mac-sidebar[data-collapsed="true"] .nav-label,
+  .mac-sidebar[data-collapsed="true"] .nav-dot {
+    display: none;
+  }
+  /* Center icon in nav item */
+  .mac-sidebar[data-collapsed="true"] .mac-nav-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+    gap: 0;
+  }
+  /* Collapse group labels to zero */
+  .mac-sidebar[data-collapsed="true"] [data-label] {
+    max-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    overflow: hidden;
+  }
+  /* Tighten separators */
+  .mac-sidebar[data-collapsed="true"] .mac-separator {
+    margin-left: 6px;
+    margin-right: 6px;
+  }
+  /* Keep icon centred when expanded — needs explicit width reset */
+  .mac-sidebar[data-collapsed="false"] {
+    width: 220px !important;
+  }
+}
+
 /* ── Leaflet map overrides ──────────────────────────────────────────────────── */
 .leaflet-container {
   background: #0d1a0f;

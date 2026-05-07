@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
-  TrendingUp, AlertTriangle, Zap, ChevronRight, ArrowRight,
+  TrendingUp, AlertTriangle, Zap, ArrowRight,
   Camera, CheckSquare, ClipboardList, Swords, Map, Music,
-  Heart, Trophy, Lightbulb, BookOpen, Calendar, Network, Cloud,
+  Heart, Trophy, Lightbulb, BookOpen, Calendar, Cloud,
   Droplets, Activity, Gauge, Layers, BarChart3,
 } from 'lucide-react'
 import { CoordDashboard } from './CoordDashboard'
@@ -117,7 +117,6 @@ const MODULES = [
   { icon: Lightbulb,     label: 'Pautas',          desc: 'Roaming e ideias',          href: '/pautas',               accent: 'green' as const },
   { icon: BookOpen,      label: 'Wiki',            desc: 'Briefings por função',      href: '/wiki',                 accent: 'green' as const },
   { icon: Calendar,      label: 'Cronograma',      desc: 'Programação do evento',     href: '/cronograma',           accent: 'gold'  as const },
-  { icon: Network,       label: 'Redes',           desc: 'Dashboard real-time',       href: '/redes',                accent: 'green' as const },
   { icon: Cloud,         label: 'Clima',           desc: 'Previsão por dia',          href: null,                    accent: 'dim'   as const },
 ]
 
@@ -143,6 +142,22 @@ const ACCENT_STYLES = {
     hoverGlow:   'transparent',
     chevron: '#4e7055',
   },
+}
+
+// ── Per-module gradient config (macOS-style icon colors) ─────────────────────
+const MODULE_GRADIENTS: Record<string, { from: string; to: string; glow: string }> = {
+  'Conteúdos':      { from: '#0f3d22', to: '#1e7a43', glow: 'rgba(30,122,67,0.70)'  },
+  'Checklists':     { from: '#064e3b', to: '#059669', glow: 'rgba(5,150,105,0.65)'  },
+  'Escala':         { from: '#78350f', to: '#d97706', glow: 'rgba(217,119,6,0.65)'  },
+  'Jogos':          { from: '#0c4a6e', to: '#0284c7', glow: 'rgba(2,132,199,0.65)'  },
+  'Mapa':           { from: '#14401a', to: '#3d8b2a', glow: 'rgba(61,139,42,0.65)'  },
+  'Shows & Festas': { from: '#4c1d95', to: '#7c3aed', glow: 'rgba(124,58,237,0.65)' },
+  'Patrocinadores': { from: '#7c2d12', to: '#ea580c', glow: 'rgba(234,88,12,0.65)'  },
+  'Modalidades':    { from: '#713f12', to: '#ca8a04', glow: 'rgba(202,138,4,0.65)'  },
+  'Pautas':         { from: '#083344', to: '#0891b2', glow: 'rgba(8,145,178,0.65)'  },
+  'Wiki':           { from: '#1e1b4b', to: '#4338ca', glow: 'rgba(67,56,202,0.65)'  },
+  'Cronograma':     { from: '#881337', to: '#e11d48', glow: 'rgba(225,29,72,0.65)'  },
+  'Clima':          { from: '#1c2532', to: '#2e3e52', glow: 'rgba(46,62,82,0.40)'   },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -480,83 +495,119 @@ function ActivityHeatmap({ data }: { data: HeatCell[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Module Grid
+// Module Grid — macOS Launchpad style
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ModuleGrid() {
+  const [hovered, setHovered] = useState<number | null>(null)
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {MODULES.map(({ icon: Icon, label, desc, href, accent }, i) => {
+    <div className="flex flex-wrap justify-center gap-x-5 gap-y-8">
+      {MODULES.map(({ icon: Icon, label, desc, href }, i) => {
         const ready = href !== null
-        const ac = ACCENT_STYLES[accent]
+        const grad = MODULE_GRADIENTS[label] ?? { from: '#1e293b', to: '#334155', glow: 'rgba(51,65,85,0.35)' }
+        const isHov = hovered === i
 
-        const inner = (
+        const tile = (
           <div
-            className="group relative overflow-hidden rounded-xl border p-4 transition-all duration-300"
-            style={{
-              background: ready ? 'rgba(13,26,15,0.75)' : 'rgba(6,12,7,0.45)',
-              borderColor: ready ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
-              opacity: ready ? 1 : 0.45,
-              animationDelay: `${i * 45}ms`,
-            }}
-            onMouseEnter={e => {
-              if (!ready) return
-              const el = e.currentTarget as HTMLDivElement
-              el.style.borderColor = ac.hoverBorder
-              el.style.boxShadow = `0 0 24px ${ac.hoverGlow}, 0 4px 16px rgba(0,0,0,0.4)`
-              el.style.transform = 'translateY(-1px)'
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget as HTMLDivElement
-              el.style.borderColor = ready ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)'
-              el.style.boxShadow = 'none'
-              el.style.transform = 'translateY(0)'
-            }}
+            className="cia-fade-in flex flex-col items-center"
+            style={{ width: 80, animationDelay: `${i * 42}ms`, cursor: ready ? 'pointer' : 'default' }}
+            onMouseEnter={() => ready && setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
           >
-            {/* Glow orb */}
-            {ready && (
-              <div
-                className="pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
-                style={{ background: ac.hoverGlow }}
-              />
-            )}
-
-            <div className="mb-3 flex items-start justify-between">
-              <div
-                className="flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-300 group-hover:scale-110"
-                style={{ background: ac.iconBg }}
-              >
-                <Icon className="h-4 w-4" style={{ color: ac.iconText }} />
-              </div>
+            {/* App icon bubble */}
+            <div style={{
+              position: 'relative',
+              width: 68,
+              height: 68,
+              borderRadius: 17,
+              background: ready
+                ? `linear-gradient(148deg, ${grad.from} 0%, ${grad.to} 100%)`
+                : 'rgba(18,28,20,0.55)',
+              transform: isHov ? 'scale(1.18) translateY(-7px)' : 'scale(1) translateY(0)',
+              transition: 'transform 0.38s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.28s ease',
+              boxShadow: isHov && ready
+                ? `0 24px 60px ${grad.glow}, 0 8px 28px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.24)`
+                : ready
+                ? `0 5px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.13)`
+                : '0 2px 8px rgba(0,0,0,0.22)',
+              opacity: ready ? 1 : 0.22,
+              overflow: 'hidden',
+            }}>
+              {/* Specular top gloss — macOS icon hallmark */}
               {ready && (
-                <ChevronRight
-                  className="h-3.5 w-3.5 opacity-0 transition-all duration-200 group-hover:opacity-100"
-                  style={{ color: ac.chevron }}
-                />
+                <div style={{
+                  position: 'absolute', top: 0, left: 0, right: 0,
+                  height: '52%',
+                  background: 'linear-gradient(180deg,rgba(255,255,255,0.26) 0%,rgba(255,255,255,0.02) 100%)',
+                  borderRadius: '17px 17px 56% 56% / 17px 17px 22px 22px',
+                  pointerEvents: 'none',
+                  zIndex: 1,
+                }} />
               )}
+              {/* Bottom depth vignette */}
+              {ready && (
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                  height: '28%',
+                  background: 'linear-gradient(0deg,rgba(0,0,0,0.28) 0%,transparent 100%)',
+                  pointerEvents: 'none',
+                  zIndex: 1,
+                }} />
+              )}
+              {/* Icon */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 2,
+              }}>
+                <Icon style={{
+                  width: 28, height: 28,
+                  color: ready ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.13)',
+                  filter: isHov && ready
+                    ? 'drop-shadow(0 2px 14px rgba(255,255,255,0.55))'
+                    : 'drop-shadow(0 1px 4px rgba(0,0,0,0.45))',
+                  transition: 'filter 0.28s ease',
+                }} />
+              </div>
             </div>
 
-            <p className="text-sm font-semibold" style={{ color: ready ? '#c8dccb' : '#3a4e3c' }}>
-              {label}
-            </p>
-            <p className="mt-0.5 text-[11px] text-[var(--muted-foreground)]">{desc}</p>
-
-            {!ready && (
-              <span className="mt-2 inline-block text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]/40">
-                Em breve
+            {/* Label + hover desc */}
+            <div style={{ marginTop: 9, textAlign: 'center', width: 80 }}>
+              <span style={{
+                display: 'block',
+                fontSize: 11,
+                fontWeight: 600,
+                lineHeight: 1.35,
+                letterSpacing: '0.01em',
+                color: ready ? (isHov ? '#e2f0e5' : '#6b9071') : '#263028',
+                transition: 'color 0.2s ease',
+              }}>
+                {label}
               </span>
-            )}
+              <span style={{
+                display: 'block',
+                marginTop: 3,
+                fontSize: 9,
+                lineHeight: 1.3,
+                letterSpacing: '0.02em',
+                color: 'rgba(128,172,138,0.75)',
+                opacity: isHov ? 1 : 0,
+                transform: isHov ? 'translateY(0)' : 'translateY(5px)',
+                transition: 'opacity 0.22s ease, transform 0.22s ease',
+              }}>
+                {ready ? desc : '— em breve'}
+              </span>
+            </div>
           </div>
         )
 
         return href ? (
-          <Link key={label} href={href} className="cia-fade-in block" style={{ animationDelay: `${i * 45}ms` }}>
-            {inner}
+          <Link key={label} href={href} style={{ textDecoration: 'none', display: 'block' }}>
+            {tile}
           </Link>
         ) : (
-          <div key={label} className="cia-fade-in" style={{ animationDelay: `${i * 45}ms` }}>
-            {inner}
-          </div>
+          <div key={label}>{tile}</div>
         )
       })}
     </div>

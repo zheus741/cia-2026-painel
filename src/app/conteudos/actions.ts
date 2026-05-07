@@ -24,6 +24,13 @@ export interface ConteudoPayload {
   responsavel_edicao_id?:  string | null
 }
 
+// Remove colunas que podem ainda não existir no banco antes de enviar
+function sanitizePayload<T extends Partial<ConteudoPayload>>(payload: T): Omit<T, 'horario_previsto'> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { horario_previsto, ...rest } = payload as ConteudoPayload
+  return rest as Omit<T, 'horario_previsto'>
+}
+
 export async function createConteudo(payload: ConteudoPayload) {
   return safe(async () => {
     const supabase = await createClient()
@@ -32,7 +39,7 @@ export async function createConteudo(payload: ConteudoPayload) {
     const { data: conteudo, error } = await supabase
       .from('conteudos')
       .insert({
-        ...payload,
+        ...sanitizePayload(payload),
         status:     payload.status    ?? 'rascunho',
         prioridade: payload.prioridade ?? 3,
         criado_por: user?.id ?? null,
@@ -50,7 +57,7 @@ export async function updateConteudo(id: string, payload: Partial<ConteudoPayloa
     const supabase = await createClient()
     const { error } = await supabase
       .from('conteudos')
-      .update(payload)
+      .update(sanitizePayload(payload))
       .eq('id', id)
     if (error) throw error
   })

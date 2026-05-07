@@ -22,9 +22,9 @@ interface Usuario {
 }
 
 const ROLE_META: Record<Role, { label: string; cor: string; icon: typeof Shield }> = {
-  admin:       { label: 'Admin',       cor: 'text-red-400 bg-red-900/30 border-red-700/30',          icon: Crown },
-  coordenacao: { label: 'Coordenação', cor: 'text-yellow-400 bg-yellow-900/30 border-yellow-700/30', icon: Shield },
-  lider_area:  { label: 'Líder',       cor: 'text-purple-400 bg-purple-900/30 border-purple-700/30', icon: UserCog },
+  admin:       { label: 'Admin',       cor: 'text-red-600 bg-red-50 border-red-200',             icon: Crown },
+  coordenacao: { label: 'Coordenação', cor: 'text-yellow-700 bg-yellow-50 border-yellow-200',    icon: Shield },
+  lider_area:  { label: 'Líder',       cor: 'text-purple-700 bg-purple-50 border-purple-200',    icon: UserCog },
   operador:    { label: 'Operador',    cor: 'text-[var(--green-bright)] bg-[var(--green-dim)]/30 border-[var(--green-dim)]/40', icon: Users },
 }
 

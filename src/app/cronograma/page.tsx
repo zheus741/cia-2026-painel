@@ -90,7 +90,7 @@ export default async function CronogramaPage() {
   const tipoStyle: Record<string, { icon: React.ReactNode; bg: string; border: string; text: string }> = {
     show: {
       icon: <Music className="h-3.5 w-3.5" />,
-      bg: 'bg-purple-900/20', border: 'border-purple-700/40', text: 'text-purple-300',
+      bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700',
     },
     jogo: {
       icon: <Swords className="h-3.5 w-3.5" />,
@@ -98,7 +98,7 @@ export default async function CronogramaPage() {
     },
     festa: {
       icon: <PartyPopper className="h-3.5 w-3.5" />,
-      bg: 'bg-pink-900/20', border: 'border-pink-700/40', text: 'text-pink-300',
+      bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700',
     },
   }
 

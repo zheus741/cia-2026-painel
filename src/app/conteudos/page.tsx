@@ -2,8 +2,54 @@ import { createClient } from '@/lib/supabase/server'
 import { KanbanBoard, type Conteudo, type Dia, type Setor, type Patrocin, type Perfil } from './KanbanBoard'
 import { AlertCircle, Download } from 'lucide-react'
 
+// Tipos de conteúdo relevantes por funcao de equipe
+const TIPOS_POR_FUNCAO: Record<string, string[]> = {
+  foto:  ['story_rapido', 'story_editado', 'card_feed', 'card_patrocinado', 'cobertura_ao_vivo'],
+  video: ['reels', 'story_rapido', 'story_editado', 'cobertura_ao_vivo'],
+}
+
 export default async function ConteudosPage() {
   const supabase = await createClient()
+
+  // Check current user's funcao for filtering
+  const { data: { user } } = await supabase.auth.getUser()
+  let tipoFilter: string[] | null = null
+  if (user) {
+    const { data: me } = await supabase
+      .from('profiles')
+      .select('role, funcao_principal')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (me?.funcao_principal && TIPOS_POR_FUNCAO[me.funcao_principal]) {
+      // Only filter for non-admin/coord roles
+      if (me.role === 'lider_area' || me.role === 'operador') {
+        tipoFilter = TIPOS_POR_FUNCAO[me.funcao_principal]
+      }
+    }
+  }
+
+  let conteudosQuery = supabase
+    .from('conteudos')
+    .select(`
+      id, titulo, tipo, status, prioridade,
+      dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
+      canal_publicacao, briefing, horario_previsto, link_publicado,
+      responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
+      dia:dia_id (nome_dia, data),
+      setor:setor_id (nome),
+      patrocinador:patrocinador_id (nome),
+      jogo:jogo_id (equipe_a_nome, equipe_b_nome, modalidade:modalidade_id (nome, icone)),
+      show:show_id (nome, inicio),
+      festa:festa_id (nome, tema, inicio),
+      modalidade:modalidade_id (nome, icone)
+    `)
+    .order('dia_id',           { ascending: true,  nullsFirst: false })
+    .order('horario_previsto', { ascending: true,  nullsFirst: false })
+    .order('prioridade',       { ascending: true })
+
+  if (tipoFilter) {
+    conteudosQuery = conteudosQuery.in('tipo', tipoFilter) as typeof conteudosQuery
+  }
 
   const [
     edicaoRes,
@@ -14,24 +60,7 @@ export default async function ConteudosPage() {
     perfisRes,
   ] = await Promise.all([
     supabase.from('edicoes').select('id').eq('ativa', true).maybeSingle(),
-    supabase
-      .from('conteudos')
-      .select(`
-        id, titulo, tipo, status, prioridade,
-        dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
-        canal_publicacao, briefing, horario_previsto, link_publicado,
-        responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
-        dia:dia_id (nome_dia, data),
-        setor:setor_id (nome),
-        patrocinador:patrocinador_id (nome),
-        jogo:jogo_id (equipe_a_nome, equipe_b_nome, modalidade:modalidade_id (nome, icone)),
-        show:show_id (nome, inicio),
-        festa:festa_id (nome, tema, inicio),
-        modalidade:modalidade_id (nome, icone)
-      `)
-      .order('dia_id',           { ascending: true,  nullsFirst: false })
-      .order('horario_previsto', { ascending: true,  nullsFirst: false })
-      .order('prioridade',       { ascending: true }),
+    conteudosQuery,
     supabase.from('dias_evento').select('id, nome_dia, data').order('data'),
     supabase.from('setores').select('id, nome').order('nome'),
     supabase.from('patrocinadores').select('id, nome').eq('ativo', true).order('nome'),

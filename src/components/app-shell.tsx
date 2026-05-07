@@ -43,7 +43,7 @@ export async function AppShell({ children, section, fullWidth = false }: AppShel
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('nome, role')
+    .select('nome, role, funcao_principal')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -129,7 +129,7 @@ export async function AppShell({ children, section, fullWidth = false }: AppShel
 
       {/* ── Body ────────────────────────────────────────────────────── */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <AdminSidebar />
+        <AdminSidebar role={profile?.role} funcao={profile?.funcao_principal} />
 
         <main
           className="relative flex-1 overflow-auto"

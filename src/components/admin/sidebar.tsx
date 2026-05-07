@@ -5,13 +5,13 @@ import { usePathname } from 'next/navigation'
 import {
   Calendar, Map, MapPin, Users, Trophy, Music, PartyPopper,
   Heart, GitBranch, Tag, UserCog, Settings, Swords, ClipboardList, Camera, CheckSquare,
-  Lightbulb, BookOpen, LayoutList, UserCircle, Radio,
+  Lightbulb, BookOpen, LayoutList, UserCircle, Radio, Aperture, Users2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// ── Navigation groups — macOS System Settings style ──────────────────────────
+// ── Admin / Coordenação — full nav ─────────────────────────────────────────────
 
-const NAV_GROUPS = [
+const ADMIN_NAV_GROUPS = [
   {
     label: 'Principal',
     items: [
@@ -26,12 +26,13 @@ const NAV_GROUPS = [
   {
     label: 'Operacional',
     items: [
-      { label: 'Minha Escala',   href: '/minha-escala', icon: UserCircle },
-      { label: 'Escala',         href: '/admin/escala', icon: ClipboardList },
-      { label: 'Jogos',          href: '/admin/jogos',  icon: Swords },
-      { label: 'Mapa Ao Vivo',   href: '/mapa',         icon: MapPin },
-      { label: 'Shows',          href: '/admin/shows',  icon: Music },
-      { label: 'Festas',         href: '/admin/festas', icon: PartyPopper },
+      { label: 'Minha Escala',   href: '/minha-escala',       icon: UserCircle },
+      { label: 'Escala',         href: '/admin/escala',        icon: ClipboardList },
+      { label: 'Escala Mídia',   href: '/admin/escala-midia',  icon: Aperture },
+      { label: 'Jogos',          href: '/admin/jogos',         icon: Swords },
+      { label: 'Mapa Ao Vivo',   href: '/mapa',                icon: MapPin },
+      { label: 'Shows',          href: '/admin/shows',         icon: Music },
+      { label: 'Festas',         href: '/admin/festas',        icon: PartyPopper },
     ],
   },
   {
@@ -50,24 +51,59 @@ const NAV_GROUPS = [
   },
 ]
 
-// ── Sidebar ───────────────────────────────────────────────────────────────────
+// ── Foto / Vídeo team nav ──────────────────────────────────────────────────────
 
-export function AdminSidebar() {
+function getMediaNavGroups(isLider: boolean) {
+  return [
+    {
+      label: 'Conteúdo',
+      items: [
+        { label: 'Cronograma',   href: '/cronograma',   icon: LayoutList },
+        { label: 'Pautas',       href: '/pautas',       icon: Lightbulb },
+        { label: 'Conteúdos',    href: '/conteudos',    icon: Camera },
+        { label: 'Mapa Ao Vivo', href: '/mapa',         icon: MapPin },
+      ],
+    },
+    {
+      label: 'Escala',
+      items: [
+        { label: 'Minha Escala',       href: '/minha-escala',  icon: UserCircle },
+        ...(isLider
+          ? [{ label: 'Escala da Equipe', href: '/escala-midia',  icon: ClipboardList }]
+          : []),
+      ],
+    },
+    {
+      label: 'Equipe',
+      items: [
+        { label: 'Minha Equipe', href: '/minha-equipe',  icon: Users2 },
+      ],
+    },
+  ]
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────────
+
+interface AdminSidebarProps {
+  role?: string
+  funcao?: string | null
+}
+
+export function AdminSidebar({ role, funcao }: AdminSidebarProps) {
   const pathname = usePathname()
+
+  const isMediaRole = funcao === 'foto' || funcao === 'video'
+  const isLider     = role === 'lider_area'
+  const navGroups   = isMediaRole ? getMediaNavGroups(isLider) : ADMIN_NAV_GROUPS
 
   return (
     <aside className="mac-sidebar flex w-[220px] shrink-0 flex-col overflow-hidden">
       {/* Scrollable nav */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-4">
-        {NAV_GROUPS.map((group, gi) => (
+        {navGroups.map((group, gi) => (
           <div key={group.label}>
-            {/* Group separator (not on first group) */}
             {gi > 0 && <div className="mac-separator" />}
-
-            {/* Group label */}
             <div className="mac-nav-group">{group.label}</div>
-
-            {/* Items */}
             {group.items.map(({ label, href, icon: Icon }) => {
               const active = pathname === href || pathname.startsWith(href + '/')
               return (

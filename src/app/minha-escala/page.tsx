@@ -10,14 +10,14 @@ const FUNCAO_LABEL: Record<string, string> = {
 }
 
 const FUNCAO_COLOR: Record<string, string> = {
-  foto: 'bg-purple-900/20 text-purple-300 border-purple-700/30',
-  video: 'bg-purple-900/20 text-purple-300 border-purple-700/30',
-  drone: 'bg-purple-900/20 text-purple-300 border-purple-700/30',
-  social: 'bg-blue-900/20 text-blue-300 border-blue-700/30',
-  editor: 'bg-blue-900/20 text-blue-300 border-blue-700/30',
-  design: 'bg-blue-900/20 text-blue-300 border-blue-700/30',
-  reporter: 'bg-orange-900/20 text-orange-300 border-orange-700/30',
-  roaming: 'bg-orange-900/20 text-orange-300 border-orange-700/30',
+  foto: 'bg-purple-50 text-purple-700 border-purple-200',
+  video: 'bg-purple-50 text-purple-700 border-purple-200',
+  drone: 'bg-purple-50 text-purple-700 border-purple-200',
+  social: 'bg-blue-50 text-blue-700 border-blue-200',
+  editor: 'bg-blue-50 text-blue-700 border-blue-200',
+  design: 'bg-blue-50 text-blue-700 border-blue-200',
+  reporter: 'bg-orange-50 text-orange-700 border-orange-200',
+  roaming: 'bg-orange-50 text-orange-700 border-orange-200',
   coordenacao: 'bg-[var(--green-dim)]/20 text-[var(--green-bright)] border-[var(--green-dim)]/40',
   producao: 'bg-[var(--green-dim)]/20 text-[var(--green-bright)] border-[var(--green-dim)]/40',
 }
@@ -166,7 +166,7 @@ export default async function MinhaEscalaPage() {
                               {FUNCAO_LABEL[t.funcao] ?? t.funcao}
                             </span>
                             {t.is_roaming && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-orange-700/30 bg-orange-900/20 px-2 py-0.5 text-[10px] font-semibold text-orange-300">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-700">
                                 Roaming
                               </span>
                             )}
@@ -267,7 +267,7 @@ export default async function MinhaEscalaPage() {
                 </div>
                 <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${
                   e.status === 'em_andamento'
-                    ? 'bg-blue-900/20 text-blue-300 border-blue-700/30'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
                     : 'bg-[var(--muted)] text-[var(--muted-foreground)] border-[var(--border)]'
                 }`}>
                   {e.status === 'em_andamento' ? 'Em andamento' : 'Pendente'}

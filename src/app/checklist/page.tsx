@@ -64,9 +64,9 @@ export default async function ChecklistPage() {
   }
   const tipoColor: Record<string, string> = {
     jogo: 'text-[var(--green-bright)] bg-[var(--green-dim)]/30',
-    show: 'text-purple-400 bg-purple-900/30',
-    festa: 'text-pink-400 bg-pink-900/30',
-    ativacao_patrocinador: 'text-yellow-400 bg-yellow-900/30',
+    show: 'text-purple-700 bg-purple-50',
+    festa: 'text-rose-700 bg-rose-50',
+    ativacao_patrocinador: 'text-yellow-700 bg-yellow-50',
   }
 
   const edicaoId = edicao?.id ?? '00000000-0000-0000-0000-000000000001'

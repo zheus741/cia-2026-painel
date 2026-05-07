@@ -77,22 +77,22 @@ const PREV_STATUS: Record<string, string> = {
 }
 
 const TIPO_CONFIG: Record<string, { label: string; color: string }> = {
-  reels:            { label: 'Reels',            color: 'bg-purple-500/15 text-purple-300 border-purple-500/30' },
+  reels:            { label: 'Reels',            color: 'bg-purple-50 text-purple-700 border-purple-200' },
   feed:             { label: 'Feed',             color: 'bg-[var(--green)]/15 text-[var(--green-bright)] border-[var(--green)]/30' },
-  stories:          { label: 'Stories',          color: 'bg-blue-500/15 text-blue-300 border-blue-500/30' },
-  material_youtube: { label: 'Material YouTube', color: 'bg-red-500/15 text-red-300 border-red-500/30' },
-  foto:             { label: 'Foto',             color: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
-  video:            { label: 'Vídeo',            color: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30' },
+  stories:          { label: 'Stories',          color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  material_youtube: { label: 'Material YouTube', color: 'bg-red-50 text-red-600 border-red-200' },
+  foto:             { label: 'Foto',             color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  video:            { label: 'Vídeo',            color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
 }
 
 const TIPO_OPTIONS = Object.entries(TIPO_CONFIG).map(([value, { label }]) => ({ value, label }))
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   rascunho:    { label: 'Rascunho',    color: 'text-[var(--muted-foreground)] bg-[var(--muted)] border-[var(--border)]' },
-  em_producao: { label: 'Em produção', color: 'text-blue-300 bg-blue-500/10 border-blue-500/30' },
+  em_producao: { label: 'Em produção', color: 'text-blue-700 bg-blue-50 border-blue-200' },
   publicado:   { label: 'Publicado',   color: 'text-[var(--green-bright)] bg-[var(--green)]/10 border-[var(--green)]/30' },
   arquivado:   { label: 'Arquivado',   color: 'text-[var(--muted-foreground)] bg-[var(--muted)]/50 border-[var(--border)]/50' },
-  cancelado:   { label: 'Cancelado',   color: 'text-red-400 bg-red-500/10 border-red-500/30' },
+  cancelado:   { label: 'Cancelado',   color: 'text-red-600 bg-red-50 border-red-200' },
 }
 
 const PRIORIDADE_COLOR: Record<number, string> = {
@@ -123,14 +123,14 @@ const CANAL_CONFIG: Record<string, {
   cor:    string   // hex — borda topo do card
   badge:  string   // tailwind classes do badge
 }> = {
-  instagram_cia:       { label: 'Instagram CIA',        cor: '#E1306C', badge: 'bg-pink-500/20 text-pink-300 border-pink-500/40' },
-  tiktok_cia:          { label: 'TikTok CIA',           cor: '#69C9D0', badge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
-  instagram_exp:       { label: 'Instagram EXP',        cor: '#A855F7', badge: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
-  instagram_grupo_exp: { label: 'Instagram Grupo EXP',  cor: '#7C3AED', badge: 'bg-violet-500/20 text-violet-300 border-violet-500/40' },
-  tiktok_exp:          { label: 'TikTok EXP',           cor: '#EE1D52', badge: 'bg-rose-500/20 text-rose-300 border-rose-500/40' },
-  instagram_nix:       { label: 'Instagram NIX',         cor: '#F97316', badge: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
-  x_cia:               { label: 'X CIA',                cor: '#94A3B8', badge: 'bg-slate-500/20 text-slate-300 border-slate-500/40' },
-  youtube_exp:         { label: 'YouTube EXP',           cor: '#EF4444', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
+  instagram_cia:       { label: 'Instagram CIA',        cor: '#E1306C', badge: 'bg-rose-50 text-rose-700 border-rose-200' },
+  tiktok_cia:          { label: 'TikTok CIA',           cor: '#69C9D0', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  instagram_exp:       { label: 'Instagram EXP',        cor: '#A855F7', badge: 'bg-purple-50 text-purple-700 border-purple-200' },
+  instagram_grupo_exp: { label: 'Instagram Grupo EXP',  cor: '#7C3AED', badge: 'bg-violet-50 text-violet-700 border-violet-200' },
+  tiktok_exp:          { label: 'TikTok EXP',           cor: '#EE1D52', badge: 'bg-rose-50 text-rose-700 border-rose-200' },
+  instagram_nix:       { label: 'Instagram NIX',         cor: '#F97316', badge: 'bg-orange-50 text-orange-700 border-orange-200' },
+  x_cia:               { label: 'X CIA',                cor: '#94A3B8', badge: 'bg-slate-100 text-slate-600 border-slate-300' },
+  youtube_exp:         { label: 'YouTube EXP',           cor: '#EF4444', badge: 'bg-red-50 text-red-600 border-red-200' },
 }
 
 const CANAL_OPTIONS = Object.entries(CANAL_CONFIG).map(([value, { label }]) => ({ value, label }))
@@ -156,11 +156,11 @@ function nullIfNone(v: string): string | null {
 }
 
 function getCategoria(c: Conteudo): { label: string; emoji: string; color: string } | null {
-  if (c.jogo)        return { label: 'Esportivo',   emoji: '🏆', color: 'text-green-400 bg-green-500/10 border-green-500/25' }
-  if (c.show)        return { label: 'Show',         emoji: '🎤', color: 'text-purple-400 bg-purple-500/10 border-purple-500/25' }
-  if (c.festa)       return { label: 'Festivo',      emoji: '🎉', color: 'text-pink-400 bg-pink-500/10 border-pink-500/25' }
+  if (c.jogo)        return { label: 'Esportivo',   emoji: '🏆', color: 'text-[var(--green-bright)] bg-[var(--green-dim)]/30 border-[var(--green-dim)]/50' }
+  if (c.show)        return { label: 'Show',         emoji: '🎤', color: 'text-purple-700 bg-purple-50 border-purple-200' }
+  if (c.festa)       return { label: 'Festivo',      emoji: '🎉', color: 'text-rose-700 bg-rose-50 border-rose-200' }
   if (c.patrocinador)return { label: 'Patrocinado',  emoji: '🤝', color: 'text-[var(--gold)] bg-[var(--gold-dim)]/20 border-[var(--gold-dim)]/30' }
-  if (c.modalidade)  return { label: c.modalidade.nome, emoji: c.modalidade.icone ?? '🏅', color: 'text-blue-400 bg-blue-500/10 border-blue-500/25' }
+  if (c.modalidade)  return { label: c.modalidade.nome, emoji: c.modalidade.icone ?? '🏅', color: 'text-blue-700 bg-blue-50 border-blue-200' }
   return null
 }
 

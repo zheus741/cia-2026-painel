@@ -48,8 +48,8 @@ const FUNCOES = [
 // Shift templates
 const SHIFTS = [
   { label: 'Diurno', inicio: '08:00', fim: '20:00', color: 'bg-[var(--gold)]/20 border-[var(--gold)]/40 text-[var(--gold-dark)]' },
-  { label: 'Tarde', inicio: '12:00', fim: '20:00', color: 'bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300' },
-  { label: 'Noturno', inicio: '20:00', fim: '08:00+1', color: 'bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-300' },
+  { label: 'Tarde', inicio: '12:00', fim: '20:00', color: 'bg-blue-50 border-blue-200 text-blue-700' },
+  { label: 'Noturno', inicio: '20:00', fim: '08:00+1', color: 'bg-purple-50 border-purple-200 text-purple-700' },
 ]
 
 function shiftLabel(inicio: string, fim: string): string {
@@ -60,8 +60,8 @@ function shiftLabel(inicio: string, fim: string): string {
 function shiftColor(inicio: string): string {
   const h = new Date(inicio).getHours()
   if (h >= 8 && h < 12) return 'bg-[var(--gold)]/15 border-[var(--gold)]/30'
-  if (h >= 12 && h < 20) return 'bg-blue-500/10 border-blue-400/30'
-  return 'bg-purple-500/10 border-purple-400/30'
+  if (h >= 12 && h < 20) return 'bg-blue-50 border-blue-200'
+  return 'bg-purple-50 border-purple-200'
 }
 
 function buildTimestamp(data: string, hhmm: string, nextDay = false): string {
@@ -407,7 +407,7 @@ export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps)
 
       {/* Conflict warning */}
       {conflicts.size > 0 && (
-        <div className="mx-6 mt-4 flex items-center gap-2 rounded-md border border-orange-400/40 bg-orange-400/10 px-4 py-2 text-sm text-orange-700 dark:text-orange-300">
+        <div className="mx-6 mt-4 flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 px-4 py-2 text-sm text-orange-700">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{conflicts.size} turno(s) com conflito de horário detectado(s).</span>
         </div>

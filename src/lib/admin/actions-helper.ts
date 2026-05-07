@@ -91,3 +91,17 @@ export async function requireCoordOrAdmin() {
     throw new Error('Sem permissão. Apenas admin ou coordenação podem alterar.')
   }
 }
+
+export async function requireLiderOrAbove() {
+  const supabase = await createClient()
+  const { data: u } = await supabase.auth.getUser()
+  if (!u.user) throw new Error('Não autenticado.')
+  const { data: p } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', u.user.id)
+    .maybeSingle()
+  if (!p || !['admin', 'coordenacao', 'lider_area'].includes(p.role)) {
+    throw new Error('Sem permissão.')
+  }
+}

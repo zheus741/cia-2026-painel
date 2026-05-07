@@ -67,8 +67,8 @@
   --background:         #f1f5f2;
   --foreground:         #101d12;
   --muted:              #e7ede9;
-  --muted-foreground:   #5f7866;
-  --border:             #cfddd2;
+  --muted-foreground:   #475f52;
+  --border:             #b8ccc0;
   --card:               #ffffff;
   --card-foreground:    #101d12;
 
@@ -295,7 +295,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.10em;
-  color: rgba(46, 107, 66, 0.45);
+  color: rgba(46, 107, 66, 0.65);
   user-select: none;
 }
 
@@ -310,7 +310,7 @@ body {
   margin-bottom: 1px;
   font-size: 13px;
   font-weight: 500;
-  color: rgba(16, 29, 18, 0.55);
+  color: rgba(16, 29, 18, 0.72);
   border: 1px solid transparent;
   transition: background 0.10s ease, color 0.10s ease;
   cursor: pointer;
@@ -460,7 +460,7 @@ body {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.22em;
-  color: rgba(46, 107, 66, 0.40);
+  color: rgba(46, 107, 66, 0.60);
   flex-shrink: 0;
 }
 .cia-section-label {
@@ -469,13 +469,13 @@ body {
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(46, 107, 66, 0.55);
+  color: rgba(46, 107, 66, 0.75);
   flex-shrink: 0;
 }
 .cia-section-rule {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, rgba(46,107,66,0.40), rgba(46,107,66,0.10), transparent);
+  background: linear-gradient(90deg, rgba(46,107,66,0.55), rgba(46,107,66,0.10), transparent);
 }
 
 /* ── Metric card — white, light ── */

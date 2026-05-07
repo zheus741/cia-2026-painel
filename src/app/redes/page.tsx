@@ -3,14 +3,14 @@ import Link from 'next/link'
 import { ExternalLink, TrendingUp } from 'lucide-react'
 
 const CANAL_META: Record<string, { label: string; emoji: string; cor: string }> = {
-  instagram_stories: { label: 'IG Stories',  emoji: '📱', cor: 'border-pink-700/30 bg-pink-900/10 text-pink-300' },
-  instagram_reels:   { label: 'IG Reels',    emoji: '🎬', cor: 'border-purple-700/30 bg-purple-900/10 text-purple-300' },
-  instagram_feed:    { label: 'IG Feed',     emoji: '🖼️', cor: 'border-blue-700/30 bg-blue-900/10 text-blue-300' },
-  tiktok:            { label: 'TikTok',      emoji: '🎵', cor: 'border-red-700/30 bg-red-900/10 text-red-300' },
-  youtube:           { label: 'YouTube',     emoji: '▶️', cor: 'border-red-700/30 bg-red-900/10 text-red-300' },
-  youtube_shorts:    { label: 'YT Shorts',   emoji: '⚡', cor: 'border-orange-700/30 bg-orange-900/10 text-orange-300' },
-  twitter_x:         { label: 'Twitter/X',   emoji: '𝕏', cor: 'border-slate-700/30 bg-slate-900/10 text-slate-300' },
-  facebook:          { label: 'Facebook',    emoji: '👥', cor: 'border-blue-700/30 bg-blue-900/10 text-blue-300' },
+  instagram_stories: { label: 'IG Stories',  emoji: '📱', cor: 'border-rose-200 bg-rose-50 text-rose-700' },
+  instagram_reels:   { label: 'IG Reels',    emoji: '🎬', cor: 'border-purple-200 bg-purple-50 text-purple-700' },
+  instagram_feed:    { label: 'IG Feed',     emoji: '🖼️', cor: 'border-blue-200 bg-blue-50 text-blue-700' },
+  tiktok:            { label: 'TikTok',      emoji: '🎵', cor: 'border-red-200 bg-red-50 text-red-600' },
+  youtube:           { label: 'YouTube',     emoji: '▶️', cor: 'border-red-200 bg-red-50 text-red-600' },
+  youtube_shorts:    { label: 'YT Shorts',   emoji: '⚡', cor: 'border-orange-200 bg-orange-50 text-orange-700' },
+  twitter_x:         { label: 'Twitter/X',   emoji: '𝕏', cor: 'border-slate-300 bg-slate-100 text-slate-600' },
+  facebook:          { label: 'Facebook',    emoji: '👥', cor: 'border-blue-200 bg-blue-50 text-blue-700' },
   whatsapp_status:   { label: 'WA Status',   emoji: '💬', cor: 'border-green-700/30 bg-green-900/10 text-[var(--green-bright)]' },
   outro:             { label: 'Outro',       emoji: '🔗', cor: 'border-[var(--border)] bg-[var(--muted)] text-[var(--muted-foreground)]' },
 }

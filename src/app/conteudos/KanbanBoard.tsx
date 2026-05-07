@@ -133,19 +133,23 @@ const TIPO_CONTEUDO_OPTIONS = [
   { value: 'cobertura_ao_vivo', label: 'Cobertura Ao Vivo' },
 ]
 
-const CANAL_OPTIONS = [
-  { value: 'instagram_feed',    label: 'Instagram Feed' },
-  { value: 'instagram_stories', label: 'Instagram Stories' },
-  { value: 'instagram_reels',   label: 'Instagram Reels' },
-  { value: 'tiktok',            label: 'TikTok' },
-  { value: 'youtube',           label: 'YouTube' },
-  { value: 'youtube_shorts',    label: 'YouTube Shorts' },
-  { value: 'twitter_x',         label: 'Twitter / X' },
-  { value: 'whatsapp_status',   label: 'WhatsApp Status' },
-  { value: 'outro',             label: 'Outro' },
-]
+// ── Canais: cor de destaque (borda topo do card) + badge ─────────────────────
+const CANAL_CONFIG: Record<string, {
+  label:  string
+  cor:    string   // hex — borda topo do card
+  badge:  string   // tailwind classes do badge
+}> = {
+  instagram_cia:       { label: 'Instagram CIA',        cor: '#E1306C', badge: 'bg-pink-500/20 text-pink-300 border-pink-500/40' },
+  tiktok_cia:          { label: 'TikTok CIA',           cor: '#69C9D0', badge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+  instagram_exp:       { label: 'Instagram EXP',        cor: '#A855F7', badge: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
+  instagram_grupo_exp: { label: 'Instagram Grupo EXP',  cor: '#7C3AED', badge: 'bg-violet-500/20 text-violet-300 border-violet-500/40' },
+  tiktok_exp:          { label: 'TikTok EXP',           cor: '#EE1D52', badge: 'bg-rose-500/20 text-rose-300 border-rose-500/40' },
+  instagram_nix:       { label: 'Instagram NIX',         cor: '#F97316', badge: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
+  x_cia:               { label: 'X CIA',                cor: '#94A3B8', badge: 'bg-slate-500/20 text-slate-300 border-slate-500/40' },
+  youtube_exp:         { label: 'YouTube EXP',           cor: '#EF4444', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
+}
 
-const CANAL_LABEL: Record<string, string> = Object.fromEntries(CANAL_OPTIONS.map(o => [o.value, o.label]))
+const CANAL_OPTIONS = Object.entries(CANAL_CONFIG).map(([value, { label }]) => ({ value, label }))
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -213,6 +217,7 @@ function ConteudoCard({
 }) {
   const hasPrev = !!PREV_STATUS[c.status]
   const hasNext = !!NEXT_STATUS[c.status]
+  const canalCfg = c.canal_publicacao ? CANAL_CONFIG[c.canal_publicacao] : null
 
   // Responsáveis via lookup local no array de perfis
   const findPerfil = (id: string | null) => id ? perfis.find(p => p.id === id) ?? null : null
@@ -240,6 +245,7 @@ function ConteudoCard({
         'transition-all hover:border-[var(--green)]/40 hover:shadow-[0_0_12px_rgba(74,138,92,0.08)]',
         isBeingDragged && 'opacity-30 scale-[0.97] border-dashed pointer-events-none',
       )}
+      style={canalCfg ? { borderTop: `2px solid ${canalCfg.cor}` } : undefined}
     >
       {/* Priority stripe */}
       <div
@@ -256,8 +262,17 @@ function ConteudoCard({
           <p className="flex-1 text-xs font-medium leading-snug text-[var(--foreground)] line-clamp-2">{c.titulo}</p>
         </div>
 
+        {/* Canal badge */}
+        {canalCfg && (
+          <div className="mt-1.5">
+            <span className={cn('inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold tracking-wide', canalCfg.badge)}>
+              {canalCfg.label}
+            </span>
+          </div>
+        )}
+
         {/* Meta: dia, horário, patrocinador */}
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-[var(--muted-foreground)]">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-[var(--muted-foreground)]">
           {c.dia && <span>📅 {c.dia.nome_dia}</span>}
           {c.horario_previsto && (
             <span className="font-mono font-semibold text-[var(--gold)]">⏰ {formatHorario(c.horario_previsto)}</span>
@@ -465,7 +480,11 @@ function ConteudoViewDialog({
           </PropRow>
 
           <PropRow icon={Radio} label="Canal">
-            {c.canal_publicacao ? <Pill>{CANAL_LABEL[c.canal_publicacao] ?? c.canal_publicacao}</Pill> : <Empty />}
+            {c.canal_publicacao
+              ? <Pill color={CANAL_CONFIG[c.canal_publicacao]?.badge}>
+                  {CANAL_CONFIG[c.canal_publicacao]?.label ?? c.canal_publicacao}
+                </Pill>
+              : <Empty />}
           </PropRow>
 
           <PropRow icon={MapPin} label="Setor">
@@ -920,10 +939,11 @@ interface KanbanBoardProps {
 export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, perfis }: KanbanBoardProps) {
   const router = useRouter()
   const [conteudos, setConteudos] = React.useState(initial)
-  const [search, setSearch]         = React.useState('')
-  const [filterDia, setFilterDia]   = React.useState('')
-  const [filterTipo, setFilterTipo] = React.useState('')
+  const [search, setSearch]             = React.useState('')
+  const [filterDia, setFilterDia]       = React.useState('')
+  const [filterTipo, setFilterTipo]     = React.useState('')
   const [filterPerfil, setFilterPerfil] = React.useState('')
+  const [filterCanal, setFilterCanal]   = React.useState('')
 
   const [dragId, setDragId]     = React.useState<string | null>(null)
   const [dragOver, setDragOver] = React.useState<string | null>(null)
@@ -948,8 +968,11 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         c.responsavel_edicao_id   === filterPerfil
       )
     }
+    if (filterCanal && filterCanal !== '__all__') {
+      list = list.filter(c => c.canal_publicacao === filterCanal)
+    }
     return list
-  }, [conteudos, search, filterDia, filterTipo, filterPerfil])
+  }, [conteudos, search, filterDia, filterTipo, filterPerfil, filterCanal])
 
   async function handleMove(c: Conteudo, status: string) {
     setMoving(c.id)
@@ -1021,6 +1044,24 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
           <SelectContent>
             <SelectItem value="__all__">Todos</SelectItem>
             {perfis.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterCanal} onValueChange={setFilterCanal}>
+          <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="Canal" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos os canais</SelectItem>
+            {CANAL_OPTIONS.map(o => (
+              <SelectItem key={o.value} value={o.value}>
+                <span className="flex items-center gap-2">
+                  <span
+                    className="inline-block h-2 w-2 rounded-full shrink-0"
+                    style={{ background: CANAL_CONFIG[o.value]?.cor }}
+                  />
+                  {o.label}
+                </span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

@@ -24,13 +24,6 @@ export interface ConteudoPayload {
   responsavel_edicao_id?:  string | null
 }
 
-// Colunas adicionadas por migração — removidas do payload até existirem no banco
-function stripNewCols<T extends Partial<ConteudoPayload>>(p: T) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { horario_previsto, responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, ...rest } = p as ConteudoPayload
-  return rest
-}
-
 export async function createConteudo(payload: ConteudoPayload) {
   return safe(async () => {
     const supabase = await createClient()
@@ -39,7 +32,7 @@ export async function createConteudo(payload: ConteudoPayload) {
     const { data: conteudo, error } = await supabase
       .from('conteudos')
       .insert({
-        ...stripNewCols(payload),
+        ...payload,
         status:     payload.status    ?? 'rascunho',
         prioridade: payload.prioridade ?? 3,
         criado_por: user?.id ?? null,
@@ -57,7 +50,7 @@ export async function updateConteudo(id: string, payload: Partial<ConteudoPayloa
     const supabase = await createClient()
     const { error } = await supabase
       .from('conteudos')
-      .update(stripNewCols(payload))
+      .update(payload)
       .eq('id', id)
     if (error) throw error
   })

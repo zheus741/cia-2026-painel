@@ -51,43 +51,43 @@
   font-display: swap;
 }
 
-/* ── Tokens de cor ─────────────────────────────────────────────────────────── */
+/* ── Tokens de cor — LIGHT THEME ───────────────────────────────────────────── */
 :root {
-  /* Brand CIA */
-  --gold:          #c8973a;
-  --gold-bright:   #e8b94f;
-  --gold-dim:      #7a5c20;
-  --green:         #4a8a5c;
-  --green-bright:  #6ab87e;
-  --green-dim:     #2d5a3d;
-  --green-glow:    rgba(74, 138, 92, 0.35);
+  /* Brand CIA — ajustados para contraste em fundo claro */
+  --gold:          #8a5f06;
+  --gold-bright:   #b07a0a;
+  --gold-dim:      #f0ddb0;
+  --green:         #2e6b42;
+  --green-bright:  #3d7a52;
+  --green-dim:     #d6ecde;
+  --green-glow:    rgba(46, 107, 66, 0.15);
   --terracotta:    #8b3a2a;
 
-  /* Surface — escuro por padrão */
-  --background:         #060c07;
-  --foreground:         #c8dccb;
-  --muted:              #0d1a0f;
-  --muted-foreground:   #4e7055;
-  --border:             #1a2e1c;
-  --card:               #0d1a0f;
-  --card-foreground:    #c8dccb;
+  /* Surface — claro */
+  --background:         #f1f5f2;
+  --foreground:         #101d12;
+  --muted:              #e7ede9;
+  --muted-foreground:   #5f7866;
+  --border:             #cfddd2;
+  --card:               #ffffff;
+  --card-foreground:    #101d12;
 
   --primary:            var(--green);
   --primary-foreground: #ffffff;
   --accent:             var(--gold);
-  --accent-foreground:  #060c07;
+  --accent-foreground:  #ffffff;
   --destructive:        #c0392b;
   --warning:            #d97706;
-  --success:            var(--green-bright);
+  --success:            var(--green);
 
   /* Status pipeline */
-  --status-aguardando:    #4a5568;
+  --status-aguardando:    #94a3b8;
   --status-pendente:      var(--gold);
   --status-em-andamento:  #3b82f6;
   --status-pausado:       #a855f7;
   --status-bloqueado:     #dc2626;
-  --status-pronto:        var(--green-bright);
-  --status-publicado:     var(--green-dim);
+  --status-pronto:        var(--green);
+  --status-publicado:     #2e6b42;
 }
 
 /* ── Tailwind theme ─────────────────────────────────────────────────────────── */
@@ -113,7 +113,7 @@
   --color-green-bright:       var(--green-bright);
   --color-green-dim:          var(--green-dim);
 
-  --font-sans:    'Rajdhani', system-ui, sans-serif;
+  --font-sans:    var(--font-dm-sans), system-ui, sans-serif;
   --font-display: 'Orbitron', system-ui, sans-serif;
   --font-mono:    'ShareTechMono', ui-monospace, monospace;
 }
@@ -126,8 +126,8 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Rajdhani', system-ui, sans-serif;
-  font-weight: 500;
+  font-family: var(--font-dm-sans), 'Rajdhani', system-ui, sans-serif;
+  font-weight: 400;
   font-size: 1rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -136,15 +136,15 @@ body {
 
 /* ── Selection ──────────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(74,138,92,0.28);
-  color: #e2f4e6;
+  background: rgba(46,107,66,0.18);
+  color: #0d1f10;
 }
 
-/* ── Scrollbar — macOS style ────────────────────────────────────────────────── */
+/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(74,138,92,0.22); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(74,138,92,0.42); }
+::-webkit-scrollbar-thumb { background: rgba(46,107,66,0.18); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(46,107,66,0.36); }
 
 /* ── Animações ──────────────────────────────────────────────────────────────── */
 @keyframes cia-spin-slow    { to { transform: rotate(360deg); } }
@@ -176,56 +176,58 @@ body {
 
 /* Grade de pontos — sutil */
 .cia-dot-grid {
-  background-image: radial-gradient(circle, rgba(74,138,92,0.10) 1px, transparent 1px);
-  background-size: 36px 36px;
+  background-image: radial-gradient(circle, rgba(46,107,66,0.10) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-/* Glass card — flat, clean surface */
+/* Glass card — white surface */
 .cia-glass {
-  background: #0d1a0f;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid var(--border);
   border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
-/* Glass card dourado */
+/* Glass card gold */
 .cia-glass-gold {
-  background: #0d1a0f;
-  border: 1px solid rgba(200, 151, 58, 0.14);
+  background: #ffffff;
+  border: 1px solid rgba(138, 95, 6, 0.18);
   border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
-/* Flat card — standard minimal card */
+/* Flat card */
 .cia-card {
-  background: #0c1a0e;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border: 1px solid var(--border);
   border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 /* Brilho — minimal */
 .cia-glow {
-  box-shadow: 0 0 0 1px rgba(74, 138, 92, 0.18);
+  box-shadow: 0 0 0 1px rgba(46, 107, 66, 0.22), 0 2px 8px rgba(46,107,66,0.08);
 }
 .cia-glow-gold {
-  box-shadow: 0 0 0 1px rgba(200, 151, 58, 0.18);
+  box-shadow: 0 0 0 1px rgba(138, 95, 6, 0.22), 0 2px 8px rgba(138,95,6,0.08);
 }
 
 /* Gradiente de fundo padrão */
 .cia-bg {
   background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(74,138,92,0.12) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 90% 80%,  rgba(74,138,92,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 50% at 50% -5%, rgba(46,107,66,0.07) 0%, transparent 60%),
     var(--background);
 }
 
 /* Linha dourada */
 .cia-gold-rule {
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, var(--gold-dim) 30%, var(--gold) 50%, var(--gold-dim) 70%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(138,95,6,0.3) 30%, var(--gold) 50%, rgba(138,95,6,0.3) 70%, transparent 100%);
 }
 
 /* Texto dourado gradiente */
 .cia-gold-text {
-  background: linear-gradient(135deg, var(--gold-dim), var(--gold-bright), var(--gold));
+  background: linear-gradient(135deg, var(--gold), var(--gold-bright), var(--gold));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -241,7 +243,7 @@ body {
 
 /* Shimmer dourado em texto */
 .cia-shimmer {
-  background: linear-gradient(90deg, var(--gold-dim) 0%, var(--gold-bright) 40%, var(--gold-dim) 60%, var(--gold-bright) 100%);
+  background: linear-gradient(90deg, var(--gold) 0%, var(--gold-bright) 40%, var(--gold) 60%, var(--gold-bright) 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -275,14 +277,14 @@ body {
 
 /* Sidebar */
 .mac-sidebar {
-  background: #080f09;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  background: #e8ede9;
+  border-right: 1px solid var(--border);
 }
 
 /* Toolbar / header */
 .mac-toolbar {
-  background: #060c07;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: #f1f5f2;
+  border-bottom: 1px solid var(--border);
 }
 
 /* Navigation group label */
@@ -292,7 +294,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.10em;
-  color: rgba(106,184,126,0.35);
+  color: rgba(46, 107, 66, 0.45);
   user-select: none;
 }
 
@@ -307,8 +309,7 @@ body {
   margin-bottom: 1px;
   font-size: 13px;
   font-weight: 500;
-  font-family: 'Rajdhani', system-ui, sans-serif;
-  color: rgba(155, 192, 162, 0.68);
+  color: rgba(16, 29, 18, 0.55);
   border: 1px solid transparent;
   transition: background 0.10s ease, color 0.10s ease;
   cursor: pointer;
@@ -316,13 +317,13 @@ body {
   text-decoration: none;
 }
 .mac-nav-item:hover {
-  background: rgba(255, 255, 255, 0.055);
-  color: rgba(195, 225, 200, 0.88);
+  background: rgba(46, 107, 66, 0.08);
+  color: rgba(16, 29, 18, 0.80);
 }
 .mac-nav-item.active {
-  background: rgba(74, 138, 92, 0.17);
-  border-color: rgba(74, 138, 92, 0.22);
-  color: #6ab87e;
+  background: rgba(46, 107, 66, 0.12);
+  border-color: rgba(46, 107, 66, 0.20);
+  color: #2e6b42;
   font-weight: 600;
 }
 
@@ -330,19 +331,20 @@ body {
 .mac-separator {
   height: 1px;
   margin: 6px 10px;
-  background: rgba(255, 255, 255, 0.055);
+  background: var(--border);
 }
 
 /* Window chrome */
 .mac-window {
-  background: #0c1a0e;
-  border: 1px solid rgba(255,255,255,0.06);
+  background: #ffffff;
+  border: 1px solid var(--border);
   border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
-/* Focus ring — macOS green */
+/* Focus ring */
 .mac-focus:focus-visible {
-  outline: 2px solid rgba(74,138,92,0.7);
+  outline: 2px solid rgba(46,107,66,0.5);
   outline-offset: 2px;
 }
 
@@ -354,17 +356,17 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.07);
-  color: rgba(155,185,160,0.5);
+  background: rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.10);
+  color: rgba(16,29,18,0.45);
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   cursor: pointer;
   flex-shrink: 0;
 }
 .mac-logout-btn:hover {
-  background: rgba(192,57,43,0.15);
-  border-color: rgba(192,57,43,0.30);
-  color: #f87171;
+  background: rgba(192,57,43,0.10);
+  border-color: rgba(192,57,43,0.25);
+  color: #c0392b;
 }
 
 /* ── Leaflet map overrides ──────────────────────────────────────────────────── */
@@ -430,13 +432,13 @@ body {
 .cia-count-shimmer {
   background: linear-gradient(
     135deg,
-    #2d5a3d 0%,
-    #4a8a5c 18%,
-    #6ab87e 32%,
-    #e8b94f 50%,
-    #6ab87e 68%,
-    #4a8a5c 82%,
-    #2d5a3d 100%
+    #1a4a2a 0%,
+    #2e6b42 18%,
+    #3d7a52 32%,
+    #8a5f06 50%,
+    #3d7a52 68%,
+    #2e6b42 82%,
+    #1a4a2a 100%
   );
   background-size: 300% auto;
   -webkit-background-clip: text;
@@ -457,53 +459,54 @@ body {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.22em;
-  color: rgba(74, 138, 92, 0.32);
+  color: rgba(46, 107, 66, 0.40);
   flex-shrink: 0;
 }
 .cia-section-label {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.30em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(106, 184, 126, 0.40);
+  color: rgba(46, 107, 66, 0.55);
   flex-shrink: 0;
 }
 .cia-section-rule {
   flex: 1;
   height: 1px;
-  background: linear-gradient(90deg, rgba(74,138,92,0.18), transparent);
+  background: linear-gradient(90deg, var(--border), transparent);
 }
 
-/* ── Metric card — flat minimal ── */
+/* ── Metric card — white, light ── */
 .cia-metric-card {
   position: relative;
   border-radius: 16px;
-  background: #0c1a0e;
-  border: 1px solid rgba(255, 255, 255, 0.055);
+  background: #ffffff;
+  border: 1px solid var(--border);
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 .cia-metric-card::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 1px;
+  height: 2px;
   background: linear-gradient(
     90deg,
     transparent 10%,
-    rgba(74,138,92,0.22) 50%,
+    rgba(46,107,66,0.18) 50%,
     transparent 90%
   );
 }
 
 .cia-metric-card-gold {
-  border-color: rgba(200, 151, 58, 0.12);
+  border-color: rgba(138, 95, 6, 0.18);
 }
 .cia-metric-card-gold::before {
   background: linear-gradient(
     90deg,
     transparent 10%,
-    rgba(200,151,58,0.20) 50%,
+    rgba(138,95,6,0.18) 50%,
     transparent 90%
   );
 }

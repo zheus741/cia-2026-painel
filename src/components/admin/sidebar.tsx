@@ -81,7 +81,7 @@ export function AdminSidebar() {
                       width: 14,
                       height: 14,
                       flexShrink: 0,
-                      color: active ? '#6ab87e' : 'rgba(106,184,126,0.52)',
+                      color: active ? '#2e6b42' : 'rgba(46,107,66,0.50)',
                     }}
                   />
                   <span className="flex-1 truncate">{label}</span>
@@ -92,8 +92,8 @@ export function AdminSidebar() {
                         height: 5,
                         borderRadius: '50%',
                         flexShrink: 0,
-                        background: '#6ab87e',
-                        boxShadow: '0 0 6px rgba(106,184,126,0.75)',
+                        background: '#2e6b42',
+                        boxShadow: '0 0 5px rgba(46,107,66,0.45)',
                       }}
                     />
                   )}
@@ -108,7 +108,7 @@ export function AdminSidebar() {
       <div
         style={{
           padding: '8px 14px 12px',
-          borderTop: '1px solid rgba(255,255,255,0.05)',
+          borderTop: '1px solid rgba(16,29,18,0.08)',
           flexShrink: 0,
         }}
       >
@@ -116,7 +116,7 @@ export function AdminSidebar() {
           style={{
             fontSize: 10,
             letterSpacing: '0.08em',
-            color: 'rgba(74,138,92,0.28)',
+            color: 'rgba(46,107,66,0.45)',
             fontFamily: 'monospace',
           }}
         >

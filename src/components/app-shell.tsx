@@ -14,10 +14,10 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 const ROLE_COLOR: Record<string, string> = {
-  admin:       '#6ab87e',
-  coordenacao: '#e8b94f',
-  lider_area:  '#60a5fa',
-  operador:    '#94a3b8',
+  admin:       '#2e6b42',
+  coordenacao: '#8a5f06',
+  lider_area:  '#2563eb',
+  operador:    '#64748b',
 }
 
 interface AppShellProps {
@@ -65,19 +65,8 @@ export async function AppShell({ children, section, fullWidth = false }: AppShel
 
           {section && (
             <div className="flex items-center gap-1.5">
-              <ChevronRight
-                className="h-3 w-3"
-                style={{ color: 'rgba(255,255,255,0.18)' }}
-              />
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: 500,
-                  letterSpacing: '0.01em',
-                  color: 'rgba(180,210,185,0.65)',
-                  fontFamily: 'Rajdhani, system-ui, sans-serif',
-                }}
-              >
+              <ChevronRight className="h-3 w-3" style={{ color: 'rgba(16,29,18,0.25)' }} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--muted-foreground)' }}>
                 {section}
               </span>
             </div>
@@ -91,18 +80,17 @@ export async function AppShell({ children, section, fullWidth = false }: AppShel
           <div
             className="flex items-center gap-2.5 rounded-full px-3 py-1.5"
             style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.07)',
+              background: 'rgba(0,0,0,0.05)',
+              border: '1px solid var(--border)',
             }}
           >
             {/* Avatar circle */}
             <div
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
               style={{
-                background: `${roleColor}22`,
-                border: `1px solid ${roleColor}44`,
+                background: `${roleColor}18`,
+                border: `1px solid ${roleColor}40`,
                 color: roleColor,
-                fontFamily: 'Rajdhani, sans-serif',
                 letterSpacing: '0.05em',
               }}
             >
@@ -111,16 +99,7 @@ export async function AppShell({ children, section, fullWidth = false }: AppShel
 
             {/* Name + role */}
             <div className="hidden sm:block">
-              <p
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: 'rgba(195,225,200,0.88)',
-                  lineHeight: 1.2,
-                  fontFamily: 'Rajdhani, sans-serif',
-                  letterSpacing: '0.02em',
-                }}
-              >
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.2 }}>
                 {profile?.nome ?? user.email}
               </p>
             </div>
@@ -130,11 +109,9 @@ export async function AppShell({ children, section, fullWidth = false }: AppShel
               style={{
                 fontSize: 9,
                 fontWeight: 700,
-                letterSpacing: '0.12em',
+                letterSpacing: '0.10em',
                 textTransform: 'uppercase',
                 color: roleColor,
-                opacity: 0.85,
-                fontFamily: 'Rajdhani, sans-serif',
               }}
             >
               {roleName}

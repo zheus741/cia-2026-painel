@@ -178,7 +178,7 @@ function ModuleGrid() {
                 height: 52,
                 borderRadius: 14,
                 background: isHov ? 'rgba(74,138,92,0.13)' : 'rgba(74,138,92,0.06)',
-                border: `1px solid ${isHov ? 'rgba(106,184,126,0.28)' : 'rgba(74,138,92,0.12)'}`,
+                border: `1px solid ${isHov ? 'rgba(46,107,66,0.22)' : 'rgba(74,138,92,0.12)'}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -190,7 +190,7 @@ function ModuleGrid() {
                 <Icon style={{
                   width: 20,
                   height: 20,
-                  color: isHov ? '#6ab87e' : 'rgba(106,184,126,0.50)',
+                  color: isHov ? '#2e6b42' : 'rgba(46,107,66,0.55)',
                   transition: 'color 0.18s ease',
                   strokeWidth: 1.6,
                 }} />
@@ -204,7 +204,7 @@ function ModuleGrid() {
                 letterSpacing: '0.01em',
                 textAlign: 'center',
                 lineHeight: 1.2,
-                color: isHov ? '#a0d4aa' : 'rgba(106,184,126,0.45)',
+                color: isHov ? '#2e6b42' : 'rgba(46,107,66,0.60)',
                 transition: 'color 0.18s ease',
                 fontFamily: 'Rajdhani, sans-serif',
                 display: 'block',
@@ -245,7 +245,7 @@ function HealthRing({ pct }: { pct: number }) {
     : isWarning
     ? 'rgba(200,151,58,0.55)'
     : 'rgba(248,113,113,0.45)'
-  const scoreColor = isHealthy ? '#6ab87e' : isWarning ? '#e8b94f' : '#f87171'
+  const scoreColor = isHealthy ? '#2e6b42' : isWarning ? '#e8b94f' : '#f87171'
 
   return (
     <div style={{ filter: `drop-shadow(0 0 18px ${glowColor})`, transition: 'filter 1.2s ease' }}>
@@ -270,8 +270,8 @@ function HealthRing({ pct }: { pct: number }) {
             )}
           </linearGradient>
         </defs>
-        <circle cx="50" cy="50" r="49" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-        <circle cx="50" cy="50" r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="9" />
+        <circle cx="50" cy="50" r="49" fill="none" stroke="rgba(16,29,18,0.05)" strokeWidth="1" />
+        <circle cx="50" cy="50" r={R} fill="none" stroke="rgba(16,29,18,0.08)" strokeWidth="9" />
         <circle
           cx="50" cy="50" r={R}
           fill="none"
@@ -283,8 +283,8 @@ function HealthRing({ pct }: { pct: number }) {
           transform="rotate(-90 50 50)"
           style={{ transition: 'stroke-dashoffset 1.6s cubic-bezier(0.16, 1, 0.3, 1)' }}
         />
-        <text x="50" y="44" textAnchor="middle" dominantBaseline="middle" fontSize="22" fontWeight="700" fontFamily="Orbitron, monospace" fill="white">{drawn}</text>
-        <text x="50" y="57" textAnchor="middle" fontSize="7" fontFamily="system-ui, sans-serif" fill="rgba(255,255,255,0.35)" letterSpacing="2.5">HEALTH</text>
+        <text x="50" y="44" textAnchor="middle" dominantBaseline="middle" fontSize="22" fontWeight="700" fontFamily="Orbitron, monospace" fill="#101d12">{drawn}</text>
+        <text x="50" y="57" textAnchor="middle" fontSize="7" fontFamily="system-ui, sans-serif" fill="rgba(16,29,18,0.45)" letterSpacing="2.5">HEALTH</text>
         <text x="50" y="66" textAnchor="middle" fontSize="9" fontFamily="Orbitron, monospace" fill={scoreColor} fontWeight="700">%</text>
       </svg>
     </div>
@@ -302,7 +302,7 @@ function BottleneckDetector({ stats }: { stats: ContentStats }) {
   const stages = [
     { key: 'rascunho',    label: 'Rascunho',    count: stats.rascunho,    color: '#94a3b8', done: false },
     { key: 'em_producao', label: 'Em Produção', count: stats.em_producao, color: '#60a5fa', done: false },
-    { key: 'publicado',   label: 'Publicado',   count: stats.publicado,   color: '#6ab87e', done: true  },
+    { key: 'publicado',   label: 'Publicado',   count: stats.publicado,   color: '#2e6b42', done: true  },
   ]
   const maxCount = Math.max(...stages.map(s => s.count), 1)
   const pendingStages = stages.filter(s => !s.done)
@@ -346,7 +346,7 @@ function BottleneckDetector({ stats }: { stats: ContentStats }) {
                 {stage.count}
               </span>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+            <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: 'rgba(16,29,18,0.06)' }}>
               <div
                 className="h-full rounded-full transition-all duration-1000 ease-out"
                 style={{
@@ -380,7 +380,7 @@ function BottleneckDetector({ stats }: { stats: ContentStats }) {
             className="font-bold tabular-nums"
             style={{
               fontFamily: 'Orbitron, monospace',
-              color: deliveryPct >= 70 ? '#6ab87e' : deliveryPct >= 40 ? '#e8b94f' : '#f87171',
+              color: deliveryPct >= 70 ? '#2e6b42' : deliveryPct >= 40 ? '#e8b94f' : '#f87171',
             }}
           >
             {deliveryPct}% entregues
@@ -416,15 +416,15 @@ function ActivityHeatmap({ data }: { data: HeatCell[] }) {
     const delay = `${(rowIdx * 4 + colIdx) * 35}ms`
     if (val === 0) {
       return {
-        background: 'rgba(255,255,255,0.025)',
-        border: '1px solid rgba(255,255,255,0.04)',
+        background: 'rgba(46,107,66,0.05)',
+        border: '1px solid rgba(46,107,66,0.08)',
         transition: `background 0.5s ease ${delay}`,
       }
     }
     const alpha = 0.15 + intensity * 0.7
     const glow = intensity > 0.6 ? `0 0 10px rgba(74,138,92,${(intensity * 0.5).toFixed(2)})` : 'none'
     return {
-      background: mounted ? `rgba(74,138,92,${alpha.toFixed(2)})` : 'rgba(255,255,255,0.025)',
+      background: mounted ? `rgba(74,138,92,${alpha.toFixed(2)})` : 'rgba(46,107,66,0.05)',
       border: `1px solid rgba(74,138,92,${(alpha * 0.6).toFixed(2)})`,
       boxShadow: mounted ? glow : 'none',
       transition: `background 0.6s ease ${delay}, box-shadow 0.6s ease ${delay}`,
@@ -458,7 +458,7 @@ function ActivityHeatmap({ data }: { data: HeatCell[] }) {
                     <span
                       className="absolute inset-0 flex items-center justify-center text-[10px] font-bold"
                       style={{
-                        color: val / maxVal > 0.5 ? 'rgba(255,255,255,0.9)' : '#6ab87e',
+                        color: val / maxVal > 0.5 ? 'rgba(255,255,255,0.9)' : '#2e6b42',
                         fontFamily: 'Orbitron, monospace',
                       }}
                     >
@@ -524,7 +524,7 @@ export function HomeClient({
                             : 'Risco'
 
   const healthColor =
-    pct >= 70 ? '#6ab87e'
+    pct >= 70 ? '#2e6b42'
     : pct >= 40 ? '#e8b94f'
     : '#f87171'
 
@@ -589,7 +589,7 @@ export function HomeClient({
                   fontWeight: 700,
                   letterSpacing: '0.30em',
                   textTransform: 'uppercase',
-                  color: 'rgba(200,151,58,0.60)',
+                  color: 'rgba(138,95,6,0.70)',
                   fontFamily: 'Orbitron, monospace',
                   marginBottom: 11,
                 }}>
@@ -602,7 +602,7 @@ export function HomeClient({
                     fontSize: 40,
                     fontWeight: 700,
                     letterSpacing: '-0.025em',
-                    color: '#c8dccb',
+                    color: '#101d12',
                     lineHeight: 1.05,
                   }}>
                     PAINEL
@@ -625,7 +625,7 @@ export function HomeClient({
                   fontSize: 10.5,
                   letterSpacing: '0.20em',
                   textTransform: 'uppercase',
-                  color: 'rgba(106,184,126,0.38)',
+                  color: 'rgba(46,107,66,0.55)',
                   fontFamily: 'Rajdhani, sans-serif',
                 }}>
                   Uberaba, MG · 04–07 jun
@@ -638,10 +638,10 @@ export function HomeClient({
               {/* Countdown */}
               {eventActive ? (
                 <div>
-                  <p style={{ fontSize: 9, letterSpacing: '0.22em', color: 'rgba(106,184,126,0.38)', fontFamily: 'Orbitron, monospace', textTransform: 'uppercase', marginBottom: 5 }}>
+                  <p style={{ fontSize: 9, letterSpacing: '0.22em', color: 'rgba(46,107,66,0.55)', fontFamily: 'Orbitron, monospace', textTransform: 'uppercase', marginBottom: 5 }}>
                     status
                   </p>
-                  <p style={{ fontFamily: 'Orbitron, monospace', fontSize: 24, fontWeight: 700, color: '#6ab87e' }}>
+                  <p style={{ fontFamily: 'Orbitron, monospace', fontSize: 24, fontWeight: 700, color: '#2e6b42' }}>
                     🟢 AO VIVO
                   </p>
                 </div>
@@ -650,7 +650,7 @@ export function HomeClient({
                   <p style={{
                     fontSize: 9,
                     letterSpacing: '0.22em',
-                    color: 'rgba(106,184,126,0.35)',
+                    color: 'rgba(46,107,66,0.55)',
                     fontFamily: 'Orbitron, monospace',
                     textTransform: 'uppercase',
                     marginBottom: 4,
@@ -672,7 +672,7 @@ export function HomeClient({
                   <p style={{
                     marginTop: 9,
                     fontSize: 10,
-                    color: 'rgba(106,184,126,0.32)',
+                    color: 'rgba(46,107,66,0.45)',
                     fontFamily: 'Rajdhani, sans-serif',
                     letterSpacing: '0.12em',
                   }}>
@@ -684,8 +684,8 @@ export function HomeClient({
               {/* Quick stat pills */}
               <div style={{ display: 'flex', gap: 6 }}>
                 {[
-                  { label: 'Total',      val: contentStats.total,    color: '#6ab87e' },
-                  { label: 'Publicados', val: contentStats.publicado, color: '#6ab87e' },
+                  { label: 'Total',      val: contentStats.total,    color: '#2e6b42' },
+                  { label: 'Publicados', val: contentStats.publicado, color: '#2e6b42' },
                   { label: 'Saúde',      val: `${pct}%`,             color: healthColor },
                 ].map(({ label, val, color }) => (
                   <div
@@ -694,7 +694,7 @@ export function HomeClient({
                       flex: 1,
                       borderRadius: 11,
                       border: '1px solid rgba(74,138,92,0.13)',
-                      background: 'rgba(10,20,12,0.72)',
+                      background: 'rgba(46,107,66,0.07)',
                       padding: '7px 5px',
                       textAlign: 'center',
                     }}
@@ -705,7 +705,7 @@ export function HomeClient({
                     <p style={{
                       fontSize: 7.5,
                       letterSpacing: '0.14em',
-                      color: 'rgba(106,184,126,0.38)',
+                      color: 'rgba(46,107,66,0.55)',
                       fontFamily: 'Rajdhani, sans-serif',
                       textTransform: 'uppercase',
                       marginTop: 3,
@@ -750,14 +750,14 @@ export function HomeClient({
                     </p>
                   </div>
                 </div>
-                <Activity className="h-4 w-4 opacity-25" style={{ color: '#6ab87e' }} />
+                <Activity className="h-4 w-4 opacity-25" style={{ color: '#2e6b42' }} />
               </div>
               <div className="flex items-center gap-5">
                 <HealthRing pct={pct} />
                 <div className="flex-1 space-y-2">
                   {[
-                    { label: 'Total',       val: contentStats.total,       color: '#c8dccb' },
-                    { label: 'Publicados',  val: contentStats.publicado,   color: '#6ab87e' },
+                    { label: 'Total',       val: contentStats.total,       color: '#101d12' },
+                    { label: 'Publicados',  val: contentStats.publicado,   color: '#2e6b42' },
                     { label: 'Produção',    val: contentStats.em_producao, color: '#60a5fa' },
                     { label: 'Rascunho',    val: contentStats.rascunho,    color: '#4e7055' },
                   ].map(({ label, val, color }) => (
@@ -802,7 +802,7 @@ export function HomeClient({
                     <div
                       key={day.label}
                       className="rounded-xl border p-2 text-center transition-colors hover:border-[var(--green-dim)]/40"
-                      style={{ background: 'rgba(6,12,7,0.6)', borderColor: 'rgba(255,255,255,0.05)' }}
+                      style={{ background: 'rgba(46,107,66,0.05)', borderColor: 'rgba(46,107,66,0.12)' }}
                     >
                       <p className="text-[10px] font-semibold text-[var(--muted-foreground)]">{day.label}</p>
                       <p className="my-1 text-xl">{day.emoji}</p>
@@ -842,7 +842,7 @@ export function HomeClient({
                   Heatmap de produção — 04 a 07 jun
                 </p>
               </div>
-              <Layers className="h-4 w-4 opacity-25" style={{ color: '#6ab87e' }} />
+              <Layers className="h-4 w-4 opacity-25" style={{ color: '#2e6b42' }} />
             </div>
             <ActivityHeatmap data={heatmapData} />
           </div>
@@ -888,7 +888,7 @@ export function HomeClient({
                         className="flex items-center gap-3 rounded-xl border px-3 py-2.5"
                         style={{ borderColor: 'rgba(74,138,92,0.15)', background: 'rgba(74,138,92,0.06)' }}
                       >
-                        <div className="h-2 w-2 shrink-0 rounded-full" style={{ background: '#6ab87e', boxShadow: '0 0 6px rgba(106,184,126,0.8)' }} />
+                        <div className="h-2 w-2 shrink-0 rounded-full" style={{ background: '#2e6b42', boxShadow: '0 0 6px rgba(46,107,66,0.40)' }} />
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-semibold capitalize">{t.funcao.replace(/_/g, ' ')}</p>
                           {t.setor && <p className="text-[10px] text-[var(--muted-foreground)]">{t.setor.nome}</p>}
@@ -933,7 +933,7 @@ export function HomeClient({
                           <Link
                             href={`/checklist/${inst.id}`}
                             className="flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors hover:border-amber-500/25"
-                            style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'rgba(6,12,7,0.5)' }}
+                            style={{ borderColor: 'rgba(46,107,66,0.10)', background: 'rgba(46,107,66,0.05)' }}
                           >
                             <CheckSquare className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
                             <span className="flex-1 truncate text-xs font-medium">{titulo}</span>
@@ -954,14 +954,14 @@ export function HomeClient({
         {/* ── Status bar ──────────────────────────────────────── */}
         <div
           className="flex flex-wrap items-center gap-3 rounded-2xl border px-5 py-3 text-xs backdrop-blur-sm"
-          style={{ borderColor: 'rgba(74,138,92,0.11)', background: 'rgba(8,16,10,0.55)' }}
+          style={{ borderColor: 'rgba(46,107,66,0.12)', background: 'rgba(46,107,66,0.06)' }}
         >
-          <div className="h-1.5 w-1.5 rounded-full" style={{ background: '#6ab87e', boxShadow: '0 0 8px rgba(106,184,126,0.8)' }} />
-          <span className="font-semibold" style={{ color: '#6ab87e' }}>Sistema operacional</span>
+          <div className="h-1.5 w-1.5 rounded-full" style={{ background: '#2e6b42', boxShadow: '0 0 8px rgba(46,107,66,0.40)' }} />
+          <span className="font-semibold" style={{ color: '#2e6b42' }}>Sistema operacional</span>
           <span className="text-[var(--muted-foreground)]">·</span>
           <span className="text-[var(--muted-foreground)]">Supabase · RLS ativo</span>
           <div className="ml-auto flex items-center gap-2">
-            <BarChart3 className="h-3.5 w-3.5 opacity-25" style={{ color: '#6ab87e' }} />
+            <BarChart3 className="h-3.5 w-3.5 opacity-25" style={{ color: '#2e6b42' }} />
             <span className="text-[var(--muted-foreground)]">CIA 2026 · v0.6</span>
           </div>
         </div>

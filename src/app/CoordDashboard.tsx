@@ -134,7 +134,7 @@ function StatsBar({
           <span className="font-semibold text-[var(--foreground)]">{s.label}:</span>
           <span
             className="tabular-nums font-bold"
-            style={{ fontFamily: 'Orbitron, monospace', color: '#6ab87e', fontSize: '0.8rem' }}
+            style={{ fontFamily: 'Orbitron, monospace', color: '#2e6b42', fontSize: '0.8rem' }}
           >
             {s.value}
           </span>
@@ -178,14 +178,14 @@ function RedesCard({ conteudosHoje }: { conteudosHoje: CoordConteudoHoje[] }) {
       <div className="mb-3 flex items-baseline gap-2">
         <span
           className="text-3xl font-bold tabular-nums"
-          style={{ fontFamily: 'Orbitron, monospace', color: '#6ab87e' }}
+          style={{ fontFamily: 'Orbitron, monospace', color: '#2e6b42' }}
         >
           {publicados}
         </span>
         <span className="text-sm text-[var(--muted-foreground)]">/ {total} publicados</span>
         <span
           className="ml-auto text-sm font-bold tabular-nums"
-          style={{ fontFamily: 'Orbitron, monospace', color: pct >= 70 ? '#6ab87e' : pct >= 40 ? '#e8b94f' : '#f87171' }}
+          style={{ fontFamily: 'Orbitron, monospace', color: pct >= 70 ? '#2e6b42' : pct >= 40 ? '#e8b94f' : '#f87171' }}
         >
           {pct}%
         </span>
@@ -250,7 +250,7 @@ function ChecklistCard({ checklistItens }: { checklistItens: CoordChecklistItem[
         <span className="text-sm text-[var(--muted-foreground)]">/ {total} itens</span>
         <span
           className="ml-auto text-sm font-bold tabular-nums"
-          style={{ fontFamily: 'Orbitron, monospace', color: pct >= 70 ? '#6ab87e' : pct >= 40 ? '#e8b94f' : '#f87171' }}
+          style={{ fontFamily: 'Orbitron, monospace', color: pct >= 70 ? '#2e6b42' : pct >= 40 ? '#e8b94f' : '#f87171' }}
         >
           {pct}%
         </span>
@@ -259,7 +259,7 @@ function ChecklistCard({ checklistItens }: { checklistItens: CoordChecklistItem[
       {/* Progress bar */}
       <div
         className="mb-3 h-2 w-full overflow-hidden rounded-full"
-        style={{ background: 'rgba(255,255,255,0.06)' }}
+        style={{ background: 'rgba(16,29,18,0.06)' }}
       >
         <div
           className="h-full rounded-full transition-all duration-1000 ease-out"
@@ -344,7 +344,7 @@ function PatrocinioCard({
                   className="ml-2 shrink-0 tabular-nums text-xs font-bold"
                   style={{
                     fontFamily: 'Orbitron, monospace',
-                    color: p.pct >= 70 ? '#6ab87e' : p.pct >= 40 ? '#e8b94f' : '#f87171',
+                    color: p.pct >= 70 ? '#2e6b42' : p.pct >= 40 ? '#e8b94f' : '#f87171',
                   }}
                 >
                   {p.published}/{p.total}
@@ -352,7 +352,7 @@ function PatrocinioCard({
               </div>
               <div
                 className="h-1.5 w-full overflow-hidden rounded-full"
-                style={{ background: 'rgba(255,255,255,0.06)' }}
+                style={{ background: 'rgba(16,29,18,0.06)' }}
               >
                 <div
                   className="h-full rounded-full transition-all duration-1000 ease-out"
@@ -360,7 +360,7 @@ function PatrocinioCard({
                     width: mounted ? `${p.pct}%` : '0%',
                     transitionDelay: `${i * 100}ms`,
                     background: p.pct >= 70
-                      ? 'linear-gradient(90deg, #4a8a5c, #6ab87e)'
+                      ? 'linear-gradient(90deg, #2e6b42, #3d7a52)'
                       : p.pct >= 40
                       ? 'linear-gradient(90deg, #d97706, #fbbf24)'
                       : 'linear-gradient(90deg, #dc2626, #f87171)',
@@ -483,7 +483,7 @@ function TimelineGantt({
               {/* Lane track */}
               <div
                 className="relative flex-1 rounded-md"
-                style={{ height: 32, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                style={{ height: 32, background: 'rgba(16,29,18,0.04)', border: '1px solid rgba(16,29,18,0.06)' }}
               >
                 {/* Grid lines */}
                 {hourMarks.slice(1).map((h, i) => {
@@ -495,7 +495,7 @@ function TimelineGantt({
                       style={{
                         left: `${frac * 100}%`,
                         width: 1,
-                        background: 'rgba(255,255,255,0.06)',
+                        background: 'rgba(16,29,18,0.06)',
                       }}
                     />
                   )

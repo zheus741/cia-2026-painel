@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   Calendar, Map, MapPin, Users, Trophy, Music, PartyPopper,
   Heart, GitBranch, Tag, UserCog, Settings, Swords, ClipboardList, Camera, CheckSquare,
-  Lightbulb, BookOpen, LayoutList, UserCircle, Radio, Aperture, Users2,
+  Lightbulb, BookOpen, LayoutList, UserCircle, Radio, Aperture, Users2, FileSpreadsheet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -47,6 +47,7 @@ const ADMIN_NAV_GROUPS = [
       { label: 'Pipelines',      href: '/admin/pipelines',      icon: GitBranch },
       { label: 'Tags',           href: '/admin/tags',           icon: Tag },
       { label: 'Usuários',       href: '/admin/usuarios',       icon: UserCog },
+      { label: 'Importar Tabela', href: '/admin/importar',      icon: FileSpreadsheet },
     ],
   },
 ]

@@ -19,8 +19,7 @@ export default async function ConteudosPage() {
       .select(`
         id, titulo, tipo, status, prioridade,
         dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
-        canal_publicacao, briefing, horario_previsto, link_publicado,
-        responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
+        canal_publicacao, briefing, link_publicado,
         dia:dia_id (nome_dia, data),
         setor:setor_id (nome),
         patrocinador:patrocinador_id (nome),

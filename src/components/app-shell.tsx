@@ -133,7 +133,7 @@ export async function AppShell({ children, section, fullWidth = false }: AppShel
 
         <main
           className="relative flex-1 overflow-auto"
-          style={{ background: '#060c07' }}
+          style={{ background: 'var(--background)' }}
         >
 
           {fullWidth ? (

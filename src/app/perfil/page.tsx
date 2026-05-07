@@ -47,7 +47,7 @@ export default async function PerfilPage() {
       {/* Header */}
       <header
         className="relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-[var(--border)] px-4 sm:px-6"
-        style={{ background: 'rgba(6,12,7,0.88)', backdropFilter: 'blur(24px)' }}
+        style={{ background: 'var(--background)', borderBottom: '1px solid var(--border)' }}
       >
         <CiaLogo />
         <div className="flex items-center gap-3">

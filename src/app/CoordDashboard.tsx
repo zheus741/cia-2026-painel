@@ -169,7 +169,7 @@ function RedesCard({ conteudosHoje }: { conteudosHoje: CoordConteudoHoje[] }) {
 
   return (
     <div
-      className="cia-glass flex flex-col rounded-2xl px-5 py-5"
+      className="cia-metric-card flex flex-col rounded-2xl px-5 py-5"
       style={{ border: '1px solid rgba(74,138,92,0.2)' }}
     >
       <p className="mb-1 text-[10px] uppercase tracking-[0.25em] text-[var(--muted-foreground)]">
@@ -234,7 +234,7 @@ function ChecklistCard({ checklistItens }: { checklistItens: CoordChecklistItem[
 
   return (
     <div
-      className="cia-glass flex flex-col rounded-2xl px-5 py-5"
+      className="cia-metric-card flex flex-col rounded-2xl px-5 py-5"
       style={{ border: '1px solid rgba(200,151,58,0.18)' }}
     >
       <p className="mb-1 text-[10px] uppercase tracking-[0.25em] text-[var(--muted-foreground)]">
@@ -318,7 +318,7 @@ function PatrocinioCard({
 
   return (
     <div
-      className="cia-glass flex flex-col rounded-2xl px-5 py-5"
+      className="cia-metric-card flex flex-col rounded-2xl px-5 py-5"
       style={{ border: '1px solid rgba(200,151,58,0.15)' }}
     >
       <p className="mb-3 text-[10px] uppercase tracking-[0.25em] text-[var(--muted-foreground)]">
@@ -588,7 +588,7 @@ export function CoordDashboard({
 
       {/* Timeline Gantt */}
       <div
-        className="cia-glass rounded-2xl px-5 py-5"
+        className="cia-metric-card rounded-2xl px-5 py-5"
         style={{ border: '1px solid rgba(74,138,92,0.14)' }}
       >
         <div className="mb-4 flex items-center justify-between">

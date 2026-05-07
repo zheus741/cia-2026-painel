@@ -149,7 +149,7 @@ export default async function MinhaEscalaPage() {
               const dTurnos = turnosByDia[data]!
               const dia = dTurnos[0].dia
               return (
-                <div key={data} className="cia-glass rounded-xl border border-[var(--border)] p-4">
+                <div key={data} className="cia-metric-card p-4">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
                     {dia ? `${dia.nome_dia} · ${fmtDate(dia.data)}` : data}
                   </p>

@@ -183,7 +183,7 @@ export function ProfileClient({ userId, profile }: Props) {
 
       {/* Profile info */}
       <div
-        className="cia-glass rounded-2xl border px-6 py-5 space-y-4"
+        className="cia-metric-card px-6 py-5 space-y-4"
         style={{ borderColor: 'rgba(74,138,92,0.2)' }}
       >
         <div>

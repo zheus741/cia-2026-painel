@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { AdminSidebar } from '@/components/admin/sidebar'
 import { CiaLogo } from '@/components/cia-logo'
@@ -157,24 +156,8 @@ export async function AppShell({ children, section, fullWidth = false }: AppShel
 
         <main
           className="relative flex-1 overflow-auto"
-          style={{ background: 'rgba(6,10,7,0.98)' }}
+          style={{ background: '#060c07' }}
         >
-          {/* Giroscópio decorativo */}
-          <div className="pointer-events-none absolute right-0 top-0 select-none">
-            <div className="cia-spin-reverse">
-              <Image
-                src="/assets/giroscopio.png"
-                alt=""
-                width={340}
-                height={340}
-                style={{
-                  filter: 'invert(1) hue-rotate(100deg) saturate(1.1)',
-                  mixBlendMode: 'screen',
-                  opacity: 0.045,
-                }}
-              />
-            </div>
-          </div>
 
           {fullWidth ? (
             <div className="relative z-10 h-full">{children}</div>

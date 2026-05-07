@@ -174,38 +174,39 @@ body {
 
 /* ── Composites CIA ─────────────────────────────────────────────────────────── */
 
-/* Grade de pontos */
+/* Grade de pontos — sutil */
 .cia-dot-grid {
-  background-image: radial-gradient(circle, rgba(74,138,92,0.25) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image: radial-gradient(circle, rgba(74,138,92,0.10) 1px, transparent 1px);
+  background-size: 36px 36px;
 }
 
-/* Glass card — macOS elevated surface */
+/* Glass card — flat, clean surface */
 .cia-glass {
-  background: rgba(18, 30, 20, 0.78);
-  backdrop-filter: blur(32px) saturate(1.4);
-  -webkit-backdrop-filter: blur(32px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset,
-              0 8px 32px rgba(0,0,0,0.28);
+  background: #0d1a0f;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
 }
 
 /* Glass card dourado */
 .cia-glass-gold {
-  background: rgba(18, 30, 20, 0.78);
-  backdrop-filter: blur(32px) saturate(1.4);
-  -webkit-backdrop-filter: blur(32px) saturate(1.4);
-  border: 1px solid rgba(200, 151, 58, 0.18);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset,
-              0 8px 32px rgba(0,0,0,0.28);
+  background: #0d1a0f;
+  border: 1px solid rgba(200, 151, 58, 0.14);
+  border-radius: 16px;
 }
 
-/* Brilho verde */
+/* Flat card — standard minimal card */
+.cia-card {
+  background: #0c1a0e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+}
+
+/* Brilho — minimal */
 .cia-glow {
-  box-shadow: 0 0 24px rgba(74, 138, 92, 0.20), 0 0 0 1px rgba(74, 138, 92, 0.12);
+  box-shadow: 0 0 0 1px rgba(74, 138, 92, 0.18);
 }
 .cia-glow-gold {
-  box-shadow: 0 0 24px rgba(200, 151, 58, 0.20), 0 0 0 1px rgba(200, 151, 58, 0.15);
+  box-shadow: 0 0 0 1px rgba(200, 151, 58, 0.18);
 }
 
 /* Gradiente de fundo padrão */
@@ -274,18 +275,14 @@ body {
 
 /* Sidebar */
 .mac-sidebar {
-  background: rgba(13, 21, 14, 0.93);
-  backdrop-filter: blur(32px) saturate(1.6);
-  -webkit-backdrop-filter: blur(32px) saturate(1.6);
-  border-right: 1px solid rgba(255, 255, 255, 0.055);
+  background: #080f09;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Toolbar / header */
 .mac-toolbar {
-  background: rgba(8, 14, 9, 0.92);
-  backdrop-filter: blur(28px) saturate(1.5);
-  -webkit-backdrop-filter: blur(28px) saturate(1.5);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #060c07;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Navigation group label */
@@ -336,13 +333,11 @@ body {
   background: rgba(255, 255, 255, 0.055);
 }
 
-/* Window chrome inset on cards */
+/* Window chrome */
 .mac-window {
-  background: rgba(16, 26, 17, 0.82);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: #0c1a0e;
+  border: 1px solid rgba(255,255,255,0.06);
   border-radius: 12px;
-  box-shadow: 0 2px 0 rgba(255,255,255,0.05) inset,
-              0 12px 40px rgba(0,0,0,0.35);
 }
 
 /* Focus ring — macOS green */
@@ -480,14 +475,12 @@ body {
   background: linear-gradient(90deg, rgba(74,138,92,0.18), transparent);
 }
 
-/* ── Metric card ── */
+/* ── Metric card — flat minimal ── */
 .cia-metric-card {
   position: relative;
-  border-radius: 18px;
-  background: rgba(10, 20, 12, 0.80);
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
-  border: 1px solid rgba(74, 138, 92, 0.12);
+  border-radius: 16px;
+  background: #0c1a0e;
+  border: 1px solid rgba(255, 255, 255, 0.055);
   overflow: hidden;
 }
 .cia-metric-card::before {
@@ -497,22 +490,21 @@ body {
   height: 1px;
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    rgba(74,138,92,0.32) 35%,
-    rgba(200,151,58,0.16) 65%,
-    transparent 100%
+    transparent 10%,
+    rgba(74,138,92,0.22) 50%,
+    transparent 90%
   );
 }
 
 .cia-metric-card-gold {
-  border-color: rgba(200, 151, 58, 0.14);
+  border-color: rgba(200, 151, 58, 0.12);
 }
 .cia-metric-card-gold::before {
   background: linear-gradient(
     90deg,
-    transparent 0%,
-    rgba(200,151,58,0.30) 50%,
-    transparent 100%
+    transparent 10%,
+    rgba(200,151,58,0.20) 50%,
+    transparent 90%
   );
 }
 

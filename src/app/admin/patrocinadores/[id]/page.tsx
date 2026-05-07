@@ -146,7 +146,7 @@ export default async function PatrocinadorDetailPage({ params }: Props) {
 
       {/* ── Progresso do escopo ─────────────────────────────────── */}
       {escopo.length > 0 && (
-        <div className="cia-glass rounded-xl border border-[var(--border)] px-5 py-4">
+        <div className="cia-metric-card px-5 py-4">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
               Progresso de entregas

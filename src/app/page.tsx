@@ -295,9 +295,8 @@ export default async function Home() {
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden cia-bg">
 
-      {/* Atmospheric layers (static, server-rendered) */}
-      <div className="cia-dot-grid pointer-events-none absolute inset-0 opacity-25" />
-      <div className="cia-bg-stars pointer-events-none absolute inset-0 opacity-40" />
+      {/* Dot grid — very subtle */}
+      <div className="cia-dot-grid pointer-events-none absolute inset-0 opacity-100" />
 
       {/* Giroscópio watermark */}
       <div className="pointer-events-none absolute -right-28 -top-28 select-none">
@@ -310,28 +309,16 @@ export default async function Home() {
             style={{
               filter: 'invert(1) hue-rotate(100deg) saturate(1.5)',
               mixBlendMode: 'screen',
-              opacity: 0.09,
+              opacity: 0.04,
             }}
           />
         </div>
       </div>
 
-      {/* Torres */}
-      <div className="pointer-events-none absolute bottom-0 right-0 select-none">
-        <Image
-          src="/assets/torres.png"
-          alt=""
-          width={170}
-          height={420}
-          className="opacity-[0.10]"
-          style={{ filter: 'brightness(0.5) saturate(0.6)' }}
-        />
-      </div>
-
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header
-        className="relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-[var(--border)] px-4 sm:px-6"
-        style={{ background: 'rgba(6,12,7,0.88)', backdropFilter: 'blur(24px)' }}
+        className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] px-4 sm:px-6"
+        style={{ background: '#060c07' }}
       >
         <CiaLogo />
 

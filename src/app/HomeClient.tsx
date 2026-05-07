@@ -98,18 +98,18 @@ const TIPO_LABELS: Record<string, string> = {
 }
 
 const MODULES = [
-  { icon: Camera,        label: 'Conteúdos',    href: '/conteudos',            from: '#0f3d22', to: '#1e7a43', glow: 'rgba(30,122,67,0.80)'  },
-  { icon: Radio,         label: 'Placar',        href: '/placar',               from: '#0a2744', to: '#1a5fa8', glow: 'rgba(26,95,168,0.80)'  },
-  { icon: CheckSquare,   label: 'Checklists',    href: '/checklist',            from: '#064e3b', to: '#059669', glow: 'rgba(5,150,105,0.80)'  },
-  { icon: Lightbulb,     label: 'Pautas',        href: '/pautas',               from: '#083344', to: '#0891b2', glow: 'rgba(8,145,178,0.80)'  },
-  { icon: Calendar,      label: 'Cronograma',    href: '/cronograma',           from: '#881337', to: '#e11d48', glow: 'rgba(225,29,72,0.80)'  },
-  { icon: BookOpen,      label: 'Wiki',          href: '/wiki',                 from: '#1e1b4b', to: '#4338ca', glow: 'rgba(67,56,202,0.80)'  },
-  { icon: UserCircle,    label: 'Minha Escala',  href: '/minha-escala',         from: '#14401a', to: '#3d8b2a', glow: 'rgba(61,139,42,0.80)'  },
-  { icon: ClipboardList, label: 'Escala',        href: '/admin/escala',         from: '#78350f', to: '#d97706', glow: 'rgba(217,119,6,0.80)'  },
-  { icon: Swords,        label: 'Jogos',         href: '/admin/jogos',          from: '#0c4a6e', to: '#0284c7', glow: 'rgba(2,132,199,0.80)'  },
-  { icon: MapPin,        label: 'Mapa',          href: '/mapa',                 from: '#0d2b0d', to: '#22692f', glow: 'rgba(34,105,47,0.80)'  },
-  { icon: Music,         label: 'Shows',         href: '/admin/shows',          from: '#4c1d95', to: '#7c3aed', glow: 'rgba(124,58,237,0.80)' },
-  { icon: Heart,         label: 'Patrocínios',   href: '/admin/patrocinadores', from: '#7c2d12', to: '#ea580c', glow: 'rgba(234,88,12,0.80)'  },
+  { icon: Camera,        label: 'Conteúdos',    href: '/conteudos'            },
+  { icon: Radio,         label: 'Placar',        href: '/placar'               },
+  { icon: CheckSquare,   label: 'Checklists',    href: '/checklist'            },
+  { icon: Lightbulb,     label: 'Pautas',        href: '/pautas'               },
+  { icon: Calendar,      label: 'Cronograma',    href: '/cronograma'           },
+  { icon: BookOpen,      label: 'Wiki',          href: '/wiki'                 },
+  { icon: UserCircle,    label: 'Minha Escala',  href: '/minha-escala'         },
+  { icon: ClipboardList, label: 'Escala',        href: '/admin/escala'         },
+  { icon: Swords,        label: 'Jogos',         href: '/admin/jogos'          },
+  { icon: MapPin,        label: 'Mapa',          href: '/mapa'                 },
+  { icon: Music,         label: 'Shows',         href: '/admin/shows'          },
+  { icon: Heart,         label: 'Patrocínios',   href: '/admin/patrocinadores' },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,15 +150,15 @@ function CountUp({ to, duration = 1500 }: { to: number; duration?: number }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ModuleGrid — macOS Launchpad compact 6×2
+// ModuleGrid — minimal uniform icons, 6×2 grid
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ModuleGrid() {
   const [hovered, setHovered] = useState<number | null>(null)
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '14px 6px' }}>
-      {MODULES.map(({ icon: Icon, label, href, from, to, glow }, i) => {
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px 8px' }}>
+      {MODULES.map(({ icon: Icon, label, href }, i) => {
         const isHov = hovered === i
         return (
           <Link
@@ -170,52 +170,30 @@ function ModuleGrid() {
           >
             <div
               className="cia-module-in flex flex-col items-center"
-              style={{ animationDelay: `${i * 38}ms` }}
+              style={{ animationDelay: `${i * 35}ms` }}
             >
-              {/* App icon bubble */}
+              {/* Icon tile — flat, uniform */}
               <div style={{
-                width: 56,
-                height: 56,
-                borderRadius: 15,
-                background: `linear-gradient(148deg, ${from} 0%, ${to} 100%)`,
-                position: 'relative',
-                transform: isHov ? 'scale(1.18) translateY(-6px)' : 'scale(1) translateY(0)',
-                transition: 'transform 0.38s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.25s ease',
-                boxShadow: isHov
-                  ? `0 22px 58px ${glow}, 0 8px 24px rgba(0,0,0,0.68), inset 0 1px 0 rgba(255,255,255,0.25)`
-                  : '0 5px 18px rgba(0,0,0,0.56), inset 0 1px 0 rgba(255,255,255,0.14)',
-                overflow: 'hidden',
+                width: 52,
+                height: 52,
+                borderRadius: 14,
+                background: isHov ? 'rgba(74,138,92,0.13)' : 'rgba(74,138,92,0.06)',
+                border: `1px solid ${isHov ? 'rgba(106,184,126,0.28)' : 'rgba(74,138,92,0.12)'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 flexShrink: 0,
+                transform: isHov ? 'translateY(-4px)' : 'translateY(0)',
+                transition: 'all 0.22s cubic-bezier(0.34,1.4,0.64,1)',
+                boxShadow: isHov ? '0 8px 20px rgba(74,138,92,0.15)' : 'none',
               }}>
-                {/* Specular gloss */}
-                <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0,
-                  height: '50%',
-                  background: 'linear-gradient(180deg,rgba(255,255,255,0.23) 0%,rgba(255,255,255,0.01) 100%)',
-                  borderRadius: '15px 15px 50% 50% / 15px 15px 18px 18px',
-                  pointerEvents: 'none',
+                <Icon style={{
+                  width: 20,
+                  height: 20,
+                  color: isHov ? '#6ab87e' : 'rgba(106,184,126,0.50)',
+                  transition: 'color 0.18s ease',
+                  strokeWidth: 1.6,
                 }} />
-                {/* Bottom depth */}
-                <div style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0,
-                  height: '28%',
-                  background: 'linear-gradient(0deg,rgba(0,0,0,0.28) 0%,transparent 100%)',
-                  pointerEvents: 'none',
-                }} />
-                {/* Icon */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Icon style={{
-                    width: 22, height: 22,
-                    color: 'rgba(255,255,255,0.94)',
-                    filter: isHov
-                      ? 'drop-shadow(0 2px 10px rgba(255,255,255,0.52))'
-                      : 'drop-shadow(0 1px 3px rgba(0,0,0,0.42))',
-                    transition: 'filter 0.25s ease',
-                  }} />
-                </div>
               </div>
 
               {/* Label */}
@@ -226,11 +204,11 @@ function ModuleGrid() {
                 letterSpacing: '0.01em',
                 textAlign: 'center',
                 lineHeight: 1.2,
-                color: isHov ? '#d4eed9' : 'rgba(106,184,126,0.58)',
-                transition: 'color 0.2s ease',
+                color: isHov ? '#a0d4aa' : 'rgba(106,184,126,0.45)',
+                transition: 'color 0.18s ease',
                 fontFamily: 'Rajdhani, sans-serif',
                 display: 'block',
-                width: 64,
+                width: 60,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',

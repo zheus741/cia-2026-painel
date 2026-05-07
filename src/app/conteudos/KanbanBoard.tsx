@@ -430,7 +430,7 @@ function ConteudoViewDialog({
     <Dialog open={!!conteudo} onOpenChange={(v) => { if (!v) onClose() }}>
       <DialogContent
         className="max-w-[480px] max-h-[92vh] overflow-y-auto p-0 gap-0"
-        style={{ background: 'rgba(8,16,9,0.98)' }}
+        style={{ background: '#080e09' }}
       >
         {/* Título */}
         <div className="border-b border-[var(--border)] px-5 pt-5 pb-4">
@@ -898,8 +898,8 @@ function KanbanColumn({
       className={cn(
         'flex w-72 shrink-0 flex-col rounded-xl border transition-all duration-150',
         isDragOver
-          ? 'border-[var(--green)]/60 bg-[var(--green)]/5 shadow-[0_0_24px_rgba(74,138,92,0.12)]'
-          : 'border-[var(--border)] bg-[var(--card)]/40',
+          ? 'border-[var(--green)]/40 bg-[var(--green)]/4'
+          : 'border-[var(--border)] bg-[var(--card)]',
       )}
       onDragOver={handleDragOver}
       onDragLeave={onDragLeave}

@@ -8,6 +8,15 @@ import {
   Heart, Trophy, Lightbulb, BookOpen, Calendar, Network, Cloud,
   Droplets, Activity, Gauge, Layers, BarChart3,
 } from 'lucide-react'
+import { CoordDashboard } from './CoordDashboard'
+import type {
+  CoordConteudoHoje,
+  CoordJogo,
+  CoordShow,
+  CoordFesta,
+  CoordTurnoCount,
+  CoordPatrocinador,
+} from './CoordDashboard'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -61,6 +70,15 @@ interface Props {
   weatherDays: WeatherDay[] | null
   isCoord: boolean
   isOperador: boolean
+  // Coord-only props
+  coordConteudosHoje?: CoordConteudoHoje[]
+  coordJogosHoje?: CoordJogo[]
+  coordShowsHoje?: CoordShow[]
+  coordFestasHoje?: CoordFesta[]
+  coordTurnosHoje?: CoordTurnoCount[]
+  coordPatrocinadores?: CoordPatrocinador[]
+  coordConteudosPorPatrocinador?: { patrocinador_id: string | null; status: string }[]
+  coordChecklistItens?: { id: string; status: string }[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -561,7 +579,16 @@ export function HomeClient({
   diffDays,
   eventActive,
   weatherDays,
+  isCoord,
   isOperador,
+  coordConteudosHoje      = [],
+  coordJogosHoje          = [],
+  coordShowsHoje          = [],
+  coordFestasHoje         = [],
+  coordTurnosHoje         = [],
+  coordPatrocinadores     = [],
+  coordConteudosPorPatrocinador = [],
+  coordChecklistItens     = [],
 }: Props) {
   const pct = contentStats.total > 0
     ? Math.round((contentStats.publicado / contentStats.total) * 100)
@@ -886,6 +913,20 @@ export function HomeClient({
               )}
             </div>
           </div>
+        )}
+
+        {/* ── Coordination Dashboard ───────────────────────────────────── */}
+        {isCoord && (
+          <CoordDashboard
+            conteudosHoje={coordConteudosHoje}
+            jogosHoje={coordJogosHoje}
+            showsHoje={coordShowsHoje}
+            festasHoje={coordFestasHoje}
+            turnosHoje={coordTurnosHoje}
+            patrocinadores={coordPatrocinadores}
+            conteudosPorPatrocinador={coordConteudosPorPatrocinador}
+            checklistItens={coordChecklistItens}
+          />
         )}
 
         {/* ── Module Grid ───────────────────────────────────────────────── */}

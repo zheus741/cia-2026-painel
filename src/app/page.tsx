@@ -6,6 +6,14 @@ import { CiaLogo } from '@/components/cia-logo'
 import { signOut } from './actions'
 import { LogOut, ChevronRight } from 'lucide-react'
 import { HomeClient } from './HomeClient'
+import type {
+  CoordConteudoHoje,
+  CoordJogo,
+  CoordShow,
+  CoordFesta,
+  CoordTurnoCount,
+  CoordPatrocinador,
+} from './CoordDashboard'
 
 // ── WMO weather codes ─────────────────────────────────────────────────────────
 
@@ -73,7 +81,9 @@ export default async function Home() {
   const isOperador = profile?.role === 'operador'
   const isCoord    = ['coordenacao', 'admin', 'lider_area'].includes(profile?.role ?? '')
 
-  const today = new Date().toISOString().slice(0, 10)
+  // "Today" in Sao Paulo time; fall back to event day 1 during pre-event
+  const todaySP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  const today   = new Date().toISOString().slice(0, 10)
 
   // Fetch all data in parallel
   const [conteudosRes, diasRes, turnosRes, checklistsRes, weather] = await Promise.all([
@@ -115,6 +125,111 @@ export default async function Home() {
 
     fetchWeather(),
   ])
+
+  // ── Coord-only data ───────────────────────────────────────────────────────
+
+  let coordConteudosHoje:         CoordConteudoHoje[]                                     = []
+  let coordJogosHoje:             CoordJogo[]                                              = []
+  let coordShowsHoje:             CoordShow[]                                              = []
+  let coordFestasHoje:            CoordFesta[]                                             = []
+  let coordTurnosHoje:            CoordTurnoCount[]                                        = []
+  let coordPatrocinadores:        CoordPatrocinador[]                                      = []
+  let coordConteudosPorPatroc:    { patrocinador_id: string | null; status: string }[]     = []
+  let coordChecklistItens:        { id: string; status: string }[]                         = []
+
+  if (isCoord) {
+    // Resolve dia_id for today (Sao Paulo). Fall back to first event day if not found.
+    const { data: diasAll } = await supabase
+      .from('dias_evento')
+      .select('id, data')
+      .order('data')
+
+    const diasList = (diasAll ?? []) as { id: string; data: string }[]
+    const todayDia = diasList.find(d => d.data === todaySP) ?? diasList[0] ?? null
+    const diaId    = todayDia?.id ?? null
+
+    if (diaId) {
+      const [
+        contHojeRes,
+        jogosRes,
+        showsRes,
+        festasRes,
+        turnosRes,
+        patrocinadoresRes,
+        contPatrocRes,
+        ckItensRes,
+      ] = await Promise.all([
+        // 1. Conteudos today by canal + status
+        supabase
+          .from('conteudos')
+          .select('id, status, canal_publicacao')
+          .eq('dia_id', diaId)
+          .not('status', 'in', '(arquivado,cancelado)'),
+
+        // 2. Jogos today
+        supabase
+          .from('jogos')
+          .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto')
+          .eq('dia_id', diaId)
+          .order('inicio'),
+
+        // 3. Shows today
+        supabase
+          .from('shows')
+          .select('id, nome, inicio, fim_previsto')
+          .eq('dia_id', diaId)
+          .order('inicio'),
+
+        // 4. Festas today
+        supabase
+          .from('festas')
+          .select('id, nome, inicio, fim_previsto')
+          .eq('dia_id', diaId)
+          .order('inicio'),
+
+        // 5. Turnos today (distinct user_ids + setor_ids)
+        supabase
+          .from('turnos')
+          .select('user_id, setor_id')
+          .eq('dia_id', diaId),
+
+        // 6. Patrocinadores
+        supabase
+          .from('patrocinadores')
+          .select('id, nome, ativo')
+          .eq('ativo', true),
+
+        // 7. Conteudos linked to patrocinadores (for patrocinio card)
+        supabase
+          .from('conteudos')
+          .select('patrocinador_id, status')
+          .not('patrocinador_id', 'is', null)
+          .not('status', 'in', '(arquivado,cancelado)'),
+
+        // 8. Checklist items (all instancias for today's dia_id)
+        supabase
+          .from('checklist_itens')
+          .select('id, status')
+          .in(
+            'instancia_id',
+            await supabase
+              .from('checklist_instancias')
+              .select('id')
+              .eq('dia_id', diaId)
+              .then(r => (r.data ?? []).map((ci: { id: string }) => ci.id)),
+          ),
+      ])
+
+      coordConteudosHoje      = (contHojeRes.data   ?? []) as CoordConteudoHoje[]
+      coordJogosHoje          = (jogosRes.data       ?? []) as CoordJogo[]
+      coordShowsHoje          = (showsRes.data       ?? []) as CoordShow[]
+      coordFestasHoje         = (festasRes.data      ?? []) as CoordFesta[]
+      coordTurnosHoje         = (turnosRes.data      ?? []) as CoordTurnoCount[]
+      coordPatrocinadores     = (patrocinadoresRes.data ?? []) as CoordPatrocinador[]
+      coordConteudosPorPatroc = (contPatrocRes.data  ?? []) as { patrocinador_id: string | null; status: string }[]
+      coordChecklistItens     = (ckItensRes.data     ?? []) as { id: string; status: string }[]
+    }
+  }
 
   // ── Process content stats ─────────────────────────────────────────────────
 
@@ -279,6 +394,14 @@ export default async function Home() {
         weatherDays={weatherDays}
         isCoord={isCoord}
         isOperador={isOperador}
+        coordConteudosHoje={coordConteudosHoje}
+        coordJogosHoje={coordJogosHoje}
+        coordShowsHoje={coordShowsHoje}
+        coordFestasHoje={coordFestasHoje}
+        coordTurnosHoje={coordTurnosHoje}
+        coordPatrocinadores={coordPatrocinadores}
+        coordConteudosPorPatrocinador={coordConteudosPorPatroc}
+        coordChecklistItens={coordChecklistItens}
       />
     </div>
   )

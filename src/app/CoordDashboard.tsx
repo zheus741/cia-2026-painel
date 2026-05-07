@@ -20,6 +20,7 @@ export interface CoordJogo {
   inicio: string | null
   fim_previsto: string | null
   dia_id: string | null
+  modalidade_id?: string | null
 }
 
 export interface CoordShow {

@@ -17,6 +17,8 @@ import type {
   CoordTurnoCount,
   CoordPatrocinador,
 } from './CoordDashboard'
+import { AnalyticsCards } from './AnalyticsCards'
+import type { RankingItem, LacunaItem, VolumePorHora, AtleticaItem } from './AnalyticsCards'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -80,6 +82,10 @@ interface Props {
   coordChecklistItens?: { id: string; status: string }[]
   coordDiasEvento?: { id: string; data: string }[]
   coordDiaAtualId?: string | null
+  analyticsRanking?:       RankingItem[]
+  analyticsLacunas?:       LacunaItem[]
+  analyticsVolumePorHora?: VolumePorHora[]
+  analyticsAtleticas?:     AtleticaItem[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -516,6 +522,10 @@ export function HomeClient({
   coordChecklistItens     = [],
   coordDiasEvento         = [],
   coordDiaAtualId         = null,
+  analyticsRanking        = [],
+  analyticsLacunas        = [],
+  analyticsVolumePorHora  = [],
+  analyticsAtleticas      = [],
 }: Props) {
   const pct = contentStats.total > 0
     ? Math.round((contentStats.publicado / contentStats.total) * 100)
@@ -887,10 +897,21 @@ export function HomeClient({
           />
         </div>
 
+        {/* ── 05 / ANÁLISES ───────────────────────────────────── */}
+        <div>
+          <SectionHeader num="05" label="Análises" />
+          <AnalyticsCards
+            ranking={analyticsRanking}
+            lacunas={analyticsLacunas}
+            volumePorHora={analyticsVolumePorHora}
+            atleticas={analyticsAtleticas}
+          />
+        </div>
+
         {/* ── OPERACIONAL (operador role) ─────────────────────── */}
         {isOperador && (
           <div>
-            <SectionHeader num="05" label="Operacional" />
+            <SectionHeader num="06" label="Operacional" />
             <div className="grid gap-4 sm:grid-cols-2">
 
               {/* Minha escala */}

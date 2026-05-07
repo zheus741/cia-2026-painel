@@ -88,10 +88,10 @@ export default async function Home() {
 
   // Fetch all data in parallel
   const [conteudosRes, diasRes, turnosRes, checklistsRes, weather] = await Promise.all([
-    // All active conteudos (for health score + heatmap + bottleneck)
+    // All active conteudos — inclui campos de análise
     supabase
       .from('conteudos')
-      .select('id, status, tipo, dia_id')
+      .select('id, status, tipo, dia_id, jogo_id, responsavel_captacao_id, responsavel_edicao_id')
       .not('status', 'in', '(arquivado,cancelado)'),
 
     // Event days to map dia_id → day index 1–4
@@ -139,6 +139,12 @@ export default async function Home() {
   let coordChecklistItens:        { id: string; status: string }[]                         = []
   let coordDiaAtualId:            string | null                                            = null
 
+  // ── Analytics ─────────────────────────────────────────────────────────────
+  let analyticsRanking:       { id: string; nome: string; total: number; publicados: number; funcao: string | null }[] = []
+  let analyticsLacunas:       { id: string; label: string; hora: string; modalidade: string }[]                       = []
+  let analyticsVolumePorHora: { hora: number; count: number }[]                                                       = []
+  let analyticsAtleticas:     { nome: string; jogos: number; coberta: boolean }[]                                     = []
+
   {
     // Resolve dia_id for today (Sao Paulo). Fall back to first event day if not found.
     const { data: diasAll } = await supabase
@@ -172,7 +178,7 @@ export default async function Home() {
         // 2. Jogos — todos os 4 dias do evento
         supabase
           .from('jogos')
-          .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id')
+          .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id, modalidade_id')
           .order('inicio'),
 
         // 3. Shows — todos os 4 dias do evento
@@ -228,6 +234,92 @@ export default async function Home() {
       coordPatrocinadores     = (patrocinadoresRes.data ?? []) as CoordPatrocinador[]
       coordConteudosPorPatroc = (contPatrocRes.data  ?? []) as { patrocinador_id: string | null; status: string }[]
       coordChecklistItens     = (ckItensRes.data     ?? []) as { id: string; status: string }[]
+
+      // ── Analytics queries (paralelas) ────────────────────────────────────
+      const [profilesRes, ckInstsComJogoRes, modalidadesRes] = await Promise.all([
+        // Perfis para ranking de produtividade
+        supabase.from('profiles').select('id, nome, funcao_principal').order('nome'),
+        // Checklist instancias de hoje com jogo_id (para lacunas)
+        supabase.from('checklist_instancias').select('jogo_id').eq('dia_id', diaId).not('jogo_id', 'is', null),
+        // Modalidades para label dos jogos
+        supabase.from('modalidades').select('id, nome'),
+      ])
+
+      const profilesList = (profilesRes.data ?? []) as { id: string; nome: string; funcao_principal: string | null }[]
+      const profilesMap  = new Map(profilesList.map(p => [p.id, p]))
+      const modalMap     = new Map(((modalidadesRes.data ?? []) as { id: string; nome: string }[]).map(m => [m.id, m.nome]))
+      const allJogos     = coordJogosHoje  // já temos todos
+
+      // 1. Ranking de produtividade
+      const rankAccum = new Map<string, { total: Set<string>; publicados: Set<string> }>()
+      for (const c of (conteudosRes.data ?? []) as { id: string; status: string; responsavel_captacao_id: string | null; responsavel_edicao_id: string | null }[]) {
+        const ids = [c.responsavel_captacao_id, c.responsavel_edicao_id].filter(Boolean) as string[]
+        const unique = new Set(ids)  // evita double-count se mesma pessoa em dois papéis
+        for (const uid of unique) {
+          if (!rankAccum.has(uid)) rankAccum.set(uid, { total: new Set(), publicados: new Set() })
+          const entry = rankAccum.get(uid)!
+          entry.total.add(c.id)
+          if (c.status === 'publicado') entry.publicados.add(c.id)
+        }
+      }
+      analyticsRanking = Array.from(rankAccum.entries())
+        .map(([id, sets]) => {
+          const p = profilesMap.get(id)
+          return {
+            id,
+            nome:       p?.nome       ?? 'Desconhecido',
+            funcao:     p?.funcao_principal ?? null,
+            total:      sets.total.size,
+            publicados: sets.publicados.size,
+          }
+        })
+        .filter(r => r.total > 0)
+        .sort((a, b) => b.publicados - a.publicados || b.total - a.total)
+        .slice(0, 12)
+
+      // 2. Lacunas de cobertura — jogos sem checklist hoje
+      const jogosComCk = new Set((ckInstsComJogoRes.data ?? []).map((ci: { jogo_id: string }) => ci.jogo_id))
+      const jogosHojeList = allJogos.filter(j => j.dia_id === diaId)
+      analyticsLacunas = jogosHojeList
+        .filter(j => !jogosComCk.has(j.id))
+        .slice(0, 15)
+        .map(j => {
+          const hora = j.inicio ? new Date(j.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '—'
+          return {
+            id:         j.id,
+            label:      `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`,
+            hora,
+            modalidade: j.modalidade_id ? (modalMap.get(j.modalidade_id) ?? '') : '',
+          }
+        })
+
+      // 3. Volume de jogos por hora
+      const horaAccum = new Map<number, number>()
+      for (const j of jogosHojeList) {
+        if (!j.inicio) continue
+        const h = new Date(j.inicio).getHours()
+        horaAccum.set(h, (horaAccum.get(h) ?? 0) + 1)
+      }
+      analyticsVolumePorHora = Array.from(horaAccum.entries())
+        .map(([hora, count]) => ({ hora, count }))
+        .sort((a, b) => a.hora - b.hora)
+
+      // 4. Cobertura por atlética
+      const conteudoComJogo = (conteudosRes.data ?? []) as { id: string; status: string; jogo_id: string | null }[]
+      const jogosComConteudo = new Set(conteudoComJogo.filter(c => c.jogo_id).map(c => c.jogo_id!))
+      const atleticaJogos   = new Map<string, number>()
+      const atleticaCoberta = new Set<string>()
+      for (const j of allJogos) {
+        if (j.equipe_a_nome) atleticaJogos.set(j.equipe_a_nome, (atleticaJogos.get(j.equipe_a_nome) ?? 0) + 1)
+        if (j.equipe_b_nome) atleticaJogos.set(j.equipe_b_nome, (atleticaJogos.get(j.equipe_b_nome) ?? 0) + 1)
+        if (jogosComConteudo.has(j.id)) {
+          if (j.equipe_a_nome) atleticaCoberta.add(j.equipe_a_nome)
+          if (j.equipe_b_nome) atleticaCoberta.add(j.equipe_b_nome)
+        }
+      }
+      analyticsAtleticas = Array.from(atleticaJogos.entries())
+        .map(([nome, jogos]) => ({ nome, jogos, coberta: atleticaCoberta.has(nome) }))
+        .sort((a, b) => Number(b.coberta) - Number(a.coberta) || b.jogos - a.jogos)
     }
   }
 
@@ -405,6 +497,10 @@ export default async function Home() {
         coordChecklistItens={coordChecklistItens}
         coordDiasEvento={diasSorted}
         coordDiaAtualId={coordDiaAtualId}
+        analyticsRanking={analyticsRanking}
+        analyticsLacunas={analyticsLacunas}
+        analyticsVolumePorHora={analyticsVolumePorHora}
+        analyticsAtleticas={analyticsAtleticas}
       />
     </div>
   )

@@ -21,6 +21,8 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(data)
 }
 
+const VALID_PAUTA_STATUSES = ['ideia', 'aprovada', 'em_execucao', 'entregue', 'descartada'] as const
+
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -28,6 +30,10 @@ export async function PATCH(req: NextRequest) {
 
   const { id, status } = await req.json()
   if (!id || !status) return NextResponse.json({ error: 'id e status obrigatórios' }, { status: 400 })
+
+  if (!VALID_PAUTA_STATUSES.includes(status)) {
+    return NextResponse.json({ error: 'Status inválido.' }, { status: 400 })
+  }
 
   const { error } = await supabase.from('pautas').update({ status }).eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -168,6 +168,18 @@ export async function POST(req: NextRequest) {
     const overwrite = form.get('overwrite') === 'true'
     if (!file) return NextResponse.json({ ok: false, error: 'Arquivo não enviado.' }, { status: 400 })
 
+    // Validação server-side de tipo e tamanho
+    const ALLOWED_MIME = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+    ]
+    if (!ALLOWED_MIME.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/i)) {
+      return NextResponse.json({ ok: false, error: 'Tipo inválido. Envie .xlsx ou .xls.' }, { status: 400 })
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      return NextResponse.json({ ok: false, error: 'Arquivo muito grande. Limite: 20 MB.' }, { status: 400 })
+    }
+
     const buffer = await file.arrayBuffer()
     const wb     = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
     const { date_str, games } = parseWorkbook(wb)

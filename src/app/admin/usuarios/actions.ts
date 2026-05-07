@@ -4,7 +4,14 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireCoordOrAdmin } from '@/lib/admin/actions-helper'
 
+const VALID_ROLES    = ['admin', 'coordenacao', 'lider_area', 'operador'] as const
+const VALID_FUNCOES  = ['foto', 'video', 'social', 'design', 'texto', 'coordenacao', null] as const
+
+type ValidRole   = typeof VALID_ROLES[number]
+type ValidFuncao = typeof VALID_FUNCOES[number]
+
 export async function updateRole(userId: string, role: string) {
+  if (!VALID_ROLES.includes(role as ValidRole)) throw new Error('Role inválido.')
   await requireCoordOrAdmin()
   const supabase = await createClient()
   const { error } = await supabase
@@ -16,6 +23,7 @@ export async function updateRole(userId: string, role: string) {
 }
 
 export async function updateFuncao(userId: string, funcao: string | null) {
+  if (funcao !== null && !VALID_FUNCOES.includes(funcao as ValidFuncao)) throw new Error('Função inválida.')
   await requireCoordOrAdmin()
   const supabase = await createClient()
   const { error } = await supabase

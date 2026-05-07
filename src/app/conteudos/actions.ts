@@ -1,7 +1,17 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { safe } from '@/lib/admin/actions-helper'
+import { safe, requireLiderOrAbove } from '@/lib/admin/actions-helper'
+
+const VALID_TIPOS = [
+  'story_rapido', 'story_editado', 'card_feed', 'card_patrocinado',
+  'reels', 'cobertura_ao_vivo', 'post_feed', 'highlight',
+] as const
+
+const VALID_STATUSES = [
+  'rascunho', 'pendente', 'em_andamento', 'pausado',
+  'bloqueado', 'pronto', 'publicado', 'descartado',
+] as const
 
 export interface ConteudoPayload {
   edicao_id:               string
@@ -58,6 +68,7 @@ export async function updateConteudo(id: string, payload: Partial<ConteudoPayloa
 
 export async function deleteConteudo(id: string) {
   return safe(async () => {
+    await requireLiderOrAbove()
     const supabase = await createClient()
     const { error } = await supabase.from('conteudos').delete().eq('id', id)
     if (error) throw error
@@ -66,6 +77,9 @@ export async function deleteConteudo(id: string) {
 
 export async function setStatus(id: string, status: string) {
   return safe(async () => {
+    if (!VALID_STATUSES.includes(status as typeof VALID_STATUSES[number])) {
+      throw new Error('Status inválido.')
+    }
     const supabase = await createClient()
     const extra: Record<string, unknown> = {}
     if (status === 'publicado') extra.publicado_em = new Date().toISOString()

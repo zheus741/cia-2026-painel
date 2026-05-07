@@ -76,27 +76,16 @@ const PREV_STATUS: Record<string, string> = {
   arquivado:   'em_producao',
 }
 
-const TIPO_LABEL: Record<string, string> = {
-  story_rapido:      'Story Rápido',
-  story_editado:     'Story Edit.',
-  reels:             'Reels',
-  card_feed:         'Card Feed',
-  card_patrocinado:  'Card Patro.',
-  texto_legenda:     'Legenda',
-  repost:            'Repost',
-  cobertura_ao_vivo: 'Live',
+const TIPO_CONFIG: Record<string, { label: string; color: string }> = {
+  reels:            { label: 'Reels',            color: 'bg-purple-500/15 text-purple-300 border-purple-500/30' },
+  feed:             { label: 'Feed',             color: 'bg-[var(--green)]/15 text-[var(--green-bright)] border-[var(--green)]/30' },
+  stories:          { label: 'Stories',          color: 'bg-blue-500/15 text-blue-300 border-blue-500/30' },
+  material_youtube: { label: 'Material YouTube', color: 'bg-red-500/15 text-red-300 border-red-500/30' },
+  foto:             { label: 'Foto',             color: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+  video:            { label: 'Vídeo',            color: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30' },
 }
 
-const TIPO_COLOR: Record<string, string> = {
-  story_rapido:      'bg-blue-500/15 text-blue-300 border-blue-500/30',
-  story_editado:     'bg-blue-500/15 text-blue-300 border-blue-500/30',
-  reels:             'bg-purple-500/15 text-purple-300 border-purple-500/30',
-  card_feed:         'bg-[var(--green)]/15 text-[var(--green-bright)] border-[var(--green)]/30',
-  card_patrocinado:  'bg-[var(--gold-dim)]/20 text-[var(--gold)] border-[var(--gold-dim)]/40',
-  texto_legenda:     'bg-[var(--muted)] text-[var(--muted-foreground)] border-[var(--border)]',
-  repost:            'bg-[var(--muted)] text-[var(--muted-foreground)] border-[var(--border)]',
-  cobertura_ao_vivo: 'bg-red-500/15 text-red-300 border-red-500/30',
-}
+const TIPO_OPTIONS = Object.entries(TIPO_CONFIG).map(([value, { label }]) => ({ value, label }))
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   rascunho:    { label: 'Rascunho',    color: 'text-[var(--muted-foreground)] bg-[var(--muted)] border-[var(--border)]' },
@@ -122,16 +111,11 @@ const PRIORIDADE_LABEL: Record<number, string> = {
   5: '⚪ Quando der',
 }
 
-const TIPO_CONTEUDO_OPTIONS = [
-  { value: 'story_rapido',      label: 'Story Rápido' },
-  { value: 'story_editado',     label: 'Story Editado' },
-  { value: 'reels',             label: 'Reels' },
-  { value: 'card_feed',         label: 'Card Feed' },
-  { value: 'card_patrocinado',  label: 'Card Patrocinado' },
-  { value: 'texto_legenda',     label: 'Texto / Legenda' },
-  { value: 'repost',            label: 'Repost' },
-  { value: 'cobertura_ao_vivo', label: 'Cobertura Ao Vivo' },
-]
+/** Parse comma-separated tipo string → array of tipo keys */
+function parseTipos(tipo: string | null | undefined): string[] {
+  if (!tipo) return []
+  return tipo.split(',').map(t => t.trim()).filter(Boolean)
+}
 
 // ── Canais: cor de destaque (borda topo do card) + badge ─────────────────────
 const CANAL_CONFIG: Record<string, {
@@ -268,13 +252,18 @@ function ConteudoCard({
       />
 
       <div className="pl-2">
-        {/* Tipo + Título */}
-        <div className="flex items-start gap-2">
-          <span className={cn('shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide', TIPO_COLOR[c.tipo] ?? '')}>
-            {TIPO_LABEL[c.tipo] ?? c.tipo}
-          </span>
-          <p className="flex-1 text-xs font-medium leading-snug text-[var(--foreground)] line-clamp-2">{c.titulo}</p>
-        </div>
+        {/* Tipo tags */}
+        {parseTipos(c.tipo).length > 0 && (
+          <div className="mb-1 flex flex-wrap gap-1">
+            {parseTipos(c.tipo).map(t => (
+              <span key={t} className={cn('rounded border px-1.5 py-0.5 text-[10px] font-semibold leading-tight', TIPO_CONFIG[t]?.color ?? 'bg-[var(--muted)] text-[var(--muted-foreground)] border-[var(--border)]')}>
+                {TIPO_CONFIG[t]?.label ?? t}
+              </span>
+            ))}
+          </div>
+        )}
+        {/* Título */}
+        <p className="text-xs font-medium leading-snug text-[var(--foreground)] line-clamp-2">{c.titulo}</p>
 
         {/* Canal badge */}
         {canalCfg && (
@@ -445,10 +434,12 @@ function ConteudoViewDialog({
       >
         {/* Título */}
         <div className="border-b border-[var(--border)] px-5 pt-5 pb-4">
-          <div className="mb-2 flex items-center gap-2">
-            <span className={cn('rounded border px-2 py-0.5 text-[10px] font-bold tracking-wide', TIPO_COLOR[c.tipo] ?? '')}>
-              {TIPO_LABEL[c.tipo] ?? c.tipo}
-            </span>
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            {parseTipos(c.tipo).map(t => (
+              <span key={t} className={cn('rounded border px-2 py-0.5 text-[10px] font-bold tracking-wide', TIPO_CONFIG[t]?.color ?? 'bg-[var(--muted)] text-[var(--muted-foreground)] border-[var(--border)]')}>
+                {TIPO_CONFIG[t]?.label ?? t}
+              </span>
+            ))}
             <span className="font-mono text-[10px] text-[var(--muted-foreground)]/50">
               #{c.id.slice(0, 6).toUpperCase()}
             </span>
@@ -614,7 +605,9 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
   const [error, setError]     = React.useState<string | null>(null)
 
   const [titulo, setTitulo]         = React.useState(editing?.titulo ?? '')
-  const [tipo, setTipo]             = React.useState(editing?.tipo ?? 'story_rapido')
+  const [selectedTipos, setSelectedTipos] = React.useState<string[]>(
+    editing?.tipo ? parseTipos(editing.tipo) : ['feed']
+  )
   const [status, setStatus_]        = React.useState(editing?.status ?? defaultStatus ?? 'rascunho')
   const [prioridade, setPrioridade] = React.useState(String(editing?.prioridade ?? 3))
   const [diaId, setDiaId]           = React.useState(editing?.dia_id ?? '')
@@ -632,7 +625,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
     if (!open) return
     setError(null); setLoading(false)
     setTitulo(editing?.titulo ?? '')
-    setTipo(editing?.tipo ?? 'story_rapido')
+    setSelectedTipos(editing?.tipo ? parseTipos(editing.tipo) : ['feed'])
     setStatus_(editing?.status ?? defaultStatus ?? 'rascunho')
     setPrioridade(String(editing?.prioridade ?? 3))
     setDiaId(editing?.dia_id ?? '')
@@ -649,12 +642,13 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
 
   async function submit() {
     if (!titulo.trim()) { setError('Título obrigatório.'); return }
+    if (selectedTipos.length === 0) { setError('Selecione pelo menos um tipo.'); return }
     setLoading(true); setError(null)
     try {
       const payload: ConteudoPayload & { link_publicado?: string } = {
         edicao_id:               edicaoId,
         titulo:                  titulo.trim(),
-        tipo,
+        tipo:                    selectedTipos.join(','),
         status,
         prioridade:              Number(prioridade),
         dia_id:                  nullIfNone(diaId),
@@ -693,30 +687,49 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
             <Input className="text-sm" placeholder="Ex: Highlights Futsal Masculino Quinta" value={titulo} onChange={(e) => setTitulo(e.target.value)} />
           </div>
 
-          {/* Tipo + Status */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1.5 block text-xs">Tipo *</Label>
-              <Select value={tipo} onValueChange={setTipo}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TIPO_CONTEUDO_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+          {/* Tipos — multi-tag */}
+          <div>
+            <Label className="mb-2 block text-xs">
+              Tipo(s) *
+              <span className="ml-1.5 font-normal text-[var(--muted-foreground)]">selecione um ou mais</span>
+            </Label>
+            <div className="flex flex-wrap gap-1.5">
+              {TIPO_OPTIONS.map(o => {
+                const active = selectedTipos.includes(o.value)
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => setSelectedTipos(prev =>
+                      prev.includes(o.value) ? prev.filter(t => t !== o.value) : [...prev, o.value]
+                    )}
+                    className={cn(
+                      'rounded border px-2.5 py-1 text-[11px] font-semibold transition-all',
+                      active
+                        ? TIPO_CONFIG[o.value].color
+                        : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green)]/40 hover:text-[var(--foreground)]',
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                )
+              })}
             </div>
-            <div>
-              <Label className="mb-1.5 block text-xs">Status</Label>
-              <Select value={status} onValueChange={setStatus_}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="rascunho">Rascunho</SelectItem>
-                  <SelectItem value="em_producao">Em produção</SelectItem>
-                  <SelectItem value="publicado">Publicado</SelectItem>
-                  <SelectItem value="arquivado">Arquivado</SelectItem>
-                  <SelectItem value="cancelado">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+
+          {/* Status */}
+          <div>
+            <Label className="mb-1.5 block text-xs">Status</Label>
+            <Select value={status} onValueChange={setStatus_}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="rascunho">Rascunho</SelectItem>
+                <SelectItem value="em_producao">Em produção</SelectItem>
+                <SelectItem value="publicado">Publicado</SelectItem>
+                <SelectItem value="arquivado">Arquivado</SelectItem>
+                <SelectItem value="cancelado">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Dia + Horário */}
@@ -974,7 +987,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     let list = conteudos
     if (search)                        list = list.filter(c => c.titulo.toLowerCase().includes(search.toLowerCase()))
     if (filterDia && filterDia !== '__all__')     list = list.filter(c => c.dia_id === filterDia)
-    if (filterTipo && filterTipo !== '__all__')   list = list.filter(c => c.tipo === filterTipo)
+    if (filterTipo && filterTipo !== '__all__')   list = list.filter(c => parseTipos(c.tipo).includes(filterTipo))
     if (filterPerfil && filterPerfil !== '__all__') {
       list = list.filter(c =>
         c.responsavel_captacao_id === filterPerfil ||
@@ -1049,7 +1062,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
           <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Todos os tipos" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">Todos os tipos</SelectItem>
-            {TIPO_CONTEUDO_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            {TIPO_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
 

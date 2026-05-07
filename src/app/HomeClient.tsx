@@ -88,25 +88,21 @@ interface Props {
 const DAY_LABELS = ['Qui 04', 'Sex 05', 'Sáb 06', 'Dom 07']
 
 const TIPOS_HEATMAP = [
-  'story_rapido',
-  'story_editado',
   'reels',
-  'card_feed',
-  'card_patrocinado',
-  'texto_legenda',
-  'repost',
-  'cobertura_ao_vivo',
+  'feed',
+  'stories',
+  'material_youtube',
+  'foto',
+  'video',
 ]
 
 const TIPO_LABELS: Record<string, string> = {
-  story_rapido:     'Story Rápido',
-  story_editado:    'Story Editado',
   reels:            'Reels',
-  card_feed:        'Card Feed',
-  card_patrocinado: 'Card Patr.',
-  texto_legenda:    'Legenda',
-  repost:           'Repost',
-  cobertura_ao_vivo:'Ao Vivo',
+  feed:             'Feed',
+  stories:          'Stories',
+  material_youtube: 'Mat. YouTube',
+  foto:             'Foto',
+  video:            'Vídeo',
 }
 
 const MODULES = [

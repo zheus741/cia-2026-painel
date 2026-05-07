@@ -259,8 +259,11 @@ export default async function Home() {
     if (!c.tipo || !c.dia_id) continue
     const dayIdx = diaMap.get(c.dia_id)
     if (!dayIdx) continue
-    const key = `${c.tipo}|${dayIdx}`
-    heatAccum.set(key, (heatAccum.get(key) ?? 0) + 1)
+    // tipo may be comma-separated (multi-tag), count each independently
+    for (const t of c.tipo.split(',').map((s: string) => s.trim()).filter(Boolean)) {
+      const key = `${t}|${dayIdx}`
+      heatAccum.set(key, (heatAccum.get(key) ?? 0) + 1)
+    }
   }
 
   const heatmapData = Array.from(heatAccum.entries()).map(([key, count]) => {

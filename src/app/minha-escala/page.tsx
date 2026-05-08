@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Calendar, CheckSquare, FileText, MapPin, Clock } from 'lucide-react'
+import { TurnoCard } from './TurnoCard'
+import type { TurnoCardData } from './TurnoCard'
 
 const FUNCAO_LABEL: Record<string, string> = {
   foto: 'Foto', video: 'Vídeo', social: 'Social', reporter: 'Repórter',
@@ -44,7 +46,13 @@ export default async function MinhaEscalaPage() {
   const [turnosRes, checklistsRes, estagiosRes] = await Promise.all([
     supabase
       .from('turnos')
-      .select('id, funcao, inicio, fim, is_roaming, observacoes, dia:dias_evento(nome_dia, data), setor:setores(nome)')
+      .select(`
+        id, funcao, inicio, fim, is_roaming, observacoes,
+        prioridade, briefing_editorial, conteudos_esperados, status_escala,
+        dia:dias_evento(nome_dia, data),
+        setor:setores(nome, tem_wifi, maps_url, notas_acesso),
+        parceiro:parceiros(nome, cor_hex)
+      `)
       .eq('user_id', user.id)
       .order('inicio'),
     supabase
@@ -68,20 +76,14 @@ export default async function MinhaEscalaPage() {
   ])
 
   // Group turnos by dia
-  type TurnoRow = {
-    id: string; funcao: string; inicio: string; fim: string
-    is_roaming: boolean; observacoes: string | null
-    dia: { nome_dia: string; data: string } | null
-    setor: { nome: string } | null
-  }
-
   const turnos = (turnosRes.data ?? []).map((r) => ({
     ...r,
-    dia: r.dia as unknown as { nome_dia: string; data: string } | null,
-    setor: r.setor as unknown as { nome: string } | null,
-  })) as TurnoRow[]
+    dia:     r.dia     as unknown as { nome_dia: string; data: string } | null,
+    setor:   r.setor   as unknown as TurnoCardData['setor'],
+    parceiro: r.parceiro as unknown as TurnoCardData['parceiro'],
+  })) as TurnoCardData[]
 
-  const turnosByDia = turnos.reduce<Record<string, TurnoRow[]>>((acc, t) => {
+  const turnosByDia = turnos.reduce<Record<string, TurnoCardData[]>>((acc, t) => {
     const key = t.dia?.data ?? 'sem-dia'
     if (!acc[key]) acc[key] = []
     acc[key].push(t)
@@ -89,6 +91,9 @@ export default async function MinhaEscalaPage() {
   }, {})
 
   const diasOrdenados = Object.keys(turnosByDia).sort()
+  // Turnos foto/vídeo (com status_escala) vs. turnos gerais
+  const turnosAV     = turnos.filter(t => t.funcao === 'foto' || t.funcao === 'video')
+  const turnosGerais = turnos.filter(t => t.funcao !== 'foto' && t.funcao !== 'video')
 
   // Checklists
   const checklists = (checklistsRes.data ?? []).map((inst) => {
@@ -128,33 +133,38 @@ export default async function MinhaEscalaPage() {
         </p>
       </div>
 
-      {/* ── Turnos ────────────────────────────────────────────────── */}
-      <section>
-        <div className="mb-4 flex items-center gap-3">
-          <Calendar className="h-4 w-4 text-[var(--accent)]" />
-          <h2 className="text-base font-bold">Escala de turnos</h2>
-        </div>
-
-        {diasOrdenados.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center">
-            <p className="text-sm text-[var(--muted-foreground)]">Nenhum turno cadastrado para você.</p>
-            <p className="mt-1 text-xs text-[var(--muted-foreground)]/60">
-              Peça ao coordenador para te adicionar em{' '}
-              <Link href="/admin/escala" className="underline hover:text-[var(--accent)]">/admin/escala</Link>.
-            </p>
+      {/* ── Turnos Foto/Vídeo — cards interativos ────────────── */}
+      {turnosAV.length > 0 && (
+        <section>
+          <div className="mb-4 flex items-center gap-3">
+            <Calendar className="h-4 w-4 text-[var(--accent)]" />
+            <h2 className="text-base font-bold">Minha Escala · Foto & Vídeo</h2>
           </div>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {diasOrdenados.map((data) => {
-              const dTurnos = turnosByDia[data]!
-              const dia = dTurnos[0].dia
+          <div className="grid gap-4 sm:grid-cols-2">
+            {turnosAV.map(t => <TurnoCard key={t.id} turno={t} />)}
+          </div>
+        </section>
+      )}
+
+      {/* ── Outros turnos (funções genéricas) ─────────────────── */}
+      {turnosGerais.length > 0 && (
+        <section>
+          <div className="mb-4 flex items-center gap-3">
+            <Clock className="h-4 w-4 text-[var(--accent)]" />
+            <h2 className="text-base font-bold">Outros turnos</h2>
+          </div>
+          {diasOrdenados
+            .map(data => ({ data, ts: turnosByDia[data]!.filter(t => t.funcao !== 'foto' && t.funcao !== 'video') }))
+            .filter(({ ts }) => ts.length > 0)
+            .map(({ data, ts }) => {
+              const dia = ts[0].dia
               return (
-                <div key={data} className="cia-metric-card p-4">
+                <div key={data} className="cia-metric-card mb-4 p-4">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
                     {dia ? `${dia.nome_dia} · ${fmtDate(dia.data)}` : data}
                   </p>
                   <div className="space-y-2">
-                    {dTurnos.map((t) => (
+                    {ts.map(t => (
                       <div key={t.id} className="flex items-start gap-3 rounded-lg border border-[var(--border)] bg-[var(--card)]/60 px-3 py-2.5">
                         <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" />
                         <div className="min-w-0 flex-1">
@@ -165,11 +175,6 @@ export default async function MinhaEscalaPage() {
                             <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${FUNCAO_COLOR[t.funcao] ?? 'bg-[var(--muted)] text-[var(--muted-foreground)]'}`}>
                               {FUNCAO_LABEL[t.funcao] ?? t.funcao}
                             </span>
-                            {t.is_roaming && (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-700">
-                                Roaming
-                              </span>
-                            )}
                           </div>
                           <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
                             {t.setor && (
@@ -189,9 +194,21 @@ export default async function MinhaEscalaPage() {
                 </div>
               )
             })}
+        </section>
+      )}
+
+      {/* Empty state */}
+      {turnosAV.length === 0 && turnosGerais.length === 0 && (
+        <section>
+          <div className="rounded-xl border border-dashed border-[var(--border)] p-8 text-center">
+            <p className="text-sm text-[var(--muted-foreground)]">Nenhum turno cadastrado para você.</p>
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]/60">
+              Peça ao coordenador para te adicionar em{' '}
+              <Link href="/admin/escala-av" className="underline hover:text-[var(--accent)]">Escala Foto &amp; Vídeo</Link>.
+            </p>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* ── Checklists ───────────────────────────────────────────── */}
       <section>

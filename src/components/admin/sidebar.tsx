@@ -29,7 +29,7 @@ const ADMIN_NAV_GROUPS = [
     items: [
       { label: 'Minha Escala',   href: '/minha-escala',       icon: UserCircle },
       { label: 'Escala',         href: '/admin/escala',        icon: ClipboardList },
-      { label: 'Escala Mídia',   href: '/admin/escala-midia',  icon: Aperture },
+      { label: 'Foto & Vídeo',   href: '/admin/escala-av',     icon: Aperture },
       { label: 'Jogos',          href: '/admin/jogos',         icon: Swords },
       { label: 'Mapa Ao Vivo',   href: '/mapa',                icon: MapPin },
       { label: 'Shows',          href: '/admin/shows',         icon: Music },

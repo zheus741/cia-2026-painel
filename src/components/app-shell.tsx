@@ -23,6 +23,7 @@ export async function AppShell({ children, section, fullWidth = false }: AppShel
     <AppShellLayout
       profile={profile}
       userEmail={user.email}
+      userId={user.id}
       section={section}
       fullWidth={fullWidth}
     >

@@ -6,6 +6,7 @@ import { CiaLogo } from '@/components/cia-logo'
 import { AdminSidebar } from '@/components/admin/sidebar'
 import { signOut } from '@/app/actions'
 import { LogOut, ChevronRight, Menu, Tv2 } from 'lucide-react'
+import { NotifBell } from '@/components/NotifBell'
 
 const ROLE_LABEL: Record<string, string> = {
   admin:       'Admin',
@@ -27,12 +28,13 @@ function getInitials(name: string) {
 interface Props {
   profile: { nome?: string | null; role?: string | null; funcao_principal?: string | null } | null
   userEmail?: string | null
+  userId?:    string
   section?: string
   fullWidth?: boolean
   children: React.ReactNode
 }
 
-export function AppShellLayout({ profile, userEmail, section, fullWidth = false, children }: Props) {
+export function AppShellLayout({ profile, userEmail, userId, section, fullWidth = false, children }: Props) {
   const [collapsed,   setCollapsed]   = React.useState(false)
   const [mobileOpen,  setMobileOpen]  = React.useState(false)
 
@@ -94,8 +96,9 @@ export function AppShellLayout({ profile, userEmail, section, fullWidth = false,
           )}
         </div>
 
-        {/* Right: user pill + logout */}
+        {/* Right: notif + tv + user pill + logout */}
         <div className="flex items-center gap-2">
+          {userId && <NotifBell userId={userId} />}
           <a
             href="/tv"
             target="_blank"

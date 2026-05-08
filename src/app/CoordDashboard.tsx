@@ -87,7 +87,7 @@ const CANAL_CONFIG: Record<string, { label: string; color: string }> = {
 // Timeline helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function dayLabel(data: string): string {
+export function dayLabel(data: string): string {
   const labels: Record<string, string> = {
     '2026-06-04': 'Qui 04',
     '2026-06-05': 'Sex 05',
@@ -377,7 +377,7 @@ type TLHomeEntry = {
   icon: string; color: string; bg: string; cat: string
 }
 
-function TimelineVertical({
+export function TimelineVertical({
   jogosHoje,
   showsHoje,
   festasHoje,
@@ -609,20 +609,6 @@ export function CoordDashboard({
   diasEvento = [],
   diaAtualId = null,
 }: CoordDashboardProps) {
-  // Day filter — default to current event day
-  const [selectedDayId, setSelectedDayId] = useState<string | null>(diaAtualId)
-
-  // Update when server data arrives
-  useEffect(() => {
-    if (!selectedDayId && diaAtualId) setSelectedDayId(diaAtualId)
-  }, [diaAtualId, selectedDayId])
-
-  // Filter events for selected day
-  const jogosFiltered  = selectedDayId ? jogosHoje.filter(j  => j.dia_id  === selectedDayId) : jogosHoje
-  const showsFiltered  = selectedDayId ? showsHoje.filter(s  => s.dia_id  === selectedDayId) : showsHoje
-  const festasFiltered = selectedDayId ? festasHoje.filter(f => f.dia_id  === selectedDayId) : festasHoje
-  const isToday        = selectedDayId === diaAtualId
-
   return (
     <div className="space-y-4">
 
@@ -639,64 +625,6 @@ export function CoordDashboard({
         />
       </div>
 
-      {/* ── Timeline Gantt ── */}
-      <div className="cia-metric-card rounded-2xl px-6 py-6">
-
-        {/* Header + day filter */}
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-[var(--muted-foreground)]">
-              Timeline de Eventos
-            </p>
-            <p className="mt-1 text-base font-bold text-[var(--foreground)]">
-              Jogos · Shows · Festas
-            </p>
-          </div>
-
-          {/* Day filter tabs */}
-          {diasEvento.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {diasEvento.map(d => {
-                const isSel = selectedDayId === d.id
-                const isAct = d.id === diaAtualId
-                return (
-                  <button
-                    key={d.id}
-                    onClick={() => setSelectedDayId(d.id)}
-                    className="relative rounded-lg px-3 py-1.5 text-[11px] font-bold tracking-[0.08em] transition-all duration-150"
-                    style={{
-                      background: isSel
-                        ? 'linear-gradient(145deg, #2e6b42, #3d7a52)'
-                        : 'rgba(46,107,66,0.06)',
-                      color: isSel ? '#fff' : 'rgba(46,107,66,0.65)',
-                      border: isSel
-                        ? '1px solid #2e6b42'
-                        : '1px solid rgba(46,107,66,0.15)',
-                      boxShadow: isSel ? '0 2px 10px rgba(46,107,66,0.30)' : 'none',
-                    }}
-                  >
-                    {dayLabel(d.data)}
-                    {/* "today" dot */}
-                    {isAct && (
-                      <span
-                        className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500"
-                        style={{ boxShadow: '0 0 4px rgba(46,107,66,0.7)' }}
-                      />
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        <TimelineVertical
-          jogosHoje={jogosFiltered}
-          showsHoje={showsFiltered}
-          festasHoje={festasFiltered}
-          isToday={isToday}
-        />
-      </div>
     </div>
   )
 }

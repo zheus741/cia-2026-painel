@@ -8,7 +8,7 @@ import {
   Heart, Lightbulb, BookOpen, Calendar, Cloud,
   Droplets, Activity, Gauge, Layers, BarChart3, Radio, UserCircle, Tv2,
 } from 'lucide-react'
-import { CoordDashboard } from './CoordDashboard'
+import { CoordDashboard, TimelineVertical, dayLabel } from './CoordDashboard'
 import type {
   CoordConteudoHoje,
   CoordJogo,
@@ -158,14 +158,14 @@ function CountUp({ to, duration = 1500 }: { to: number; duration?: number }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ModuleGrid — minimal uniform icons, 6×2 grid
+// ModuleGrid — 3 × 4 clean horizontal tiles
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ModuleGrid() {
   const [hovered, setHovered] = useState<number | null>(null)
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px 8px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
       {MODULES.map((mod, i) => {
         const isHov = hovered === i
         return (
@@ -177,46 +177,52 @@ function ModuleGrid() {
             onMouseLeave={() => setHovered(null)}
           >
             <div
-              className="cia-module-in flex flex-col items-center"
-              style={{ animationDelay: `${i * 35}ms` }}
+              className="cia-module-in flex items-center gap-2.5"
+              style={{
+                animationDelay: `${i * 30}ms`,
+                borderRadius: 12,
+                padding: '9px 11px',
+                background: isHov
+                  ? 'rgba(46,107,66,0.10)'
+                  : 'rgba(46,107,66,0.04)',
+                border: isHov
+                  ? '1px solid rgba(46,107,66,0.28)'
+                  : '1px solid rgba(46,107,66,0.10)',
+                transition: 'all 0.18s ease',
+                transform: isHov ? 'translateY(-1px)' : 'translateY(0)',
+                boxShadow: isHov ? '0 4px 14px rgba(46,107,66,0.10)' : 'none',
+              }}
             >
-              {/* Icon tile — gradient bg */}
+              {/* Icon pill */}
               <div style={{
-                width: 52,
-                height: 52,
-                borderRadius: 14,
+                width: 32,
+                height: 32,
+                borderRadius: 9,
                 background: mod.grad,
-                opacity: isHov ? 1 : 0.82,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
-                transform: isHov ? 'translateY(-4px) scale(1.06)' : 'translateY(0) scale(1)',
-                transition: 'all 0.22s cubic-bezier(0.34,1.4,0.64,1)',
-                boxShadow: isHov ? '0 10px 24px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.10)' : '0 2px 6px rgba(0,0,0,0.08)',
+                opacity: isHov ? 1 : 0.88,
+                transition: 'opacity 0.18s ease',
+                boxShadow: isHov ? '0 3px 10px rgba(0,0,0,0.15)' : '0 1px 4px rgba(0,0,0,0.08)',
               }}>
                 <mod.icon style={{
-                  width: 20,
-                  height: 20,
-                  color: 'rgba(255,255,255,0.92)',
-                  transition: 'opacity 0.18s ease',
-                  strokeWidth: 1.7,
+                  width: 15,
+                  height: 15,
+                  color: 'rgba(255,255,255,0.95)',
+                  strokeWidth: 1.8,
                 }} />
               </div>
 
               {/* Label */}
               <span style={{
-                marginTop: 8,
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: 600,
-                letterSpacing: '0.01em',
-                textAlign: 'center',
                 lineHeight: 1.2,
-                color: isHov ? '#2e6b42' : 'rgba(46,107,66,0.70)',
+                color: isHov ? '#2e6b42' : 'rgba(46,107,66,0.72)',
                 transition: 'color 0.18s ease',
                 fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                display: 'block',
-                width: 60,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -227,6 +233,132 @@ function ModuleGrid() {
           </Link>
         )
       })}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AgendaSection — timeline separado com filtro de dia + categoria
+// ─────────────────────────────────────────────────────────────────────────────
+
+type CatFilter = 'todos' | 'jogos' | 'shows' | 'festas'
+
+function AgendaSection({
+  jogosHoje,
+  showsHoje,
+  festasHoje,
+  diasEvento,
+  diaAtualId,
+}: {
+  jogosHoje:  CoordJogo[]
+  showsHoje:  CoordShow[]
+  festasHoje: CoordFesta[]
+  diasEvento: { id: string; data: string }[]
+  diaAtualId: string | null
+}) {
+  const [selectedDayId, setSelectedDayId] = useState<string | null>(diaAtualId)
+  const [cat, setCat] = useState<CatFilter>('todos')
+
+  useEffect(() => {
+    if (!selectedDayId && diaAtualId) setSelectedDayId(diaAtualId)
+  }, [diaAtualId, selectedDayId])
+
+  const jogosFiltered  = selectedDayId ? jogosHoje.filter(j => j.dia_id === selectedDayId) : jogosHoje
+  const showsFiltered  = selectedDayId ? showsHoje.filter(s => s.dia_id === selectedDayId) : showsHoje
+  const festasFiltered = selectedDayId ? festasHoje.filter(f => f.dia_id === selectedDayId) : festasHoje
+  const isToday        = selectedDayId === diaAtualId
+
+  const jFinal = cat === 'shows' || cat === 'festas' ? [] : jogosFiltered
+  const sFinal = cat === 'jogos' || cat === 'festas' ? [] : showsFiltered
+  const fFinal = cat === 'jogos' || cat === 'shows'  ? [] : festasFiltered
+
+  const cats: { key: CatFilter; icon: string; label: string; count: number }[] = [
+    { key: 'todos',  icon: '📋', label: 'Todos',  count: jogosFiltered.length + showsFiltered.length + festasFiltered.length },
+    { key: 'jogos',  icon: '🏆', label: 'Jogos',  count: jogosFiltered.length },
+    { key: 'shows',  icon: '🎤', label: 'Shows',  count: showsFiltered.length },
+    { key: 'festas', icon: '🎉', label: 'Festas', count: festasFiltered.length },
+  ]
+
+  return (
+    <div className="cia-metric-card rounded-2xl px-6 py-6">
+
+      {/* Header + day filter */}
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.25em] text-[var(--muted-foreground)]">
+            Agenda do Dia
+          </p>
+          <p className="mt-1 text-base font-bold text-[var(--foreground)]">
+            Jogos · Shows · Festas
+          </p>
+        </div>
+
+        {/* Day filter tabs */}
+        {diasEvento.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {diasEvento.map(d => {
+              const isSel = selectedDayId === d.id
+              const isAct = d.id === diaAtualId
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => setSelectedDayId(d.id)}
+                  className="relative rounded-lg px-3 py-1.5 text-[11px] font-bold tracking-[0.08em] transition-all duration-150"
+                  style={{
+                    background: isSel ? 'linear-gradient(145deg, #2e6b42, #3d7a52)' : 'rgba(46,107,66,0.06)',
+                    color:      isSel ? '#fff' : 'rgba(46,107,66,0.65)',
+                    border:     isSel ? '1px solid #2e6b42' : '1px solid rgba(46,107,66,0.15)',
+                    boxShadow:  isSel ? '0 2px 10px rgba(46,107,66,0.30)' : 'none',
+                  }}
+                >
+                  {dayLabel(d.data)}
+                  {isAct && (
+                    <span
+                      className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500"
+                      style={{ boxShadow: '0 0 4px rgba(46,107,66,0.7)' }}
+                    />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Category filter */}
+      <div className="mb-5 flex flex-wrap gap-2">
+        {cats.map(c => {
+          const isSel = cat === c.key
+          return (
+            <button
+              key={c.key}
+              onClick={() => setCat(c.key)}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all duration-150"
+              style={{
+                background: isSel ? 'rgba(46,107,66,0.12)' : 'rgba(46,107,66,0.04)',
+                border:     isSel ? '1px solid rgba(46,107,66,0.32)' : '1px solid rgba(46,107,66,0.10)',
+                color:      isSel ? '#2e6b42' : 'rgba(46,107,66,0.55)',
+              }}
+            >
+              <span className="text-[13px]">{c.icon}</span>
+              <span>{c.label}</span>
+              {c.count > 0 && (
+                <span
+                  className="rounded-full px-1.5 py-px text-[9px] font-bold tabular-nums"
+                  style={{
+                    background: isSel ? '#2e6b42' : 'rgba(46,107,66,0.12)',
+                    color:      isSel ? '#fff'    : '#2e6b42',
+                  }}
+                >
+                  {c.count}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      <TimelineVertical jogosHoje={jFinal} showsHoje={sFinal} festasHoje={fFinal} isToday={isToday} />
     </div>
   )
 }
@@ -897,9 +1029,21 @@ export function HomeClient({
           />
         </div>
 
-        {/* ── 05 / ANÁLISES ───────────────────────────────────── */}
+        {/* ── 05 / AGENDA ────────────────────────────────────── */}
         <div>
-          <SectionHeader num="05" label="Análises" />
+          <SectionHeader num="05" label="Agenda" />
+          <AgendaSection
+            jogosHoje={coordJogosHoje}
+            showsHoje={coordShowsHoje}
+            festasHoje={coordFestasHoje}
+            diasEvento={coordDiasEvento}
+            diaAtualId={coordDiaAtualId ?? null}
+          />
+        </div>
+
+        {/* ── 06 / ANÁLISES ───────────────────────────────────── */}
+        <div>
+          <SectionHeader num="06" label="Análises" />
           <AnalyticsCards
             ranking={analyticsRanking}
             lacunas={analyticsLacunas}
@@ -911,7 +1055,7 @@ export function HomeClient({
         {/* ── OPERACIONAL (operador role) ─────────────────────── */}
         {isOperador && (
           <div>
-            <SectionHeader num="06" label="Operacional" />
+            <SectionHeader num="07" label="Operacional" />
             <div className="grid gap-4 sm:grid-cols-2">
 
               {/* Minha escala */}

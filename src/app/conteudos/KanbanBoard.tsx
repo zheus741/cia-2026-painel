@@ -19,6 +19,7 @@ import {
   createConteudo, updateConteudo, deleteConteudo, setStatus,
   type ConteudoPayload,
 } from './actions'
+import { createClient } from '@/lib/supabase/client'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -982,6 +983,26 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
   const [moving, setMoving]             = React.useState<string | null>(null)
 
   React.useEffect(() => { setConteudos(initial) }, [initial])
+
+  // ── Supabase real-time: sincroniza mudanças de outros usuários ──────────────
+  React.useEffect(() => {
+    const supabase = createClient()
+    const debounceRef = { timer: null as ReturnType<typeof setTimeout> | null }
+
+    const channel = supabase
+      .channel('kanban-conteudos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conteudos' }, () => {
+        // Debounce: aguarda 800ms sem novos eventos antes de refrescar
+        if (debounceRef.timer) clearTimeout(debounceRef.timer)
+        debounceRef.timer = setTimeout(() => { router.refresh() }, 800)
+      })
+      .subscribe()
+
+    return () => {
+      if (debounceRef.timer) clearTimeout(debounceRef.timer)
+      supabase.removeChannel(channel)
+    }
+  }, [router])
 
   const filtered = React.useMemo(() => {
     let list = conteudos

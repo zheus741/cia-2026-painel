@@ -9,8 +9,8 @@ const VALID_TIPOS = [
 ] as const
 
 const VALID_STATUSES = [
-  'rascunho', 'pendente', 'em_andamento', 'pausado',
-  'bloqueado', 'pronto', 'publicado', 'descartado',
+  'rascunho', 'em_producao', 'pendente', 'em_andamento', 'pausado',
+  'bloqueado', 'pronto', 'publicado', 'arquivado', 'descartado', 'cancelado',
 ] as const
 
 export interface ConteudoPayload {

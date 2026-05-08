@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Maximize2, Minimize2, RefreshCw } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -546,26 +547,52 @@ export function TVDisplay({
   const router = useRouter()
   const [fullscreen, setFullscreen] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(Date.now())
-  const [refreshIn, setRefreshIn] = useState(60)
+  const [refreshIn, setRefreshIn] = useState(15)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Auto-refresh every 60s
+  function doRefresh() {
+    router.refresh()
+    setLastRefresh(Date.now())
+    setRefreshIn(15)
+  }
+
+  // Auto-refresh every 15s
   useEffect(() => {
-    const interval = setInterval(() => {
-      router.refresh()
-      setLastRefresh(Date.now())
-      setRefreshIn(60)
-    }, 60_000)
+    const interval = setInterval(doRefresh, 15_000)
     return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router])
 
   // Countdown to next refresh
   useEffect(() => {
     const tick = setInterval(() => {
       const elapsed = Math.floor((Date.now() - lastRefresh) / 1000)
-      setRefreshIn(Math.max(0, 60 - elapsed))
+      setRefreshIn(Math.max(0, 15 - elapsed))
     }, 1000)
     return () => clearInterval(tick)
   }, [lastRefresh])
+
+  // Supabase real-time — refresh imediato ao detectar mudanças
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('tv-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conteudos' }, () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+        debounceRef.current = setTimeout(doRefresh, 1_000)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos' }, () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+        debounceRef.current = setTimeout(doRefresh, 1_000)
+      })
+      .subscribe()
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      supabase.removeChannel(channel)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router])
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -700,7 +727,7 @@ export function TVDisplay({
           {/* Controls */}
           <div style={{ display: 'flex', gap: 6 }}>
             <button
-              onClick={() => { router.refresh(); setLastRefresh(Date.now()); setRefreshIn(60) }}
+              onClick={doRefresh}
               title="Atualizar agora"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',

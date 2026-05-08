@@ -61,7 +61,9 @@ export default async function TVPage() {
     weatherData,
   ] = await Promise.all([
     supabase.from('dias_evento').select('id, data').order('data'),
-    supabase.from('conteudos').select('id, status, tipo, dia_id, canal_publicacao, patrocinador_id').not('status', 'in', '(arquivado,cancelado)'),
+    supabase.from('conteudos')
+      .select('id, status, tipo, titulo, dia_id, canal_publicacao, patrocinador_id')
+      .not('status', 'in', '(arquivado,cancelado)'),
     supabase.from('patrocinadores').select('id, nome, ativo').eq('ativo', true),
     fetchWeather(),
   ])
@@ -77,15 +79,27 @@ export default async function TVPage() {
     festasRes,
     turnosRes,
     ckInstsRes,
+    capturasRes,
   ] = await Promise.all([
-    supabase.from('jogos').select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id, status').order('inicio'),
+    supabase.from('jogos')
+      .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id, status, placar_a, placar_b')
+      .order('inicio'),
     supabase.from('shows').select('id, nome, inicio, fim_previsto, dia_id').order('inicio'),
     supabase.from('festas').select('id, nome, inicio, fim_previsto, dia_id').order('inicio'),
     diaId
-      ? supabase.from('turnos').select('user_id, setor_id').eq('dia_id', diaId)
+      ? supabase.from('turnos')
+          .select('user_id, setor_id, status_escala, user:profiles!user_id(nome), setor:setores(id, nome)')
+          .eq('dia_id', diaId)
       : Promise.resolve({ data: [] }),
     diaId
       ? supabase.from('checklist_instancias').select('id').eq('dia_id', diaId)
+      : Promise.resolve({ data: [] }),
+    diaId
+      ? supabase.from('conteudos')
+          .select('id')
+          .eq('dia_id', diaId)
+          .eq('status', 'rascunho')
+          .not('midia_draft_url', 'is', null)
       : Promise.resolve({ data: [] }),
   ])
 
@@ -94,13 +108,11 @@ export default async function TVPage() {
     ? await supabase.from('checklist_itens').select('id, status').in('instancia_id', ckInstIds)
     : { data: [] }
 
-  // ── Process ───────────────────────────────────────────────────────────────
+  // ── Process conteúdos ─────────────────────────────────────────────────────
   const allConteudos = (conteudosTodosRes.data ?? []) as {
-    id: string; status: string; tipo: string
+    id: string; status: string; tipo: string; titulo: string | null
     dia_id: string | null; canal_publicacao: string | null; patrocinador_id: string | null
   }[]
-
-  const diaMap = new Map(dias.map((d, i) => [d.id, i + 1]))
 
   // Conteúdos por dia (índice 1–4)
   const conteudosPorDia = [1, 2, 3, 4].map(idx => {
@@ -114,16 +126,6 @@ export default async function TVPage() {
       label:      DAY_LABELS[dias[idx - 1]?.data ?? ''] ?? `Dia ${idx}`,
     }
   })
-
-  // Heatmap tipo × dia
-  const heatAccum = new Map<string, number>()
-  for (const c of allConteudos) {
-    if (!c.tipo || !c.dia_id) continue
-    const dayIdx = diaMap.get(c.dia_id)
-    if (!dayIdx) continue
-    const key = `${c.tipo}|${dayIdx}`
-    heatAccum.set(key, (heatAccum.get(key) ?? 0) + 1)
-  }
 
   // Canal breakdown (today)
   const conteudosHoje = diaId ? allConteudos.filter(c => c.dia_id === diaId) : []
@@ -150,7 +152,7 @@ export default async function TVPage() {
     }
   }).filter(p => p.total > 0)
 
-  // Content pipeline stats
+  // Pipeline stats
   const pipelineStats = {
     total:        allConteudos.length,
     rascunho:     allConteudos.filter(c => c.status === 'rascunho').length,
@@ -159,25 +161,65 @@ export default async function TVPage() {
     publicado:    allConteudos.filter(c => c.status === 'publicado').length,
   }
 
-  // Equipe + checklist
-  const turnos          = (turnosRes.data ?? []) as { user_id: string | null; setor_id: string | null }[]
+  // ── Process turnos ────────────────────────────────────────────────────────
+  type RawTurno = {
+    user_id: string | null; setor_id: string | null; status_escala: string | null
+    user: unknown; setor: unknown
+  }
+  const rawTurnos = (turnosRes.data ?? []) as RawTurno[]
+  const turnos = rawTurnos.map(r => ({
+    user_id:       r.user_id,
+    setor_id:      r.setor_id,
+    status_escala: r.status_escala,
+    user:  (Array.isArray(r.user)  ? r.user[0]  : r.user)  as { nome: string | null } | null,
+    setor: (Array.isArray(r.setor) ? r.setor[0] : r.setor) as { id: string; nome: string | null } | null,
+  }))
+
   const equipeAtiva     = new Set(turnos.map(t => t.user_id).filter(Boolean)).size
   const setoresCobertos = new Set(turnos.map(t => t.setor_id).filter(Boolean)).size
 
-  const ckItens     = (ckItensRes.data ?? []) as { id: string; status: string }[]
-  const ckTotal     = ckItens.length
-  const ckFeitos    = ckItens.filter(i => i.status === 'feito').length
+  // Em campo agora
+  const emCampo = turnos
+    .filter(t => t.status_escala === 'em_campo' && t.user?.nome)
+    .map(t => ({ nome: t.user!.nome!, setor: t.setor?.nome ?? '—' }))
 
-  // Jogos ao vivo
-  const now = new Date().toISOString()
+  // Setores frios: têm turno hoje mas nenhum em_campo
+  const setoresComTurno  = new Set(turnos.map(t => t.setor_id).filter(Boolean) as string[])
+  const setoresEmCampoSet = new Set(
+    turnos.filter(t => t.status_escala === 'em_campo').map(t => t.setor_id).filter(Boolean) as string[]
+  )
+  const setoresFrios = [...setoresComTurno]
+    .filter(id => !setoresEmCampoSet.has(id))
+    .map(id => turnos.find(t => t.setor_id === id)?.setor?.nome ?? id)
+    .filter((v, i, a) => a.indexOf(v) === i)
+
+  // Capturas pendentes
+  const capturasCount = (capturasRes.data ?? []).length
+
+  // Velocidade: publicados hoje / horas desde meia-noite SP
+  const publicadosHojeCount = conteudosPorDia.find(d => dias[d.idx - 1]?.id === diaId)?.publicados ?? 0
+  const midnightMs   = new Date(todaySP + 'T00:00:00-03:00').getTime()
+  const hoursElapsed = Math.max(1, (Date.now() - midnightMs) / 3_600_000)
+  const velocidade   = parseFloat((publicadosHojeCount / hoursElapsed).toFixed(1))
+
+  // Ticker: últimos publicados hoje
+  const recentPublicados = allConteudos
+    .filter(c => c.status === 'publicado' && c.dia_id === diaId)
+    .slice(-12)
+    .map(c => ({ id: c.id, titulo: c.titulo, canal: c.canal_publicacao }))
+
+  // ── Checklist ─────────────────────────────────────────────────────────────
+  const ckItens  = (ckItensRes.data ?? []) as { id: string; status: string }[]
+  const ckTotal  = ckItens.length
+  const ckFeitos = ckItens.filter(i => i.status === 'feito').length
+
+  // ── Jogos ─────────────────────────────────────────────────────────────────
   const jogos = (jogosRes.data ?? []) as {
     id: string; equipe_a_nome: string | null; equipe_b_nome: string | null
-    inicio: string | null; fim_previsto: string | null; dia_id: string | null; status: string | null
+    inicio: string | null; fim_previsto: string | null; dia_id: string | null
+    status: string | null; placar_a: number | null; placar_b: number | null
   }[]
-  const jogosAoVivo = jogos.filter(j =>
-    j.inicio && j.fim_previsto && j.inicio <= now && j.fim_previsto >= now
-  )
-
+  const jogosAoVivo = jogos.filter(j => j.status === 'ao_vivo')
   const jogosHoje   = diaId ? jogos.filter(j => j.dia_id === diaId) : []
   const showsHoje   = diaId ? (showsRes.data ?? []).filter((s: { dia_id: string | null }) => s.dia_id === diaId) : []
   const festasHoje  = diaId ? (festasRes.data ?? []).filter((f: { dia_id: string | null }) => f.dia_id === diaId) : []
@@ -199,6 +241,11 @@ export default async function TVPage() {
       diasEvento={dias}
       diaAtualId={diaId}
       weatherData={weatherData}
+      emCampo={emCampo}
+      setoresFrios={setoresFrios}
+      capturasCount={capturasCount}
+      velocidade={velocidade}
+      recentPublicados={recentPublicados}
     />
   )
 }

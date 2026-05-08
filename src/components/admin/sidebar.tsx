@@ -6,7 +6,7 @@ import {
   Calendar, Map, MapPin, Users, Trophy, Music, PartyPopper,
   Heart, GitBranch, Tag, UserCog, Settings, Swords, ClipboardList, Camera, CheckSquare,
   Lightbulb, BookOpen, LayoutList, UserCircle, Radio, Aperture, Users2,
-  FileSpreadsheet, PanelLeftClose, PanelLeftOpen, X, ShieldAlert,
+  FileSpreadsheet, PanelLeftClose, PanelLeftOpen, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -27,7 +27,6 @@ const ADMIN_NAV_GROUPS = [
   {
     label: 'Operacional',
     items: [
-      { label: 'War Room',       href: '/war-room',            icon: ShieldAlert },
       { label: 'Minha Escala',   href: '/minha-escala',       icon: UserCircle },
       { label: 'Escala',         href: '/admin/escala',        icon: ClipboardList },
       { label: 'Foto & Vídeo',   href: '/admin/escala-av',     icon: Aperture },

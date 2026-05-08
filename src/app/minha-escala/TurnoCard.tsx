@@ -4,6 +4,7 @@ import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { MapPin, Loader2, Wifi, WifiOff, Navigation } from 'lucide-react'
 import { updateStatusEscala } from '@/app/admin/escala-av/actions'
+import { TurnoComments } from '@/components/TurnoComments'
 
 const STATUS_CONFIG = {
   rascunho:   { label: 'Rascunho',   bg: 'rgba(148,163,184,0.12)', text: '#64748b', border: 'rgba(148,163,184,0.30)' },
@@ -30,6 +31,7 @@ export interface TurnoCardData {
   briefing_editorial:  string | null
   conteudos_esperados: string | null
   status_escala:       string | null
+  comentarios_count?:  number
   dia:     { nome_dia: string; data: string } | null
   setor:   { nome: string; tem_wifi: boolean | null; maps_url: string | null; notas_acesso: string | null } | null
   parceiro: { nome: string; cor_hex: string } | null
@@ -230,6 +232,12 @@ export function TurnoCard({ turno }: { turno: TurnoCardData }) {
           ✓ Turno finalizado
         </div>
       )}
+
+      {/* ── Comentários ── */}
+      <TurnoComments
+        turnoId={turno.id}
+        initialCount={turno.comentarios_count ?? 0}
+      />
     </div>
   )
 }

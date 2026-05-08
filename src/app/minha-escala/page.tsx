@@ -49,6 +49,7 @@ export default async function MinhaEscalaPage() {
       .select(`
         id, funcao, inicio, fim, is_roaming, observacoes,
         prioridade, briefing_editorial, conteudos_esperados, status_escala,
+        comentarios_count:comentarios_turno(count),
         dia:dias_evento(nome_dia, data),
         setor:setores(nome, tem_wifi, maps_url, notas_acesso),
         parceiro:parceiros(nome, cor_hex)
@@ -81,6 +82,9 @@ export default async function MinhaEscalaPage() {
     dia:     r.dia     as unknown as { nome_dia: string; data: string } | null,
     setor:   r.setor   as unknown as TurnoCardData['setor'],
     parceiro: r.parceiro as unknown as TurnoCardData['parceiro'],
+    comentarios_count: Array.isArray(r.comentarios_count)
+      ? (r.comentarios_count[0] as { count: number } | undefined)?.count ?? 0
+      : 0,
   })) as TurnoCardData[]
 
   const turnosByDia = turnos.reduce<Record<string, TurnoCardData[]>>((acc, t) => {

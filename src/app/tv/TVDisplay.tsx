@@ -84,24 +84,6 @@ const CANAL_COLOR: Record<string, string> = {
   outro:               '#6B7280',
 }
 
-const TIMELINE_START_H = 7
-const TIMELINE_END_H   = 24
-
-function timeToFrac(iso: string | null): number | null {
-  if (!iso) return null
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return null
-  const h = d.getHours() + d.getMinutes() / 60
-  return Math.max(0, Math.min(1, (h - TIMELINE_START_H) / (TIMELINE_END_H - TIMELINE_START_H)))
-}
-
-function fracToHM(frac: number): string {
-  const total = TIMELINE_START_H + frac * (TIMELINE_END_H - TIMELINE_START_H)
-  const h = Math.floor(total) % 24
-  const m = Math.round((total % 1) * 60)
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Clock
 // ─────────────────────────────────────────────────────────────────────────────
@@ -294,157 +276,186 @@ function CanalChart({ canais }: { canais: CanalStat[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Timeline Gantt (TV version — dark theme, compact)
+// Timeline vertical — agenda por horário, mobile-friendly
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface TLEvent {
-  id: string; label: string; start: number; end: number
-  color: string; bg: string
+type TLEntry = {
+  id: string; label: string; inicio: string | null; fim_previsto: string | null
+  icon: string; color: string; bg: string; cat: string
 }
 
-function packRows(events: TLEvent[]): { ev: TLEvent; row: number }[] {
-  const sorted = [...events].sort((a, b) => a.start - b.start)
-  const rowEnds: number[] = []
-  const result: { ev: TLEvent; row: number }[] = []
-  for (const ev of sorted) {
-    let placed = false
-    for (let r = 0; r < rowEnds.length; r++) {
-      if (ev.start >= rowEnds[r] + 0.003) { rowEnds[r] = ev.end; result.push({ ev, row: r }); placed = true; break }
-    }
-    if (!placed) { rowEnds.push(ev.end); result.push({ ev, row: rowEnds.length - 1 }) }
-  }
-  return result
+function fmtTime(iso: string | null) {
+  if (!iso) return '—:—'
+  return new Date(iso).toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+  })
+}
+
+function durMin(s: string | null, e: string | null) {
+  if (!s || !e) return null
+  return Math.round((new Date(e).getTime() - new Date(s).getTime()) / 60_000)
 }
 
 function TVTimeline({ jogos, shows, festas }: {
   jogos: Jogo[]; shows: EventItem[]; festas: EventItem[]
 }) {
-  const [nowFrac, setNowFrac] = useState<number | null>(null)
+  const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
-    function tick() {
-      const now = new Date()
-      const h   = now.getHours() + now.getMinutes() / 60
-      const f   = (h - TIMELINE_START_H) / (TIMELINE_END_H - TIMELINE_START_H)
-      setNowFrac(f >= 0 && f <= 1 ? f : null)
-    }
-    tick()
-    const id = setInterval(tick, 30_000)
+    const id = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(id)
   }, [])
 
-  function toEvents<T extends { id: string; inicio: string | null; fim_previsto: string | null }>(
-    items: T[], getLabel: (t: T) => string, color: string, bg: string,
-  ): TLEvent[] {
-    return items.flatMap(item => {
-      const s = timeToFrac(item.inicio)
-      if (s === null) return []
-      const e = timeToFrac(item.fim_previsto) ?? Math.min(s + 0.06, 1)
-      return [{ id: item.id, label: getLabel(item), start: s, end: e, color, bg }]
-    })
-  }
+  const all: TLEntry[] = [
+    ...jogos.map(j => ({
+      id: j.id,
+      label: `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`,
+      inicio: j.inicio, fim_previsto: j.fim_previsto,
+      icon: '🏆', color: '#4aa06a', bg: 'rgba(46,107,66,0.12)', cat: 'Esportivo',
+    })),
+    ...shows.map(s => ({
+      id: s.id, label: (s as EventItem).nome ?? '', inicio: s.inicio, fim_previsto: s.fim_previsto,
+      icon: '🎤', color: '#a855f7', bg: 'rgba(124,58,237,0.10)', cat: 'Show',
+    })),
+    ...festas.map(f => ({
+      id: f.id, label: (f as EventItem).nome ?? '', inicio: f.inicio, fim_previsto: f.fim_previsto,
+      icon: '🎉', color: '#f472b6', bg: 'rgba(190,24,93,0.08)', cat: 'Festa',
+    })),
+  ].sort((a, b) => {
+    if (!a.inicio) return 1
+    if (!b.inicio) return -1
+    return new Date(a.inicio).getTime() - new Date(b.inicio).getTime()
+  })
 
-  const lanes = [
-    {
-      icon: '🏆', label: 'Esportivo', color: '#2e6b42',
-      events: toEvents(jogos, j => `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`, '#4aa06a', 'rgba(46,107,66,0.12)'),
-    },
-    {
-      icon: '🎤', label: 'Shows', color: '#7c3aed',
-      events: toEvents(shows as Jogo[], s => (s as EventItem).nome ?? '', '#a855f7', 'rgba(124,58,237,0.12)'),
-    },
-    {
-      icon: '🎉', label: 'Festas', color: '#be185d',
-      events: toEvents(festas as Jogo[], f => (f as EventItem).nome ?? '', '#f472b6', 'rgba(190,24,93,0.10)'),
-    },
-  ]
-
-  const axisH: number[] = []
-  for (let h = TIMELINE_START_H; h <= TIMELINE_END_H; h += 3) axisH.push(h)
-
-  const ROW_H  = 28
-  const ROW_G  = 3
-  const PAD    = 6
-  const LABEL  = 90
-
-  const allEmpty = lanes.every(l => l.events.length === 0)
-  if (allEmpty) return (
+  if (all.length === 0) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 80 }}>
       <p style={{ color: 'rgba(150,200,160,0.25)', fontSize: 12 }}>Sem eventos programados para hoje</p>
     </div>
   )
 
-  return (
-    <div style={{ overflow: 'hidden' }}>
-      {/* Hour axis */}
-      <div style={{ display: 'flex', paddingLeft: LABEL, marginBottom: 4 }}>
-        {axisH.map(h => (
-          <div key={h} style={{ flex: 1, textAlign: 'center', fontSize: 8, color: 'rgba(150,200,160,0.30)', fontFamily: 'Orbitron,monospace' }}>
-            {h < 24 ? `${String(h).padStart(2,'0')}h` : `${String(h-24).padStart(2,'0')}h`}
-          </div>
-        ))}
-      </div>
+  // Where to insert "AGORA" — after last event that already started
+  let nowAfterIdx = -1
+  for (let i = 0; i < all.length; i++) {
+    if (all[i].inicio && new Date(all[i].inicio!) <= now) nowAfterIdx = i
+  }
 
-      {/* Lanes */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {lanes.map(lane => {
-          const packed   = packRows(lane.events)
-          const rowCount = Math.max(...packed.map(p => p.row), 0) + 1
-          const trackH   = rowCount * (ROW_H + ROW_G) - ROW_G + PAD * 2
+  const nowStr = now.toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+  })
+
+  return (
+    <div style={{ overflowY: 'auto', height: '100%', paddingRight: 2 }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {all.map((ev, i) => {
+          const isLast   = i === all.length - 1
+          const dur      = durMin(ev.inicio, ev.fim_previsto)
+          const isActive = !!ev.inicio && !!ev.fim_previsto &&
+            new Date(ev.inicio) <= now && new Date(ev.fim_previsto) >= now
+          const isPast   = !!ev.fim_previsto && new Date(ev.fim_previsto) < now
+          const showNowAfter = nowAfterIdx === i && !isLast &&
+            !!all[i + 1]?.inicio && new Date(all[i + 1].inicio!) > now
 
           return (
-            <div key={lane.label} style={{ display: 'flex', alignItems: 'flex-start' }}>
-              {/* Label */}
-              <div style={{ width: LABEL, flexShrink: 0, paddingRight: 8, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center', minHeight: trackH }}>
-                <span style={{ fontSize: 9 }}>{lane.icon}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: lane.color, lineHeight: 1.2, textAlign: 'right' }}>{lane.label}</span>
-                <span style={{ fontSize: 8, color: 'rgba(150,200,160,0.30)', marginTop: 1 }}>{lane.events.length}ev</span>
-              </div>
+            <div key={ev.id}>
+              {/* Event row */}
+              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
 
-              {/* Track */}
-              <div style={{
-                flex: 1, position: 'relative', height: trackH, borderRadius: 8,
-                background: `linear-gradient(180deg, ${lane.color}08 0%, ${lane.color}04 100%)`,
-                border: `1px solid ${lane.color}18`,
-                overflow: 'visible',
-              }}>
-                {/* Grid lines every 3h */}
-                {axisH.slice(1,-1).map(h => {
-                  const f = (h - TIMELINE_START_H) / (TIMELINE_END_H - TIMELINE_START_H)
-                  return <div key={h} style={{ position: 'absolute', top: 0, height: '100%', left: `${f*100}%`, width: 1, background: `${lane.color}14`, pointerEvents: 'none' }} />
-                })}
-
-                {/* Events */}
-                {packed.map(({ ev, row }) => (
-                  <div key={ev.id} title={ev.label} style={{
-                    position: 'absolute',
-                    left: `${ev.start * 100}%`,
-                    width: `${Math.max((ev.end - ev.start), 0.018) * 100}%`,
-                    top: PAD + row * (ROW_H + ROW_G),
-                    height: ROW_H,
-                    background: ev.bg,
-                    border: `1px solid ${ev.color}45`,
-                    borderRadius: 5,
-                    overflow: 'hidden',
-                    cursor: 'default',
+                {/* Time column */}
+                <div style={{ width: 38, flexShrink: 0, paddingTop: 9, paddingRight: 6, textAlign: 'right' }}>
+                  <span style={{
+                    fontFamily: 'Orbitron,monospace', fontSize: 8, fontWeight: 700,
+                    color: isActive ? ev.color : isPast ? 'rgba(150,200,160,0.22)' : 'rgba(150,200,160,0.50)',
                   }}>
-                    <div style={{ position: 'absolute', left: 0, top: 0, width: 3, height: '100%', background: `linear-gradient(180deg, ${ev.color}, ${ev.color}88)`, borderRadius: '5px 0 0 5px' }} />
-                    <div style={{ paddingLeft: 7, paddingRight: 4, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 10, fontWeight: 600, color: ev.color, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.label}</span>
-                      <span style={{ fontSize: 8, color: `${ev.color}80`, marginTop: 1 }}>{fracToHM(ev.start)} – {fracToHM(ev.end)}</span>
-                    </div>
-                  </div>
-                ))}
+                    {fmtTime(ev.inicio)}
+                  </span>
+                </div>
 
-                {/* Now line */}
-                {nowFrac !== null && (
-                  <div style={{ position: 'absolute', top: -8, left: `${nowFrac * 100}%`, width: 2, height: trackH + 16, background: '#ef4444', zIndex: 20, pointerEvents: 'none' }}>
-                    <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', background: '#ef4444', color: '#fff', fontSize: 7, fontFamily: 'Orbitron,monospace', fontWeight: 700, padding: '1px 3px', borderRadius: 2, whiteSpace: 'nowrap' }}>
-                      AGORA
+                {/* Dot + vertical connector */}
+                <div style={{ width: 16, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{
+                    width: 1, height: 8, flexShrink: 0,
+                    background: i === 0 ? 'transparent' : 'rgba(46,107,66,0.18)',
+                  }} />
+                  <div style={{
+                    width: isActive ? 10 : 7, height: isActive ? 10 : 7,
+                    borderRadius: '50%', flexShrink: 0, zIndex: 1,
+                    background: isActive ? ev.color : isPast ? 'rgba(46,107,66,0.15)' : `${ev.color}55`,
+                    border: `1.5px solid ${isActive ? ev.color : isPast ? 'rgba(46,107,66,0.10)' : `${ev.color}35`}`,
+                    boxShadow: isActive ? `0 0 10px ${ev.color}90, 0 0 20px ${ev.color}40` : 'none',
+                    transition: 'all 0.4s ease',
+                  }} />
+                  {!isLast && (
+                    <div style={{
+                      width: 1, flex: 1, minHeight: 12, flexShrink: 0,
+                      background: 'rgba(46,107,66,0.18)',
+                    }} />
+                  )}
+                </div>
+
+                {/* Card */}
+                <div style={{ flex: 1, paddingLeft: 8, paddingBottom: isLast ? 4 : 8, paddingTop: 4 }}>
+                  <div style={{
+                    background: isPast ? 'rgba(10,20,12,0.40)' : ev.bg,
+                    border: `1px solid ${isActive ? `${ev.color}40` : isPast ? 'rgba(46,107,66,0.05)' : `${ev.color}18`}`,
+                    borderLeft: `3px solid ${isActive ? ev.color : isPast ? 'rgba(46,107,66,0.12)' : `${ev.color}45`}`,
+                    borderRadius: '0 8px 8px 0',
+                    padding: '7px 10px',
+                    opacity: isPast ? 0.50 : 1,
+                    boxShadow: isActive ? `0 0 20px ${ev.color}18, inset 0 0 20px ${ev.color}08` : 'none',
+                    transition: 'all 0.3s ease',
+                  }}>
+                    {/* Title row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                      <span style={{ fontSize: 10 }}>{ev.icon}</span>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, flex: 1,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        color: isActive ? ev.color : isPast ? 'rgba(150,200,160,0.35)' : 'rgba(200,220,205,0.88)',
+                      }}>
+                        {ev.label}
+                      </span>
+                      {isActive && (
+                        <span style={{
+                          flexShrink: 0, fontSize: 7, fontWeight: 700, letterSpacing: '0.12em',
+                          textTransform: 'uppercase', color: ev.color,
+                          background: `${ev.color}15`, border: `1px solid ${ev.color}35`,
+                          borderRadius: 4, padding: '1px 5px',
+                        }}>
+                          AO VIVO
+                        </span>
+                      )}
+                    </div>
+                    {/* Meta row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 8, color: 'rgba(150,200,160,0.30)', fontFamily: 'Orbitron,monospace' }}>
+                        {fmtTime(ev.inicio)}–{fmtTime(ev.fim_previsto)}
+                      </span>
+                      {dur !== null && (
+                        <span style={{ fontSize: 8, color: 'rgba(150,200,160,0.20)' }}>
+                          {dur < 60 ? `${dur}min` : `${Math.floor(dur / 60)}h${dur % 60 > 0 ? `${dur % 60}m` : ''}`}
+                        </span>
+                      )}
+                      <span style={{ marginLeft: 'auto', fontSize: 8, color: `${ev.color}45` }}>
+                        {ev.cat}
+                      </span>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
+
+              {/* AGORA separator — injected between past and future */}
+              {showNowAfter && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 54, paddingRight: 4, margin: '4px 0' }}>
+                  <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, transparent, rgba(239,68,68,0.50))' }} />
+                  <span style={{
+                    fontFamily: 'Orbitron,monospace', fontSize: 7.5, fontWeight: 700,
+                    color: '#ef4444', letterSpacing: '0.12em', flexShrink: 0,
+                  }}>
+                    ◆ AGORA {nowStr}
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(239,68,68,0.50), transparent)' }} />
+                </div>
+              )}
             </div>
           )
         })}
@@ -784,10 +795,8 @@ export function TVDisplay({
         </div>
 
         {/* CENTER: Timeline */}
-        <TVCard title={`Timeline de Hoje · ${jogosHoje.length} jogos · ${showsHoje.length} shows · ${festasHoje.length} festas`}>
-          <div style={{ height: '100%', overflow: 'hidden' }}>
-            <TVTimeline jogos={jogosHoje} shows={showsHoje} festas={festasHoje} />
-          </div>
+        <TVCard title={`Timeline · ${jogosHoje.length} jogos · ${showsHoje.length} shows · ${festasHoje.length} festas`}>
+          <TVTimeline jogos={jogosHoje} shows={showsHoje} festas={festasHoje} />
         </TVCard>
 
         {/* RIGHT: Canais + Patrocínio */}

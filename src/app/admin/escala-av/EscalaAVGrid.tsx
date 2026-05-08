@@ -3,8 +3,8 @@
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Plus, Pencil, Trash2, Loader2, AlertCircle, Wifi, WifiOff,
-  UtensilsCrossed, MapPin, Camera, Video, ChevronDown, ChevronUp,
+  Plus, Pencil, Trash2, Loader2, AlertCircle, Wifi,
+  UtensilsCrossed, MapPin, Camera, Video, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -62,295 +62,47 @@ const PRIORIDADE_CONFIG = {
 }
 
 const STATUS_CONFIG = {
-  rascunho:   { label: 'Rascunho',   bg: 'rgba(148,163,184,0.12)', text: '#64748b' },
-  confirmado: { label: 'Confirmado', bg: 'rgba(46,107,66,0.12)',   text: '#2e6b42' },
-  em_campo:   { label: 'Em campo',   bg: 'rgba(59,130,246,0.12)',  text: '#2563eb' },
-  finalizado: { label: 'Finalizado', bg: 'rgba(16,185,129,0.12)',  text: '#059669' },
-  faltou:     { label: 'Faltou',     bg: 'rgba(239,68,68,0.12)',   text: '#dc2626' },
+  rascunho:   { label: 'Rascunho',   text: '#94a3b8' },
+  confirmado: { label: 'Confirmado', text: '#2e6b42' },
+  em_campo:   { label: 'Em campo',   text: '#2563eb' },
+  finalizado: { label: 'Finalizado', text: '#059669' },
+  faltou:     { label: 'Faltou',     text: '#dc2626' },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PersonPill — chip de pessoa escalada dentro do card de setor
+// groupSetores — agrupa praças por prefixo numérico
+// Ex: "CEMEA 01", "CEMEA 02" → grupo "CEMEA" com itens [01, 02]
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PersonPill({
-  turno,
-  onEdit,
-  onDelete,
-}: {
-  turno:    TurnoAV
-  onEdit:   () => void
-  onDelete: () => void
-}) {
-  const nome   = turno.user?.nome ?? '?'
-  const status = (turno.status_escala ?? 'rascunho') as keyof typeof STATUS_CONFIG
-  const cfg    = STATUS_CONFIG[status] ?? STATUS_CONFIG.rascunho
+interface SetorGroup {
+  prefix: string
+  items:  { setor: Setor; suffix: string | null }[]
+}
 
-  return (
-    <div
-      className="group relative flex items-center gap-2 rounded-xl border px-3 py-2 text-xs transition-all"
-      style={{
-        background:   'rgba(46,107,66,0.04)',
-        borderColor:  'rgba(46,107,66,0.14)',
-      }}
-    >
-      {/* Dot de status */}
-      <span
-        className="h-1.5 w-1.5 shrink-0 rounded-full"
-        style={{ background: cfg.text }}
-        title={cfg.label}
-      />
+function groupSetores(setores: Setor[]): SetorGroup[] {
+  const map = new Map<string, SetorGroup>()
 
-      {/* Nome */}
-      <span className="flex-1 truncate font-semibold text-[var(--foreground)]">
-        {nome}
-      </span>
+  for (const s of setores) {
+    const match  = s.nome.match(/^(.+?)\s+(\d{1,2})$/)
+    const prefix = match ? match[1].trim() : s.nome
+    const suffix = match ? match[2] : null
 
-      {/* Empresa */}
-      {turno.parceiro && (
-        <span
-          className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-          style={{
-            background: `${turno.parceiro.cor_hex}18`,
-            color:       turno.parceiro.cor_hex,
-            border:      `1px solid ${turno.parceiro.cor_hex}30`,
-          }}
-        >
-          {turno.parceiro.nome}
-        </span>
-      )}
+    if (!map.has(prefix)) map.set(prefix, { prefix, items: [] })
+    map.get(prefix)!.items.push({ setor: s, suffix })
+  }
 
-      {/* Horário */}
-      <span
-        className="shrink-0 tabular-nums text-[9px] text-[var(--muted-foreground)]"
-        style={{ fontFamily: 'Orbitron, monospace' }}
-      >
-        {fmtHora(turno.inicio)}–{fmtHora(turno.fim)}
-      </span>
+  // Ordena os itens dentro de cada grupo pelo número
+  for (const g of map.values()) {
+    g.items.sort((a, b) =>
+      a.suffix && b.suffix ? Number(a.suffix) - Number(b.suffix) : 0
+    )
+  }
 
-      {/* Ações no hover */}
-      <div className="absolute right-1.5 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 group-hover:flex">
-        <button
-          onClick={onEdit}
-          className="rounded p-1 hover:bg-[var(--muted)]"
-          title="Editar"
-        >
-          <Pencil className="h-3 w-3 text-[var(--muted-foreground)]" />
-        </button>
-        <button
-          onClick={onDelete}
-          className="rounded p-1 hover:bg-red-50 hover:text-red-500"
-          title="Remover"
-        >
-          <Trash2 className="h-3 w-3" />
-        </button>
-      </div>
-    </div>
-  )
+  return Array.from(map.values())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SetorCard — card de um setor com seções FOTO / VÍDEO
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SetorCard({
-  setor,
-  turnos,
-  temEvento,
-  onAdd,
-  onEdit,
-  onDelete,
-}: {
-  setor:     Setor
-  turnos:    TurnoAV[]
-  temEvento: boolean
-  onAdd:     (funcao: 'foto' | 'video') => void
-  onEdit:    (turno: TurnoAV) => void
-  onDelete:  (id: string) => void
-}) {
-  const [briefingOpen, setBriefingOpen] = React.useState(false)
-
-  const fotoTurnos  = turnos.filter(t => t.funcao === 'foto')
-  const videoTurnos = turnos.filter(t => t.funcao === 'video')
-
-  // Briefing: junta briefings únicos de todos os turnos deste setor
-  const briefings = [...new Set(
-    turnos.map(t => t.briefing_editorial).filter(Boolean) as string[]
-  )]
-
-  const temFoto  = fotoTurnos.length > 0
-  const temVideo = videoTurnos.length > 0
-  const buraco   = temEvento && (!temFoto || !temVideo)
-
-  // Prioridade máxima dos turnos deste setor
-  const prioOrdem = { alta: 0, media: 1, baixa: 2 }
-  const prioMax = turnos.reduce<string | null>((acc, t) => {
-    const p = t.prioridade ?? 'media'
-    if (!acc) return p
-    return (prioOrdem[p as keyof typeof prioOrdem] ?? 1) <
-           (prioOrdem[acc as keyof typeof prioOrdem] ?? 1) ? p : acc
-  }, null) ?? 'media'
-
-  const prioCfg = PRIORIDADE_CONFIG[prioMax as keyof typeof PRIORIDADE_CONFIG] ?? PRIORIDADE_CONFIG.media
-
-  return (
-    <div
-      className="flex flex-col rounded-2xl border"
-      style={{
-        background:  buraco ? 'rgba(239,68,68,0.02)' : 'rgba(16,29,18,0.01)',
-        borderColor: buraco ? 'rgba(239,68,68,0.20)' : 'rgba(46,107,66,0.12)',
-      }}
-    >
-      {/* ── Cabeçalho ── */}
-      <div className="flex items-start gap-3 px-4 pt-4 pb-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Badge prioridade (só se tiver turnos) */}
-            {turnos.length > 0 && (
-              <span
-                className="shrink-0 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest"
-                style={{
-                  background: prioCfg.bg,
-                  border:     `1px solid ${prioCfg.border}`,
-                  color:       prioCfg.text,
-                }}
-              >
-                {prioCfg.label}
-              </span>
-            )}
-            {/* Buraco alert */}
-            {buraco && (
-              <span className="shrink-0 rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-600">
-                {!temFoto && !temVideo ? 'Sem cobertura' : !temFoto ? 'Falta foto' : 'Falta vídeo'}
-              </span>
-            )}
-          </div>
-          <h3 className="mt-1 text-sm font-bold text-[var(--foreground)] leading-tight">{setor.nome}</h3>
-        </div>
-
-        {/* Venue icons */}
-        <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-          {setor.tem_wifi ? (
-            <Wifi className="h-3.5 w-3.5 text-[var(--green-bright)]" aria-label="Wi-Fi disponível" />
-          ) : (
-            <WifiOff className="h-3.5 w-3.5 text-[var(--muted-foreground)] opacity-30" />
-          )}
-          {setor.alimentacao && setor.alimentacao !== 'nenhuma' && (
-            <UtensilsCrossed
-              className="h-3.5 w-3.5"
-              style={{ color: '#b07a0a' }}
-            />
-          )}
-          {setor.maps_url && (
-            <a href={setor.maps_url} target="_blank" rel="noopener noreferrer" aria-label="Abrir no Maps">
-              <MapPin className="h-3.5 w-3.5 text-[var(--muted-foreground)] opacity-50 hover:text-[var(--accent)] hover:opacity-100 transition-opacity" />
-            </a>
-          )}
-        </div>
-      </div>
-
-      {/* Briefings colapsáveis */}
-      {briefings.length > 0 && (
-        <div className="px-4 pb-2">
-          <button
-            onClick={() => setBriefingOpen(v => !v)}
-            className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-          >
-            {briefingOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            {briefingOpen ? 'Ocultar briefing' : 'Ver briefing'}
-          </button>
-          {briefingOpen && (
-            <div
-              className="mt-2 rounded-xl border-l-2 pl-3 py-2 text-[11px] text-[var(--muted-foreground)] italic leading-relaxed"
-              style={{ borderColor: prioCfg.dot, background: prioCfg.bg }}
-            >
-              {briefings.join(' · ')}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Notas de acesso */}
-      {setor.notas_acesso && (
-        <div className="mx-4 mb-3 rounded-lg border border-amber-200/60 bg-amber-50/60 px-3 py-1.5 text-[10px] text-amber-700">
-          ⚠️ {setor.notas_acesso}
-        </div>
-      )}
-
-      {/* Divisor */}
-      <div className="mx-4 h-px" style={{ background: 'rgba(46,107,66,0.08)' }} />
-
-      {/* ── FOTO / VÍDEO ── */}
-      <div className="grid grid-cols-2 divide-x divide-[rgba(46,107,66,0.08)] px-0">
-        {(['foto', 'video'] as const).map(funcao => {
-          const list = funcao === 'foto' ? fotoTurnos : videoTurnos
-          const Icon = funcao === 'foto' ? Camera : Video
-          const cor  = funcao === 'foto' ? '#7c3aed' : '#1a5c5c'
-
-          return (
-            <div key={funcao} className="flex flex-col gap-2 p-4">
-              {/* Header da coluna */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Icon className="h-3.5 w-3.5" style={{ color: cor }} />
-                  <span
-                    className="text-[10px] font-bold uppercase tracking-widest"
-                    style={{ color: cor }}
-                  >
-                    {funcao}
-                  </span>
-                  {list.length > 0 && (
-                    <span
-                      className="rounded-full px-1.5 py-px text-[9px] font-bold tabular-nums"
-                      style={{ background: `${cor}15`, color: cor }}
-                    >
-                      {list.length}
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => onAdd(funcao)}
-                  className="flex h-5 w-5 items-center justify-center rounded-md border border-dashed transition-all hover:border-[var(--primary)] hover:text-[var(--primary)]"
-                  style={{ borderColor: 'rgba(46,107,66,0.20)', color: 'rgba(46,107,66,0.40)' }}
-                  title={`Adicionar ${funcao}`}
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-              </div>
-
-              {/* Pessoas */}
-              {list.length === 0 ? (
-                <div
-                  className="rounded-xl border border-dashed py-3 text-center text-[10px]"
-                  style={{
-                    borderColor: !temEvento ? 'rgba(46,107,66,0.08)' : `${cor}30`,
-                    color:       !temEvento ? 'rgba(46,107,66,0.25)' : `${cor}80`,
-                  }}
-                >
-                  {temEvento ? '— vazio —' : 'sem evento'}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  {list.map(t => (
-                    <PersonPill
-                      key={t.id}
-                      turno={t}
-                      onEdit={() => onEdit(t)}
-                      onDelete={() => onDelete(t.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TurnoDialog — criar / editar turno
+// TurnoDialog — criar / editar turno (unchanged)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface TurnoDialogProps {
@@ -385,7 +137,6 @@ function TurnoDialog({
   const [briefing,   setBriefing]   = React.useState(editing?.briefing_editorial ?? '')
   const [conteudos,  setConteudos]  = React.useState(editing?.conteudos_esperados ?? '')
 
-  // Inicializar horários do editing
   React.useEffect(() => {
     if (open) {
       setError(null)
@@ -406,7 +157,6 @@ function TurnoDialog({
     }
   }, [open, editing, defaultFuncao, defaultSetorId])
 
-  // Filtra profiles pela função selecionada
   const profilesFiltrados = profiles.filter(
     p => p.funcao_principal === funcao ||
          p.funcao_principal === 'foto' ||
@@ -424,7 +174,7 @@ function TurnoDialog({
         dia_id:              dia.id,
         setor_id:            setorId || null,
         funcao:              funcao,
-        parceiro_id:         parceiro || null,
+        parceiro_id:         parceiro && parceiro !== '__none__' ? parceiro : null,
         user_id:             userId || null,
         inicio:              buildTimestamp(dia.data, horaInicio),
         fim:                 buildTimestamp(dia.data, horaFim, isNight),
@@ -593,7 +343,7 @@ function TurnoDialog({
               rows={2}
               value={briefing}
               onChange={e => setBriefing(e.target.value)}
-              placeholder='Ex: "Estréia de vôlei de praia — captar abertura e comemoração"'
+              placeholder='Ex: "Estreia de vôlei de praia — captar abertura e comemoração"'
               className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
             />
           </div>
@@ -634,6 +384,504 @@ function TurnoDialog({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// EmpresaCell — célula da coluna "Empresa" para uma função
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EmpresaCell({
+  turnos, funcao, temEvento, onAdd,
+}: {
+  turnos: TurnoAV[]
+  funcao: 'foto' | 'video'
+  temEvento: boolean
+  onAdd: () => void
+}) {
+  const cor = funcao === 'foto' ? '#7c3aed' : '#1a5c5c'
+
+  if (turnos.length === 0) {
+    return (
+      <button
+        onClick={onAdd}
+        className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed py-2 text-[10px] font-medium transition-all hover:border-solid"
+        style={{
+          borderColor: temEvento ? `${cor}40` : 'rgba(46,107,66,0.10)',
+          color:       temEvento ? `${cor}80` : 'rgba(46,107,66,0.25)',
+          minHeight: 36,
+        }}
+      >
+        <Plus className="h-3 w-3" />
+        empresa
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {turnos.map(t => (
+        <div
+          key={t.id}
+          className="flex items-center justify-center rounded-lg px-2 py-1.5"
+          style={{
+            background: t.parceiro ? `${t.parceiro.cor_hex}12` : 'rgba(46,107,66,0.06)',
+            border:     `1px solid ${t.parceiro ? `${t.parceiro.cor_hex}25` : 'rgba(46,107,66,0.12)'}`,
+          }}
+        >
+          {t.parceiro ? (
+            <span
+              className="text-[10px] font-bold uppercase tracking-wider truncate"
+              style={{ color: t.parceiro.cor_hex }}
+            >
+              {t.parceiro.nome}
+            </span>
+          ) : (
+            <span className="text-[10px] text-[var(--muted-foreground)]/50">—</span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ColaboradorCell — célula da coluna "Colaborador" para uma função
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ColaboradorCell({
+  turnos, funcao, temEvento, onAdd, onEdit, onDelete,
+}: {
+  turnos: TurnoAV[]
+  funcao: 'foto' | 'video'
+  temEvento: boolean
+  onAdd: () => void
+  onEdit: (t: TurnoAV) => void
+  onDelete: (id: string) => void
+}) {
+  const cor = funcao === 'foto' ? '#7c3aed' : '#1a5c5c'
+
+  if (turnos.length === 0) {
+    return (
+      <button
+        onClick={onAdd}
+        className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed py-2 text-[10px] font-medium transition-all hover:border-solid"
+        style={{
+          borderColor: temEvento ? `${cor}40` : 'rgba(46,107,66,0.10)',
+          color:       temEvento ? `${cor}80` : 'rgba(46,107,66,0.25)',
+          minHeight: 36,
+        }}
+      >
+        <Plus className="h-3 w-3" />
+        colaborador
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {turnos.map(t => {
+        const status = (t.status_escala ?? 'rascunho') as keyof typeof STATUS_CONFIG
+        const stCfg  = STATUS_CONFIG[status] ?? STATUS_CONFIG.rascunho
+
+        return (
+          <div
+            key={t.id}
+            className="group relative flex items-center gap-2 rounded-lg border px-2.5 py-1.5"
+            style={{
+              background:  'rgba(46,107,66,0.03)',
+              borderColor: 'rgba(46,107,66,0.12)',
+              minHeight: 36,
+            }}
+          >
+            {/* Status dot */}
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ background: stCfg.text }}
+              title={stCfg.label}
+            />
+
+            {/* Nome */}
+            <span className="flex-1 truncate text-[11px] font-semibold text-[var(--foreground)]">
+              {t.user?.nome ?? '?'}
+            </span>
+
+            {/* Horário */}
+            <span
+              className="shrink-0 tabular-nums text-[9px] text-[var(--muted-foreground)]/60"
+              style={{ fontFamily: 'Orbitron, monospace' }}
+            >
+              {fmtHora(t.inicio)}–{fmtHora(t.fim)}
+            </span>
+
+            {/* Ações no hover */}
+            <div className="absolute right-1 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 rounded-md bg-[var(--card)] p-0.5 shadow-sm group-hover:flex"
+              style={{ border: '1px solid rgba(46,107,66,0.12)' }}
+            >
+              <button
+                onClick={() => onEdit(t)}
+                className="flex h-5 w-5 items-center justify-center rounded hover:bg-[var(--muted)]"
+                title="Editar"
+              >
+                <Pencil className="h-2.5 w-2.5 text-[var(--muted-foreground)]" />
+              </button>
+              <button
+                onClick={() => onDelete(t.id)}
+                className="flex h-5 w-5 items-center justify-center rounded hover:bg-red-50 hover:text-red-500"
+                title="Remover"
+              >
+                <Trash2 className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EscalaTable — tabela agrupada por prefixo de praça
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EscalaTable({
+  setores,
+  turnosPorSetor,
+  setoresComEvento,
+  onAdd,
+  onEdit,
+  onDelete,
+}: {
+  setores:          Setor[]
+  turnosPorSetor:   Map<string, TurnoAV[]>
+  setoresComEvento: Set<string>
+  onAdd:    (funcao: 'foto' | 'video', setorId: string) => void
+  onEdit:   (turno: TurnoAV) => void
+  onDelete: (id: string) => void
+}) {
+  const groups = React.useMemo(() => groupSetores(setores), [setores])
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set())
+
+  function toggleGroup(prefix: string) {
+    setCollapsed(prev => {
+      const next = new Set(prev)
+      if (next.has(prefix)) next.delete(prefix)
+      else next.add(prefix)
+      return next
+    })
+  }
+
+  // Filtra grupos sem nenhum evento E sem nenhum turno
+  const activeGroups = groups.filter(g =>
+    g.items.some(({ setor }) => {
+      const ts = turnosPorSetor.get(setor.id) ?? []
+      return setoresComEvento.has(setor.id) || ts.length > 0
+    })
+  )
+
+  if (activeGroups.length === 0) {
+    return (
+      <div className="flex h-40 items-center justify-center text-sm text-[var(--muted-foreground)]/50">
+        Sem setores com eventos neste dia.
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        {/* ── Cabeçalho ── */}
+        <thead>
+          <tr>
+            {/* Praça */}
+            <th
+              className="sticky left-0 z-10 border-b border-r px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.20em] text-[var(--muted-foreground)]"
+              style={{
+                background:  'var(--card)',
+                borderColor: 'rgba(46,107,66,0.12)',
+                width: 180,
+                minWidth: 140,
+              }}
+            >
+              Praça
+            </th>
+
+            {/* FOTO */}
+            <th
+              colSpan={2}
+              className="border-b border-r px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-[0.15em]"
+              style={{ color: '#7c3aed', borderColor: 'rgba(46,107,66,0.12)', background: 'rgba(124,58,237,0.03)' }}
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <Camera className="h-3.5 w-3.5" />
+                FOTO
+              </div>
+            </th>
+
+            {/* VÍDEO */}
+            <th
+              colSpan={2}
+              className="border-b px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-[0.15em]"
+              style={{ color: '#1a5c5c', borderColor: 'rgba(46,107,66,0.12)', background: 'rgba(26,92,92,0.03)' }}
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <Video className="h-3.5 w-3.5" />
+                VÍDEO
+              </div>
+            </th>
+          </tr>
+
+          {/* Sub-cabeçalhos */}
+          <tr>
+            <th
+              className="sticky left-0 z-10 border-b border-r"
+              style={{ background: 'var(--card)', borderColor: 'rgba(46,107,66,0.12)' }}
+            />
+            {(['foto', 'video'] as const).flatMap(funcao => [
+              <th
+                key={`${funcao}-empresa`}
+                className="border-b px-3 py-2 text-center text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]"
+                style={{
+                  borderColor: 'rgba(46,107,66,0.12)',
+                  borderRight: funcao === 'foto' ? '1px solid rgba(124,58,237,0.15)' : undefined,
+                  background:  funcao === 'foto' ? 'rgba(124,58,237,0.02)' : 'rgba(26,92,92,0.02)',
+                  width: 140,
+                }}
+              >
+                Empresa
+              </th>,
+              <th
+                key={`${funcao}-colab`}
+                className="border-b px-3 py-2 text-center text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]"
+                style={{
+                  borderColor: 'rgba(46,107,66,0.12)',
+                  borderRight: funcao === 'foto' ? '1px solid rgba(46,107,66,0.12)' : undefined,
+                  background:  funcao === 'foto' ? 'rgba(124,58,237,0.02)' : 'rgba(26,92,92,0.02)',
+                  width: 200,
+                }}
+              >
+                Colaborador
+              </th>,
+            ])}
+          </tr>
+        </thead>
+
+        <tbody>
+          {activeGroups.map((group, gIdx) => {
+            const isCollapsed = collapsed.has(group.prefix)
+            const isSolo      = group.items.length === 1 && group.items[0].suffix === null
+
+            // Filtra itens do grupo que têm evento ou turno
+            const activeItems = group.items.filter(({ setor }) => {
+              const ts = turnosPorSetor.get(setor.id) ?? []
+              return setoresComEvento.has(setor.id) || ts.length > 0
+            })
+
+            if (activeItems.length === 0) return null
+
+            return (
+              <React.Fragment key={group.prefix}>
+
+                {/* ── Linha de grupo ── */}
+                {!isSolo && (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="sticky left-0 z-10"
+                      style={{
+                        background: gIdx % 2 === 0 ? 'rgba(46,107,66,0.04)' : 'rgba(26,92,92,0.03)',
+                        borderBottom: '1px solid rgba(46,107,66,0.10)',
+                        borderTop: gIdx > 0 ? '2px solid rgba(46,107,66,0.14)' : undefined,
+                        padding: 0,
+                      }}
+                    >
+                      <button
+                        onClick={() => toggleGroup(group.prefix)}
+                        className="flex w-full items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-[rgba(46,107,66,0.06)]"
+                      >
+                        {isCollapsed
+                          ? <ChevronRight className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+                          : <ChevronDown  className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+                        }
+                        <span className="text-xs font-bold tracking-[0.12em] text-[var(--foreground)]">
+                          {group.prefix}
+                        </span>
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[9px] font-bold tabular-nums"
+                          style={{ background: 'rgba(46,107,66,0.10)', color: '#2e6b42' }}
+                        >
+                          {activeItems.length}
+                        </span>
+
+                        {/* Cobertura resumida do grupo */}
+                        {(() => {
+                          const missing = activeItems.filter(({ setor }) => {
+                            if (!setoresComEvento.has(setor.id)) return false
+                            const ts = turnosPorSetor.get(setor.id) ?? []
+                            return !ts.some(t => t.funcao === 'foto') || !ts.some(t => t.funcao === 'video')
+                          })
+                          if (missing.length === 0) return null
+                          return (
+                            <span className="ml-auto flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[9px] font-semibold text-red-600">
+                              <AlertCircle className="h-2.5 w-2.5" />
+                              {missing.length} sem cobertura
+                            </span>
+                          )
+                        })()}
+                      </button>
+                    </td>
+                  </tr>
+                )}
+
+                {/* ── Linhas de setor ── */}
+                {!isCollapsed && activeItems.map(({ setor, suffix }, rowIdx) => {
+                  const ts        = turnosPorSetor.get(setor.id) ?? []
+                  const fotoTs    = ts.filter(t => t.funcao === 'foto')
+                  const videoTs   = ts.filter(t => t.funcao === 'video')
+                  const temEvento = setoresComEvento.has(setor.id)
+                  const faltaFoto  = temEvento && fotoTs.length === 0
+                  const faltaVideo = temEvento && videoTs.length === 0
+                  const isLast     = rowIdx === activeItems.length - 1
+
+                  return (
+                    <tr
+                      key={setor.id}
+                      style={{
+                        borderBottom: isLast ? undefined : '1px solid rgba(46,107,66,0.07)',
+                        background: rowIdx % 2 === 0 ? 'transparent' : 'rgba(46,107,66,0.01)',
+                      }}
+                    >
+                      {/* ── Praça (sticky) ── */}
+                      <td
+                        className="sticky left-0 z-10 border-r px-4 py-3"
+                        style={{
+                          background:  rowIdx % 2 === 0 ? 'var(--card)' : 'color-mix(in srgb, var(--card) 98%, #2e6b42)',
+                          borderColor: 'rgba(46,107,66,0.12)',
+                          verticalAlign: 'middle',
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          {/* Indicador de cobertura */}
+                          <div className="flex flex-col gap-0.5">
+                            <span style={{ fontSize: 8, opacity: !faltaFoto && fotoTs.length > 0 ? 1 : 0.2 }}>📸</span>
+                            <span style={{ fontSize: 8, opacity: !faltaVideo && videoTs.length > 0 ? 1 : 0.2 }}>🎬</span>
+                          </div>
+
+                          <div className="min-w-0">
+                            {/* Nome do setor */}
+                            <p className="text-xs font-semibold text-[var(--foreground)] leading-tight truncate">
+                              {isSolo
+                                ? setor.nome
+                                : suffix
+                                ? <><span className="font-bold">{suffix}</span></>
+                                : setor.nome
+                              }
+                            </p>
+
+                            {/* Venue icons */}
+                            <div className="mt-0.5 flex items-center gap-1">
+                              {setor.tem_wifi && (
+                                <Wifi className="h-2.5 w-2.5 text-[var(--green-bright)]" />
+                              )}
+                              {setor.alimentacao && setor.alimentacao !== 'nenhuma' && (
+                                <UtensilsCrossed className="h-2.5 w-2.5" style={{ color: '#b07a0a' }} />
+                              )}
+                              {setor.maps_url && (
+                                <a href={setor.maps_url} target="_blank" rel="noopener noreferrer">
+                                  <MapPin className="h-2.5 w-2.5 text-[var(--muted-foreground)]/40 hover:text-[var(--accent)]" />
+                                </a>
+                              )}
+                              {setor.notas_acesso && (
+                                <span className="text-[8px] text-amber-500">⚠️</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* ── FOTO: Empresa ── */}
+                      <td
+                        className="px-2 py-2"
+                        style={{
+                          borderRight:   '1px solid rgba(124,58,237,0.10)',
+                          verticalAlign: 'top',
+                          background:    faltaFoto ? 'rgba(239,68,68,0.02)' : 'rgba(124,58,237,0.01)',
+                          minWidth: 120,
+                        }}
+                      >
+                        <EmpresaCell
+                          turnos={fotoTs}
+                          funcao="foto"
+                          temEvento={temEvento}
+                          onAdd={() => onAdd('foto', setor.id)}
+                        />
+                      </td>
+
+                      {/* ── FOTO: Colaborador ── */}
+                      <td
+                        className="px-2 py-2"
+                        style={{
+                          borderRight:   '1px solid rgba(46,107,66,0.12)',
+                          verticalAlign: 'top',
+                          background:    faltaFoto ? 'rgba(239,68,68,0.02)' : 'rgba(124,58,237,0.01)',
+                          minWidth: 180,
+                        }}
+                      >
+                        <ColaboradorCell
+                          turnos={fotoTs}
+                          funcao="foto"
+                          temEvento={temEvento}
+                          onAdd={() => onAdd('foto', setor.id)}
+                          onEdit={onEdit}
+                          onDelete={onDelete}
+                        />
+                      </td>
+
+                      {/* ── VÍDEO: Empresa ── */}
+                      <td
+                        className="px-2 py-2"
+                        style={{
+                          borderRight:   '1px solid rgba(26,92,92,0.10)',
+                          verticalAlign: 'top',
+                          background:    faltaVideo ? 'rgba(239,68,68,0.02)' : 'rgba(26,92,92,0.01)',
+                          minWidth: 120,
+                        }}
+                      >
+                        <EmpresaCell
+                          turnos={videoTs}
+                          funcao="video"
+                          temEvento={temEvento}
+                          onAdd={() => onAdd('video', setor.id)}
+                        />
+                      </td>
+
+                      {/* ── VÍDEO: Colaborador ── */}
+                      <td
+                        className="px-2 py-2"
+                        style={{
+                          verticalAlign: 'top',
+                          background:    faltaVideo ? 'rgba(239,68,68,0.02)' : 'rgba(26,92,92,0.01)',
+                          minWidth: 180,
+                        }}
+                      >
+                        <ColaboradorCell
+                          turnos={videoTs}
+                          funcao="video"
+                          temEvento={temEvento}
+                          onAdd={() => onAdd('video', setor.id)}
+                          onEdit={onEdit}
+                          onDelete={onDelete}
+                        />
+                      </td>
+                    </tr>
+                  )
+                })}
+              </React.Fragment>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // EscalaAVGrid — componente principal
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -663,7 +911,6 @@ export function EscalaAVGrid({
 
   const dia = dias[activeDiaIdx]
 
-  // Setores com evento no dia ativo
   const setoresComEvento = React.useMemo(() => {
     if (!dia) return new Set<string>()
     return new Set(
@@ -673,13 +920,11 @@ export function EscalaAVGrid({
     )
   }, [eventosSetores, dia])
 
-  // Turnos do dia ativo
   const turnosDia = React.useMemo(
     () => (!dia ? [] : turnos.filter(t => t.dia_id === dia.id)),
     [turnos, dia],
   )
 
-  // Turnos agrupados por setor
   const turnosPorSetor = React.useMemo(() => {
     const map = new Map<string, TurnoAV[]>()
     for (const t of turnosDia) {
@@ -690,7 +935,6 @@ export function EscalaAVGrid({
     return map
   }, [turnosDia])
 
-  // Alertas de buraco: setores com evento mas sem foto ou sem vídeo
   const buracos = React.useMemo(() => {
     const result: { setor: Setor; faltaFoto: boolean; faltaVideo: boolean }[] = []
     for (const setorId of setoresComEvento) {
@@ -706,7 +950,6 @@ export function EscalaAVGrid({
     return result
   }, [setoresComEvento, turnosPorSetor, setores])
 
-  // Resumo do dia
   const totalFoto  = turnosDia.filter(t => t.funcao === 'foto').length
   const totalVideo = turnosDia.filter(t => t.funcao === 'video').length
 
@@ -756,32 +999,31 @@ export function EscalaAVGrid({
         <div className="flex items-center gap-2">
           <Camera className="h-3.5 w-3.5" style={{ color: '#7c3aed' }} />
           <span className="text-xs text-[var(--muted-foreground)]">Foto</span>
-          <span
-            className="tabular-nums text-sm font-bold"
-            style={{ fontFamily: 'Orbitron, monospace', color: '#7c3aed' }}
-          >
+          <span className="tabular-nums text-sm font-bold" style={{ fontFamily: 'Orbitron, monospace', color: '#7c3aed' }}>
             {totalFoto}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <Video className="h-3.5 w-3.5" style={{ color: '#1a5c5c' }} />
           <span className="text-xs text-[var(--muted-foreground)]">Vídeo</span>
-          <span
-            className="tabular-nums text-sm font-bold"
-            style={{ fontFamily: 'Orbitron, monospace', color: '#1a5c5c' }}
-          >
+          <span className="tabular-nums text-sm font-bold" style={{ fontFamily: 'Orbitron, monospace', color: '#1a5c5c' }}>
             {totalVideo}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-[var(--muted-foreground)]">Setores c/ evento</span>
-          <span
-            className="tabular-nums text-sm font-bold text-[var(--foreground)]"
-            style={{ fontFamily: 'Orbitron, monospace' }}
-          >
+          <span className="tabular-nums text-sm font-bold text-[var(--foreground)]" style={{ fontFamily: 'Orbitron, monospace' }}>
             {setoresComEvento.size}
           </span>
         </div>
+        {buracos.length > 0 && (
+          <div className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1">
+            <AlertCircle className="h-3 w-3 text-red-500" />
+            <span className="text-[11px] font-semibold text-red-600">
+              {buracos.length} sem cobertura completa
+            </span>
+          </div>
+        )}
         <div className="ml-auto">
           <Button
             size="sm"
@@ -793,55 +1035,19 @@ export function EscalaAVGrid({
         </div>
       </div>
 
-      {/* ── Alertas de buracos ── */}
-      {buracos.length > 0 && (
-        <div className="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-          <div className="mb-2 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-red-500" />
-            <span className="text-sm font-semibold text-red-700">
-              {buracos.length} setor{buracos.length > 1 ? 'es' : ''} sem cobertura completa
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {buracos.map(b => (
-              <span
-                key={b.setor.id}
-                className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1 text-[11px] font-medium text-red-700"
-              >
-                {b.setor.nome}
-                <span className="text-red-400">·</span>
-                {b.faltaFoto && b.faltaVideo
-                  ? 'sem cobertura'
-                  : b.faltaFoto
-                  ? 'falta foto'
-                  : 'falta vídeo'}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Grid de setores ── */}
-      <div className="grid gap-4 p-6 md:grid-cols-2 xl:grid-cols-3">
-        {setores.map(setor => {
-          const ts = turnosPorSetor.get(setor.id) ?? []
-          const temEvento = setoresComEvento.has(setor.id)
-
-          // Oculta setores sem evento e sem turno
-          if (!temEvento && ts.length === 0) return null
-
-          return (
-            <SetorCard
-              key={setor.id}
-              setor={setor}
-              turnos={ts}
-              temEvento={temEvento}
-              onAdd={funcao => setDialog({ open: true, defaultFuncao: funcao, defaultSetorId: setor.id })}
-              onEdit={t => setDialog({ open: true, defaultFuncao: t.funcao as 'foto' | 'video', defaultSetorId: setor.id, editing: t })}
-              onDelete={id => setDeleteConfirm(id)}
-            />
-          )
-        })}
+      {/* ── Tabela de escala ── */}
+      <div
+        className="border-[var(--border)]"
+        style={{ background: 'var(--card)' }}
+      >
+        <EscalaTable
+          setores={setores}
+          turnosPorSetor={turnosPorSetor}
+          setoresComEvento={setoresComEvento}
+          onAdd={(funcao, setorId) => setDialog({ open: true, defaultFuncao: funcao, defaultSetorId: setorId })}
+          onEdit={t => setDialog({ open: true, defaultFuncao: t.funcao as 'foto' | 'video', defaultSetorId: t.setor_id ?? undefined, editing: t })}
+          onDelete={id => setDeleteConfirm(id)}
+        />
       </div>
 
       {/* Dialog criar/editar */}

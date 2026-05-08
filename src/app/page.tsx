@@ -138,6 +138,8 @@ export default async function Home() {
   let coordConteudosPorPatroc:    { patrocinador_id: string | null; status: string }[]     = []
   let coordChecklistItens:        { id: string; status: string }[]                         = []
   let coordDiaAtualId:            string | null                                            = null
+  let coordTurnosCoberturaAV:     { setor_id: string; funcao: string; dia_id: string }[]  = []
+  let coordYoutubeSetorIds:       string[]                                                 = []
 
   // ── Analytics ─────────────────────────────────────────────────────────────
   let analyticsRanking:       { id: string; nome: string; total: number; publicados: number; funcao: string | null }[] = []
@@ -167,6 +169,8 @@ export default async function Home() {
         patrocinadoresRes,
         contPatrocRes,
         ckItensRes,
+        turnosCoberturaAVRes,
+        youtubeSetoresRes,
       ] = await Promise.all([
         // 1. Conteudos today by canal + status
         supabase
@@ -178,19 +182,19 @@ export default async function Home() {
         // 2. Jogos — todos os 4 dias do evento
         supabase
           .from('jogos')
-          .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id, modalidade_id')
+          .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id, modalidade_id, setor_id')
           .order('inicio'),
 
         // 3. Shows — todos os 4 dias do evento
         supabase
           .from('shows')
-          .select('id, nome, inicio, fim_previsto, dia_id')
+          .select('id, nome, inicio, fim_previsto, dia_id, setor_id')
           .order('inicio'),
 
         // 4. Festas — todos os 4 dias do evento
         supabase
           .from('festas')
-          .select('id, nome, inicio, fim_previsto, dia_id')
+          .select('id, nome, inicio, fim_previsto, dia_id, setor_id')
           .order('inicio'),
 
         // 5. Turnos today (distinct user_ids + setor_ids)
@@ -224,6 +228,19 @@ export default async function Home() {
               .eq('dia_id', diaId)
               .then(r => (r.data ?? []).map((ci: { id: string }) => ci.id)),
           ),
+
+        // 9. Turnos foto/video (todos os dias) — para indicadores de cobertura
+        supabase
+          .from('turnos')
+          .select('setor_id, funcao, dia_id')
+          .in('funcao', ['foto', 'video'])
+          .not('setor_id', 'is', null),
+
+        // 10. Setores com YouTube ao vivo
+        supabase
+          .from('setores')
+          .select('id')
+          .eq('tem_youtube_live', true),
       ])
 
       coordConteudosHoje      = (contHojeRes.data   ?? []) as CoordConteudoHoje[]
@@ -234,6 +251,8 @@ export default async function Home() {
       coordPatrocinadores     = (patrocinadoresRes.data ?? []) as CoordPatrocinador[]
       coordConteudosPorPatroc = (contPatrocRes.data  ?? []) as { patrocinador_id: string | null; status: string }[]
       coordChecklistItens     = (ckItensRes.data     ?? []) as { id: string; status: string }[]
+      coordTurnosCoberturaAV  = (turnosCoberturaAVRes.data ?? []) as { setor_id: string; funcao: string; dia_id: string }[]
+      coordYoutubeSetorIds    = ((youtubeSetoresRes.data ?? []) as { id: string }[]).map(s => s.id)
 
       // ── Analytics queries (paralelas) ────────────────────────────────────
       const [profilesRes, ckInstsComJogoRes, modalidadesRes] = await Promise.all([
@@ -497,6 +516,8 @@ export default async function Home() {
         coordChecklistItens={coordChecklistItens}
         coordDiasEvento={diasSorted}
         coordDiaAtualId={coordDiaAtualId}
+        coordTurnosCoberturaAV={coordTurnosCoberturaAV}
+        coordYoutubeSetorIds={coordYoutubeSetorIds}
         analyticsRanking={analyticsRanking}
         analyticsLacunas={analyticsLacunas}
         analyticsVolumePorHora={analyticsVolumePorHora}

@@ -21,6 +21,7 @@ export interface CoordJogo {
   fim_previsto: string | null
   dia_id: string | null
   modalidade_id?: string | null
+  setor_id?: string | null
 }
 
 export interface CoordShow {
@@ -29,6 +30,7 @@ export interface CoordShow {
   inicio: string | null
   fim_previsto: string | null
   dia_id: string | null
+  setor_id?: string | null
 }
 
 export interface CoordFesta {
@@ -37,6 +39,7 @@ export interface CoordFesta {
   inicio: string | null
   fim_previsto: string | null
   dia_id: string | null
+  setor_id?: string | null
 }
 
 export interface CoordTurnoCount {
@@ -374,7 +377,7 @@ function PatrocinioCard({
 
 type TLHomeEntry = {
   id: string; label: string; inicio: string | null; fim_previsto: string | null
-  icon: string; color: string; bg: string; cat: string
+  icon: string; color: string; bg: string; cat: string; setorId?: string | null
 }
 
 export function TimelineVertical({
@@ -382,11 +385,13 @@ export function TimelineVertical({
   showsHoje,
   festasHoje,
   isToday,
+  coberturaPorSetor = {},
 }: {
   jogosHoje:  CoordJogo[]
   showsHoje:  CoordShow[]
   festasHoje: CoordFesta[]
   isToday:    boolean
+  coberturaPorSetor?: Record<string, { foto: boolean; video: boolean }>
 }) {
   const [now, setNow] = useState(() => new Date())
 
@@ -402,14 +407,17 @@ export function TimelineVertical({
       label: `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`,
       inicio: j.inicio, fim_previsto: j.fim_previsto,
       icon: '🏆', color: '#2e6b42', bg: 'rgba(46,107,66,0.08)', cat: 'Esportivo',
+      setorId: j.setor_id ?? null,
     })),
     ...showsHoje.map(s => ({
       id: s.id, label: s.nome, inicio: s.inicio, fim_previsto: s.fim_previsto,
       icon: '🎤', color: '#7c3aed', bg: 'rgba(124,58,237,0.07)', cat: 'Show',
+      setorId: s.setor_id ?? null,
     })),
     ...festasHoje.map(f => ({
       id: f.id, label: f.nome, inicio: f.inicio, fim_previsto: f.fim_previsto,
       icon: '🎉', color: '#be185d', bg: 'rgba(190,24,93,0.06)', cat: 'Festa',
+      setorId: f.setor_id ?? null,
     })),
   ].sort((a, b) => {
     if (!a.inicio) return 1
@@ -562,6 +570,23 @@ export function TimelineVertical({
                     <span className="ml-auto text-[9px] font-semibold" style={{ color: `${ev.color}60` }}>
                       {ev.cat}
                     </span>
+                    {/* Coverage indicators — só aparece se o evento tem setor */}
+                    {ev.setorId && (
+                      <div className="flex items-center gap-0.5" title="Cobertura foto / vídeo">
+                        <span style={{
+                          fontSize: 9,
+                          lineHeight: 1,
+                          opacity: coberturaPorSetor[ev.setorId]?.foto ? 1 : 0.18,
+                          filter: coberturaPorSetor[ev.setorId]?.foto ? 'none' : 'grayscale(1)',
+                        }}>📸</span>
+                        <span style={{
+                          fontSize: 9,
+                          lineHeight: 1,
+                          opacity: coberturaPorSetor[ev.setorId]?.video ? 1 : 0.18,
+                          filter: coberturaPorSetor[ev.setorId]?.video ? 'none' : 'grayscale(1)',
+                        }}>🎬</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

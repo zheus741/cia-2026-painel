@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   TrendingUp, AlertTriangle, Zap, ArrowRight,
@@ -82,6 +82,8 @@ interface Props {
   coordChecklistItens?: { id: string; status: string }[]
   coordDiasEvento?: { id: string; data: string }[]
   coordDiaAtualId?: string | null
+  coordTurnosCoberturaAV?: { setor_id: string; funcao: string; dia_id: string }[]
+  coordYoutubeSetorIds?: string[]
   analyticsRanking?:       RankingItem[]
   analyticsLacunas?:       LacunaItem[]
   analyticsVolumePorHora?: VolumePorHora[]
@@ -241,7 +243,7 @@ function ModuleGrid() {
 // AgendaSection — timeline separado com filtro de dia + categoria
 // ─────────────────────────────────────────────────────────────────────────────
 
-type CatFilter = 'todos' | 'jogos' | 'shows' | 'festas'
+type CatFilter = 'todos' | 'jogos' | 'shows' | 'festas' | 'youtube'
 
 function AgendaSection({
   jogosHoje,
@@ -249,12 +251,16 @@ function AgendaSection({
   festasHoje,
   diasEvento,
   diaAtualId,
+  turnosCoberturaAV = [],
+  youtubeSetorIds = [],
 }: {
   jogosHoje:  CoordJogo[]
   showsHoje:  CoordShow[]
   festasHoje: CoordFesta[]
   diasEvento: { id: string; data: string }[]
   diaAtualId: string | null
+  turnosCoberturaAV?: { setor_id: string; funcao: string; dia_id: string }[]
+  youtubeSetorIds?: string[]
 }) {
   const [selectedDayId, setSelectedDayId] = useState<string | null>(diaAtualId)
   const [cat, setCat] = useState<CatFilter>('todos')
@@ -268,15 +274,47 @@ function AgendaSection({
   const festasFiltered = selectedDayId ? festasHoje.filter(f => f.dia_id === selectedDayId) : festasHoje
   const isToday        = selectedDayId === diaAtualId
 
-  const jFinal = cat === 'shows' || cat === 'festas' ? [] : jogosFiltered
-  const sFinal = cat === 'jogos' || cat === 'festas' ? [] : showsFiltered
-  const fFinal = cat === 'jogos' || cat === 'shows'  ? [] : festasFiltered
+  // Coverage map para o dia selecionado
+  const coberturaPorSetor = useMemo(() => {
+    const result: Record<string, { foto: boolean; video: boolean }> = {}
+    for (const t of turnosCoberturaAV) {
+      if (t.dia_id !== selectedDayId) continue
+      if (!t.setor_id) continue
+      if (!result[t.setor_id]) result[t.setor_id] = { foto: false, video: false }
+      if (t.funcao === 'foto')  result[t.setor_id].foto  = true
+      if (t.funcao === 'video') result[t.setor_id].video = true
+    }
+    return result
+  }, [turnosCoberturaAV, selectedDayId])
+
+  // Filtros finais por categoria
+  const jFinal =
+    cat === 'shows' || cat === 'festas' ? [] :
+    cat === 'youtube' ? jogosFiltered.filter(j => j.setor_id && youtubeSetorIds.includes(j.setor_id)) :
+    jogosFiltered
+
+  const sFinal =
+    cat === 'jogos' || cat === 'festas' ? [] :
+    cat === 'youtube' ? showsFiltered.filter(s => s.setor_id && youtubeSetorIds.includes(s.setor_id)) :
+    showsFiltered
+
+  const fFinal =
+    cat === 'jogos' || cat === 'shows' ? [] :
+    cat === 'youtube' ? festasFiltered.filter(f => f.setor_id && youtubeSetorIds.includes(f.setor_id)) :
+    festasFiltered
+
+  const youtubeCount = [
+    ...jogosFiltered.filter(j => j.setor_id && youtubeSetorIds.includes(j.setor_id)),
+    ...showsFiltered.filter(s => s.setor_id && youtubeSetorIds.includes(s.setor_id)),
+    ...festasFiltered.filter(f => f.setor_id && youtubeSetorIds.includes(f.setor_id)),
+  ].length
 
   const cats: { key: CatFilter; icon: string; label: string; count: number }[] = [
-    { key: 'todos',  icon: '📋', label: 'Todos',  count: jogosFiltered.length + showsFiltered.length + festasFiltered.length },
-    { key: 'jogos',  icon: '🏆', label: 'Jogos',  count: jogosFiltered.length },
-    { key: 'shows',  icon: '🎤', label: 'Shows',  count: showsFiltered.length },
-    { key: 'festas', icon: '🎉', label: 'Festas', count: festasFiltered.length },
+    { key: 'todos',   icon: '📋', label: 'Todos',   count: jogosFiltered.length + showsFiltered.length + festasFiltered.length },
+    { key: 'jogos',   icon: '🏆', label: 'Jogos',   count: jogosFiltered.length },
+    { key: 'shows',   icon: '🎤', label: 'Shows',   count: showsFiltered.length },
+    { key: 'festas',  icon: '🎉', label: 'Festas',  count: festasFiltered.length },
+    { key: 'youtube', icon: '📺', label: 'YouTube',  count: youtubeCount },
   ]
 
   return (
@@ -329,15 +367,22 @@ function AgendaSection({
       <div className="mb-5 flex flex-wrap gap-2">
         {cats.map(c => {
           const isSel = cat === c.key
+          const isYt  = c.key === 'youtube'
           return (
             <button
               key={c.key}
               onClick={() => setCat(c.key)}
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-all duration-150"
               style={{
-                background: isSel ? 'rgba(46,107,66,0.12)' : 'rgba(46,107,66,0.04)',
-                border:     isSel ? '1px solid rgba(46,107,66,0.32)' : '1px solid rgba(46,107,66,0.10)',
-                color:      isSel ? '#2e6b42' : 'rgba(46,107,66,0.55)',
+                background: isSel
+                  ? isYt ? 'rgba(239,68,68,0.10)' : 'rgba(46,107,66,0.12)'
+                  : isYt ? 'rgba(239,68,68,0.04)' : 'rgba(46,107,66,0.04)',
+                border: isSel
+                  ? isYt ? '1px solid rgba(239,68,68,0.35)' : '1px solid rgba(46,107,66,0.32)'
+                  : isYt ? '1px solid rgba(239,68,68,0.15)' : '1px solid rgba(46,107,66,0.10)',
+                color: isSel
+                  ? isYt ? '#dc2626' : '#2e6b42'
+                  : isYt ? 'rgba(220,38,38,0.55)' : 'rgba(46,107,66,0.55)',
               }}
             >
               <span className="text-[13px]">{c.icon}</span>
@@ -346,8 +391,10 @@ function AgendaSection({
                 <span
                   className="rounded-full px-1.5 py-px text-[9px] font-bold tabular-nums"
                   style={{
-                    background: isSel ? '#2e6b42' : 'rgba(46,107,66,0.12)',
-                    color:      isSel ? '#fff'    : '#2e6b42',
+                    background: isSel
+                      ? isYt ? '#dc2626' : '#2e6b42'
+                      : isYt ? 'rgba(239,68,68,0.12)' : 'rgba(46,107,66,0.12)',
+                    color: isSel ? '#fff' : isYt ? '#dc2626' : '#2e6b42',
                   }}
                 >
                   {c.count}
@@ -358,7 +405,13 @@ function AgendaSection({
         })}
       </div>
 
-      <TimelineVertical jogosHoje={jFinal} showsHoje={sFinal} festasHoje={fFinal} isToday={isToday} />
+      <TimelineVertical
+        jogosHoje={jFinal}
+        showsHoje={sFinal}
+        festasHoje={fFinal}
+        isToday={isToday}
+        coberturaPorSetor={coberturaPorSetor}
+      />
     </div>
   )
 }
@@ -654,6 +707,8 @@ export function HomeClient({
   coordChecklistItens     = [],
   coordDiasEvento         = [],
   coordDiaAtualId         = null,
+  coordTurnosCoberturaAV  = [],
+  coordYoutubeSetorIds    = [],
   analyticsRanking        = [],
   analyticsLacunas        = [],
   analyticsVolumePorHora  = [],
@@ -1038,6 +1093,8 @@ export function HomeClient({
             festasHoje={coordFestasHoje}
             diasEvento={coordDiasEvento}
             diaAtualId={coordDiaAtualId ?? null}
+            turnosCoberturaAV={coordTurnosCoberturaAV}
+            youtubeSetorIds={coordYoutubeSetorIds}
           />
         </div>
 

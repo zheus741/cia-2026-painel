@@ -7,6 +7,7 @@ import { AdminSidebar } from '@/components/admin/sidebar'
 import { signOut } from '@/app/actions'
 import { LogOut, ChevronRight, Menu, Tv2 } from 'lucide-react'
 import { NotifBell } from '@/components/NotifBell'
+import { QuickCapture } from '@/components/QuickCapture'
 
 const ROLE_LABEL: Record<string, string> = {
   admin:       'Admin',
@@ -165,6 +166,7 @@ export function AppShellLayout({ profile, userEmail, userId, section, fullWidth 
           ) : (
             <div className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6">{children}</div>
           )}
+          <QuickCapture />
         </main>
       </div>
     </div>

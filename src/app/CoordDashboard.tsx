@@ -87,31 +87,6 @@ const CANAL_CONFIG: Record<string, { label: string; color: string }> = {
 // Timeline helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TIMELINE_START_H = 8
-const TIMELINE_END_H   = 26  // 02:00+1
-
-function timeToFraction(iso: string | null): number | null {
-  if (!iso) return null
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return null
-  const h = d.getHours() + d.getMinutes() / 60
-  const adjusted = h < 6 ? h + 24 : h
-  const total = TIMELINE_END_H - TIMELINE_START_H
-  return Math.max(0, Math.min(1, (adjusted - TIMELINE_START_H) / total))
-}
-
-function hourLabel(h: number): string {
-  const actual = h >= 24 ? h - 24 : h
-  return `${String(actual).padStart(2, '0')}h`
-}
-
-function fracToTime(frac: number): string {
-  const totalH = TIMELINE_START_H + frac * (TIMELINE_END_H - TIMELINE_START_H)
-  const h = Math.floor(totalH) % 24
-  const m = Math.round((totalH % 1) * 60)
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
 function dayLabel(data: string): string {
   const labels: Record<string, string> = {
     '2026-06-04': 'Qui 04',
@@ -123,46 +98,16 @@ function dayLabel(data: string): string {
   return labels[data] ?? `Dia ${dd}`
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Overlap packing — place events into non-overlapping rows
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface TimelineEvent {
-  id: string
-  label: string
-  startFrac: number
-  endFrac: number
-  color: string
-  bgColor: string
+function fmtEventTime(iso: string | null): string {
+  if (!iso) return '—:—'
+  return new Date(iso).toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+  })
 }
 
-interface PackedEvent {
-  event: TimelineEvent
-  row: number
-}
-
-function packLane(events: TimelineEvent[]): { packed: PackedEvent[]; rowCount: number } {
-  const sorted = [...events].sort((a, b) => a.startFrac - b.startFrac)
-  const rowEnds: number[] = []
-  const packed: PackedEvent[] = []
-
-  for (const event of sorted) {
-    let placed = false
-    for (let r = 0; r < rowEnds.length; r++) {
-      if (event.startFrac >= rowEnds[r] + 0.004) {
-        rowEnds[r] = event.endFrac
-        packed.push({ event, row: r })
-        placed = true
-        break
-      }
-    }
-    if (!placed) {
-      rowEnds.push(event.endFrac)
-      packed.push({ event, row: rowEnds.length - 1 })
-    }
-  }
-
-  return { packed, rowCount: Math.max(rowEnds.length, 1) }
+function durEventMin(s: string | null, e: string | null): number | null {
+  if (!s || !e) return null
+  return Math.round((new Date(e).getTime() - new Date(s).getTime()) / 60_000)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -424,14 +369,15 @@ function PatrocinioCard({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TimelineGantt — packed lanes, all events visible
+// TimelineVertical — agenda cronológica, mobile-friendly
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ROW_H   = 40   // px per event row
-const ROW_GAP = 5    // gap between rows in same lane
-const LANE_PAD = 8   // top/bottom padding inside track
+type TLHomeEntry = {
+  id: string; label: string; inicio: string | null; fim_previsto: string | null
+  icon: string; color: string; bg: string; cat: string
+}
 
-function TimelineGantt({
+function TimelineVertical({
   jogosHoje,
   showsHoje,
   festasHoje,
@@ -442,223 +388,207 @@ function TimelineGantt({
   festasHoje: CoordFesta[]
   isToday:    boolean
 }) {
-  const [nowFrac, setNowFrac] = useState<number | null>(null)
+  const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
-    if (!isToday) { setNowFrac(null); return }
-    function update() {
-      const now = new Date()
-      const h   = now.getHours() + now.getMinutes() / 60
-      const adj = h < 6 ? h + 24 : h
-      const frac = (adj - TIMELINE_START_H) / (TIMELINE_END_H - TIMELINE_START_H)
-      setNowFrac(frac >= 0 && frac <= 1 ? frac : null)
-    }
-    update()
-    const id = setInterval(update, 60_000)
+    if (!isToday) return
+    const id = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(id)
   }, [isToday])
 
-  function buildEvents<T extends { id: string; inicio: string | null; fim_previsto: string | null }>(
-    items: T[],
-    getLabel: (item: T) => string,
-    color: string,
-    bgColor: string,
-  ): TimelineEvent[] {
-    return items.flatMap(item => {
-      const s = timeToFraction(item.inicio)
-      const e = timeToFraction(item.fim_previsto)
-      if (s === null) return []
-      // default duration 1h if no end
-      const end = e ?? Math.min(s + 1 / (TIMELINE_END_H - TIMELINE_START_H), 1)
-      return [{ id: item.id, label: getLabel(item), startFrac: s, endFrac: end, color, bgColor }]
-    })
-  }
+  const all: TLHomeEntry[] = [
+    ...jogosHoje.map(j => ({
+      id: j.id,
+      label: `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`,
+      inicio: j.inicio, fim_previsto: j.fim_previsto,
+      icon: '🏆', color: '#2e6b42', bg: 'rgba(46,107,66,0.08)', cat: 'Esportivo',
+    })),
+    ...showsHoje.map(s => ({
+      id: s.id, label: s.nome, inicio: s.inicio, fim_previsto: s.fim_previsto,
+      icon: '🎤', color: '#7c3aed', bg: 'rgba(124,58,237,0.07)', cat: 'Show',
+    })),
+    ...festasHoje.map(f => ({
+      id: f.id, label: f.nome, inicio: f.inicio, fim_previsto: f.fim_previsto,
+      icon: '🎉', color: '#be185d', bg: 'rgba(190,24,93,0.06)', cat: 'Festa',
+    })),
+  ].sort((a, b) => {
+    if (!a.inicio) return 1
+    if (!b.inicio) return -1
+    return new Date(a.inicio).getTime() - new Date(b.inicio).getTime()
+  })
 
-  const jogosEvents  = buildEvents(jogosHoje,  j => `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`, '#2e6b42', 'rgba(46,107,66,0.10)')
-  const showsEvents  = buildEvents(showsHoje,  s => s.nome,  '#7c3aed', 'rgba(124,58,237,0.10)')
-  const festasEvents = buildEvents(festasHoje, f => f.nome,  '#be185d', 'rgba(190,24,93,0.08)')
-
-  const lanes = [
-    { icon: '🏆', label: 'Esportivo',   events: jogosEvents,  color: '#2e6b42' },
-    { icon: '🎤', label: 'Shows & DJs', events: showsEvents,  color: '#7c3aed' },
-    { icon: '🎉', label: 'Festas',      events: festasEvents, color: '#be185d' },
-  ]
-
-  const allEmpty = lanes.every(l => l.events.length === 0)
-
-  // Hour marks for axis (every 2h) and grid (every 1h)
-  const axisMarks: number[] = []
-  for (let h = TIMELINE_START_H; h <= TIMELINE_END_H; h += 2) axisMarks.push(h)
-
-  const gridMarks: number[] = []
-  for (let h = TIMELINE_START_H + 1; h < TIMELINE_END_H; h++) gridMarks.push(h)
-
-  if (allEmpty) {
+  if (all.length === 0) {
     return (
-      <div className="flex h-24 items-center justify-center">
+      <div className="flex h-20 items-center justify-center">
         <p className="text-sm text-[var(--muted-foreground)]/50">Sem eventos programados para este dia</p>
       </div>
     )
   }
 
-  const LABEL_W = 120 // px — label column width
+  // Where to insert AGORA — after last event that already started
+  let nowAfterIdx = -1
+  if (isToday) {
+    for (let i = 0; i < all.length; i++) {
+      if (all[i].inicio && new Date(all[i].inicio!) <= now) nowAfterIdx = i
+    }
+  }
+
+  const nowStr = now.toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+  })
 
   return (
-    <div className="overflow-x-auto">
-      <div style={{ minWidth: 700 }}>
+    <div>
+      {all.map((ev, i) => {
+        const isLast   = i === all.length - 1
+        const dur      = durEventMin(ev.inicio, ev.fim_previsto)
+        const isActive = isToday && !!ev.inicio && !!ev.fim_previsto &&
+          new Date(ev.inicio) <= now && new Date(ev.fim_previsto) >= now
+        const isPast   = isToday && !!ev.fim_previsto && new Date(ev.fim_previsto) < now
+        const showNowAfter = nowAfterIdx === i && !isLast &&
+          !!all[i + 1]?.inicio && new Date(all[i + 1].inicio!) > now
 
-        {/* ── Hour axis ── */}
-        <div className="mb-2 flex" style={{ paddingLeft: LABEL_W }}>
-          {axisMarks.map(h => (
-            <div
-              key={h}
-              className="flex-1 text-center text-[9px] font-bold tracking-[0.18em] text-[var(--muted-foreground)]"
-            >
-              {hourLabel(h)}
-            </div>
-          ))}
-        </div>
+        return (
+          <div key={ev.id}>
 
-        {/* ── Lanes ── */}
-        <div className="space-y-4">
-          {lanes.map(lane => {
-            const { packed, rowCount } = packLane(lane.events)
-            const trackH = rowCount * (ROW_H + ROW_GAP) - ROW_GAP + LANE_PAD * 2
+            {/* ── Event row ── */}
+            <div className="flex items-start">
 
-            return (
-              <div key={lane.label} className="flex items-start gap-0">
-
-                {/* Lane label column */}
-                <div
-                  className="flex shrink-0 flex-col items-end justify-center pr-4"
-                  style={{ width: LABEL_W, minHeight: trackH }}
-                >
-                  <span className="text-base leading-none">{lane.icon}</span>
-                  <span
-                    className="mt-1 text-[11px] font-bold leading-tight"
-                    style={{ color: lane.color }}
-                  >
-                    {lane.label}
-                  </span>
-                  <span className="mt-0.5 text-[9px] text-[var(--muted-foreground)]">
-                    {lane.events.length} evento{lane.events.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-
-                {/* Lane track */}
-                <div
-                  className="relative flex-1 overflow-visible rounded-xl"
+              {/* Time */}
+              <div className="w-10 shrink-0 pt-[9px] pr-2 text-right">
+                <span
+                  className="tabular-nums text-[9px] font-bold"
                   style={{
-                    height: trackH,
-                    background: `linear-gradient(180deg, ${lane.color}06 0%, ${lane.color}03 100%)`,
-                    border: `1px solid ${lane.color}18`,
+                    fontFamily: 'Orbitron, monospace',
+                    color: isActive
+                      ? ev.color
+                      : isPast
+                      ? 'rgba(16,29,18,0.22)'
+                      : 'rgba(16,29,18,0.45)',
                   }}
                 >
-                  {/* Vertical grid lines */}
-                  {gridMarks.map(h => {
-                    const frac = (h - TIMELINE_START_H) / (TIMELINE_END_H - TIMELINE_START_H)
-                    const isMajor = h % 4 === 0
-                    return (
-                      <div
-                        key={h}
-                        className="absolute top-0 h-full pointer-events-none"
-                        style={{
-                          left: `${frac * 100}%`,
-                          width: isMajor ? 1.5 : 1,
-                          background: isMajor
-                            ? `${lane.color}20`
-                            : `${lane.color}0c`,
-                        }}
-                      />
-                    )
-                  })}
+                  {fmtEventTime(ev.inicio)}
+                </span>
+              </div>
 
-                  {/* Events — packed */}
-                  {packed.map(({ event, row }) => {
-                    const left  = `${event.startFrac * 100}%`
-                    const width = `${Math.max((event.endFrac - event.startFrac), 0.025) * 100}%`
-                    const top   = LANE_PAD + row * (ROW_H + ROW_GAP)
+              {/* Dot + vertical connector */}
+              <div className="flex w-4 shrink-0 flex-col items-center">
+                <div
+                  className="w-px shrink-0"
+                  style={{ height: 8, background: i === 0 ? 'transparent' : 'rgba(16,29,18,0.10)' }}
+                />
+                <div
+                  className="shrink-0 rounded-full transition-all duration-300"
+                  style={{
+                    width:  isActive ? 10 : 7,
+                    height: isActive ? 10 : 7,
+                    background: isActive
+                      ? ev.color
+                      : isPast
+                      ? 'rgba(16,29,18,0.12)'
+                      : `${ev.color}60`,
+                    border: `1.5px solid ${
+                      isActive ? ev.color : isPast ? 'rgba(16,29,18,0.08)' : `${ev.color}40`
+                    }`,
+                    boxShadow: isActive ? `0 0 8px ${ev.color}60` : 'none',
+                  }}
+                />
+                {!isLast && (
+                  <div
+                    className="w-px flex-1 shrink-0"
+                    style={{ minHeight: 12, background: 'rgba(16,29,18,0.10)' }}
+                  />
+                )}
+              </div>
 
-                    return (
-                      <div
-                        key={event.id}
-                        title={event.label}
-                        className="absolute overflow-hidden rounded-lg transition-all duration-150 hover:z-20 hover:brightness-105 hover:shadow-md"
-                        style={{
-                          left,
-                          width,
-                          top,
-                          height: ROW_H,
-                          background: event.bgColor,
-                          border: `1.5px solid ${event.color}50`,
-                        }}
-                      >
-                        {/* Left accent strip */}
-                        <div
-                          className="absolute left-0 top-0 h-full w-[3px] rounded-l"
-                          style={{ background: `linear-gradient(180deg, ${event.color}, ${event.color}99)` }}
-                        />
-                        {/* Content */}
-                        <div className="flex h-full flex-col justify-center pl-3 pr-1">
-                          <span
-                            className="block truncate text-[11px] font-semibold leading-snug"
-                            style={{ color: event.color }}
-                          >
-                            {event.label}
-                          </span>
-                          <span
-                            className="block text-[9px] tabular-nums leading-none mt-0.5"
-                            style={{ color: `${event.color}99` }}
-                          >
-                            {fracToTime(event.startFrac)} – {fracToTime(event.endFrac)}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
-
-                  {/* Now line */}
-                  {nowFrac !== null && (
-                    <div
-                      className="pointer-events-none absolute top-0 z-30 h-full"
-                      style={{ left: `${nowFrac * 100}%`, width: 2, background: '#ef4444' }}
+              {/* Card */}
+              <div className="flex-1 pl-2 pt-1" style={{ paddingBottom: isLast ? 4 : 8 }}>
+                <div
+                  className="rounded-r-xl transition-all duration-200"
+                  style={{
+                    background: isPast ? 'rgba(16,29,18,0.03)' : ev.bg,
+                    border: `1px solid ${
+                      isActive ? `${ev.color}35` : isPast ? 'rgba(16,29,18,0.05)' : `${ev.color}18`
+                    }`,
+                    borderLeft: `3px solid ${
+                      isActive ? ev.color : isPast ? 'rgba(16,29,18,0.10)' : `${ev.color}50`
+                    }`,
+                    padding: '7px 10px',
+                    opacity: isPast ? 0.50 : 1,
+                    boxShadow: isActive ? `0 2px 12px ${ev.color}15` : 'none',
+                  }}
+                >
+                  {/* Title row */}
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span className="text-[11px]">{ev.icon}</span>
+                    <span
+                      className="flex-1 truncate text-[12px] font-semibold"
+                      style={{
+                        color: isActive ? ev.color : isPast ? 'rgba(16,29,18,0.35)' : 'var(--foreground)',
+                      }}
                     >
-                      <div
-                        className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded px-1.5 py-0.5 text-[8px] font-bold text-white"
-                        style={{ background: '#ef4444', fontFamily: 'Orbitron, monospace' }}
+                      {ev.label}
+                    </span>
+                    {isActive && (
+                      <span
+                        className="shrink-0 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider"
+                        style={{
+                          color: ev.color,
+                          background: `${ev.color}12`,
+                          border: `1px solid ${ev.color}30`,
+                        }}
                       >
-                        AGORA
-                      </div>
-                    </div>
-                  )}
+                        AO VIVO
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Meta row */}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="tabular-nums text-[9px]"
+                      style={{ fontFamily: 'Orbitron, monospace', color: 'var(--muted-foreground)', opacity: 0.55 }}
+                    >
+                      {fmtEventTime(ev.inicio)}–{fmtEventTime(ev.fim_previsto)}
+                    </span>
+                    {dur !== null && (
+                      <span className="text-[9px] text-[var(--muted-foreground)]/40">
+                        {dur < 60
+                          ? `${dur}min`
+                          : `${Math.floor(dur / 60)}h${dur % 60 > 0 ? `${dur % 60}m` : ''}`
+                        }
+                      </span>
+                    )}
+                    <span className="ml-auto text-[9px] font-semibold" style={{ color: `${ev.color}60` }}>
+                      {ev.cat}
+                    </span>
+                  </div>
                 </div>
               </div>
-            )
-          })}
-        </div>
+            </div>
 
-        {/* Legend */}
-        <div
-          className="mt-5 flex flex-wrap items-center gap-5 text-[10px] text-[var(--muted-foreground)]"
-          style={{ paddingLeft: LABEL_W }}
-        >
-          {lanes.map(lane => (
-            <div key={lane.label} className="flex items-center gap-1.5">
-              <div
-                className="h-2.5 w-3 rounded-sm"
-                style={{ background: lane.color, opacity: 0.75 }}
-              />
-              <span>{lane.icon} {lane.label}</span>
-            </div>
-          ))}
-          {nowFrac !== null && (
-            <div className="flex items-center gap-1.5">
-              <div className="h-3 w-0.5 rounded-full bg-red-500" />
-              <span>Agora</span>
-            </div>
-          )}
-        </div>
-      </div>
+            {/* ── AGORA separator ── */}
+            {showNowAfter && (
+              <div className="flex items-center gap-2 py-1" style={{ paddingLeft: 56 }}>
+                <div
+                  className="h-px flex-1"
+                  style={{ background: 'linear-gradient(90deg, transparent, rgba(239,68,68,0.35))' }}
+                />
+                <span
+                  className="shrink-0 text-[8px] font-bold tracking-[0.12em] text-red-500"
+                  style={{ fontFamily: 'Orbitron, monospace' }}
+                >
+                  ◆ AGORA {nowStr}
+                </span>
+                <div
+                  className="h-px flex-1"
+                  style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.35), transparent)' }}
+                />
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -760,7 +690,7 @@ export function CoordDashboard({
           )}
         </div>
 
-        <TimelineGantt
+        <TimelineVertical
           jogosHoje={jogosFiltered}
           showsHoje={showsFiltered}
           festasHoje={festasFiltered}

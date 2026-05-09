@@ -35,7 +35,16 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Status inválido.' }, { status: 400 })
   }
 
-  const { error } = await supabase.from('pautas').update({ status }).eq('id', id)
+  // Verifica role — coord/admin podem editar qualquer pauta; outros só a própria
+  const { data: profile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).maybeSingle()
+  const isCoordOrAdmin = ['admin', 'coordenacao'].includes(profile?.role ?? '')
+
+  const query = supabase.from('pautas').update({ status }).eq('id', id)
+  const { error } = isCoordOrAdmin
+    ? await query
+    : await query.eq('autor_id', user.id)
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

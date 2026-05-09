@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { safe } from '@/lib/admin/actions-helper'
+import { safe, requireCoordOrAdmin } from '@/lib/admin/actions-helper'
 import { revalidatePath } from 'next/cache'
 
 export async function marcarItem(
@@ -13,12 +13,13 @@ export async function marcarItem(
   return safe(async () => {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Não autenticado')
 
     const { error } = await supabase
       .from('checklist_itens')
       .update({
         status,
-        operador_id: user?.id ?? null,
+        operador_id: user.id,
         feito_em: status === 'feito' ? new Date().toISOString() : null,
         link_post: linkPost ?? null,
         observacao: observacao ?? null,
@@ -42,6 +43,7 @@ export async function criarInstancia(payload: {
   responsavel_id?: string | null
 }) {
   return safe(async () => {
+    await requireCoordOrAdmin()
     const supabase = await createClient()
 
     const { data: instancia, error: errInst } = await supabase
@@ -52,7 +54,6 @@ export async function criarInstancia(payload: {
 
     if (errInst) throw errInst
 
-    // instancia os itens via função SQL
     const { error: errFn } = await supabase.rpc('instanciar_checklist', {
       p_instancia_id: instancia.id,
     })
@@ -65,6 +66,7 @@ export async function criarInstancia(payload: {
 
 export async function deletarInstancia(id: string) {
   return safe(async () => {
+    await requireCoordOrAdmin()
     const supabase = await createClient()
     const { error } = await supabase
       .from('checklist_instancias')

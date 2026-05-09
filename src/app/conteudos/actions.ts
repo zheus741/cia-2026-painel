@@ -3,11 +3,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { safe, requireLiderOrAbove } from '@/lib/admin/actions-helper'
 
-const VALID_TIPOS = [
-  'story_rapido', 'story_editado', 'card_feed', 'card_patrocinado',
-  'reels', 'cobertura_ao_vivo', 'post_feed', 'highlight',
-] as const
-
 const VALID_STATUSES = [
   'rascunho', 'em_producao', 'pendente', 'em_andamento', 'pausado',
   'bloqueado', 'pronto', 'publicado', 'arquivado', 'descartado', 'cancelado',
@@ -38,6 +33,7 @@ export async function createConteudo(payload: ConteudoPayload) {
   return safe(async () => {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Não autenticado')
 
     const { data: conteudo, error } = await supabase
       .from('conteudos')
@@ -45,7 +41,7 @@ export async function createConteudo(payload: ConteudoPayload) {
         ...payload,
         status:     payload.status    ?? 'rascunho',
         prioridade: payload.prioridade ?? 3,
-        criado_por: user?.id ?? null,
+        criado_por: user.id,
       })
       .select('id')
       .single()
@@ -58,6 +54,9 @@ export async function createConteudo(payload: ConteudoPayload) {
 export async function updateConteudo(id: string, payload: Partial<ConteudoPayload>) {
   return safe(async () => {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Não autenticado')
+
     const { error } = await supabase
       .from('conteudos')
       .update(payload)
@@ -81,6 +80,9 @@ export async function setStatus(id: string, status: string) {
       throw new Error('Status inválido.')
     }
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Não autenticado')
+
     const extra: Record<string, unknown> = {}
     if (status === 'publicado') extra.publicado_em = new Date().toISOString()
     const { error } = await supabase

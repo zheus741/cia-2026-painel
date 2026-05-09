@@ -27,12 +27,17 @@ export async function addComentarioTurno(
 
 export async function deleteComentarioTurno(
   comentarioId: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Não autenticado' }
+
+  // RLS já restringe DELETE ao próprio autor ou coord/admin
   const { error } = await supabase
     .from('comentarios_turno')
     .delete()
     .eq('id', comentarioId)
 
-  return { ok: !error }
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
 }

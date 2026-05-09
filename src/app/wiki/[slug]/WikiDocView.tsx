@@ -49,11 +49,25 @@ const FUNCOES = [
 
 // ── Markdown renderer ─────────────────────────────────────────────────────────
 
-function renderMd(md: string): string {
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function renderMd(raw: string): string {
+  // Escape ALL HTML first — prevents XSS in headings, bold, tables, etc.
+  // Markdown patterns (`**`, `#`, `|`) don't use HTML special chars so they
+  // still match after escaping.
+  const md = escHtml(raw)
   return md
     .replace(/```[\s\S]*?```/g, (m) => {
+      // Input is already HTML-escaped; just strip the fence markers
       const code = m.replace(/^```[^\n]*\n?/, '').replace(/```$/, '')
-      return `<pre class="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4 text-xs"><code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`
+      return `<pre class="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--muted)] p-4 text-xs"><code>${code}</code></pre>`
     })
     .replace(/^### (.+)$/gm, '<h3 class="mt-6 mb-2 text-base font-semibold">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 class="mt-8 mb-3 text-lg font-bold">$1</h2>')

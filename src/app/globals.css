@@ -391,6 +391,90 @@ body {
   color: #c0392b;
 }
 
+/* ── Top nav bar — dropdown menu ─────────────────────────────────────────────── */
+
+/* Nav group button */
+.cia-nav-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: background 0.12s, color 0.12s;
+}
+.cia-nav-btn:hover {
+  background: rgba(10,15,11,0.06) !important;
+  color: #0A0F0B !important;
+}
+
+/* Gold active underline */
+.cia-nav-active-bar {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 2px;
+  border-radius: 99px;
+  background: #F0D04A;
+}
+
+/* Dropdown panel */
+.cia-nav-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 100;
+  min-width: 210px;
+  padding: 6px;
+  background: #0C1410;
+  border-radius: 16px;
+  border: 1px solid rgba(250,247,240,0.08);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.42), 0 4px 16px rgba(0,0,0,0.22);
+  animation: cia-nav-panel-in 0.16s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+@keyframes cia-nav-panel-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* Panel nav item */
+.cia-nav-panel-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgba(250,247,240,0.62);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background 0.10s, color 0.10s;
+  margin-bottom: 1px;
+}
+.cia-nav-panel-item:hover {
+  background: rgba(250,247,240,0.07);
+  color: rgba(250,247,240,0.92);
+}
+.cia-nav-panel-item.active {
+  background: rgba(240,208,74,0.12);
+  border-color: rgba(240,208,74,0.18);
+  color: #F0D04A;
+  font-weight: 600;
+}
+
 /* ── Editorial page header utility ───────────────────────────────────────────── */
 .cia-page-header { margin-bottom: 24px; }
 .cia-page-header__eyebrow {

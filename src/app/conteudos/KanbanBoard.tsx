@@ -239,12 +239,17 @@ function ConteudoCard({
       onDragStart={handleDragStart}
       onClick={onView}
       className={cn(
-        'group relative rounded-lg border border-[var(--border)] bg-[var(--card)] p-3',
-        'cursor-grab active:cursor-grabbing select-none',
-        'transition-all hover:border-[var(--green)]/40 hover:shadow-[0_0_12px_rgba(74,138,92,0.08)]',
-        isBeingDragged && 'opacity-30 scale-[0.97] border-dashed pointer-events-none',
+        'group relative cursor-grab active:cursor-grabbing select-none',
+        'transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(10,15,11,0.08)]',
+        isBeingDragged && 'opacity-30 scale-[0.97] pointer-events-none',
       )}
-      style={canalCfg ? { borderTop: `2px solid ${canalCfg.cor}` } : undefined}
+      style={{
+        borderRadius: 14,
+        border: canalCfg ? `1px solid rgba(10,15,11,0.07)` : '1px solid rgba(10,15,11,0.07)',
+        background: 'var(--card)',
+        padding: '12px 12px 10px',
+        borderTop: canalCfg ? `2.5px solid ${canalCfg.cor}` : '1px solid rgba(10,15,11,0.07)',
+      }}
     >
       {/* Priority stripe */}
       <div
@@ -446,8 +451,12 @@ function ConteudoViewDialog({
             </span>
           </div>
           <h2
-            className="text-base font-bold leading-snug text-[var(--foreground)]"
-            style={{ fontFamily: 'Orbitron, monospace', letterSpacing: '0.04em' }}
+            className="text-base font-bold leading-snug"
+            style={{
+              fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+              letterSpacing: '-0.02em',
+              color: '#0A0F0B',
+            }}
           >
             {c.titulo}
           </h2>
@@ -545,7 +554,7 @@ function ConteudoViewDialog({
         {/* Footer */}
         <div
           className="sticky bottom-0 flex items-center justify-between border-t border-[var(--border)] px-5 py-3"
-          style={{ background: 'rgba(241,245,242,0.97)', backdropFilter: 'blur(12px)' }}
+          style={{ background: 'rgba(254,252,248,0.97)', backdropFilter: 'blur(12px)' }}
         >
           <Button variant="destructive" size="sm" onClick={() => { onClose(); setTimeout(onDelete, 150) }} className="text-xs">
             <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Excluir
@@ -897,33 +906,53 @@ function KanbanColumn({
   return (
     <div
       className={cn(
-        'flex w-72 shrink-0 flex-col rounded-xl border transition-all duration-150',
-        isDragOver
-          ? 'border-[var(--green)]/40 bg-[var(--green)]/4'
-          : 'border-[var(--border)] bg-[var(--card)]',
+        'flex w-72 shrink-0 flex-col overflow-hidden transition-all duration-150',
+        isDragOver ? 'ring-2 ring-[var(--green)]/30' : '',
       )}
+      style={{
+        borderRadius: 20,
+        border: isDragOver ? '1px solid rgba(46,107,66,0.25)' : '1px solid rgba(10,15,11,0.08)',
+        background: isDragOver ? 'rgba(46,107,66,0.04)' : 'var(--card)',
+      }}
       onDragOver={handleDragOver}
       onDragLeave={onDragLeave}
       onDrop={handleDrop}
     >
-      <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-3">
-        <div className={cn('h-2 w-2 rounded-full', col.dot)} />
-        <span className={cn('text-xs font-semibold uppercase tracking-wider', col.color)}>{col.label}</span>
-        <span className="ml-auto rounded-full bg-[var(--muted)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted-foreground)]">
+      {/* Column header */}
+      <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid rgba(10,15,11,0.06)' }}>
+        <div className={cn('h-1.5 w-1.5 rounded-full shrink-0', col.dot)} />
+        <span className={cn('text-[11px] font-bold uppercase tracking-[0.11em]', col.color)}>{col.label}</span>
+        <span
+          className="ml-auto text-[10px] font-bold"
+          style={{ background: 'rgba(10,15,11,0.07)', borderRadius: 99, padding: '1px 8px', color: 'rgba(10,15,11,0.42)' }}
+        >
           {conteudos.length}
         </span>
-        <button onClick={onAdd} title="Adicionar" className="rounded p-1 text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] transition-colors">
+        <button
+          onClick={onAdd}
+          title="Adicionar"
+          className="rounded-full transition-colors"
+          style={{ padding: '3px', color: 'rgba(10,15,11,0.30)' }}
+        >
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col space-y-2 overflow-y-auto p-3" style={{ maxHeight: 'calc(100vh - 260px)' }}>
+      <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3" style={{ maxHeight: 'calc(100vh - 260px)' }}>
         {conteudos.length === 0 && !isDragOver ? (
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-            <p className="text-xs text-[var(--muted-foreground)]/60">Vazio</p>
+            <p className="text-[11px]" style={{ color: 'rgba(10,15,11,0.28)' }}>Vazio</p>
             <button
               onClick={onAdd}
-              className="rounded border border-dashed border-[var(--border)] px-3 py-1.5 text-[10px] text-[var(--muted-foreground)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors"
+              className="transition-colors"
+              style={{
+                borderRadius: 999,
+                border: '1px dashed rgba(10,15,11,0.18)',
+                padding: '4px 14px',
+                fontSize: 10,
+                fontWeight: 600,
+                color: 'rgba(10,15,11,0.38)',
+              }}
             >
               + Adicionar
             </button>
@@ -944,7 +973,7 @@ function KanbanColumn({
         )}
 
         {isDragOver && (
-          <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-[var(--green)]/50 py-4 text-[10px] font-semibold uppercase tracking-widest text-[var(--green-bright)] animate-pulse">
+          <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-[var(--green)]/40 py-4 text-[10px] font-semibold uppercase tracking-widest text-[var(--green-bright)] animate-pulse">
             ✦ Soltar aqui
           </div>
         )}
@@ -1065,11 +1094,18 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       onDragEnd={() => { setDragId(null); setDragOver(null) }}
     >
       {/* ── Filter bar ─────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] px-6 py-3 bg-[var(--card)]/40 backdrop-blur-sm">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-6 py-3" style={{ background: 'var(--cream)', backdropFilter: 'blur(8px)' }}>
+        {/* Search */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted-foreground)]" />
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style={{ color: 'rgba(10,15,11,0.35)' }} />
           <input
-            className="h-8 w-52 rounded-md border border-[var(--border)] bg-[var(--card)] pl-8 pr-3 text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+            className="h-8 w-48 pl-9 pr-3 text-[12px] outline-none"
+            style={{
+              borderRadius: 999,
+              border: '1px solid rgba(10,15,11,0.12)',
+              background: 'rgba(10,15,11,0.04)',
+              color: 'var(--foreground)',
+            }}
             placeholder="Buscar conteúdo…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -1077,8 +1113,8 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         </div>
 
         <Select value={filterDia} onValueChange={setFilterDia}>
-          <SelectTrigger className="h-8 w-36 text-xs">
-            <Filter className="mr-1.5 h-3 w-3" /><SelectValue placeholder="Todos os dias" />
+          <SelectTrigger className="h-8 w-36 text-[11px] rounded-full border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)]">
+            <SelectValue placeholder="Todos os dias" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">Todos os dias</SelectItem>
@@ -1087,7 +1123,9 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         </Select>
 
         <Select value={filterTipo} onValueChange={setFilterTipo}>
-          <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Todos os tipos" /></SelectTrigger>
+          <SelectTrigger className="h-8 w-36 text-[11px] rounded-full border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)]">
+            <SelectValue placeholder="Todos os tipos" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">Todos os tipos</SelectItem>
             {TIPO_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
@@ -1095,7 +1133,9 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         </Select>
 
         <Select value={filterPerfil} onValueChange={setFilterPerfil}>
-          <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Responsável" /></SelectTrigger>
+          <SelectTrigger className="h-8 w-36 text-[11px] rounded-full border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)]">
+            <SelectValue placeholder="Responsável" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">Todos</SelectItem>
             {perfis.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
@@ -1103,16 +1143,15 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         </Select>
 
         <Select value={filterCanal} onValueChange={setFilterCanal}>
-          <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="Canal" /></SelectTrigger>
+          <SelectTrigger className="h-8 w-40 text-[11px] rounded-full border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)]">
+            <SelectValue placeholder="Canal" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">Todos os canais</SelectItem>
             {CANAL_OPTIONS.map(o => (
               <SelectItem key={o.value} value={o.value}>
                 <span className="flex items-center gap-2">
-                  <span
-                    className="inline-block h-2 w-2 rounded-full shrink-0"
-                    style={{ background: CANAL_CONFIG[o.value]?.cor }}
-                  />
+                  <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: CANAL_CONFIG[o.value]?.cor }} />
                   {o.label}
                 </span>
               </SelectItem>
@@ -1120,17 +1159,31 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
           </SelectContent>
         </Select>
 
-        <div className="ml-auto flex items-center gap-4 text-xs text-[var(--muted-foreground)]">
-          <span><span className="font-bold text-[var(--foreground)]">{total}</span> conteúdos</span>
-          <span><span className="font-bold text-[var(--green-bright)]">{publicados}</span> publicados</span>
-          <span className="text-[var(--muted-foreground)]/50">
+        {/* Stats */}
+        <div className="ml-auto flex items-center gap-3 text-[11px]" style={{ color: 'rgba(10,15,11,0.45)' }}>
+          <span><span className="font-bold" style={{ color: '#0A0F0B' }}>{total}</span> conteúdos</span>
+          <span><span className="font-bold" style={{ color: 'var(--green)' }}>{publicados}</span> publicados</span>
+          <span style={{ color: 'rgba(10,15,11,0.30)' }}>
             {total > 0 ? Math.round((publicados / total) * 100) : 0}% entregues
           </span>
         </div>
 
-        <Button size="sm" onClick={() => setDialog({ open: true })}>
-          <Plus className="mr-1.5 h-4 w-4" /> Novo conteúdo
-        </Button>
+        {/* CTA editorial */}
+        <button
+          onClick={() => setDialog({ open: true })}
+          className="flex items-center gap-1.5 transition-all hover:opacity-90"
+          style={{
+            borderRadius: 999,
+            padding: '6px 16px',
+            fontSize: 12, fontWeight: 700, letterSpacing: '-0.01em',
+            background: '#0A0F0B',
+            color: '#FAF7F0',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" /> Novo conteúdo
+        </button>
       </div>
 
       {/* ── Columns ────────────────────────────────────────────────── */}

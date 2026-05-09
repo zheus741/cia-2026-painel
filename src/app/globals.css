@@ -84,14 +84,14 @@
   --ink-deep:        #0A0F0B;
   --cream:           #FAF7F0;
 
-  /* Surface — claro */
-  --background:         #f1f5f2;
-  --foreground:         #101d12;
-  --muted:              #e7ede9;
-  --muted-foreground:   #475f52;
-  --border:             #b8ccc0;
-  --card:               #ffffff;
-  --card-foreground:    #101d12;
+  /* Surface — editorial warm (sem o cast verde) */
+  --background:         #EDEAE3;
+  --foreground:         #0A0F0B;
+  --muted:              #E2DDD5;
+  --muted-foreground:   #4A5845;
+  --border:             #C9C2B5;
+  --card:               #FEFCF8;
+  --card-foreground:    #0A0F0B;
 
   --primary:            var(--green);
   --primary-foreground: #ffffff;

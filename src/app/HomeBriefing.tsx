@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Tv2, Camera, Maximize2 } from 'lucide-react'
+import { ArrowUpRight, Maximize2 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -116,7 +116,14 @@ function Pill({
 function HeroVisualCard({ diffDays, eventActive }: { diffDays: number; eventActive: boolean }) {
   return (
     <Link href="/cronograma" className="cia-hero-canvas group" style={{ textDecoration: 'none' }}>
-      <div className="cia-hero-glass">
+      {/* Animated mesh orbs */}
+      <span aria-hidden className="cia-mesh-orb cia-mesh-orb--1" />
+      <span aria-hidden className="cia-mesh-orb cia-mesh-orb--2" />
+      <span aria-hidden className="cia-mesh-orb cia-mesh-orb--3" />
+      <span aria-hidden className="cia-mesh-orb cia-mesh-orb--4" />
+      <span aria-hidden className="cia-mesh-orb cia-mesh-orb--5" />
+
+      <div className="cia-hero-glass" style={{ position: 'relative', zIndex: 1 }}>
         {/* eyebrow */}
         <div className="flex items-center justify-between mb-3">
           <span style={{
@@ -376,104 +383,6 @@ function PipelineCard({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SignatureCard — terracotta, vertical, signature CTA
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SignatureCard() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* TV mode card — terracotta */}
-      <a href="/tv" target="_blank" rel="noopener noreferrer"
-         className="cia-edit-card cia-edit-card--terracotta group" style={{ flex: 1, minHeight: 0 }}>
-        <div className="flex items-center justify-between">
-          <span style={{
-            fontSize: 11.5, fontWeight: 600,
-            color: 'rgba(255,255,255,0.75)',
-            letterSpacing: '-0.01em',
-          }}>
-            grande tela
-          </span>
-          <Tv2 style={{ width: 16, height: 16, color: 'rgba(255,255,255,0.85)' }} />
-        </div>
-
-        <div className="flex-1 flex flex-col justify-end">
-          <span style={{
-            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-            fontSize: 'clamp(28px, 3.4vw, 44px)',
-            fontWeight: 800,
-            lineHeight: 0.95,
-            letterSpacing: '-0.03em',
-            color: '#FFFFFF',
-          }}>
-            Modo<br/>TV
-          </span>
-          <span className="mt-2" style={{
-            fontSize: 13, fontWeight: 500,
-            color: 'rgba(255,255,255,0.75)',
-            letterSpacing: '-0.01em',
-          }}>
-            Painel monumental
-          </span>
-        </div>
-
-        <div className="flex items-end justify-between mt-4">
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', fontWeight: 500 }}>
-            Abrir
-          </span>
-          <CircleArrow size={36} dark={false} />
-        </div>
-      </a>
-
-      {/* Quick capture — verde dim */}
-      <button
-        type="button"
-        onClick={() => window.dispatchEvent(new CustomEvent('cia:open-capture'))}
-        className="cia-edit-card cia-edit-card--green group"
-        style={{ flex: 1, minHeight: 0, textAlign: 'left', cursor: 'pointer' }}
-      >
-        <div className="flex items-center justify-between">
-          <span style={{
-            fontSize: 11.5, fontWeight: 600,
-            color: 'rgba(255,255,255,0.75)',
-            letterSpacing: '-0.01em',
-          }}>
-            atalho rápido
-          </span>
-          <Camera style={{ width: 16, height: 16, color: 'rgba(255,255,255,0.85)' }} />
-        </div>
-
-        <div className="flex-1 flex flex-col justify-end">
-          <span style={{
-            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-            fontSize: 'clamp(28px, 3.4vw, 44px)',
-            fontWeight: 800,
-            lineHeight: 0.95,
-            letterSpacing: '-0.03em',
-            color: '#FFFFFF',
-          }}>
-            Captura<br/>nova
-          </span>
-          <span className="mt-2" style={{
-            fontSize: 13, fontWeight: 500,
-            color: 'rgba(255,255,255,0.75)',
-            letterSpacing: '-0.01em',
-          }}>
-            Foto / vídeo direto
-          </span>
-        </div>
-
-        <div className="flex items-end justify-between mt-4">
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', fontWeight: 500 }}>
-            Abrir câmera
-          </span>
-          <CircleArrow size={36} dark={false} />
-        </div>
-      </button>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // HomeBriefing — exported component
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -546,9 +455,6 @@ export function HomeBriefing({
           </div>
           <div className="cia-briefing-cell-2">
             <HeroVisualCard diffDays={diffDays} eventActive={eventActive} />
-          </div>
-          <div className="cia-briefing-cell-3">
-            <SignatureCard />
           </div>
         </div>
       </div>

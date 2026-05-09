@@ -821,58 +821,101 @@ body {
   box-shadow: 0 2px 0 rgba(10,15,11,0.04), 0 12px 32px rgba(10,15,11,0.10);
 }
 
-/* Briefing — responsive grid (center hero visual gets more weight) */
+/* Briefing — responsive grid (Pipeline narrow + Hero wide) */
 .cia-briefing-grid {
-  grid-template-columns: 0.95fr 1.5fr 0.75fr;
+  grid-template-columns: 1fr 2fr;
 }
 @media (max-width: 1024px) {
   .cia-briefing-grid {
     grid-template-columns: 1fr 1fr;
   }
-  .cia-briefing-cell-3 { grid-column: span 2; }
 }
 @media (max-width: 640px) {
   .cia-briefing-grid {
     grid-template-columns: 1fr;
   }
-  .cia-briefing-cell-3 { grid-column: span 1; }
 }
 
-/* ─── Hero visual canvas — atmospheric gradient mesh ─────────────────────── */
+/* ─── Hero visual canvas — atmospheric animated mesh ──────────────────────── */
 .cia-hero-canvas {
   position: relative;
   border-radius: 28px;
   overflow: hidden;
   isolation: isolate;
-  background: linear-gradient(135deg, #FDE7D5 0%, #F8E0BC 60%, #F2D5A5 100%);
+  background: linear-gradient(135deg, #FCE3CA 0%, #F8DAB2 100%);
   min-height: 100%;
   display: flex;
   align-items: flex-end;
-  padding: 26px;
+  padding: 28px;
   box-shadow:
     0 1px 0 rgba(255,255,255,0.45) inset,
-    0 8px 28px rgba(196,107,74,0.12);
+    0 8px 28px rgba(196,107,74,0.14);
 }
 
-.cia-hero-canvas::before {
-  content: '';
+/* Animated orbs — lava-lamp style mesh */
+.cia-mesh-orb {
   position: absolute;
-  inset: -12%;
-  background:
-    radial-gradient(ellipse 50% 70% at 20% 30%, #C46B4A  0%, transparent 55%),
-    radial-gradient(ellipse 55% 65% at 75% 55%, #F0D04A  0%, transparent 55%),
-    radial-gradient(ellipse 45% 60% at 55% 88%, #D8845F  0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 92% 12%, #E8B82F  0%, transparent 55%),
-    radial-gradient(ellipse 35% 45% at 10% 75%, #B85A3F 0%, transparent 60%);
-  filter: blur(14px) saturate(1.25);
+  border-radius: 50%;
+  filter: blur(60px) saturate(1.10);
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+.cia-mesh-orb--1 {
+  width: 70%;  height: 90%;
+  top: -15%;   left: -10%;
+  background: #C46B4A;
   opacity: 0.92;
-  z-index: -1;
-  animation: cia-mesh-drift 22s ease-in-out infinite alternate;
+  animation: cia-orb-1 19s ease-in-out infinite alternate;
+}
+.cia-mesh-orb--2 {
+  width: 75%;  height: 85%;
+  top: 10%;    right: -20%;
+  background: #F0D04A;
+  opacity: 0.85;
+  animation: cia-orb-2 23s ease-in-out infinite alternate;
+}
+.cia-mesh-orb--3 {
+  width: 60%;  height: 65%;
+  bottom: -15%; right: 5%;
+  background: #E8B82F;
+  opacity: 0.80;
+  animation: cia-orb-3 17s ease-in-out infinite alternate;
+}
+.cia-mesh-orb--4 {
+  width: 55%;  height: 60%;
+  bottom: 10%; left: 20%;
+  background: #B85A3F;
+  opacity: 0.78;
+  animation: cia-orb-4 26s ease-in-out infinite alternate;
+}
+.cia-mesh-orb--5 {
+  width: 45%;  height: 50%;
+  top: 30%;    left: 40%;
+  background: #D8845F;
+  opacity: 0.70;
+  animation: cia-orb-5 21s ease-in-out infinite alternate;
 }
 
-@keyframes cia-mesh-drift {
-  0%   { transform: translate(0%,  0%) scale(1.00) rotate(0deg); }
-  100% { transform: translate(-3%, 2%) scale(1.06) rotate(2deg); }
+@keyframes cia-orb-1 {
+  0%   { transform: translate(0%,   0%)  scale(1);    }
+  100% { transform: translate(18%,  14%) scale(1.18); }
+}
+@keyframes cia-orb-2 {
+  0%   { transform: translate(0%,   0%)  scale(1);    }
+  100% { transform: translate(-22%, 18%) scale(1.12); }
+}
+@keyframes cia-orb-3 {
+  0%   { transform: translate(0%,   0%)  scale(1);    }
+  100% { transform: translate(-15%, -22%) scale(1.20); }
+}
+@keyframes cia-orb-4 {
+  0%   { transform: translate(0%,   0%)  scale(1);    }
+  100% { transform: translate(20%,  -16%) scale(1.10); }
+}
+@keyframes cia-orb-5 {
+  0%   { transform: translate(0%,   0%)  scale(1);    }
+  100% { transform: translate(-12%, 20%)  scale(1.25); }
 }
 
 /* Glass card overlay (cream variant) */

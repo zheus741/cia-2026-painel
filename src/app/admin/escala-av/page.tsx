@@ -74,16 +74,10 @@ export default async function EscalaAVPage() {
 
   return (
     <div>
-      <div className="px-6 pt-6 pb-4">
-        <p className="text-[10px] uppercase tracking-[0.25em] text-[var(--accent)]">
-          Operacional
-        </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-          Escala Foto & Vídeo
-        </h1>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Distribua fotógrafos e videomakers por setor e dia. O colaborador é notificado ao ser escalado.
-        </p>
+      <div className="px-6 pt-6 pb-4 cia-page-header" style={{ marginBottom: 0 }}>
+        <p className="cia-page-header__eyebrow">Operacional</p>
+        <h1 className="cia-page-header__title">Escala Foto & Vídeo</h1>
+        <p className="cia-page-header__subtitle">Distribua fotógrafos e videomakers por setor e dia. O colaborador é notificado ao ser escalado.</p>
       </div>
 
       <EscalaAVGrid

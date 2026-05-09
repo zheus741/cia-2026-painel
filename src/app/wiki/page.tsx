@@ -53,13 +53,11 @@ export default async function WikiPage() {
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-widest text-[var(--accent)]">Documentação</p>
-          <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
-            Wiki
-          </h1>
-          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-            Briefings, manuais e protocolos por função — substitui o Notion.
-          </p>
+          <div className="cia-page-header" style={{ marginBottom: 0 }}>
+            <p className="cia-page-header__eyebrow">Documentação</p>
+            <h1 className="cia-page-header__title">Wiki</h1>
+            <p className="cia-page-header__subtitle">Briefings, manuais e protocolos por função — substitui o Notion.</p>
+          </div>
         </div>
         {canEdit && <WikiNewButton />}
       </div>

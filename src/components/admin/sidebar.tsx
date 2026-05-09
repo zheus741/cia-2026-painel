@@ -128,16 +128,16 @@ export function AdminSidebar({
     >
 
       {/* Mobile header — close button */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)] md:hidden">
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(46,107,66,0.55)' }}>
+      <div className="flex items-center justify-between px-3 py-2 border-b md:hidden" style={{ borderColor: 'rgba(250,247,240,0.08)' }}>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(250,247,240,0.30)' }}>
           Menu
         </span>
         <button
           onClick={onCloseMobile}
-          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-[rgba(46,107,66,0.08)]"
+          className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-[rgba(250,247,240,0.08)]"
           aria-label="Fechar menu"
         >
-          <X className="h-4 w-4" style={{ color: 'var(--muted-foreground)' }} />
+          <X className="h-4 w-4" style={{ color: 'rgba(250,247,240,0.40)' }} />
         </button>
       </div>
 
@@ -180,7 +180,7 @@ export function AdminSidebar({
                       width: 14,
                       height: 14,
                       flexShrink: 0,
-                      color: active ? '#2e6b42' : 'rgba(46,107,66,0.50)',
+                      color: active ? '#F0D04A' : 'rgba(250,247,240,0.38)',
                     }}
                   />
 
@@ -198,8 +198,8 @@ export function AdminSidebar({
                         height: 5,
                         borderRadius: '50%',
                         flexShrink: 0,
-                        background: '#2e6b42',
-                        boxShadow: '0 0 5px rgba(46,107,66,0.45)',
+                        background: '#F0D04A',
+                        boxShadow: '0 0 6px rgba(240,208,74,0.55)',
                       }}
                     />
                   )}
@@ -212,18 +212,18 @@ export function AdminSidebar({
 
       {/* Desktop footer — toggle collapse */}
       <div
-        className="hidden md:flex items-center border-t cursor-pointer transition-colors hover:bg-[rgba(46,107,66,0.06)] select-none"
-        style={{ borderColor: 'rgba(16,29,18,0.08)', padding: '8px 10px', gap: 8, flexShrink: 0 }}
+        className="hidden md:flex items-center border-t cursor-pointer transition-colors hover:bg-[rgba(250,247,240,0.05)] select-none"
+        style={{ borderColor: 'rgba(250,247,240,0.07)', padding: '8px 10px', gap: 8, flexShrink: 0 }}
         onClick={onToggleCollapsed}
       >
         {collapsed ? (
           <PanelLeftOpen
-            style={{ width: 14, height: 14, color: 'rgba(46,107,66,0.50)', flexShrink: 0, margin: '0 auto' }}
+            style={{ width: 14, height: 14, color: 'rgba(250,247,240,0.28)', flexShrink: 0, margin: '0 auto' }}
           />
         ) : (
           <>
-            <PanelLeftClose style={{ width: 14, height: 14, color: 'rgba(46,107,66,0.45)', flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: 'rgba(46,107,66,0.50)', fontWeight: 500 }}>
+            <PanelLeftClose style={{ width: 14, height: 14, color: 'rgba(250,247,240,0.25)', flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: 'rgba(250,247,240,0.28)', fontWeight: 500 }}>
               Recolher
             </span>
           </>
@@ -236,7 +236,7 @@ export function AdminSidebar({
           className="hidden md:block"
           style={{ padding: '4px 14px 10px', flexShrink: 0 }}
         >
-          <p style={{ fontSize: 10, letterSpacing: '0.08em', color: 'rgba(46,107,66,0.45)', fontFamily: 'monospace' }}>
+          <p style={{ fontSize: 10, letterSpacing: '0.10em', color: 'rgba(250,247,240,0.18)', fontFamily: 'monospace' }}>
             CIA 2026 · v0.5
           </p>
         </div>

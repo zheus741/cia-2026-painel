@@ -29,14 +29,10 @@ export default async function PautasPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-[var(--accent)]">Roaming</p>
-        <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
-          Pautas
-        </h1>
-        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-          Ideias de cobertura — da ideia ao conteúdo entregue.
-        </p>
+      <div className="cia-page-header">
+        <p className="cia-page-header__eyebrow">Roaming</p>
+        <h1 className="cia-page-header__title">Pautas</h1>
+        <p className="cia-page-header__subtitle">Ideias de cobertura — da ideia ao conteúdo entregue.</p>
       </div>
 
       <PautasBoard

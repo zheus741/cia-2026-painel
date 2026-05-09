@@ -295,28 +295,28 @@ body {
   background-size: 120px 120px, 90px 90px, 150px 150px, 80px 80px, 200px 200px, 100px 100px, 140px 140px;
 }
 
-/* ── macOS native component classes ─────────────────────────────────────────── */
+/* ── Shell: editorial dark sidebar + cream toolbar ───────────────────────────── */
 
-/* Sidebar */
+/* Sidebar — dark forest editorial */
 .mac-sidebar {
-  background: #e8ede9;
-  border-right: 1px solid var(--border);
+  background: #0C1410;
+  border-right: 1px solid rgba(250,247,240,0.05);
 }
 
-/* Toolbar / header */
+/* Toolbar / header — cream editorial */
 .mac-toolbar {
-  background: #f1f5f2;
-  border-bottom: 1px solid var(--border);
+  background: var(--cream);
+  border-bottom: 1px solid rgba(10,15,11,0.07);
 }
 
 /* Navigation group label */
 .mac-nav-group {
-  padding: 12px 10px 4px;
-  font-size: 10px;
+  padding: 14px 12px 5px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.10em;
-  color: rgba(46, 107, 66, 0.65);
+  letter-spacing: 0.14em;
+  color: rgba(250, 247, 240, 0.28);
   user-select: none;
 }
 
@@ -325,27 +325,27 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 30px;
+  height: 32px;
   padding: 0 10px;
-  border-radius: 7px;
+  border-radius: 8px;
   margin-bottom: 1px;
   font-size: 13px;
   font-weight: 500;
-  color: rgba(16, 29, 18, 0.72);
+  color: rgba(250, 247, 240, 0.52);
   border: 1px solid transparent;
-  transition: background 0.10s ease, color 0.10s ease;
+  transition: background 0.12s ease, color 0.12s ease;
   cursor: pointer;
   user-select: none;
   text-decoration: none;
 }
 .mac-nav-item:hover {
-  background: rgba(46, 107, 66, 0.08);
-  color: rgba(16, 29, 18, 0.80);
+  background: rgba(250, 247, 240, 0.07);
+  color: rgba(250, 247, 240, 0.82);
 }
 .mac-nav-item.active {
-  background: rgba(46, 107, 66, 0.12);
-  border-color: rgba(46, 107, 66, 0.20);
-  color: #2e6b42;
+  background: rgba(240, 208, 74, 0.13);
+  border-color: rgba(240, 208, 74, 0.22);
+  color: #F0D04A;
   font-weight: 600;
 }
 
@@ -353,7 +353,7 @@ body {
 .mac-separator {
   height: 1px;
   margin: 6px 10px;
-  background: var(--border);
+  background: rgba(250, 247, 240, 0.07);
 }
 
 /* Window chrome */
@@ -370,7 +370,7 @@ body {
   outline-offset: 2px;
 }
 
-/* Logout button */
+/* Logout button — cream toolbar */
 .mac-logout-btn {
   display: flex;
   align-items: center;
@@ -378,9 +378,9 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.10);
-  color: rgba(16,29,18,0.45);
+  background: rgba(10,15,11,0.05);
+  border: 1px solid rgba(10,15,11,0.09);
+  color: rgba(10,15,11,0.40);
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   cursor: pointer;
   flex-shrink: 0;
@@ -389,6 +389,32 @@ body {
   background: rgba(192,57,43,0.10);
   border-color: rgba(192,57,43,0.25);
   color: #c0392b;
+}
+
+/* ── Editorial page header utility ───────────────────────────────────────────── */
+.cia-page-header { margin-bottom: 24px; }
+.cia-page-header__eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--green);
+}
+.cia-page-header__title {
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  font-size: clamp(24px, 2.8vw, 36px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--ink-deep);
+  margin-top: 4px;
+}
+.cia-page-header__subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(10,15,11,0.48);
+  letter-spacing: -0.01em;
+  margin-top: 6px;
 }
 
 /* ── Sidebar collapsed (desktop only) ──────────────────────────────────────── */

@@ -76,12 +76,11 @@ export default async function ConteudosPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Sub-header */}
-      <div className="shrink-0 border-b border-[var(--border)] px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold cia-gold-text" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            Kanban de Conteúdo
-          </h1>
-          <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+      <div className="shrink-0 border-b border-[var(--border)] px-6 py-4 flex items-end justify-between gap-4">
+        <div className="cia-page-header" style={{ marginBottom: 0 }}>
+          <p className="cia-page-header__eyebrow">Produção</p>
+          <h1 className="cia-page-header__title">Kanban de Conteúdo</h1>
+          <p className="cia-page-header__subtitle">
             Arraste os cards para mudar o status · clique para ver os detalhes
           </p>
         </div>
@@ -89,7 +88,15 @@ export default async function ConteudosPage() {
           href="/api/backup"
           download
           title="Baixar backup JSON de todos os conteúdos"
-          className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs text-[var(--muted-foreground)] transition-colors hover:border-[var(--green-dim)] hover:text-[var(--green-bright)]"
+          className="flex items-center gap-2 shrink-0 transition-all"
+          style={{
+            borderRadius: 999,
+            padding: '6px 14px',
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
+            color: 'rgba(10,15,11,0.50)',
+            border: '1px solid rgba(10,15,11,0.12)',
+            background: 'rgba(10,15,11,0.03)',
+          }}
         >
           <Download className="h-3.5 w-3.5" />
           Backup

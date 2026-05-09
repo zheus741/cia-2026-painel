@@ -106,14 +106,10 @@ export default async function CronogramaPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-[var(--accent)]">Programação</p>
-        <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
-          Cronograma
-        </h1>
-        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-          {totalEventos} eventos · 04–07 junho 2026 · Uberaba/MG
-        </p>
+      <div className="cia-page-header">
+        <p className="cia-page-header__eyebrow">Programação</p>
+        <h1 className="cia-page-header__title">Cronograma</h1>
+        <p className="cia-page-header__subtitle">{totalEventos} eventos · 04–07 junho 2026 · Uberaba/MG</p>
       </div>
 
       {/* Legenda */}

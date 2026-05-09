@@ -82,14 +82,10 @@ export default async function ChecklistPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-[var(--accent)]">Operações</p>
-          <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
-            Checklists
-          </h1>
-          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-            Checklists operacionais — jogos, shows, festas e ativações.
-          </p>
+        <div className="cia-page-header" style={{ marginBottom: 0 }}>
+          <p className="cia-page-header__eyebrow">Operações</p>
+          <h1 className="cia-page-header__title">Checklists</h1>
+          <p className="cia-page-header__subtitle">Checklists operacionais — jogos, shows, festas e ativações.</p>
         </div>
       </div>
 

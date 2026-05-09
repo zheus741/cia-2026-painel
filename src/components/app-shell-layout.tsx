@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { CiaLogo } from '@/components/cia-logo'
 import { AdminSidebar } from '@/components/admin/sidebar'
 import { signOut } from '@/app/actions'
-import { LogOut, ChevronRight, Menu, Tv2 } from 'lucide-react'
+import { LogOut, Menu, Tv2 } from 'lucide-react'
 import { NotifBell } from '@/components/NotifBell'
 import { QuickCapture } from '@/components/QuickCapture'
 
@@ -70,17 +70,17 @@ export function AppShellLayout({ profile, userEmail, userId, section, fullWidth 
       {/* ── Toolbar ─────────────────────────────────────────────────── */}
       <header className="mac-toolbar sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between px-4">
 
-        <div className="flex items-center gap-2">
-          {/* Hamburger — aparece no mobile E no desktop como toggle */}
+        <div className="flex items-center gap-2.5">
+          {/* Hamburger */}
           <button
             onClick={() => {
               if (window.innerWidth < 768) setMobileOpen(true)
               else toggleCollapsed()
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[rgba(46,107,66,0.08)]"
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[rgba(10,15,11,0.06)]"
             aria-label="Toggle menu"
           >
-            <Menu className="h-4 w-4" style={{ color: 'var(--muted-foreground)' }} />
+            <Menu className="h-4 w-4" style={{ color: 'rgba(10,15,11,0.42)' }} />
           </button>
 
           <Link href="/" className="flex items-center opacity-90 hover:opacity-100 transition-opacity">
@@ -88,9 +88,15 @@ export function AppShellLayout({ profile, userEmail, userId, section, fullWidth 
           </Link>
 
           {section && (
-            <div className="flex items-center gap-1.5">
-              <ChevronRight className="h-3 w-3" style={{ color: 'rgba(16,29,18,0.25)' }} />
-              <span className="hidden sm:block" style={{ fontSize: 13, fontWeight: 500, color: 'var(--muted-foreground)' }}>
+            <div className="flex items-center gap-2">
+              <span style={{ color: 'rgba(10,15,11,0.18)', fontSize: 15, fontWeight: 300, lineHeight: 1 }}>/</span>
+              <span className="hidden sm:block" style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: 'rgba(10,15,11,0.52)',
+                letterSpacing: '-0.01em',
+                fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+              }}>
                 {section}
               </span>
             </div>
@@ -100,31 +106,55 @@ export function AppShellLayout({ profile, userEmail, userId, section, fullWidth 
         {/* Right: notif + tv + user pill + logout */}
         <div className="flex items-center gap-2">
           {userId && <NotifBell userId={userId} />}
+
+          {/* TV pill */}
           <a
             href="/tv"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all hover:bg-[rgba(46,107,66,0.10)]"
-            style={{ color: 'rgba(46,107,66,0.65)', border: '1px solid rgba(46,107,66,0.20)' }}
+            className="flex items-center gap-1.5 transition-all"
+            style={{
+              borderRadius: 999,
+              padding: '4px 11px 4px 9px',
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
+              textTransform: 'uppercase',
+              color: '#2e6b42',
+              border: '1px solid rgba(46,107,66,0.22)',
+              background: 'rgba(46,107,66,0.07)',
+            }}
             title="Abrir Modo TV"
           >
             <Tv2 className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">TV</span>
           </a>
+
+          {/* User pill */}
           <div
-            className="flex items-center gap-2 rounded-full px-2.5 py-1.5"
-            style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid var(--border)' }}
+            className="flex items-center gap-2 rounded-full pl-1.5 pr-3 py-1"
+            style={{ background: 'rgba(10,15,11,0.05)', border: '1px solid rgba(10,15,11,0.08)' }}
           >
             <div
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
-              style={{ background: `${roleColor}18`, border: `1px solid ${roleColor}40`, color: roleColor }}
+              style={{ background: `${roleColor}18`, border: `1px solid ${roleColor}36`, color: roleColor }}
             >
               {initials}
             </div>
-            <span className="hidden sm:block" style={{ fontSize: 12, fontWeight: 600, color: 'var(--foreground)' }}>
-              {profile?.nome ?? userEmail}
+            <span className="hidden sm:block" style={{
+              fontSize: 12, fontWeight: 600,
+              color: '#0A0F0B',
+              letterSpacing: '-0.01em',
+              fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            }}>
+              {profile?.nome?.split(' ')[0] ?? userEmail}
             </span>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: roleColor }}>
+            <span style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: '0.09em',
+              textTransform: 'uppercase',
+              padding: '1px 5px',
+              borderRadius: 99,
+              background: `${roleColor}14`,
+              color: roleColor,
+            }}>
               {roleName}
             </span>
           </div>

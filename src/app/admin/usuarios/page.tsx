@@ -10,14 +10,12 @@ export default async function UsuariosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-[var(--accent)]">Administração</p>
-        <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
-          Usuários
-        </h1>
-        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+      <div className="cia-page-header">
+        <p className="cia-page-header__eyebrow">Administração</p>
+        <h1 className="cia-page-header__title">Usuários</h1>
+        <p className="cia-page-header__subtitle">
           {(data ?? []).length} membro{(data ?? []).length !== 1 ? 's' : ''} cadastrado{(data ?? []).length !== 1 ? 's' : ''}
-          {' · '}novo membro entra como <span className="text-[var(--foreground)]">Operador</span> no primeiro login.
+          {' · '}novo membro entra como <span style={{ color: 'var(--ink-deep)' }}>Operador</span> no primeiro login.
         </p>
       </div>
 

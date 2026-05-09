@@ -132,14 +132,10 @@ export default async function MinhaEscalaPage() {
 
   return (
     <div className="space-y-10">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-[var(--accent)]">Pessoal</p>
-        <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
-          Minha Escala
-        </h1>
-        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-          Seus turnos, checklists e conteúdos atribuídos.
-        </p>
+      <div className="cia-page-header">
+        <p className="cia-page-header__eyebrow">Pessoal</p>
+        <h1 className="cia-page-header__title">Minha Escala</h1>
+        <p className="cia-page-header__subtitle">Seus turnos, checklists e conteúdos atribuídos.</p>
       </div>
 
       {/* ── Turnos Foto/Vídeo — cards interativos ────────────── */}

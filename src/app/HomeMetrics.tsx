@@ -444,21 +444,13 @@ function HeatmapCard({ data }: { data: HeatCell[] }) {
   const maxVal = Math.max(...matrix.flatMap(r => r.days), 1)
   const totalContent = matrix.reduce((sum, r) => sum + r.days.reduce((s, v) => s + v, 0), 0)
 
-  function cellStyle(val: number, rowIdx: number, colIdx: number): React.CSSProperties {
+  // Returns variant: empty / hatch (low) / solid (high)
+  function cellMeta(val: number) {
+    if (val === 0) return { variant: 'empty' as const, intensity: 0 }
     const intensity = val / maxVal
-    const delay = `${(rowIdx * 4 + colIdx) * 30}ms`
-    if (val === 0) {
-      return {
-        background: 'rgba(45,27,92,0.05)',
-        border: '1px solid rgba(45,27,92,0.08)',
-        transition: `background 0.5s ease ${delay}`,
-      }
-    }
-    const alpha = 0.20 + intensity * 0.65
     return {
-      background: mounted ? `rgba(61,73,224,${alpha.toFixed(2)})` : 'rgba(45,27,92,0.05)',
-      border: `1px solid rgba(61,73,224,${(alpha * 0.5).toFixed(2)})`,
-      transition: `background 0.6s ease ${delay}`,
+      variant: intensity >= 0.55 ? ('solid' as const) : ('hatch' as const),
+      intensity,
     }
   }
 
@@ -543,55 +535,83 @@ function HeatmapCard({ data }: { data: HeatCell[] }) {
               {label}
             </div>
             <div className="flex flex-1 gap-1.5">
-              {days.map((val, colIdx) => (
-                <div
-                  key={colIdx}
-                  title={val > 0 ? `${label} · ${DAY_LABELS[colIdx]}: ${val}` : undefined}
-                  className="relative flex-1"
-                  style={{
-                    height: 32,
-                    borderRadius: 8,
-                    ...cellStyle(val, rowIdx, colIdx),
-                  }}
-                >
-                  {val > 0 && mounted && (
-                    <span style={{
-                      position: 'absolute',
-                      inset: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 12, fontWeight: 700,
-                      color: val / maxVal > 0.5 ? '#FFFFFF' : '#2D1B5C',
-                      letterSpacing: '-0.02em',
-                    }}>
-                      {val}
-                    </span>
-                  )}
-                </div>
-              ))}
+              {days.map((val, colIdx) => {
+                const meta = cellMeta(val)
+                const delay = `${(rowIdx * 4 + colIdx) * 30}ms`
+                const cellClass =
+                  meta.variant === 'empty' ? 'cia-heat-cell cia-heat-cell--empty' :
+                  meta.variant === 'solid' ? 'cia-heat-cell cia-heat-cell--solid' :
+                  'cia-heat-cell cia-heat-cell--hatch'
+
+                // Color: terracotta-based, intensity scales saturation
+                const heatColor = meta.variant === 'solid'
+                  ? '#C46B4A'
+                  : '#D8845F'
+                const heatBorder = meta.variant === 'solid'
+                  ? 'rgba(120,60,40,0.45)'
+                  : 'rgba(196,107,74,0.30)'
+
+                return (
+                  <div
+                    key={colIdx}
+                    title={val > 0 ? `${label} · ${DAY_LABELS[colIdx]}: ${val}` : undefined}
+                    className={`${cellClass} relative flex-1`}
+                    style={{
+                      height: 34,
+                      transition: `opacity 0.6s ease ${delay}, transform 0.18s`,
+                      opacity: mounted ? 1 : 0.2,
+                      ['--heat-color'  as string]: heatColor,
+                      ['--heat-border' as string]: heatBorder,
+                    } as React.CSSProperties}
+                  >
+                    {val > 0 && mounted && (
+                      <span style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 12, fontWeight: 800,
+                        color: meta.variant === 'solid' ? '#FFFFFF' : '#5A2A18',
+                        letterSpacing: '-0.02em',
+                        textShadow: meta.variant === 'solid' ? '0 1px 2px rgba(0,0,0,0.20)' : 'none',
+                      }}>
+                        {val}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         ))}
       </div>
 
-      {/* legend */}
+      {/* legend — hatch + solid */}
       <div className="mt-4 flex items-center justify-end gap-2" style={{
-        fontSize: 10, fontWeight: 600,
-        color: 'rgba(45,27,92,0.45)',
-        letterSpacing: '0.04em',
+        fontSize: 10, fontWeight: 700,
+        color: 'rgba(45,27,92,0.50)',
+        letterSpacing: '0.06em',
         textTransform: 'uppercase',
       }}>
-        <span>baixo</span>
-        {[0.20, 0.40, 0.60, 0.80, 0.95].map((a, i) => (
-          <div key={i} style={{
-            width: 16, height: 16,
-            borderRadius: 4,
-            background: `rgba(61,73,224,${a})`,
-            border: `1px solid rgba(61,73,224,${a * 0.5})`,
-          }} />
-        ))}
-        <span>alto</span>
+        <span>vazio</span>
+        <div className="cia-heat-cell cia-heat-cell--empty" style={{ width: 18, height: 18 }} />
+        <div
+          className="cia-heat-cell cia-heat-cell--hatch"
+          style={{
+            width: 18, height: 18,
+            ['--heat-color' as string]: '#D8845F',
+          } as React.CSSProperties}
+        />
+        <div
+          className="cia-heat-cell cia-heat-cell--solid"
+          style={{
+            width: 18, height: 18,
+            ['--heat-color'  as string]: '#C46B4A',
+            ['--heat-border' as string]: 'rgba(120,60,40,0.45)',
+          } as React.CSSProperties}
+        />
+        <span>pico</span>
       </div>
     </div>
   )

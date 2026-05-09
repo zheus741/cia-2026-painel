@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Tv2, Camera } from 'lucide-react'
+import { ArrowUpRight, Tv2, Camera, Maximize2 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -110,96 +110,108 @@ function Pill({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CountdownCard — lavender, the time-remaining hero
+// HeroVisualCard — gradient mesh + glass overlay (signature centerpiece)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CountdownCard({ diffDays, eventActive }: { diffDays: number; eventActive: boolean }) {
+function HeroVisualCard({ diffDays, eventActive }: { diffDays: number; eventActive: boolean }) {
   return (
-    <Link href="/cronograma" className="cia-edit-card cia-edit-card--lavender group">
-      {/* eyebrow */}
-      <div className="flex items-center justify-between">
-        <span style={{
-          fontSize: 11.5,
-          fontWeight: 600,
-          color: 'rgba(45, 27, 92, 0.55)',
-          letterSpacing: '-0.01em',
-        }}>
-          {eventActive ? 'evento em andamento' : 'contagem regressiva'}
-        </span>
-        <Pill bg="rgba(45,27,92,0.10)" color="#2D1B5C">
-          <span
-            style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: eventActive ? '#22C55E' : '#2D1B5C',
-              boxShadow: eventActive ? '0 0 8px rgba(34,197,94,0.6)' : 'none',
-            }}
-          />
-          {eventActive ? 'AO VIVO' : '04 jun'}
-        </Pill>
-      </div>
+    <Link href="/cronograma" className="cia-hero-canvas group" style={{ textDecoration: 'none' }}>
+      <div className="cia-hero-glass">
+        {/* eyebrow */}
+        <div className="flex items-center justify-between mb-3">
+          <span style={{
+            fontSize: 10.5, fontWeight: 700,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: 'rgba(120,60,40,0.65)',
+          }}>
+            {eventActive ? 'cobertura ao vivo' : 'contagem regressiva'}
+          </span>
+          <Pill bg="rgba(120,60,40,0.08)" color="#5A2A18">
+            <span
+              style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: eventActive ? '#22C55E' : '#C46B4A',
+                boxShadow: eventActive ? '0 0 8px rgba(34,197,94,0.6)' : 'none',
+              }}
+            />
+            {eventActive ? 'AO VIVO' : '04 — 07 jun'}
+          </Pill>
+        </div>
 
-      {/* big content */}
-      <div className="flex-1 flex flex-col justify-end">
+        {/* big number / status */}
         {eventActive ? (
           <>
-            <span style={{
+            <h2 style={{
               fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-              fontSize: 'clamp(54px, 6vw, 88px)',
+              fontSize: 'clamp(56px, 6.5vw, 96px)',
               fontWeight: 800,
               lineHeight: 0.92,
-              letterSpacing: '-0.04em',
+              letterSpacing: '-0.045em',
               color: '#0A0F0B',
+              marginBottom: 8,
             }}>
               Hoje
-            </span>
-            <span className="mt-1" style={{
-              fontSize: 16, fontWeight: 500,
-              color: 'rgba(10,15,11,0.55)',
+            </h2>
+            <p style={{
+              fontSize: 15, fontWeight: 500,
+              color: 'rgba(10,15,11,0.62)',
               letterSpacing: '-0.01em',
+              maxWidth: 280,
             }}>
-              Cobertura ao vivo · Uberaba, MG
-            </span>
+              Cobertura ao vivo da Copa Inter Atléticas em Uberaba, MG.
+            </p>
           </>
         ) : (
           <>
-            <span style={{
-              fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-              fontSize: 'clamp(72px, 9vw, 132px)',
-              fontWeight: 800,
-              lineHeight: 0.85,
-              letterSpacing: '-0.05em',
-              color: '#0A0F0B',
-              display: 'block',
-            }}>
-              <CountUp to={diffDays} />
-            </span>
-            <span style={{
-              fontSize: 17, fontWeight: 500,
-              color: 'rgba(10,15,11,0.60)',
+            <div className="flex items-baseline gap-3" style={{ marginBottom: 6 }}>
+              <span style={{
+                fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                fontSize: 'clamp(72px, 8.5vw, 124px)',
+                fontWeight: 800,
+                lineHeight: 0.85,
+                letterSpacing: '-0.05em',
+                color: '#0A0F0B',
+              }}>
+                <CountUp to={diffDays} />
+              </span>
+              <span style={{
+                fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                fontSize: 22, fontWeight: 700,
+                color: 'rgba(10,15,11,0.40)',
+                letterSpacing: '-0.02em',
+              }}>
+                {diffDays === 1 ? 'dia' : 'dias'}
+              </span>
+            </div>
+            <p style={{
+              fontSize: 14, fontWeight: 500,
+              color: 'rgba(10,15,11,0.62)',
               letterSpacing: '-0.01em',
-              marginTop: 4,
+              maxWidth: 280,
+              marginBottom: 4,
             }}>
-              {diffDays === 1 ? 'dia para o evento' : 'dias para o evento'}
-            </span>
-            <span className="mt-3" style={{
-              fontSize: 12,
-              color: 'rgba(45,27,92,0.50)',
-              letterSpacing: '0.04em',
+              Tudo num único painel — conteúdos, equipe e tempo real.
+            </p>
+            <span style={{
+              fontSize: 11,
+              color: 'rgba(120,60,40,0.55)',
+              letterSpacing: '0.10em',
               textTransform: 'uppercase',
-              fontWeight: 600,
+              fontWeight: 700,
             }}>
-              04 – 07 jun 2026 · Uberaba, MG
+              04 – 07 jun 2026 · Uberaba/MG
             </span>
           </>
         )}
-      </div>
 
-      {/* CTA */}
-      <div className="flex items-end justify-between mt-5">
-        <span style={{ fontSize: 13, color: 'rgba(45,27,92,0.55)', fontWeight: 500 }}>
-          Ver cronograma
-        </span>
-        <CircleArrow size={42} />
+        {/* CTA */}
+        <div className="flex items-center justify-between mt-5">
+          <span style={{ fontSize: 13, color: 'rgba(10,15,11,0.55)', fontWeight: 600 }}>
+            Ver cronograma
+          </span>
+          <CircleArrow size={40} />
+        </div>
       </div>
     </Link>
   )
@@ -226,7 +238,7 @@ function PipelineCard({
 
   return (
     <Link href="/conteudos" className="cia-edit-card cia-edit-card--gold group">
-      {/* eyebrow */}
+      {/* eyebrow + affordance */}
       <div className="flex items-center justify-between">
         <span style={{
           fontSize: 11.5,
@@ -236,9 +248,24 @@ function PipelineCard({
         }}>
           pipeline de conteúdo
         </span>
-        <Pill bg="rgba(70,50,5,0.12)" color="#46320C">
-          {statusEmoji} {status}
-        </Pill>
+        <div className="flex items-center gap-2">
+          <Pill bg="rgba(70,50,5,0.12)" color="#46320C">
+            {statusEmoji} {status}
+          </Pill>
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-flex',
+              width: 22, height: 22,
+              borderRadius: 7,
+              alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(70,50,5,0.10)',
+              color: 'rgba(70,50,5,0.65)',
+            }}
+          >
+            <Maximize2 style={{ width: 11, height: 11 }} />
+          </span>
+        </div>
       </div>
 
       {/* big number */}
@@ -270,33 +297,70 @@ function PipelineCard({
           {publicados} de {total} publicados
         </span>
 
-        {/* mini bars */}
-        <div className="mt-4 flex gap-2">
-          {[
-            { label: 'pub',     val: publicados, color: '#0A0F0B' },
-            { label: 'prod',    val: emProducao, color: 'rgba(10,15,11,0.55)' },
-            { label: 'rascun.', val: rascunho,   color: 'rgba(10,15,11,0.30)' },
-          ].map(s => (
-            <div key={s.label} style={{
-              flex: 1,
-              padding: '5px 8px',
-              borderRadius: 8,
-              background: 'rgba(255,255,255,0.40)',
-              border: '1px solid rgba(70,50,5,0.10)',
-            }}>
-              <div style={{
-                fontSize: 18, fontWeight: 700, lineHeight: 1,
-                color: s.color, letterSpacing: '-0.02em',
-              }}>{s.val}</div>
-              <div style={{
-                fontSize: 9, fontWeight: 600,
+        {/* hatched distribution bars (signature element) */}
+        <div className="mt-4">
+          {(() => {
+            const safeTotal = Math.max(total, 1)
+            const items = [
+              { label: 'publicado', val: publicados, pct: Math.round((publicados / safeTotal) * 100), variant: 'solid'  as const },
+              { label: 'produção',  val: emProducao, pct: Math.round((emProducao / safeTotal) * 100), variant: 'hatch'  as const },
+              { label: 'rascunho',  val: rascunho,   pct: Math.round((rascunho   / safeTotal) * 100), variant: 'soft'   as const },
+            ]
+            return (
+              <div className="flex gap-1.5" style={{ height: 38 }}>
+                {items.map(s => {
+                  const widthPct = total > 0 ? Math.max(s.pct, s.val > 0 ? 6 : 0) : (s.label === 'rascunho' ? 100 : 0)
+                  if (widthPct === 0) return null
+                  return (
+                    <div
+                      key={s.label}
+                      className={s.variant === 'hatch' ? 'cia-hatch-stripe cia-hatch-stripe--ink' : ''}
+                      style={{
+                        width: `${widthPct}%`,
+                        borderRadius: 9,
+                        background: s.variant === 'solid'
+                          ? '#0A0F0B'
+                          : s.variant === 'soft'
+                            ? 'rgba(10,15,11,0.10)'
+                            : undefined,
+                        position: 'relative',
+                        minWidth: 28,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: s.variant === 'soft' ? '1px solid rgba(10,15,11,0.10)' : 'none',
+                      }}
+                    >
+                      <span style={{
+                        fontSize: 11, fontWeight: 700,
+                        color: s.variant === 'solid' ? '#FFFFFF' : 'rgba(10,15,11,0.75)',
+                        letterSpacing: '-0.01em',
+                      }}>
+                        {s.pct}%
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
+          <div className="flex gap-1.5 mt-1.5">
+            {[
+              { label: 'publicado', val: publicados },
+              { label: 'produção',  val: emProducao },
+              { label: 'rascunho',  val: rascunho   },
+            ].map(s => (
+              <span key={s.label} style={{
+                flex: 1, fontSize: 9, fontWeight: 700,
                 color: 'rgba(70,50,5,0.55)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.06em',
-                marginTop: 2,
-              }}>{s.label}</div>
-            </div>
-          ))}
+                textAlign: 'center',
+              }}>
+                {s.label} · {s.val}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -433,40 +497,38 @@ export function HomeBriefing({
     }}>
       <div className="mx-auto max-w-7xl">
 
-        {/* ─── Greeting block ─── */}
+        {/* ─── Greeting block (2-line, dramatic) ─── */}
         <div className="mb-8">
           <p style={{
             fontSize: 11.5, fontWeight: 700,
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
             color: 'rgba(46,107,66,0.55)',
-            marginBottom: 8,
+            marginBottom: 10,
           }}>
             CIA · Copa Inter Atléticas 2026
           </p>
-          <h1 style={{
-            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-            fontSize: 'clamp(40px, 5vw, 64px)',
-            fontWeight: 800,
-            lineHeight: 0.95,
-            letterSpacing: '-0.04em',
-            color: '#0A0F0B',
-          }}>
-            Olá, {firstName}.
+          <h1 className="cia-greeting-headline">
+            Olá, {firstName}!
+            <span>
+              {eventActive
+                ? 'A cobertura está rolando — fica de olho.'
+                : 'Vamos preparar a cobertura de hoje.'}
+            </span>
           </h1>
           {userRole && (
-            <p className="mt-2" style={{
-              fontSize: 17,
-              fontWeight: 500,
-              color: 'rgba(10,15,11,0.55)',
-              letterSpacing: '-0.01em',
+            <p className="mt-3" style={{
+              fontSize: 14, fontWeight: 600,
+              color: 'rgba(10,15,11,0.45)',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
             }}>
               {userRole}
             </p>
           )}
         </div>
 
-        {/* ─── Hero card grid ─── */}
+        {/* ─── Hero card grid (Pipeline | Hero Visual | Signature) ─── */}
         <div
           className="cia-briefing-grid"
           style={{
@@ -475,15 +537,15 @@ export function HomeBriefing({
           }}
         >
           <div className="cia-briefing-cell-1">
-            <CountdownCard diffDays={diffDays} eventActive={eventActive} />
-          </div>
-          <div className="cia-briefing-cell-2">
             <PipelineCard
               publicados={publicados}
               total={total}
               emProducao={emProducao}
               rascunho={rascunho}
             />
+          </div>
+          <div className="cia-briefing-cell-2">
+            <HeroVisualCard diffDays={diffDays} eventActive={eventActive} />
           </div>
           <div className="cia-briefing-cell-3">
             <SignatureCard />

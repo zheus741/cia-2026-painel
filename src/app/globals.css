@@ -821,9 +821,9 @@ body {
   box-shadow: 0 2px 0 rgba(10,15,11,0.04), 0 12px 32px rgba(10,15,11,0.10);
 }
 
-/* Briefing — responsive grid */
+/* Briefing — responsive grid (center hero visual gets more weight) */
 .cia-briefing-grid {
-  grid-template-columns: 1.1fr 1.2fr 0.7fr;
+  grid-template-columns: 0.95fr 1.5fr 0.75fr;
 }
 @media (max-width: 1024px) {
   .cia-briefing-grid {
@@ -836,6 +836,123 @@ body {
     grid-template-columns: 1fr;
   }
   .cia-briefing-cell-3 { grid-column: span 1; }
+}
+
+/* ─── Hero visual canvas — atmospheric gradient mesh ─────────────────────── */
+.cia-hero-canvas {
+  position: relative;
+  border-radius: 28px;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(135deg, #FDE7D5 0%, #F8E0BC 60%, #F2D5A5 100%);
+  min-height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 26px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.45) inset,
+    0 8px 28px rgba(196,107,74,0.12);
+}
+
+.cia-hero-canvas::before {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  background:
+    radial-gradient(ellipse 50% 70% at 20% 30%, #C46B4A  0%, transparent 55%),
+    radial-gradient(ellipse 55% 65% at 75% 55%, #F0D04A  0%, transparent 55%),
+    radial-gradient(ellipse 45% 60% at 55% 88%, #D8845F  0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 92% 12%, #E8B82F  0%, transparent 55%),
+    radial-gradient(ellipse 35% 45% at 10% 75%, #B85A3F 0%, transparent 60%);
+  filter: blur(14px) saturate(1.25);
+  opacity: 0.92;
+  z-index: -1;
+  animation: cia-mesh-drift 22s ease-in-out infinite alternate;
+}
+
+@keyframes cia-mesh-drift {
+  0%   { transform: translate(0%,  0%) scale(1.00) rotate(0deg); }
+  100% { transform: translate(-3%, 2%) scale(1.06) rotate(2deg); }
+}
+
+/* Glass card overlay (cream variant) */
+.cia-hero-glass {
+  position: relative;
+  background: rgba(250,247,240,0.74);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.55);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.55) inset,
+    0 12px 36px rgba(120,60,40,0.18);
+  padding: 22px 26px;
+  width: 100%;
+  max-width: 360px;
+}
+
+/* ─── Hatched diagonal stripe pattern ────────────────────────────────────── */
+.cia-hatch-stripe {
+  --hatch-fg: #C46B4A;
+  --hatch-bg: rgba(196,107,74,0.18);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--hatch-fg) 0px,
+    var(--hatch-fg) 3px,
+    var(--hatch-bg) 3px,
+    var(--hatch-bg) 8px
+  );
+}
+
+.cia-hatch-stripe--gold {
+  --hatch-fg: #C9AC2F;
+  --hatch-bg: rgba(240,208,74,0.22);
+}
+
+.cia-hatch-stripe--ink {
+  --hatch-fg: #0A0F0B;
+  --hatch-bg: rgba(10,15,11,0.18);
+}
+
+/* Heatmap cells — solid + hatched mix */
+.cia-heat-cell {
+  position: relative;
+  border-radius: 8px;
+  transition: transform 0.18s, filter 0.18s;
+}
+.cia-heat-cell--hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--heat-color, #C46B4A) 0px,
+    var(--heat-color, #C46B4A) 2.5px,
+    transparent 2.5px,
+    transparent 6.5px
+  );
+  background-color: rgba(196,107,74,0.05);
+  border: 1px solid rgba(196,107,74,0.18);
+}
+.cia-heat-cell--solid {
+  background-color: var(--heat-color, #C46B4A);
+  border: 1px solid var(--heat-border, rgba(196,107,74,0.35));
+  box-shadow: 0 2px 6px rgba(196,107,74,0.18);
+}
+.cia-heat-cell--empty {
+  background: rgba(10,15,11,0.04);
+  border: 1px solid rgba(10,15,11,0.06);
+}
+
+/* ─── Greeting headline (Hi, Oliver! style) ──────────────────────────────── */
+.cia-greeting-headline {
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  font-size: clamp(36px, 4.6vw, 60px);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: var(--ink-deep);
+}
+.cia-greeting-headline span {
+  display: block;
+  color: rgba(10,15,11,0.45);
 }
 
 /* Quick grid card sizing */

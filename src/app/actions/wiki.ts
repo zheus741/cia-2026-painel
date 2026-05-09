@@ -23,7 +23,10 @@ export async function updateDoc(
     .update({ ...data, autor_id: user!.id })
     .eq('id', id)
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error('[wiki] updateDoc error:', error.code, error.message)
+    throw new Error('Erro ao salvar documento.')
+  }
   revalidatePath('/wiki')
   revalidatePath(`/wiki/${slug}`)
 }
@@ -59,7 +62,10 @@ export async function createDoc(data: {
     .select('slug')
     .single()
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error('[wiki] createDoc error:', error.code, error.message)
+    throw new Error('Erro ao criar documento.')
+  }
   revalidatePath('/wiki')
   return doc.slug as string
 }

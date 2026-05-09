@@ -77,15 +77,20 @@ export default async function MinhaEscalaPage() {
   ])
 
   // Group turnos by dia
-  const turnos = (turnosRes.data ?? []).map((r) => ({
-    ...r,
-    dia:     r.dia     as unknown as { nome_dia: string; data: string } | null,
-    setor:   r.setor   as unknown as TurnoCardData['setor'],
-    parceiro: r.parceiro as unknown as TurnoCardData['parceiro'],
-    comentarios_count: Array.isArray(r.comentarios_count)
-      ? (r.comentarios_count[0] as { count: number } | undefined)?.count ?? 0
-      : 0,
-  })) as TurnoCardData[]
+  const turnos = (turnosRes.data ?? []).map((r) => {
+    const dia     = Array.isArray(r.dia)     ? (r.dia[0] ?? null)     : (r.dia ?? null)
+    const setor   = Array.isArray(r.setor)   ? (r.setor[0] ?? null)   : (r.setor ?? null)
+    const parceiro = Array.isArray(r.parceiro) ? (r.parceiro[0] ?? null) : (r.parceiro ?? null)
+    return {
+      ...r,
+      dia:      dia     as unknown as { nome_dia: string; data: string } | null,
+      setor:    setor   as unknown as TurnoCardData['setor'],
+      parceiro: parceiro as unknown as TurnoCardData['parceiro'],
+      comentarios_count: Array.isArray(r.comentarios_count)
+        ? (r.comentarios_count[0] as { count: number } | undefined)?.count ?? 0
+        : 0,
+    }
+  }) as TurnoCardData[]
 
   const turnosByDia = turnos.reduce<Record<string, TurnoCardData[]>>((acc, t) => {
     const key = t.dia?.data ?? 'sem-dia'

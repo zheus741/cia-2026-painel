@@ -63,6 +63,27 @@
   --green-glow:    rgba(46, 107, 66, 0.15);
   --terracotta:    #8b3a2a;
 
+  /* Editorial palette — UI redesign 2026 (cards & accents) */
+  --lavender:        #DDD0F5;
+  --lavender-deep:   #B8A4E8;
+  --lavender-soft:   #F0EAFC;
+  --lavender-ink:    #2D1B5C;
+
+  --gold-soft:       #F0D04A;
+  --gold-vivid:      #E8B82F;
+  --gold-pale:       #FBF0BD;
+
+  --electric:        #3D49E0;
+  --electric-soft:   #5C68E8;
+  --electric-pale:   #DFE2FA;
+
+  --terracotta-soft: #D8845F;
+  --terracotta-mid:  #C46B4A;
+  --terracotta-pale: #F5DDD0;
+
+  --ink-deep:        #0A0F0B;
+  --cream:           #FAF7F0;
+
   /* Surface — claro */
   --background:         #f1f5f2;
   --foreground:         #101d12;
@@ -588,4 +609,162 @@ body {
 
 .cia-module-in {
   animation: cia-module-in 0.46s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ── Editorial cards (UI redesign 2026) ──
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Base card — applied to .cia-edit-card */
+.cia-edit-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 28px;
+  padding: 22px 24px;
+  min-height: 260px;
+  text-decoration: none;
+  isolation: isolate;
+  overflow: hidden;
+  transition:
+    transform 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.cia-edit-card:hover {
+  transform: translateY(-3px);
+}
+
+.cia-edit-card:hover .cia-circle-arrow,
+.cia-edit-card:hover .cia-quick-arrow {
+  transform: translate(2px, -2px) rotate(8deg);
+}
+
+/* Subtle inner gradient shimmer on hover */
+.cia-edit-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 0%, rgba(255,255,255,0.18), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+.cia-edit-card:hover::after { opacity: 1; }
+
+.cia-edit-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Tone variants */
+.cia-edit-card--lavender {
+  background: linear-gradient(155deg, #DDD0F5 0%, #E5DAFA 100%);
+  box-shadow: 0 1px 0 rgba(45,27,92,0.04), 0 2px 8px rgba(45,27,92,0.06);
+}
+.cia-edit-card--lavender:hover {
+  box-shadow: 0 2px 0 rgba(45,27,92,0.06), 0 12px 32px rgba(45,27,92,0.14);
+}
+
+.cia-edit-card--gold {
+  background: linear-gradient(155deg, #F0D04A 0%, #F5DC6A 100%);
+  box-shadow: 0 1px 0 rgba(70,50,5,0.05), 0 2px 8px rgba(70,50,5,0.08);
+}
+.cia-edit-card--gold:hover {
+  box-shadow: 0 2px 0 rgba(70,50,5,0.06), 0 12px 32px rgba(70,50,5,0.16);
+}
+
+.cia-edit-card--electric {
+  background: linear-gradient(155deg, #3D49E0 0%, #5C68E8 100%);
+  box-shadow: 0 1px 0 rgba(20,30,140,0.06), 0 2px 8px rgba(20,30,140,0.10);
+}
+.cia-edit-card--electric:hover {
+  box-shadow: 0 2px 0 rgba(20,30,140,0.08), 0 12px 32px rgba(20,30,140,0.22);
+}
+
+.cia-edit-card--terracotta {
+  background: linear-gradient(155deg, #C46B4A 0%, #D8845F 100%);
+  box-shadow: 0 1px 0 rgba(70,30,15,0.06), 0 2px 8px rgba(70,30,15,0.10);
+}
+.cia-edit-card--terracotta:hover {
+  box-shadow: 0 2px 0 rgba(70,30,15,0.08), 0 12px 32px rgba(70,30,15,0.20);
+}
+
+.cia-edit-card--green {
+  background: linear-gradient(155deg, #2e6b42 0%, #3d7a52 100%);
+  box-shadow: 0 1px 0 rgba(15,40,22,0.06), 0 2px 8px rgba(15,40,22,0.10);
+}
+.cia-edit-card--green:hover {
+  box-shadow: 0 2px 0 rgba(15,40,22,0.08), 0 12px 32px rgba(15,40,22,0.22);
+}
+
+.cia-edit-card--cream {
+  background: #FAF7F0;
+  border: 1px solid rgba(10,15,11,0.08);
+  box-shadow: 0 1px 0 rgba(10,15,11,0.02);
+}
+.cia-edit-card--cream:hover {
+  border-color: rgba(10,15,11,0.18);
+  box-shadow: 0 2px 0 rgba(10,15,11,0.04), 0 12px 32px rgba(10,15,11,0.10);
+}
+
+/* Briefing — responsive grid */
+.cia-briefing-grid {
+  grid-template-columns: 1.1fr 1.2fr 0.7fr;
+}
+@media (max-width: 1024px) {
+  .cia-briefing-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cia-briefing-cell-3 { grid-column: span 2; }
+}
+@media (max-width: 640px) {
+  .cia-briefing-grid {
+    grid-template-columns: 1fr;
+  }
+  .cia-briefing-cell-3 { grid-column: span 1; }
+}
+
+/* Quick grid card sizing */
+.cia-quick-card {
+  min-height: 180px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  animation: cia-card-rise 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cia-card-rise {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Mobile: single col, smaller cards */
+@media (max-width: 768px) {
+  .cia-quick-card { grid-column: span 6 !important; min-height: 160px; }
+  .cia-edit-card  { min-height: 220px; padding: 18px 20px; border-radius: 24px; }
+}
+@media (max-width: 480px) {
+  .cia-quick-card { grid-column: span 12 !important; }
+}
+
+/* Metrics row layout */
+.cia-metrics-col-4 { grid-column: span 4; }
+.cia-metrics-col-6 { grid-column: span 6; }
+.cia-metrics-col-12 { grid-column: span 12; }
+
+@media (max-width: 1024px) {
+  .cia-metrics-col-4 { grid-column: span 6; }
+}
+@media (max-width: 640px) {
+  .cia-metrics-col-4,
+  .cia-metrics-col-6 { grid-column: span 12; }
+}
+
+/* Metrics cell card (matches edit-card but flex-col by default) */
+.cia-metrics-cell {
+  display: flex;
+  flex-direction: column;
 }

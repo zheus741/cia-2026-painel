@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { Check, X, Minus, ExternalLink, Loader2 } from 'lucide-react'
 import { marcarItem } from '../actions'
 
@@ -49,12 +49,17 @@ export function ChecklistUI({ instanciaId, itens: initialItens }: Props) {
     )
   }
 
+  // Limpa loadingId quando a transição termina (não dentro do startTransition,
+  // pois React pode descartar o retorno da Promise em transitions)
+  useEffect(() => {
+    if (!isPending) setLoadingId(null)
+  }, [isPending])
+
   function handleMark(id: string, status: ItemStatus) {
     setLoadingId(id)
     optimisticMark(id, status)
     startTransition(async () => {
       await marcarItem(id, status, linkDraft[id], obsDraft[id])
-      setLoadingId(null)
     })
   }
 

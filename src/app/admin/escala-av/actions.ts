@@ -80,7 +80,7 @@ export async function updateStatusEscala(
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
     const isCoord =
       profile?.role === 'admin' ||

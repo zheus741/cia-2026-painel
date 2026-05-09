@@ -26,12 +26,13 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 export function PushNotificationSetup() {
   const [permission, setPermission] = useState<NotificationPermission>('default')
   const [showPrompt, setShowPrompt] = useState(false)
+  const [swSupported, setSwSupported] = useState(false)
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
-  const swSupported = typeof window !== 'undefined' &&
-    'serviceWorker' in navigator && 'PushManager' in window
 
   useEffect(() => {
-    if (!swSupported) return
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window
+    setSwSupported(supported)
+    if (!supported) return
 
     setPermission(Notification.permission)
 
@@ -50,7 +51,7 @@ export function PushNotificationSetup() {
         }
       })
       .catch((err) => console.error('[sw] register failed:', err))
-  }, [swSupported])
+  }, [])
 
   async function syncSubscription(reg: ServiceWorkerRegistration) {
     try {

@@ -59,9 +59,18 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
   }
 
   function move(id: string, novoStatus: StatusPauta) {
+    // salva status anterior para rollback
+    const prevStatus = pautas.find((p) => p.id === id)?.status
     setPautas((prev) => prev.map((p) => p.id === id ? { ...p, status: novoStatus } : p))
     startTransition(async () => {
-      await avancarStatus(id, novoStatus)
+      try {
+        await avancarStatus(id, novoStatus)
+      } catch {
+        // reverte o optimistic update em caso de falha
+        if (prevStatus) {
+          setPautas((prev) => prev.map((p) => p.id === id ? { ...p, status: prevStatus } : p))
+        }
+      }
     })
   }
 

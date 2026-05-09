@@ -63,7 +63,7 @@ export default async function ChecklistDetailPage({ params }: Props) {
     ativacao_patrocinador: 'Ativação',
   }
 
-  const itens = (inst.checklist_itens as unknown as {
+  const itens = ((inst.checklist_itens ?? []) as unknown as {
     id: string
     label: string
     obrigatorio: boolean
@@ -72,8 +72,13 @@ export default async function ChecklistDetailPage({ params }: Props) {
     link_post: string | null
     observacao: string | null
     feito_em: string | null
-    operador: { nome: string } | null
-  }[]) ?? []
+    operador: { nome: string } | { nome: string }[] | null
+  }[]).map((item) => ({
+    ...item,
+    operador: Array.isArray(item.operador)
+      ? (item.operador[0] as { nome: string } | undefined) ?? null
+      : item.operador as { nome: string } | null,
+  }))
 
   const feitos = itens.filter((i) => i.status === 'feito').length
   const obrigatoriosPendentes = itens.filter(

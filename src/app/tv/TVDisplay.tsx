@@ -343,8 +343,9 @@ function EmCampoPanel({ emCampo, setoresFrios }: { emCampo: EmCampoItem[]; setor
 type FocalEvent = { label: string; inicio: string | null; fim: string | null; icon: string; color: string }
 
 function ProximoEvento({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventItem[]; festas: EventItem[] }) {
-  const [now, setNow] = useState(() => new Date())
+  const [now, setNow] = useState(new Date(0))
   useEffect(() => {
+    setNow(new Date())
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(id)
   }, [])
@@ -458,8 +459,8 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
       <div style={{ position: 'relative', flexShrink: 0 }}>
         <svg width={104} height={104} viewBox="0 0 104 104">
           <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(46,107,66,0.10)" strokeWidth={stroke} />
-          {arcs.map((arc, i) => (
-            <circle key={i} cx={CX} cy={CY} r={R} fill="none" stroke={arc.color} strokeWidth={stroke}
+          {arcs.map((arc) => (
+            <circle key={arc.label} cx={CX} cy={CY} r={R} fill="none" stroke={arc.color} strokeWidth={stroke}
               strokeDasharray={arc.dashArray} strokeDashoffset={arc.dashOffset}
               transform="rotate(-90 52 52)" strokeLinecap="butt"
               style={{ transition: 'stroke-dasharray 1s ease' }}
@@ -575,8 +576,9 @@ type TLEntry = {
 }
 
 function TVTimeline({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventItem[]; festas: EventItem[] }) {
-  const [now, setNow] = useState(() => new Date())
+  const [now, setNow] = useState(new Date(0))
   useEffect(() => {
+    setNow(new Date())
     const id = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(id)
   }, [])
@@ -818,6 +820,7 @@ export function TVDisplay({
   const [celebrate,  setCelebrate]    = useState(false)
   const debounceRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevPublicados = useRef(pipelineStats.publicado)
+  const doRefreshRef   = useRef<() => void>(() => {})
 
   // Detect new publication
   useEffect(() => {
@@ -834,12 +837,13 @@ export function TVDisplay({
     setLastRefresh(Date.now())
     setRefreshIn(15)
   }
+  // Always keep the ref current so realtime callbacks never capture stale closure
+  doRefreshRef.current = doRefresh
 
   useEffect(() => {
-    const interval = setInterval(doRefresh, 15_000)
+    const interval = setInterval(() => doRefreshRef.current(), 15_000)
     return () => clearInterval(interval)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router])
+  }, [])
 
   useEffect(() => {
     const tick = setInterval(() => {
@@ -855,23 +859,22 @@ export function TVDisplay({
       .channel('tv-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conteudos' }, () => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(doRefresh, 1_000)
+        debounceRef.current = setTimeout(() => doRefreshRef.current(), 1_000)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos' }, () => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(doRefresh, 800)
+        debounceRef.current = setTimeout(() => doRefreshRef.current(), 800)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'turnos' }, () => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(doRefresh, 1_000)
+        debounceRef.current = setTimeout(() => doRefreshRef.current(), 1_000)
       })
       .subscribe()
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
       supabase.removeChannel(channel)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router])
+  }, [])
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -893,7 +896,7 @@ export function TVDisplay({
     const t = setTimeout(() => {
       document.documentElement.requestFullscreen().catch(() => {})
       setFullscreen(true)
-    }, 800)
+    }, 1200)
     return () => clearTimeout(t)
   }, [])
 

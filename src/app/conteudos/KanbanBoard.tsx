@@ -1035,10 +1035,17 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
   async function handleDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    await deleteConteudo(deleteTarget.id)
-    setDeleting(false)
-    setConteudos(prev => prev.filter(c => c.id !== deleteTarget.id))
-    setDeleteTarget(null)
+    try {
+      const res = await deleteConteudo(deleteTarget.id)
+      if (res && !res.ok) throw new Error(res.error ?? 'Erro ao deletar')
+      setConteudos(prev => prev.filter(c => c.id !== deleteTarget.id))
+      setDeleteTarget(null)
+    } catch (err) {
+      console.error('[handleDelete]', err)
+      // mantém o card no kanban — não remove da UI se falhou
+    } finally {
+      setDeleting(false)
+    }
   }
 
   function handleDrop(colStatus: string, cardId: string, srcStatus: string) {

@@ -69,8 +69,8 @@ export async function createConteudoCaptura(
     .single()
 
   if (error) {
-    console.error('[captura] insert error:', error)
-    return { ok: false, error: error.message }
+    console.error('[captura] insert error:', error.code, error.message)
+    return { ok: false, error: 'Erro ao criar rascunho. Tente novamente.' }
   }
 
   return { ok: true, conteudoId: conteudo.id }

@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  useState, useRef, useEffect, useTransition, useCallback,
+  useState, useRef, useEffect, useCallback,
 } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createConteudoCaptura } from '@/app/actions/captura'
@@ -59,7 +59,6 @@ export function QuickCapture() {
   const [progress, setProgress]   = useState(0)
   const [errorMsg, setErrorMsg]   = useState('')
   const [userId, setUserId]       = useState<string | null>(null)
-  const [, startTransition]       = useTransition()
 
   const photoInputRef  = useRef<HTMLInputElement>(null)
   const videoInputRef  = useRef<HTMLInputElement>(null)
@@ -73,6 +72,13 @@ export function QuickCapture() {
     })
   }, [])
 
+  // Listener pra atalhos externos (ex: card "Captura nova" na home)
+  useEffect(() => {
+    const open = () => setStep('choose')
+    window.addEventListener('cia:open-capture', open)
+    return () => window.removeEventListener('cia:open-capture', open)
+  }, [])
+
   // Gera preview quando arquivo muda
   useEffect(() => {
     if (!file) { setPreview(null); return }
@@ -80,12 +86,13 @@ export function QuickCapture() {
     setPreview(url)
     setTitulo(smartTitle(tipo))
     return () => URL.revokeObjectURL(url)
-  }, [file])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file])  // `tipo` omitido intencionalmente — só aplica título default na seleção do arquivo
 
-  // Atualiza título quando tipo muda (se ainda é o padrão)
+  // Atualiza título quando tipo muda
   useEffect(() => {
     if (file) setTitulo(smartTitle(tipo))
-  }, [tipo])
+  }, [tipo, file])
 
   function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -133,18 +140,13 @@ export function QuickCapture() {
       setProgress(85)
 
       // Cria conteudo via server action
-      await new Promise<void>((resolve, reject) => {
-        startTransition(async () => {
-          const result = await createConteudoCaptura({
-            midiaDraftUrl:  publicUrl,
-            midiaDraftTipo: midiaTipo,
-            tipo,
-            titulo: titulo.trim() || smartTitle(tipo),
-          })
-          if (result.ok) { resolve() }
-          else { reject(new Error(result.error ?? 'Erro desconhecido')) }
-        })
+      const result = await createConteudoCaptura({
+        midiaDraftUrl:  publicUrl,
+        midiaDraftTipo: midiaTipo,
+        tipo,
+        titulo: titulo.trim() || smartTitle(tipo),
       })
+      if (!result.ok) throw new Error(result.error ?? 'Erro desconhecido')
 
       setProgress(100)
       setStep('done')
@@ -155,7 +157,7 @@ export function QuickCapture() {
       setErrorMsg(msg)
       setStep('error')
     }
-  }, [file, userId, tipo, titulo, supabase])
+  }, [file, userId, tipo, titulo])
 
   const isOpen = step !== 'idle'
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Users, MapPin, FileText } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -114,7 +114,7 @@ function durEventMin(s: string | null, e: string | null): number | null {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// StatsBar
+// StatsBar — 3 quick stats em pílulas editoriais
 // ─────────────────────────────────────────────────────────────────────────────
 
 function StatsBar({
@@ -130,34 +130,76 @@ function StatsBar({
   const setoresCobertos = new Set(turnosHoje.map(t => t.setor_id).filter(Boolean)).size
 
   const stats = [
-    { icon: '🟢', label: 'Equipe ativa',      value: `${pessoasAtivas}p` },
-    { icon: '📍', label: 'Setores cobertos',   value: `${setoresCobertos}` },
-    { icon: '📋', label: 'Conteúdos hoje',     value: `${publicadosHoje}/${totalHoje}` },
+    { Icon: Users,    label: 'Equipe ativa',    value: `${pessoasAtivas}`,                    suffix: 'pessoas',  color: '#3D49E0' },
+    { Icon: MapPin,   label: 'Setores',         value: `${setoresCobertos}`,                  suffix: 'cobertos', color: '#C46B4A' },
+    { Icon: FileText, label: 'Conteúdos hoje',  value: `${publicadosHoje}/${totalHoje}`,      suffix: 'publicados', color: '#2e6b42' },
   ]
 
   return (
-    <div
-      className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border px-5 py-3 text-xs"
-      style={{ borderColor: 'rgba(46,107,66,0.18)', background: 'rgba(46,107,66,0.04)' }}
-    >
-      {stats.map((s, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <span>{s.icon}</span>
-          <span className="text-[var(--muted-foreground)]">{s.label}:</span>
-          <span
-            className="tabular-nums font-bold"
-            style={{ fontFamily: 'Orbitron, monospace', color: '#2e6b42', fontSize: '0.8rem' }}
-          >
-            {s.value}
-          </span>
-        </div>
-      ))}
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gap: 14,
+    }}>
+      {stats.map((s, i) => {
+        const Icon = s.Icon
+        return (
+          <div key={i} className="cia-edit-card cia-edit-card--cream" style={{
+            minHeight: 0,
+            padding: '14px 18px',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            display: 'flex',
+          }}>
+            <div style={{
+              width: 38, height: 38,
+              borderRadius: 12,
+              background: `${s.color}14`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Icon style={{ width: 18, height: 18, color: s.color, strokeWidth: 1.8 }} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div style={{
+                fontSize: 10.5, fontWeight: 700,
+                color: 'rgba(10,15,11,0.50)',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+              }}>
+                {s.label}
+              </div>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span style={{
+                  fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                  fontSize: 22, fontWeight: 800,
+                  color: '#0A0F0B',
+                  letterSpacing: '-0.03em',
+                  lineHeight: 1,
+                }}>
+                  {s.value}
+                </span>
+                <span style={{
+                  fontSize: 11, fontWeight: 500,
+                  color: 'rgba(10,15,11,0.45)',
+                  letterSpacing: '-0.01em',
+                }}>
+                  {s.suffix}
+                </span>
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RedesCard
+// RedesCard — cream, social media breakdown
 // ─────────────────────────────────────────────────────────────────────────────
 
 function RedesCard({ conteudosHoje }: { conteudosHoje: CoordConteudoHoje[] }) {
@@ -179,61 +221,125 @@ function RedesCard({ conteudosHoje }: { conteudosHoje: CoordConteudoHoje[] }) {
   const pct = total > 0 ? Math.round((publicados / total) * 100) : 0
 
   return (
-    <div className="cia-metric-card flex flex-col rounded-2xl px-5 py-5">
-      <p className="mb-1 text-[10px] uppercase tracking-[0.25em] text-[var(--muted-foreground)]">
-        Redes Hoje
-      </p>
-      <div className="mb-3 flex items-baseline gap-2">
-        <span
-          className="text-3xl font-bold tabular-nums"
-          style={{ fontFamily: 'Orbitron, monospace', color: '#2e6b42' }}
-        >
-          {publicados}
+    <div className="cia-edit-card cia-edit-card--cream cia-metrics-cell" style={{ minHeight: 280 }}>
+      <div className="flex items-center justify-between">
+        <span style={{
+          fontSize: 11.5, fontWeight: 600,
+          color: 'rgba(10,15,11,0.55)',
+          letterSpacing: '-0.01em',
+        }}>
+          redes hoje
         </span>
-        <span className="text-sm text-[var(--muted-foreground)]">/ {total} publicados</span>
-        <span
-          className="ml-auto text-sm font-bold tabular-nums"
-          style={{ fontFamily: 'Orbitron, monospace', color: pct >= 70 ? '#2e6b42' : pct >= 40 ? '#e8b94f' : '#f87171' }}
-        >
+        <span style={{
+          fontSize: 11, fontWeight: 700,
+          color: pct >= 70 ? '#2e6b42' : pct >= 40 ? '#B58812' : 'rgba(10,15,11,0.40)',
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          padding: '3px 10px',
+          borderRadius: 999,
+          background: pct >= 70 ? 'rgba(46,107,66,0.12)'
+                    : pct >= 40 ? 'rgba(232,184,47,0.18)'
+                                : 'rgba(10,15,11,0.06)',
+        }}>
           {pct}%
         </span>
       </div>
 
-      {canaisComConteudo.length === 0 ? (
-        <p className="text-xs text-[var(--muted-foreground)]/50">Nenhum conteúdo programado para hoje</p>
-      ) : (
-        <ul className="space-y-2">
-          {canaisComConteudo.map(([canal, counts]) => {
-            const cfg = CANAL_CONFIG[canal] ?? { label: canal, color: '#6b7280' }
-            return (
-              <li key={canal} className="flex items-center gap-2 text-xs">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: cfg.color, boxShadow: `0 0 5px ${cfg.color}80` }}
-                />
-                <span className="flex-1 truncate text-[var(--foreground)]">{cfg.label}</span>
-                <span
-                  className="tabular-nums font-bold"
-                  style={{ fontFamily: 'Orbitron, monospace', color: cfg.color }}
-                >
-                  {counts.publicados}/{counts.total}
-                </span>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+      <div className="flex items-baseline gap-2 mt-2">
+        <span style={{
+          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+          fontSize: 38, fontWeight: 800,
+          color: '#0A0F0B',
+          letterSpacing: '-0.04em',
+          lineHeight: 1,
+        }}>
+          {publicados}
+        </span>
+        <span style={{
+          fontSize: 14, fontWeight: 500,
+          color: 'rgba(10,15,11,0.45)',
+        }}>
+          de {total} publicados
+        </span>
+      </div>
+
+      <div className="flex-1 mt-4 overflow-y-auto" style={{ maxHeight: 200 }}>
+        {canaisComConteudo.length === 0 ? (
+          <p style={{
+            fontSize: 13, color: 'rgba(10,15,11,0.40)',
+            textAlign: 'center', padding: '24px 0',
+          }}>
+            Nenhum conteúdo programado para hoje.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {canaisComConteudo.map(([canal, counts]) => {
+              const cfg = CANAL_CONFIG[canal] ?? { label: canal, color: '#6b7280' }
+              const canalPct = counts.total > 0 ? Math.round((counts.publicados / counts.total) * 100) : 0
+              return (
+                <li key={canal} className="flex items-center gap-2.5">
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: cfg.color,
+                    flexShrink: 0,
+                  }} />
+                  <span style={{
+                    flex: 1,
+                    fontSize: 12.5, fontWeight: 600,
+                    color: 'rgba(10,15,11,0.75)',
+                    letterSpacing: '-0.01em',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {cfg.label}
+                  </span>
+                  <div style={{
+                    width: 60,
+                    height: 4,
+                    borderRadius: 999,
+                    background: 'rgba(10,15,11,0.06)',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${canalPct}%`,
+                      background: cfg.color,
+                      borderRadius: 999,
+                      transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
+                    }} />
+                  </div>
+                  <span style={{
+                    fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                    fontSize: 13, fontWeight: 800,
+                    color: '#0A0F0B',
+                    letterSpacing: '-0.02em',
+                    minWidth: 38,
+                    textAlign: 'right',
+                  }}>
+                    {counts.publicados}<span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11 }}>/{counts.total}</span>
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ChecklistCard
+// ChecklistCard — green, gauge of done %
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ChecklistCard({ checklistItens }: { checklistItens: CoordChecklistItem[] }) {
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { const t = setTimeout(() => setMounted(true), 300); return () => clearTimeout(t) }, [])
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 300)
+    return () => clearTimeout(t)
+  }, [])
 
   const total   = checklistItens.length
   const feitos  = checklistItens.filter(i => i.status === 'feito').length
@@ -241,61 +347,89 @@ function ChecklistCard({ checklistItens }: { checklistItens: CoordChecklistItem[
   const pct     = total > 0 ? Math.round((feitos / total) * 100) : 0
 
   return (
-    <div
-      className="cia-metric-card flex flex-col rounded-2xl px-5 py-5"
-      style={{ border: '1px solid rgba(200,151,58,0.18)' }}
-    >
-      <p className="mb-1 text-[10px] uppercase tracking-[0.25em] text-[var(--muted-foreground)]">
-        Checklist
-      </p>
-      <div className="mb-3 flex items-baseline gap-2">
-        <span
-          className="text-3xl font-bold tabular-nums"
-          style={{ fontFamily: 'Orbitron, monospace', color: '#e8b94f' }}
-        >
-          {feitos}
+    <div className="cia-edit-card cia-edit-card--green cia-metrics-cell" style={{ minHeight: 280 }}>
+      <div className="flex items-center justify-between">
+        <span style={{
+          fontSize: 11.5, fontWeight: 600,
+          color: 'rgba(255,255,255,0.75)',
+          letterSpacing: '-0.01em',
+        }}>
+          checklist
         </span>
-        <span className="text-sm text-[var(--muted-foreground)]">/ {total} itens</span>
-        <span
-          className="ml-auto text-sm font-bold tabular-nums"
-          style={{ fontFamily: 'Orbitron, monospace', color: pct >= 70 ? '#2e6b42' : pct >= 40 ? '#e8b94f' : '#f87171' }}
-        >
-          {pct}%
-        </span>
-      </div>
-
-      <div className="mb-3 h-2 w-full overflow-hidden rounded-full" style={{ background: 'rgba(16,29,18,0.06)' }}>
-        <div
-          className="h-full rounded-full transition-all duration-1000 ease-out"
-          style={{
-            width: mounted ? `${pct}%` : '0%',
-            background: pct >= 70
-              ? 'linear-gradient(90deg, var(--green-dim), var(--green-bright))'
-              : 'linear-gradient(90deg, #d97706, #fbbf24)',
-            boxShadow: pct >= 70 ? '0 0 8px rgba(74,138,92,0.35)' : '0 0 8px rgba(251,191,36,0.35)',
-          }}
-        />
-      </div>
-
-      <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-        <span>✅ {feitos} concluídos</span>
         {pending > 0 && (
-          <span className="flex items-center gap-1 text-amber-500">
-            <AlertTriangle className="h-3 w-3" />
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontSize: 11, fontWeight: 700,
+            color: '#FFFFFF',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            padding: '3px 10px',
+            borderRadius: 999,
+            background: 'rgba(255,255,255,0.20)',
+          }}>
+            <AlertTriangle style={{ width: 11, height: 11 }} />
             {pending} pendente{pending !== 1 ? 's' : ''}
           </span>
         )}
       </div>
 
-      {total === 0 && (
-        <p className="mt-2 text-xs text-[var(--muted-foreground)]/50">Nenhum item de checklist encontrado</p>
-      )}
+      <div className="flex items-baseline gap-2 mt-2">
+        <span style={{
+          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+          fontSize: 60, fontWeight: 800,
+          color: '#FFFFFF',
+          letterSpacing: '-0.05em',
+          lineHeight: 0.85,
+        }}>
+          {pct}
+        </span>
+        <span style={{
+          fontSize: 24, fontWeight: 700,
+          color: 'rgba(255,255,255,0.55)',
+          letterSpacing: '-0.03em',
+        }}>%</span>
+      </div>
+      <p style={{
+        fontSize: 14, fontWeight: 500,
+        color: 'rgba(255,255,255,0.75)',
+        letterSpacing: '-0.01em',
+        marginTop: 4,
+      }}>
+        {feitos} de {total} itens
+      </p>
+
+      {/* Big bar */}
+      <div className="flex-1 flex flex-col justify-end mt-4">
+        <div style={{
+          height: 12,
+          borderRadius: 999,
+          background: 'rgba(255,255,255,0.18)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            height: '100%',
+            width: mounted ? `${pct}%` : '0%',
+            background: '#FFFFFF',
+            borderRadius: 999,
+            transition: 'width 1.2s cubic-bezier(0.16, 1, 0.3, 1)',
+          }} />
+        </div>
+
+        {total === 0 && (
+          <p style={{
+            marginTop: 12,
+            fontSize: 12, color: 'rgba(255,255,255,0.55)',
+          }}>
+            Nenhum item de checklist hoje.
+          </p>
+        )}
+      </div>
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PatrocinioCard
+// PatrocinioCard — gold, sponsors progress
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PatrocinioCard({
@@ -306,10 +440,13 @@ function PatrocinioCard({
   conteudosPorPatrocinador: { patrocinador_id: string | null; status: string }[]
 }) {
   const [mounted, setMounted] = useState(false)
-  useEffect(() => { const t = setTimeout(() => setMounted(true), 400); return () => clearTimeout(t) }, [])
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 400)
+    return () => clearTimeout(t)
+  }, [])
 
   const ativos = patrocinadores.filter(p => p.ativo)
-  const stats  = ativos.map(p => {
+  const stats = ativos.map(p => {
     const conteudos = conteudosPorPatrocinador.filter(c => c.patrocinador_id === p.id)
     const total     = conteudos.length
     const published = conteudos.filter(c => c.status === 'publicado').length
@@ -317,62 +454,122 @@ function PatrocinioCard({
     return { ...p, total, published, pct }
   })
 
-  return (
-    <div
-      className="cia-metric-card flex flex-col rounded-2xl px-5 py-5"
-      style={{ border: '1px solid rgba(200,151,58,0.15)' }}
-    >
-      <p className="mb-3 text-[10px] uppercase tracking-[0.25em] text-[var(--muted-foreground)]">
-        Patrocínio
-      </p>
+  const totalGeral = stats.reduce((s, p) => s + p.total, 0)
+  const pubGeral   = stats.reduce((s, p) => s + p.published, 0)
+  const pctGeral   = totalGeral > 0 ? Math.round((pubGeral / totalGeral) * 100) : 0
 
-      {stats.length === 0 ? (
-        <p className="text-xs text-[var(--muted-foreground)]/50">Nenhum patrocinador ativo</p>
-      ) : (
-        <ul className="space-y-3">
-          {stats.map((p, i) => (
-            <li key={p.id}>
-              <div className="mb-1 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  {p.pct < 50 && p.total > 0 && (
-                    <AlertTriangle className="h-3 w-3 shrink-0 text-amber-400" />
-                  )}
-                  <span className="truncate text-xs font-semibold text-[var(--foreground)]">{p.nome}</span>
+  return (
+    <div className="cia-edit-card cia-edit-card--gold cia-metrics-cell" style={{ minHeight: 280 }}>
+      <div className="flex items-center justify-between">
+        <span style={{
+          fontSize: 11.5, fontWeight: 600,
+          color: 'rgba(70,50,5,0.65)',
+          letterSpacing: '-0.01em',
+        }}>
+          patrocínio
+        </span>
+        {ativos.length > 0 && (
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            color: '#46320C',
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            padding: '3px 10px',
+            borderRadius: 999,
+            background: 'rgba(255,255,255,0.40)',
+            border: '1px solid rgba(70,50,5,0.18)',
+          }}>
+            {ativos.length} marcas
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-baseline gap-2 mt-2">
+        <span style={{
+          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+          fontSize: 38, fontWeight: 800,
+          color: '#0A0F0B',
+          letterSpacing: '-0.04em',
+          lineHeight: 1,
+        }}>
+          {pctGeral}<span style={{ fontSize: 22, color: 'rgba(10,15,11,0.45)' }}>%</span>
+        </span>
+        <span style={{
+          fontSize: 14, fontWeight: 500,
+          color: 'rgba(70,50,5,0.65)',
+        }}>
+          entregue
+        </span>
+      </div>
+
+      <div className="flex-1 mt-4 overflow-y-auto" style={{ maxHeight: 180 }}>
+        {stats.length === 0 ? (
+          <p style={{
+            fontSize: 13, color: 'rgba(70,50,5,0.45)',
+            textAlign: 'center', padding: '24px 0',
+          }}>
+            Nenhum patrocinador ativo.
+          </p>
+        ) : (
+          <ul className="space-y-2.5">
+            {stats.map((p, i) => (
+              <li key={p.id}>
+                <div className="mb-1 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {p.pct < 50 && p.total > 0 && (
+                      <AlertTriangle style={{ width: 11, height: 11, color: '#A04A2E', flexShrink: 0 }} />
+                    )}
+                    <span style={{
+                      fontSize: 12.5, fontWeight: 600,
+                      color: 'rgba(10,15,11,0.75)',
+                      letterSpacing: '-0.01em',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
+                      {p.nome}
+                    </span>
+                  </div>
+                  <span style={{
+                    fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                    fontSize: 13, fontWeight: 800,
+                    color: '#0A0F0B',
+                    letterSpacing: '-0.02em',
+                    flexShrink: 0,
+                    marginLeft: 8,
+                  }}>
+                    {p.published}<span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11 }}>/{p.total}</span>
+                  </span>
                 </div>
-                <span
-                  className="ml-2 shrink-0 tabular-nums text-xs font-bold"
-                  style={{
-                    fontFamily: 'Orbitron, monospace',
-                    color: p.pct >= 70 ? '#2e6b42' : p.pct >= 40 ? '#e8b94f' : '#f87171',
-                  }}
-                >
-                  {p.published}/{p.total}
-                </span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: 'rgba(16,29,18,0.06)' }}>
-                <div
-                  className="h-full rounded-full transition-all duration-1000 ease-out"
-                  style={{
+                <div style={{
+                  height: 4,
+                  borderRadius: 999,
+                  background: 'rgba(70,50,5,0.08)',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    height: '100%',
                     width: mounted ? `${p.pct}%` : '0%',
-                    transitionDelay: `${i * 100}ms`,
                     background: p.pct >= 70
-                      ? 'linear-gradient(90deg, #2e6b42, #3d7a52)'
+                      ? 'linear-gradient(90deg, #2e6b42, #4aa066)'
                       : p.pct >= 40
-                      ? 'linear-gradient(90deg, #d97706, #fbbf24)'
-                      : 'linear-gradient(90deg, #dc2626, #f87171)',
-                  }}
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+                      ? 'linear-gradient(90deg, #B58812, #E8B82F)'
+                      : 'linear-gradient(90deg, #A04A2E, #C46B4A)',
+                    transition: `width 1s cubic-bezier(0.16, 1, 0.3, 1) ${i * 100}ms`,
+                    borderRadius: 999,
+                  }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TimelineVertical — agenda cronológica, mobile-friendly
+// TimelineVertical — agenda cronológica (refined for editorial cards)
 // ─────────────────────────────────────────────────────────────────────────────
 
 type TLHomeEntry = {
@@ -393,9 +590,10 @@ export function TimelineVertical({
   isToday:    boolean
   coberturaPorSetor?: Record<string, { foto: boolean; video: boolean }>
 }) {
-  const [now, setNow] = useState(() => new Date())
+  const [now, setNow] = useState(new Date(0))
 
   useEffect(() => {
+    setNow(new Date())
     if (!isToday) return
     const id = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(id)
@@ -411,12 +609,12 @@ export function TimelineVertical({
     })),
     ...showsHoje.map(s => ({
       id: s.id, label: s.nome, inicio: s.inicio, fim_previsto: s.fim_previsto,
-      icon: '🎤', color: '#7c3aed', bg: 'rgba(124,58,237,0.07)', cat: 'Show',
+      icon: '🎤', color: '#3D49E0', bg: 'rgba(61,73,224,0.08)', cat: 'Show',
       setorId: s.setor_id ?? null,
     })),
     ...festasHoje.map(f => ({
       id: f.id, label: f.nome, inicio: f.inicio, fim_previsto: f.fim_previsto,
-      icon: '🎉', color: '#be185d', bg: 'rgba(190,24,93,0.06)', cat: 'Festa',
+      icon: '🎉', color: '#C46B4A', bg: 'rgba(196,107,74,0.08)', cat: 'Festa',
       setorId: f.setor_id ?? null,
     })),
   ].sort((a, b) => {
@@ -428,12 +626,13 @@ export function TimelineVertical({
   if (all.length === 0) {
     return (
       <div className="flex h-20 items-center justify-center">
-        <p className="text-sm text-[var(--muted-foreground)]/50">Sem eventos programados para este dia</p>
+        <p style={{ fontSize: 13, color: 'rgba(10,15,11,0.40)' }}>
+          Sem eventos programados para este dia
+        </p>
       </div>
     )
   }
 
-  // Where to insert AGORA — after last event that already started
   let nowAfterIdx = -1
   if (isToday) {
     for (let i = 0; i < all.length; i++) {
@@ -458,131 +657,125 @@ export function TimelineVertical({
 
         return (
           <div key={ev.id}>
-
-            {/* ── Event row ── */}
+            {/* Event row */}
             <div className="flex items-start">
-
               {/* Time */}
-              <div className="w-10 shrink-0 pt-[9px] pr-2 text-right">
-                <span
-                  className="tabular-nums text-[9px] font-bold"
-                  style={{
-                    fontFamily: 'Orbitron, monospace',
-                    color: isActive
-                      ? ev.color
-                      : isPast
-                      ? 'rgba(16,29,18,0.22)'
-                      : 'rgba(16,29,18,0.45)',
-                  }}
-                >
+              <div style={{
+                width: 48, paddingTop: 11, paddingRight: 10, textAlign: 'right', flexShrink: 0,
+              }}>
+                <span style={{
+                  fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                  fontSize: 12, fontWeight: 700,
+                  color: isActive ? ev.color : isPast ? 'rgba(10,15,11,0.22)' : 'rgba(10,15,11,0.55)',
+                  letterSpacing: '-0.02em',
+                }}>
                   {fmtEventTime(ev.inicio)}
                 </span>
               </div>
 
-              {/* Dot + vertical connector */}
-              <div className="flex w-4 shrink-0 flex-col items-center">
-                <div
-                  className="w-px shrink-0"
-                  style={{ height: 8, background: i === 0 ? 'transparent' : 'rgba(16,29,18,0.10)' }}
-                />
-                <div
-                  className="shrink-0 rounded-full transition-all duration-300"
-                  style={{
-                    width:  isActive ? 10 : 7,
-                    height: isActive ? 10 : 7,
-                    background: isActive
-                      ? ev.color
-                      : isPast
-                      ? 'rgba(16,29,18,0.12)'
-                      : `${ev.color}60`,
-                    border: `1.5px solid ${
-                      isActive ? ev.color : isPast ? 'rgba(16,29,18,0.08)' : `${ev.color}40`
-                    }`,
-                    boxShadow: isActive ? `0 0 8px ${ev.color}60` : 'none',
-                  }}
-                />
+              {/* Dot + connector */}
+              <div className="flex w-4 flex-col items-center" style={{ flexShrink: 0 }}>
+                <div style={{
+                  width: 1, height: 8,
+                  background: i === 0 ? 'transparent' : 'rgba(10,15,11,0.10)',
+                  flexShrink: 0,
+                }} />
+                <div style={{
+                  width: isActive ? 12 : 8,
+                  height: isActive ? 12 : 8,
+                  borderRadius: '50%',
+                  background: isActive ? ev.color : isPast ? 'rgba(10,15,11,0.12)' : `${ev.color}50`,
+                  border: `2px solid ${isActive ? ev.color : isPast ? 'rgba(10,15,11,0.10)' : `${ev.color}40`}`,
+                  boxShadow: isActive ? `0 0 10px ${ev.color}50` : 'none',
+                  flexShrink: 0,
+                  transition: 'all 0.3s ease',
+                }} />
                 {!isLast && (
-                  <div
-                    className="w-px flex-1 shrink-0"
-                    style={{ minHeight: 12, background: 'rgba(16,29,18,0.10)' }}
-                  />
+                  <div style={{
+                    width: 1, flex: 1, minHeight: 14,
+                    background: 'rgba(10,15,11,0.10)',
+                    flexShrink: 0,
+                  }} />
                 )}
               </div>
 
               {/* Card */}
-              <div className="flex-1 pl-2 pt-1" style={{ paddingBottom: isLast ? 4 : 8 }}>
-                <div
-                  className="rounded-r-xl transition-all duration-200"
-                  style={{
-                    background: isPast ? 'rgba(16,29,18,0.03)' : ev.bg,
-                    border: `1px solid ${
-                      isActive ? `${ev.color}35` : isPast ? 'rgba(16,29,18,0.05)' : `${ev.color}18`
-                    }`,
-                    borderLeft: `3px solid ${
-                      isActive ? ev.color : isPast ? 'rgba(16,29,18,0.10)' : `${ev.color}50`
-                    }`,
-                    padding: '7px 10px',
-                    opacity: isPast ? 0.50 : 1,
-                    boxShadow: isActive ? `0 2px 12px ${ev.color}15` : 'none',
-                  }}
-                >
-                  {/* Title row */}
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <span className="text-[11px]">{ev.icon}</span>
-                    <span
-                      className="flex-1 truncate text-[12px] font-semibold"
-                      style={{
-                        color: isActive ? ev.color : isPast ? 'rgba(16,29,18,0.35)' : 'var(--foreground)',
-                      }}
-                    >
+              <div style={{ flex: 1, paddingLeft: 10, paddingTop: 4, paddingBottom: isLast ? 4 : 12 }}>
+                <div style={{
+                  background: isPast ? 'rgba(10,15,11,0.03)' : ev.bg,
+                  border: `1px solid ${isActive ? `${ev.color}35` : isPast ? 'rgba(10,15,11,0.05)' : `${ev.color}18`}`,
+                  borderLeft: `3px solid ${isActive ? ev.color : isPast ? 'rgba(10,15,11,0.10)' : `${ev.color}50`}`,
+                  borderRadius: '6px 14px 14px 6px',
+                  padding: '10px 14px',
+                  opacity: isPast ? 0.55 : 1,
+                  boxShadow: isActive ? `0 4px 16px ${ev.color}18` : 'none',
+                  transition: 'all 0.2s ease',
+                }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span style={{ fontSize: 14 }}>{ev.icon}</span>
+                    <span style={{
+                      flex: 1,
+                      fontSize: 13, fontWeight: 700,
+                      color: isActive ? ev.color : isPast ? 'rgba(10,15,11,0.40)' : '#0A0F0B',
+                      letterSpacing: '-0.02em',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
                       {ev.label}
                     </span>
                     {isActive && (
-                      <span
-                        className="shrink-0 rounded px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider"
-                        style={{
-                          color: ev.color,
-                          background: `${ev.color}12`,
-                          border: `1px solid ${ev.color}30`,
-                        }}
-                      >
+                      <span style={{
+                        fontSize: 9, fontWeight: 700,
+                        color: ev.color,
+                        background: `${ev.color}15`,
+                        border: `1px solid ${ev.color}35`,
+                        borderRadius: 999,
+                        padding: '2px 8px',
+                        letterSpacing: '0.10em',
+                        textTransform: 'uppercase',
+                        flexShrink: 0,
+                      }}>
                         AO VIVO
                       </span>
                     )}
                   </div>
 
-                  {/* Meta row */}
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="tabular-nums text-[9px]"
-                      style={{ fontFamily: 'Orbitron, monospace', color: 'var(--muted-foreground)', opacity: 0.55 }}
-                    >
+                  <div className="flex items-center gap-2.5">
+                    <span style={{
+                      fontSize: 10.5, fontWeight: 600,
+                      color: 'rgba(10,15,11,0.50)',
+                      letterSpacing: '-0.01em',
+                    }}>
                       {fmtEventTime(ev.inicio)}–{fmtEventTime(ev.fim_previsto)}
                     </span>
                     {dur !== null && (
-                      <span className="text-[9px] text-[var(--muted-foreground)]/40">
-                        {dur < 60
-                          ? `${dur}min`
-                          : `${Math.floor(dur / 60)}h${dur % 60 > 0 ? `${dur % 60}m` : ''}`
-                        }
+                      <span style={{
+                        fontSize: 10.5, fontWeight: 600,
+                        color: 'rgba(10,15,11,0.35)',
+                      }}>
+                        {dur < 60 ? `${dur}min` : `${Math.floor(dur / 60)}h${dur % 60 > 0 ? `${dur % 60}m` : ''}`}
                       </span>
                     )}
-                    <span className="ml-auto text-[9px] font-semibold" style={{ color: `${ev.color}60` }}>
+                    <span style={{
+                      marginLeft: 'auto',
+                      fontSize: 10, fontWeight: 700,
+                      color: `${ev.color}90`,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                    }}>
                       {ev.cat}
                     </span>
-                    {/* Coverage indicators — só aparece se o evento tem setor */}
                     {ev.setorId && (
                       <div className="flex items-center gap-0.5" title="Cobertura foto / vídeo">
                         <span style={{
-                          fontSize: 9,
-                          lineHeight: 1,
-                          opacity: coberturaPorSetor[ev.setorId]?.foto ? 1 : 0.18,
+                          fontSize: 11,
+                          opacity: coberturaPorSetor[ev.setorId]?.foto ? 1 : 0.20,
                           filter: coberturaPorSetor[ev.setorId]?.foto ? 'none' : 'grayscale(1)',
                         }}>📸</span>
                         <span style={{
-                          fontSize: 9,
-                          lineHeight: 1,
-                          opacity: coberturaPorSetor[ev.setorId]?.video ? 1 : 0.18,
+                          fontSize: 11,
+                          opacity: coberturaPorSetor[ev.setorId]?.video ? 1 : 0.20,
                           filter: coberturaPorSetor[ev.setorId]?.video ? 'none' : 'grayscale(1)',
                         }}>🎬</span>
                       </div>
@@ -592,23 +785,30 @@ export function TimelineVertical({
               </div>
             </div>
 
-            {/* ── AGORA separator ── */}
+            {/* AGORA separator */}
             {showNowAfter && (
-              <div className="flex items-center gap-2 py-1" style={{ paddingLeft: 56 }}>
-                <div
-                  className="h-px flex-1"
-                  style={{ background: 'linear-gradient(90deg, transparent, rgba(239,68,68,0.35))' }}
-                />
-                <span
-                  className="shrink-0 text-[8px] font-bold tracking-[0.12em] text-red-500"
-                  style={{ fontFamily: 'Orbitron, monospace' }}
-                >
-                  ◆ AGORA {nowStr}
+              <div className="flex items-center gap-2 py-1.5" style={{ paddingLeft: 64 }}>
+                <div style={{
+                  height: 1, flex: 1,
+                  background: 'linear-gradient(90deg, transparent, rgba(196,107,74,0.40))',
+                }} />
+                <span style={{
+                  fontSize: 10, fontWeight: 800,
+                  color: '#A04A2E',
+                  letterSpacing: '0.14em',
+                  textTransform: 'uppercase',
+                  flexShrink: 0,
+                  padding: '2px 10px',
+                  borderRadius: 999,
+                  background: 'rgba(196,107,74,0.10)',
+                  border: '1px solid rgba(196,107,74,0.30)',
+                }}>
+                  ◆ agora · {nowStr}
                 </span>
-                <div
-                  className="h-px flex-1"
-                  style={{ background: 'linear-gradient(90deg, rgba(239,68,68,0.35), transparent)' }}
-                />
+                <div style={{
+                  height: 1, flex: 1,
+                  background: 'linear-gradient(90deg, rgba(196,107,74,0.40), transparent)',
+                }} />
               </div>
             )}
           </div>
@@ -624,32 +824,39 @@ export function TimelineVertical({
 
 export function CoordDashboard({
   conteudosHoje,
-  jogosHoje,
-  showsHoje,
-  festasHoje,
+  jogosHoje: _jogosHoje,
+  showsHoje: _showsHoje,
+  festasHoje: _festasHoje,
   turnosHoje,
   patrocinadores,
   conteudosPorPatrocinador,
   checklistItens,
-  diasEvento = [],
-  diaAtualId = null,
+  diasEvento: _diasEvento = [],
+  diaAtualId: _diaAtualId = null,
 }: CoordDashboardProps) {
-  return (
-    <div className="space-y-4">
+  // jogosHoje, showsHoje, festasHoje, diasEvento, diaAtualId são consumidos via AgendaSection (HomeClient)
+  void _jogosHoje; void _showsHoje; void _festasHoje; void _diasEvento; void _diaAtualId
 
-      {/* Stats bar */}
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <StatsBar conteudosHoje={conteudosHoje} turnosHoje={turnosHoje} />
 
-      {/* Three metric cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <RedesCard conteudosHoje={conteudosHoje} />
-        <ChecklistCard checklistItens={checklistItens} />
-        <PatrocinioCard
-          patrocinadores={patrocinadores}
-          conteudosPorPatrocinador={conteudosPorPatrocinador}
-        />
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+          gap: 14,
+        }}
+      >
+        <div className="cia-metrics-col-4"><RedesCard       conteudosHoje={conteudosHoje} /></div>
+        <div className="cia-metrics-col-4"><ChecklistCard   checklistItens={checklistItens} /></div>
+        <div className="cia-metrics-col-4">
+          <PatrocinioCard
+            patrocinadores={patrocinadores}
+            conteudosPorPatrocinador={conteudosPorPatrocinador}
+          />
+        </div>
       </div>
-
     </div>
   )
 }

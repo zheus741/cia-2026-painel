@@ -108,6 +108,8 @@ export function TurnoComments({ turnoId, initialCount = 0 }: Props) {
 
   // ── Realtime subscription ─────────────────────────────────────────────────
   useEffect(() => {
+    let alive = true
+
     const channel = supabase
       .channel(`turno-comments-${turnoId}`)
       .on(
@@ -125,6 +127,9 @@ export function TurnoComments({ turnoId, initialCount = 0 }: Props) {
             .select('nome')
             .eq('id', payload.new.user_id)
             .maybeSingle()
+
+          // Evita setState depois de unmount (alive flag)
+          if (!alive) return
 
           const novo: Comentario = {
             id:         payload.new.id,
@@ -152,13 +157,17 @@ export function TurnoComments({ turnoId, initialCount = 0 }: Props) {
           filter: `turno_id=eq.${turnoId}`,
         },
         (payload) => {
+          if (!alive) return
           setComments((prev) => prev.filter((c) => c.id !== payload.old.id))
           setCount((n) => Math.max(0, n - 1))
         },
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      alive = false
+      supabase.removeChannel(channel)
+    }
   }, [turnoId])
 
   // ── Enviar comentário ─────────────────────────────────────────────────────

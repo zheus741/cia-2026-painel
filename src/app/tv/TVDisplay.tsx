@@ -6,21 +6,42 @@ import { Maximize2, Minimize2, RefreshCw, AlertTriangle, Camera } from 'lucide-r
 import { createClient } from '@/lib/supabase/client'
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Editorial TV — color tokens
+// ─────────────────────────────────────────────────────────────────────────────
+
+const C = {
+  bg:        '#0A1410',
+  bgDeep:    '#06100A',
+  cream:     '#FAF7F0',
+  creamDim:  'rgba(250,247,240,0.62)',
+  creamMute: 'rgba(250,247,240,0.38)',
+  creamFade: 'rgba(250,247,240,0.18)',
+  surface:   'rgba(250,247,240,0.035)',
+  surfaceHi: 'rgba(250,247,240,0.06)',
+  border:    'rgba(250,247,240,0.07)',
+  borderHi:  'rgba(250,247,240,0.12)',
+  gold:      '#F0D04A',
+  goldMute:  'rgba(240,208,74,0.55)',
+  green:     '#4aa06a',
+  greenDeep: '#2e6b42',
+  lavender:  '#B8A4E8',
+  terracotta:'#D8845F',
+  red:       '#ef4444',
+  blue:      '#5C68E8',
+} as const
+
+const FONT_DISPLAY = 'var(--font-dm-sans), system-ui, sans-serif'
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface PipelineStats {
   total: number; rascunho: number; em_producao: number; pronto: number; publicado: number
 }
-interface DiaStat {
-  idx: number; total: number; publicados: number; label: string
-}
-interface CanalStat {
-  canal: string; total: number; publicados: number
-}
-interface PatrocStat {
-  id: string; nome: string; total: number; publicados: number
-}
+interface DiaStat { idx: number; total: number; publicados: number; label: string }
+interface CanalStat { canal: string; total: number; publicados: number }
+interface PatrocStat { id: string; nome: string; total: number; publicados: number }
 interface Jogo {
   id: string; equipe_a_nome: string | null; equipe_b_nome: string | null
   inicio: string | null; fim_previsto: string | null; dia_id: string | null
@@ -31,15 +52,9 @@ interface EventItem {
   inicio: string | null; fim_previsto: string | null; dia_id: string | null
   placar_a?: number | null; placar_b?: number | null; status?: string | null
 }
-interface WeatherDay {
-  date: string; tMax: number; tMin: number; rain: number; emoji: string
-}
-interface EmCampoItem {
-  nome: string; setor: string
-}
-interface RecentPublicado {
-  id: string; titulo: string | null; canal: string | null
-}
+interface WeatherDay { date: string; tMax: number; tMin: number; rain: number; emoji: string }
+interface EmCampoItem { nome: string; setor: string }
+interface RecentPublicado { id: string; titulo: string | null; canal: string | null }
 
 interface Props {
   pipelineStats:    PipelineStats
@@ -109,7 +124,7 @@ function durMin(s: string | null, e: string | null) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Monumental Clock — hero element, center of header
+// MonumentalClock — DM Sans 800, gold display
 // ─────────────────────────────────────────────────────────────────────────────
 
 function MonumentalClock() {
@@ -136,19 +151,19 @@ function MonumentalClock() {
   return (
     <div style={{ textAlign: 'center', flex: 1 }}>
       <div style={{
-        fontFamily: 'Orbitron, monospace',
-        fontSize: 'clamp(48px, 6vw, 82px)',
-        fontWeight: 900,
-        color: '#4aa06a',
-        letterSpacing: '0.04em',
-        lineHeight: 1,
-        textShadow: '0 0 40px rgba(74,160,106,0.35), 0 0 80px rgba(74,160,106,0.12)',
+        fontFamily: FONT_DISPLAY,
+        fontSize: 'clamp(56px, 6.5vw, 92px)',
+        fontWeight: 800,
+        color: C.cream,
+        letterSpacing: '-0.04em',
+        lineHeight: 0.95,
+        fontVariantNumeric: 'tabular-nums',
       }}>
         {time}
       </div>
       <div style={{
-        fontSize: 10, color: 'rgba(150,200,160,0.40)', marginTop: 5,
-        textTransform: 'capitalize', letterSpacing: '0.14em', fontWeight: 500,
+        fontSize: 11, color: C.creamMute, marginTop: 6,
+        textTransform: 'capitalize', letterSpacing: '0.06em', fontWeight: 500,
       }}>
         {date}
       </div>
@@ -157,33 +172,36 @@ function MonumentalClock() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Alert Banner — red strip when setores frios
+// AlertBanner — terracotta editorial
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AlertBanner({ setoresFrios }: { setoresFrios: string[] }) {
   if (setoresFrios.length === 0) return null
   return (
     <div style={{
-      background: 'linear-gradient(90deg, rgba(127,29,29,0.95) 0%, rgba(153,27,27,0.90) 100%)',
-      border: '1px solid rgba(239,68,68,0.40)',
-      borderLeft: '4px solid #ef4444',
-      borderRadius: 8,
-      padding: '7px 14px',
+      background: 'linear-gradient(90deg, rgba(216,132,95,0.16) 0%, rgba(216,132,95,0.06) 100%)',
+      border: `1px solid rgba(216,132,95,0.30)`,
+      borderRadius: 14,
+      padding: '9px 16px',
       display: 'flex',
       alignItems: 'center',
-      gap: 10,
+      gap: 12,
       flexShrink: 0,
     }}>
-      <AlertTriangle style={{ width: 14, height: 14, color: '#fca5a5', flexShrink: 0, animation: 'pulse 2s ease-in-out infinite' }} />
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.18em', color: '#fca5a5', flexShrink: 0 }}>
-        Setores sem cobertura:
+      <AlertTriangle style={{ width: 14, height: 14, color: C.terracotta, flexShrink: 0, animation: 'pulse 2s ease-in-out infinite' }} />
+      <span style={{
+        fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
+        textTransform: 'uppercase', letterSpacing: '0.16em',
+        color: C.terracotta, flexShrink: 0,
+      }}>
+        Setores sem cobertura
       </span>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', flex: 1 }}>
         {setoresFrios.map(s => (
           <span key={s} style={{
-            fontSize: 9.5, fontWeight: 700, color: '#fca5a5',
-            background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.30)',
-            borderRadius: 4, padding: '2px 7px', letterSpacing: '0.05em',
+            fontSize: 10, fontWeight: 600, color: '#F5DDD0',
+            background: 'rgba(216,132,95,0.10)', border: '1px solid rgba(216,132,95,0.22)',
+            borderRadius: 99, padding: '2px 9px',
           }}>
             {s}
           </span>
@@ -194,53 +212,67 @@ function AlertBanner({ setoresFrios }: { setoresFrios: string[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Placar Strip — horizontal live score cards
+// PlacarStrip — broadcast-style live scores
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PlacarStrip({ jogos }: { jogos: Jogo[] }) {
   if (jogos.length === 0) return null
   return (
     <div style={{
-      background: 'rgba(10,20,12,0.80)',
-      border: '1px solid rgba(239,68,68,0.25)',
-      borderLeft: '4px solid #ef4444',
-      borderRadius: 8,
-      padding: '6px 10px',
+      background: 'linear-gradient(90deg, rgba(239,68,68,0.10), rgba(239,68,68,0.02))',
+      border: `1px solid rgba(239,68,68,0.22)`,
+      borderRadius: 14,
+      padding: '8px 14px',
       display: 'flex',
       alignItems: 'center',
-      gap: 12,
+      gap: 14,
       overflow: 'hidden',
       flexShrink: 0,
     }}>
-      {/* AO VIVO badge */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
         <span style={{
-          width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block',
-          boxShadow: '0 0 8px rgba(239,68,68,0.8)', animation: 'ping 1.5s ease-in-out infinite',
+          width: 7, height: 7, borderRadius: '50%', background: C.red, display: 'inline-block',
+          boxShadow: `0 0 8px ${C.red}cc`, animation: 'ping 1.5s ease-in-out infinite',
         }} />
-        <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 8, fontWeight: 700, color: '#ef4444', letterSpacing: '0.18em' }}>
+        <span style={{
+          fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
+          color: C.red, letterSpacing: '0.16em',
+        }}>
           AO VIVO
         </span>
       </div>
-      <div style={{ width: 1, height: 28, background: 'rgba(239,68,68,0.20)', flexShrink: 0 }} />
+      <div style={{ width: 1, height: 30, background: 'rgba(239,68,68,0.18)', flexShrink: 0 }} />
 
-      {/* Score cards */}
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', flex: 1 }}>
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', flex: 1 }}>
         {jogos.map(j => (
           <div key={j.id} style={{
-            display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
-            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.20)',
-            borderRadius: 8, padding: '4px 12px',
+            display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+            background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)',
+            borderRadius: 12, padding: '5px 14px',
           }}>
-            <span style={{ fontSize: 10, fontWeight: 600, color: 'rgba(200,220,205,0.80)', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 600,
+              color: C.creamDim, maxWidth: 90,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              letterSpacing: '-0.01em',
+            }}>
               {j.equipe_a_nome ?? '?'}
             </span>
-            <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 20, fontWeight: 900, color: '#f87171', letterSpacing: '0.05em', lineHeight: 1 }}>
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 800,
+              color: C.red, letterSpacing: '-0.03em', lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
               {j.placar_a ?? 0}
-              <span style={{ fontSize: 12, color: 'rgba(239,68,68,0.40)', margin: '0 3px' }}>×</span>
+              <span style={{ fontSize: 14, color: 'rgba(239,68,68,0.35)', margin: '0 6px', fontWeight: 500 }}>×</span>
               {j.placar_b ?? 0}
             </span>
-            <span style={{ fontSize: 10, fontWeight: 600, color: 'rgba(200,220,205,0.80)', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 600,
+              color: C.creamDim, maxWidth: 90,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              letterSpacing: '-0.01em',
+            }}>
               {j.equipe_b_nome ?? '?'}
             </span>
           </div>
@@ -251,51 +283,64 @@ function PlacarStrip({ jogos }: { jogos: Jogo[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Em Campo Panel — left column
+// EmCampoPanel — editorial cards
 // ─────────────────────────────────────────────────────────────────────────────
 
 function EmCampoPanel({ emCampo, setoresFrios }: { emCampo: EmCampoItem[]; setoresFrios: string[] }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%', overflow: 'hidden' }}>
 
       {/* Em campo */}
       <div style={{
-        background: 'rgba(10,20,12,0.85)', border: '1px solid rgba(46,107,66,0.18)',
-        borderRadius: 10, padding: '10px 12px', flex: emCampo.length > 0 ? 1 : '0 0 auto', minHeight: 0, overflow: 'hidden',
+        background: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 16, padding: '12px 14px',
+        flex: emCampo.length > 0 ? 1 : '0 0 auto', minHeight: 0, overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexShrink: 0 }}>
-          <p style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.20em', color: 'rgba(74,160,106,0.45)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10, flexShrink: 0 }}>
+          <p style={{
+            fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
+            textTransform: 'uppercase', letterSpacing: '0.16em', color: C.creamMute,
+          }}>
             Em Campo
           </p>
           <span style={{
-            fontFamily: 'Orbitron,monospace', fontSize: 12, fontWeight: 700,
-            color: emCampo.length > 0 ? '#4aa06a' : 'rgba(150,200,160,0.25)',
+            fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 800,
+            letterSpacing: '-0.04em', lineHeight: 1,
+            color: emCampo.length > 0 ? C.green : C.creamFade,
           }}>
             {emCampo.length}
           </span>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
           {emCampo.length === 0 ? (
-            <p style={{ fontSize: 10, color: 'rgba(150,200,160,0.20)', textAlign: 'center', marginTop: 12 }}>
+            <p style={{ fontSize: 11, color: C.creamFade, textAlign: 'center', marginTop: 16 }}>
               Ninguém em campo
             </p>
           ) : (
             emCampo.map((p, i) => (
               <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '4px 6px', borderRadius: 6,
-                background: 'rgba(46,107,66,0.07)',
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 8px', borderRadius: 9,
+                background: 'rgba(74,160,106,0.06)',
+                border: '1px solid rgba(74,160,106,0.10)',
               }}>
                 <span style={{
-                  width: 6, height: 6, borderRadius: '50%', background: '#4aa06a', flexShrink: 0,
-                  boxShadow: '0 0 6px rgba(74,160,106,0.70)',
+                  width: 6, height: 6, borderRadius: '50%', background: C.green, flexShrink: 0,
+                  boxShadow: `0 0 6px ${C.green}`,
                 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(200,220,205,0.88)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{
+                    fontSize: 12, fontWeight: 600, color: C.cream,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    letterSpacing: '-0.01em',
+                  }}>
                     {p.nome}
                   </div>
-                  <div style={{ fontSize: 8.5, color: 'rgba(150,200,160,0.40)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{
+                    fontSize: 9.5, color: C.creamMute, marginTop: 1,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
                     {p.setor}
                   </div>
                 </div>
@@ -308,24 +353,31 @@ function EmCampoPanel({ emCampo, setoresFrios }: { emCampo: EmCampoItem[]; setor
       {/* Setores frios */}
       {setoresFrios.length > 0 && (
         <div style={{
-          background: 'rgba(20,8,8,0.90)', border: '1px solid rgba(239,68,68,0.25)',
-          borderLeft: '3px solid rgba(239,68,68,0.60)',
-          borderRadius: 10, padding: '10px 12px', flex: '0 0 auto',
+          background: 'rgba(216,132,95,0.05)',
+          border: '1px solid rgba(216,132,95,0.18)',
+          borderRadius: 16, padding: '12px 14px', flex: '0 0 auto',
         }}>
-          <p style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'rgba(239,68,68,0.55)', marginBottom: 7 }}>
-            ⚠ Frios
+          <p style={{
+            fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
+            textTransform: 'uppercase', letterSpacing: '0.16em',
+            color: C.terracotta, marginBottom: 8,
+          }}>
+            ⚠ Setores Frios
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {setoresFrios.slice(0, 6).map(s => (
-              <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
-                <span style={{ fontSize: 10, color: 'rgba(252,165,165,0.75)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.terracotta, flexShrink: 0 }} />
+                <span style={{
+                  fontSize: 11, color: '#F5DDD0', overflow: 'hidden',
+                  textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
                   {s}
                 </span>
               </div>
             ))}
             {setoresFrios.length > 6 && (
-              <span style={{ fontSize: 9, color: 'rgba(239,68,68,0.40)', paddingLeft: 10 }}>
+              <span style={{ fontSize: 9.5, color: 'rgba(216,132,95,0.50)', paddingLeft: 12, marginTop: 2 }}>
                 +{setoresFrios.length - 6} mais
               </span>
             )}
@@ -337,7 +389,7 @@ function EmCampoPanel({ emCampo, setoresFrios }: { emCampo: EmCampoItem[]; setor
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Próximo Evento focal — center top
+// ProximoEvento — editorial big countdown
 // ─────────────────────────────────────────────────────────────────────────────
 
 type FocalEvent = { label: string; inicio: string | null; fim: string | null; icon: string; color: string }
@@ -353,10 +405,10 @@ function ProximoEvento({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventIt
   const all: FocalEvent[] = [
     ...jogos.map(j => ({
       label: `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`,
-      inicio: j.inicio, fim: j.fim_previsto, icon: '🏆', color: '#4aa06a',
+      inicio: j.inicio, fim: j.fim_previsto, icon: '🏆', color: C.green,
     })),
-    ...shows.map(s => ({ label: s.nome ?? '', inicio: s.inicio, fim: s.fim_previsto, icon: '🎤', color: '#a855f7' })),
-    ...festas.map(f => ({ label: f.nome ?? '', inicio: f.inicio, fim: f.fim_previsto, icon: '🎉', color: '#f472b6' })),
+    ...shows.map(s => ({ label: s.nome ?? '', inicio: s.inicio, fim: s.fim_previsto, icon: '🎤', color: C.lavender })),
+    ...festas.map(f => ({ label: f.nome ?? '', inicio: f.inicio, fim: f.fim_previsto, icon: '🎉', color: C.terracotta })),
   ].sort((a, b) => {
     if (!a.inicio) return 1
     if (!b.inicio) return -1
@@ -368,7 +420,11 @@ function ProximoEvento({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventIt
   const focal  = active ?? next
 
   if (!focal) return (
-    <div style={{ padding: '16px 0', textAlign: 'center', color: 'rgba(150,200,160,0.20)', fontSize: 11 }}>
+    <div style={{
+      background: C.surface, border: `1px solid ${C.border}`,
+      borderRadius: 16, padding: '16px 20px', textAlign: 'center',
+      color: C.creamFade, fontSize: 12, flexShrink: 0,
+    }}>
       Sem eventos programados
     </div>
   )
@@ -388,42 +444,58 @@ function ProximoEvento({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventIt
   return (
     <div style={{
       background: isActive
-        ? `linear-gradient(135deg, ${focal.color}12 0%, rgba(10,20,12,0.85) 100%)`
-        : 'rgba(10,20,12,0.85)',
-      border: `1px solid ${isActive ? focal.color + '30' : 'rgba(46,107,66,0.18)'}`,
-      borderLeft: `4px solid ${isActive ? focal.color : 'rgba(46,107,66,0.30)'}`,
-      borderRadius: 10,
-      padding: '12px 14px',
+        ? `linear-gradient(135deg, ${focal.color}14 0%, ${C.surface} 100%)`
+        : C.surface,
+      border: `1px solid ${isActive ? focal.color + '38' : C.border}`,
+      borderRadius: 18,
+      padding: '16px 20px',
       textAlign: 'center',
       flexShrink: 0,
-      boxShadow: isActive ? `0 0 30px ${focal.color}10` : 'none',
+      boxShadow: isActive ? `0 0 60px ${focal.color}14` : 'none',
     }}>
-      <div style={{ fontSize: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.20em', color: 'rgba(150,200,160,0.35)', marginBottom: 5 }}>
+      <div style={{
+        fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
+        textTransform: 'uppercase', letterSpacing: '0.18em',
+        color: isActive ? focal.color : C.creamMute, marginBottom: 6,
+      }}>
         {isActive ? '● Em Andamento' : 'Próximo Evento'}
       </div>
-      <div style={{ fontSize: 20, lineHeight: 1, marginBottom: 4 }}>{focal.icon}</div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? focal.color : 'rgba(200,220,205,0.88)', lineHeight: 1.2, marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ fontSize: 24, lineHeight: 1, marginBottom: 6 }}>{focal.icon}</div>
+      <div style={{
+        fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 700,
+        color: isActive ? focal.color : C.cream, lineHeight: 1.15, marginBottom: 10,
+        letterSpacing: '-0.02em',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
         {focal.label}
       </div>
       {isActive ? (
         <span style={{
-          display: 'inline-block', fontSize: 8.5, fontWeight: 700, letterSpacing: '0.15em',
+          display: 'inline-block',
+          fontFamily: FONT_DISPLAY, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em',
           textTransform: 'uppercase', color: focal.color,
           background: `${focal.color}18`, border: `1px solid ${focal.color}40`,
-          borderRadius: 12, padding: '3px 12px',
+          borderRadius: 999, padding: '4px 14px',
         }}>
           AO VIVO
         </span>
       ) : timer && (
         <div style={{
-          fontFamily: 'Orbitron,monospace', fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 900,
-          color: 'rgba(200,220,205,0.90)', letterSpacing: '0.04em',
-          textShadow: '0 0 20px rgba(200,220,205,0.15)',
+          fontFamily: FONT_DISPLAY,
+          fontSize: 'clamp(28px, 3.5vw, 42px)',
+          fontWeight: 800,
+          color: C.cream, letterSpacing: '-0.04em',
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1,
         }}>
           {timer}
         </div>
       )}
-      <div style={{ marginTop: 5, fontSize: 9, color: 'rgba(150,200,160,0.30)', fontFamily: 'Orbitron,monospace' }}>
+      <div style={{
+        marginTop: 8, fontSize: 10, color: C.creamFade,
+        fontFamily: FONT_DISPLAY, letterSpacing: '0.04em',
+        fontVariantNumeric: 'tabular-nums',
+      }}>
         {fmtTime(focal.inicio)} → {fmtTime(focal.fim)}
       </div>
     </div>
@@ -431,65 +503,97 @@ function ProximoEvento({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventIt
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Pipeline donut (SVG)
+// PipelineDonut — gold + cream donut
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade: number }) {
   const segments = [
-    { label: 'Publicado',  value: stats.publicado,   color: '#2e6b42' },
-    { label: 'Pronto',     value: stats.pronto,       color: '#4aa06a' },
-    { label: 'Produção',   value: stats.em_producao,  color: '#3b82f6' },
-    { label: 'Rascunho',   value: stats.rascunho,     color: 'rgba(150,200,160,0.20)' },
+    { label: 'Publicado',  value: stats.publicado,    color: C.green },
+    { label: 'Pronto',     value: stats.pronto,       color: '#7BC195' },
+    { label: 'Produção',   value: stats.em_producao,  color: C.blue },
+    { label: 'Rascunho',   value: stats.rascunho,     color: C.creamFade },
   ]
   const total = stats.total || 1
-  const R = 44, CX = 52, CY = 52, stroke = 12
-  const C = 2 * Math.PI * R
+  const R = 46, CX = 56, CY = 56, stroke = 11
+  const Cf = 2 * Math.PI * R
   let cumulative = 0
   const arcs = segments.map(seg => {
     const frac = seg.value / total
-    const dashArray = `${frac * C} ${C}`
-    const dashOffset = -cumulative * C
+    const dashArray = `${frac * Cf} ${Cf}`
+    const dashOffset = -cumulative * Cf
     cumulative += frac
     return { ...seg, dashArray, dashOffset }
   })
   const pct = Math.round((stats.publicado / total) * 100)
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <svg width={104} height={104} viewBox="0 0 104 104">
-          <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(46,107,66,0.10)" strokeWidth={stroke} />
+        <svg width={112} height={112} viewBox="0 0 112 112">
+          <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(250,247,240,0.05)" strokeWidth={stroke} />
           {arcs.map((arc) => (
             <circle key={arc.label} cx={CX} cy={CY} r={R} fill="none" stroke={arc.color} strokeWidth={stroke}
               strokeDasharray={arc.dashArray} strokeDashoffset={arc.dashOffset}
-              transform="rotate(-90 52 52)" strokeLinecap="butt"
+              transform={`rotate(-90 ${CX} ${CY})`} strokeLinecap="butt"
               style={{ transition: 'stroke-dasharray 1s ease' }}
             />
           ))}
-          <text x={CX} y={CY - 6} textAnchor="middle" fontSize={17} fontWeight={700} fontFamily="Orbitron,monospace" fill="#4aa06a">{pct}</text>
-          <text x={CX} y={CY + 8} textAnchor="middle" fontSize={7.5} fill="rgba(150,200,160,0.40)" letterSpacing={1.5}>%SAÚDE</text>
         </svg>
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <span style={{
+            fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800,
+            color: C.gold, letterSpacing: '-0.04em', lineHeight: 1,
+          }}>
+            {pct}<span style={{ fontSize: 14, marginLeft: 1 }}>%</span>
+          </span>
+          <span style={{
+            fontFamily: FONT_DISPLAY, fontSize: 8, fontWeight: 700,
+            color: C.creamMute, letterSpacing: '0.16em',
+            textTransform: 'uppercase', marginTop: 1,
+          }}>
+            saúde
+          </span>
+        </div>
       </div>
+
       <div style={{ flex: 1, minWidth: 0 }}>
         {segments.filter(s => s.value > 0).map(seg => (
-          <div key={seg.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div key={seg.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 9, color: 'rgba(150,200,160,0.55)' }}>{seg.label}</span>
+              <span style={{ fontSize: 10.5, color: C.creamDim }}>{seg.label}</span>
             </div>
-            <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 11, fontWeight: 700, color: seg.color }}>{seg.value}</span>
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 13, fontWeight: 700,
+              color: seg.color, letterSpacing: '-0.02em',
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {seg.value}
+            </span>
           </div>
         ))}
-        {/* Velocity badge */}
         <div style={{
-          marginTop: 6, padding: '4px 8px', borderRadius: 6,
-          background: velocidade > 0 ? 'rgba(46,107,66,0.12)' : 'rgba(46,107,66,0.05)',
-          border: '1px solid rgba(46,107,66,0.20)',
+          marginTop: 8, padding: '5px 10px', borderRadius: 10,
+          background: velocidade > 0 ? 'rgba(74,160,106,0.10)' : 'rgba(250,247,240,0.04)',
+          border: `1px solid ${velocidade > 0 ? 'rgba(74,160,106,0.22)' : C.border}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <span style={{ fontSize: 8, color: 'rgba(150,200,160,0.40)', letterSpacing: '0.08em' }}>VELOCIDADE</span>
-          <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 12, fontWeight: 700, color: '#4aa06a' }}>
-            +{velocidade}/h
+          <span style={{
+            fontSize: 8.5, color: C.creamMute, letterSpacing: '0.14em',
+            fontWeight: 700, textTransform: 'uppercase',
+          }}>
+            Velocidade
+          </span>
+          <span style={{
+            fontFamily: FONT_DISPLAY, fontSize: 14, fontWeight: 800,
+            color: C.green, letterSpacing: '-0.03em',
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            +{velocidade}<span style={{ fontSize: 10, color: 'rgba(74,160,106,0.55)', marginLeft: 1 }}>/h</span>
           </span>
         </div>
       </div>
@@ -498,29 +602,36 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4-Day Bar Chart
+// FourDayChart — editorial bars
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FourDayChart({ dias }: { dias: DiaStat[] }) {
   const maxTotal = Math.max(...dias.map(d => d.total), 1)
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, height: '100%' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, height: '100%' }}>
       {dias.map(d => {
         const barH = (d.total / maxTotal) * 100
         const pubH = d.total > 0 ? (d.publicados / d.total) * barH : 0
         const pct  = d.total > 0 ? Math.round((d.publicados / d.total) * 100) : 0
         return (
           <div key={d.idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: 48, height: 64, display: 'flex', alignItems: 'flex-end' }}>
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${barH}%`, minHeight: d.total > 0 ? 4 : 0, background: 'rgba(46,107,66,0.12)', borderRadius: '5px 5px 0 0' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${pubH}%`, minHeight: d.publicados > 0 ? 4 : 0, background: 'linear-gradient(180deg, #4aa06a 0%, #2e6b42 100%)', borderRadius: '5px 5px 0 0', boxShadow: d.publicados > 0 ? '0 0 10px rgba(74,160,106,0.30)' : 'none', transition: 'height 1.2s cubic-bezier(0.16, 1, 0.3, 1)' }} />
+            <div style={{ position: 'relative', width: '100%', maxWidth: 52, height: 64, display: 'flex', alignItems: 'flex-end' }}>
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${barH}%`, minHeight: d.total > 0 ? 4 : 0, background: C.surfaceHi, borderRadius: '6px 6px 0 0' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${pubH}%`, minHeight: d.publicados > 0 ? 4 : 0, background: `linear-gradient(180deg, ${C.gold} 0%, #C9AC2F 100%)`, borderRadius: '6px 6px 0 0', boxShadow: d.publicados > 0 ? `0 0 12px ${C.gold}50` : 'none', transition: 'height 1.2s cubic-bezier(0.16, 1, 0.3, 1)' }} />
             </div>
-            <div style={{ marginTop: 4, textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Orbitron,monospace', fontSize: 11, fontWeight: 700, color: '#4aa06a', lineHeight: 1 }}>
-                {d.publicados}<span style={{ fontSize: 8, color: 'rgba(74,160,106,0.4)' }}>/{d.total}</span>
+            <div style={{ marginTop: 6, textAlign: 'center' }}>
+              <div style={{
+                fontFamily: FONT_DISPLAY, fontSize: 14, fontWeight: 800,
+                color: C.gold, lineHeight: 1, letterSpacing: '-0.03em',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {d.publicados}<span style={{ fontSize: 9, color: 'rgba(240,208,74,0.42)', fontWeight: 600 }}>/{d.total}</span>
               </div>
-              <div style={{ fontSize: 8, color: 'rgba(150,200,160,0.35)', marginTop: 1 }}>{pct}%</div>
-              <div style={{ fontSize: 8.5, fontWeight: 600, color: 'rgba(150,200,160,0.50)', marginTop: 2, lineHeight: 1.1 }}>
+              <div style={{ fontSize: 9, color: C.creamFade, marginTop: 2 }}>{pct}%</div>
+              <div style={{
+                fontSize: 9.5, fontWeight: 600, color: C.creamMute, marginTop: 3,
+                lineHeight: 1.1, letterSpacing: '-0.01em',
+              }}>
                 {d.label.split('·')[0].trim()}
               </div>
             </div>
@@ -532,14 +643,14 @@ function FourDayChart({ dias }: { dias: DiaStat[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Canal Chart
+// CanalChart — editorial slim bars
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CanalChart({ canais }: { canais: CanalStat[] }) {
   const maxTotal = Math.max(...canais.map(c => c.total), 1)
-  if (canais.length === 0) return <p style={{ fontSize: 10, color: 'rgba(150,200,160,0.25)', textAlign: 'center', marginTop: 10 }}>Sem conteúdos hoje</p>
+  if (canais.length === 0) return <p style={{ fontSize: 11, color: C.creamFade, textAlign: 'center', marginTop: 10 }}>Sem conteúdos hoje</p>
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
       {canais.map(c => {
         const color = CANAL_COLOR[c.canal] ?? '#6b7280'
         const label = CANAL_LABELS[c.canal] ?? c.canal
@@ -548,17 +659,20 @@ function CanalChart({ canais }: { canais: CanalStat[] }) {
         const pct   = c.total > 0 ? Math.round((c.publicados / c.total) * 100) : 0
         return (
           <div key={c.canal}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 1.5 }}>
-              <span style={{ fontSize: 9, color: 'rgba(200,220,205,0.60)', fontWeight: 600 }}>{label}</span>
-              <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 9, color, fontWeight: 700 }}>
-                {c.publicados}<span style={{ color: 'rgba(200,220,205,0.25)', fontWeight: 400 }}>/{c.total}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+              <span style={{ fontSize: 10, color: C.creamDim, fontWeight: 600, letterSpacing: '-0.01em' }}>{label}</span>
+              <span style={{
+                fontFamily: FONT_DISPLAY, fontSize: 10.5, color, fontWeight: 700,
+                letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums',
+              }}>
+                {c.publicados}<span style={{ color: C.creamFade, fontWeight: 400 }}>/{c.total}</span>
+                <span style={{ marginLeft: 6, fontSize: 9, color: C.creamMute, fontWeight: 500 }}>{pct}%</span>
               </span>
             </div>
-            <div style={{ position: 'relative', height: 4, borderRadius: 2, background: 'rgba(46,107,66,0.08)', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${barW}%`, background: 'rgba(46,107,66,0.10)', borderRadius: 2 }} />
-              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${pubW}%`, background: color, borderRadius: 2, opacity: 0.85, boxShadow: `0 0 5px ${color}55` }} />
+            <div style={{ position: 'relative', height: 5, borderRadius: 3, background: C.surface, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${barW}%`, background: 'rgba(250,247,240,0.05)', borderRadius: 3 }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${pubW}%`, background: color, borderRadius: 3, opacity: 0.92, boxShadow: `0 0 6px ${color}55` }} />
             </div>
-            <div style={{ textAlign: 'right', fontSize: 7, color: 'rgba(150,200,160,0.25)', marginTop: 0.5 }}>{pct}%</div>
           </div>
         )
       })}
@@ -567,12 +681,12 @@ function CanalChart({ canais }: { canais: CanalStat[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Timeline
+// TVTimeline — editorial vertical timeline
 // ─────────────────────────────────────────────────────────────────────────────
 
 type TLEntry = {
   id: string; label: string; inicio: string | null; fim_previsto: string | null
-  icon: string; color: string; bg: string; cat: string
+  icon: string; color: string; cat: string
 }
 
 function TVTimeline({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventItem[]; festas: EventItem[] }) {
@@ -587,15 +701,15 @@ function TVTimeline({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventItem[
     ...jogos.map(j => ({
       id: j.id, label: `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`,
       inicio: j.inicio, fim_previsto: j.fim_previsto,
-      icon: '🏆', color: '#4aa06a', bg: 'rgba(46,107,66,0.10)', cat: 'Esportivo',
+      icon: '🏆', color: C.green, cat: 'Esportivo',
     })),
     ...shows.map(s => ({
       id: s.id, label: s.nome ?? '', inicio: s.inicio, fim_previsto: s.fim_previsto,
-      icon: '🎤', color: '#a855f7', bg: 'rgba(124,58,237,0.08)', cat: 'Show',
+      icon: '🎤', color: C.lavender, cat: 'Show',
     })),
     ...festas.map(f => ({
       id: f.id, label: f.nome ?? '', inicio: f.inicio, fim_previsto: f.fim_previsto,
-      icon: '🎉', color: '#f472b6', bg: 'rgba(190,24,93,0.06)', cat: 'Festa',
+      icon: '🎉', color: C.terracotta, cat: 'Festa',
     })),
   ].sort((a, b) => {
     if (!a.inicio) return 1
@@ -605,7 +719,7 @@ function TVTimeline({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventItem[
 
   if (all.length === 0) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 60 }}>
-      <p style={{ color: 'rgba(150,200,160,0.20)', fontSize: 11 }}>Sem eventos hoje</p>
+      <p style={{ color: C.creamFade, fontSize: 12 }}>Sem eventos hoje</p>
     </div>
   )
 
@@ -616,7 +730,7 @@ function TVTimeline({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventItem[
   const nowStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
 
   return (
-    <div style={{ overflowY: 'auto', height: '100%', paddingRight: 2 }}>
+    <div style={{ overflowY: 'auto', height: '100%', paddingRight: 4 }}>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {all.map((ev, i) => {
           const isLast   = i === all.length - 1
@@ -627,42 +741,79 @@ function TVTimeline({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventItem[
           return (
             <div key={ev.id}>
               <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                <div style={{ width: 34, flexShrink: 0, paddingTop: 8, paddingRight: 5, textAlign: 'right' }}>
-                  <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 7.5, fontWeight: 700, color: isActive ? ev.color : isPast ? 'rgba(150,200,160,0.20)' : 'rgba(150,200,160,0.45)' }}>
+                <div style={{ width: 38, flexShrink: 0, paddingTop: 9, paddingRight: 6, textAlign: 'right' }}>
+                  <span style={{
+                    fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 700,
+                    color: isActive ? ev.color : isPast ? C.creamFade : C.creamMute,
+                    letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums',
+                  }}>
                     {fmtTime(ev.inicio)}
                   </span>
                 </div>
-                <div style={{ width: 14, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ width: 1, height: 7, background: i === 0 ? 'transparent' : 'rgba(46,107,66,0.16)' }} />
-                  <div style={{ width: isActive ? 9 : 6, height: isActive ? 9 : 6, borderRadius: '50%', flexShrink: 0, background: isActive ? ev.color : isPast ? 'rgba(46,107,66,0.12)' : `${ev.color}50`, boxShadow: isActive ? `0 0 8px ${ev.color}80` : 'none', transition: 'all 0.3s' }} />
-                  {!isLast && <div style={{ width: 1, flex: 1, minHeight: 10, background: 'rgba(46,107,66,0.16)' }} />}
-                </div>
-                <div style={{ flex: 1, paddingLeft: 7, paddingBottom: isLast ? 4 : 7, paddingTop: 3 }}>
+                <div style={{ width: 16, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ width: 1, height: 8, background: i === 0 ? 'transparent' : C.border }} />
                   <div style={{
-                    background: isPast ? 'rgba(10,20,12,0.35)' : ev.bg,
-                    border: `1px solid ${isActive ? ev.color + '35' : isPast ? 'rgba(46,107,66,0.05)' : ev.color + '15'}`,
-                    borderLeft: `2px solid ${isActive ? ev.color : isPast ? 'rgba(46,107,66,0.10)' : ev.color + '40'}`,
-                    borderRadius: '0 7px 7px 0', padding: '5px 8px', opacity: isPast ? 0.45 : 1,
+                    width: isActive ? 10 : 7, height: isActive ? 10 : 7, borderRadius: '50%',
+                    flexShrink: 0,
+                    background: isActive ? ev.color : isPast ? C.border : `${ev.color}55`,
+                    boxShadow: isActive ? `0 0 10px ${ev.color}` : 'none',
+                    transition: 'all 0.3s',
+                  }} />
+                  {!isLast && <div style={{ width: 1, flex: 1, minHeight: 12, background: C.border }} />}
+                </div>
+                <div style={{ flex: 1, paddingLeft: 9, paddingBottom: isLast ? 6 : 9, paddingTop: 4 }}>
+                  <div style={{
+                    background: isPast ? 'rgba(250,247,240,0.02)' : `${ev.color}10`,
+                    border: `1px solid ${isActive ? ev.color + '40' : isPast ? C.border : ev.color + '18'}`,
+                    borderRadius: 11, padding: '7px 11px',
+                    opacity: isPast ? 0.50 : 1,
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9 }}>{ev.icon}</span>
-                      <span style={{ fontSize: 10, fontWeight: 700, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isActive ? ev.color : isPast ? 'rgba(150,200,160,0.30)' : 'rgba(200,220,205,0.85)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                      <span style={{ fontSize: 11 }}>{ev.icon}</span>
+                      <span style={{
+                        fontFamily: FONT_DISPLAY, fontSize: 11.5, fontWeight: 700, flex: 1,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        color: isActive ? ev.color : isPast ? C.creamMute : C.cream,
+                        letterSpacing: '-0.01em',
+                      }}>
                         {ev.label}
                       </span>
-                      {isActive && <span style={{ fontSize: 6.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: ev.color, background: `${ev.color}15`, border: `1px solid ${ev.color}30`, borderRadius: 3, padding: '1px 4px' }}>LIVE</span>}
+                      {isActive && (
+                        <span style={{
+                          fontFamily: FONT_DISPLAY, fontSize: 7.5, fontWeight: 800, letterSpacing: '0.14em',
+                          textTransform: 'uppercase', color: ev.color,
+                          background: `${ev.color}18`, border: `1px solid ${ev.color}38`,
+                          borderRadius: 99, padding: '1px 6px',
+                        }}>LIVE</span>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <span style={{ fontSize: 7.5, color: 'rgba(150,200,160,0.28)', fontFamily: 'Orbitron,monospace' }}>{fmtTime(ev.inicio)}–{fmtTime(ev.fim_previsto)}</span>
-                      {dur !== null && <span style={{ fontSize: 7.5, color: 'rgba(150,200,160,0.18)' }}>{dur < 60 ? `${dur}min` : `${Math.floor(dur/60)}h${dur%60>0?`${dur%60}m`:''}`}</span>}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <span style={{
+                        fontFamily: FONT_DISPLAY, fontSize: 9, color: C.creamMute,
+                        fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+                      }}>
+                        {fmtTime(ev.inicio)}–{fmtTime(ev.fim_previsto)}
+                      </span>
+                      {dur !== null && (
+                        <span style={{ fontSize: 9, color: C.creamFade }}>
+                          {dur < 60 ? `${dur}min` : `${Math.floor(dur/60)}h${dur%60>0?`${dur%60}m`:''}`}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
               {showNow && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, paddingLeft: 48, paddingRight: 4, margin: '3px 0' }}>
-                  <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, transparent, rgba(239,68,68,0.45))' }} />
-                  <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 7, fontWeight: 700, color: '#ef4444', letterSpacing: '0.12em', flexShrink: 0 }}>◆ {nowStr}</span>
-                  <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(239,68,68,0.45), transparent)' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 54, paddingRight: 4, margin: '3px 0' }}>
+                  <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, transparent, rgba(239,68,68,0.50))' }} />
+                  <span style={{
+                    fontFamily: FONT_DISPLAY, fontSize: 8, fontWeight: 800,
+                    color: C.red, letterSpacing: '0.14em', flexShrink: 0,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    ◆ {nowStr}
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(239,68,68,0.50), transparent)' }} />
                 </div>
               )}
             </div>
@@ -674,7 +825,7 @@ function TVTimeline({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventItem[
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Celebration Toast — flashes on new publish
+// CelebrationToast — editorial gold burst
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CelebrationToast({ show }: { show: boolean }) {
@@ -684,27 +835,29 @@ function CelebrationToast({ show }: { show: boolean }) {
       position: 'fixed', inset: 0, zIndex: 100, pointerEvents: 'none',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      {/* Radial burst */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse at center, rgba(74,160,106,0.12) 0%, transparent 70%)',
+        background: `radial-gradient(ellipse at center, ${C.gold}18 0%, transparent 70%)`,
         animation: 'celebBurst 2.5s ease-out forwards',
       }} />
       <div style={{
-        background: 'linear-gradient(135deg, rgba(14,30,17,0.96) 0%, rgba(22,50,28,0.96) 100%)',
-        border: '1px solid rgba(74,160,106,0.50)',
-        borderRadius: 16,
-        padding: '18px 32px',
-        display: 'flex', alignItems: 'center', gap: 14,
-        boxShadow: '0 0 60px rgba(74,160,106,0.25), 0 20px 40px rgba(0,0,0,0.40)',
+        background: `linear-gradient(135deg, ${C.bg} 0%, #1A2818 100%)`,
+        border: `1px solid ${C.gold}55`,
+        borderRadius: 22,
+        padding: '22px 38px',
+        display: 'flex', alignItems: 'center', gap: 18,
+        boxShadow: `0 0 80px ${C.gold}25, 0 24px 48px rgba(0,0,0,0.45)`,
         animation: 'celebSlide 2.5s ease-out forwards',
       }}>
-        <span style={{ fontSize: 28 }}>🎉</span>
+        <span style={{ fontSize: 36 }}>🎉</span>
         <div>
-          <div style={{ fontFamily: 'Orbitron,monospace', fontSize: 14, fontWeight: 900, color: '#4aa06a', letterSpacing: '0.08em' }}>
+          <div style={{
+            fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 800,
+            color: C.gold, letterSpacing: '-0.03em',
+          }}>
             PUBLICADO!
           </div>
-          <div style={{ fontSize: 10, color: 'rgba(150,200,160,0.55)', marginTop: 2, letterSpacing: '0.08em' }}>
+          <div style={{ fontSize: 11, color: C.creamMute, marginTop: 3, letterSpacing: '0.04em' }}>
             +1 conteúdo no ar
           </div>
         </div>
@@ -714,16 +867,21 @@ function CelebrationToast({ show }: { show: boolean }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TV Card wrapper
+// TVCard wrapper
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TVCard({ title, children, style }: { title: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      background: 'rgba(10, 20, 12, 0.85)', border: '1px solid rgba(46,107,66,0.18)',
-      borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column', overflow: 'hidden', ...style,
+      background: C.surface, border: `1px solid ${C.border}`,
+      borderRadius: 16, padding: '12px 14px',
+      display: 'flex', flexDirection: 'column', overflow: 'hidden', ...style,
     }}>
-      <p style={{ fontSize: 7.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'rgba(74,160,106,0.40)', marginBottom: 8, flexShrink: 0 }}>
+      <p style={{
+        fontFamily: FONT_DISPLAY, fontSize: 8.5, fontWeight: 800,
+        textTransform: 'uppercase', letterSpacing: '0.18em',
+        color: C.creamMute, marginBottom: 10, flexShrink: 0,
+      }}>
         {title}
       </p>
       <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
@@ -732,52 +890,63 @@ function TVCard({ title, children, style }: { title: string; children: React.Rea
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// KPI Card
+// KPI — DM Sans 800 hero number
 // ─────────────────────────────────────────────────────────────────────────────
 
-function KPI({ value, label, sub, color = '#4aa06a', size = 'md' }: {
-  value: string | number; label: string; sub?: string; color?: string; size?: 'sm' | 'md' | 'lg'
+function KPI({ value, label, sub, color = C.cream, accent = false }: {
+  value: string | number; label: string; sub?: string; color?: string; accent?: boolean
 }) {
-  const fontSize = size === 'lg' ? 32 : size === 'sm' ? 18 : 24
   return (
     <div style={{
-      flex: 1, background: 'rgba(15, 28, 18, 0.70)', border: '1px solid rgba(46,107,66,0.16)',
-      borderRadius: 9, padding: '10px 14px', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 2,
+      flex: 1,
+      background: accent ? `${color}10` : C.surface,
+      border: `1px solid ${accent ? color + '28' : C.border}`,
+      borderRadius: 14, padding: '11px 16px',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 3,
+      minHeight: 76,
     }}>
-      <span style={{ fontFamily: 'Orbitron,monospace', fontSize, fontWeight: 700, color, lineHeight: 1 }}>
+      <span style={{
+        fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800,
+        color, lineHeight: 1, letterSpacing: '-0.04em',
+        fontVariantNumeric: 'tabular-nums',
+      }}>
         {value}
       </span>
-      <span style={{ fontSize: 8.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'rgba(150,200,160,0.45)' }}>
+      <span style={{
+        fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
+        textTransform: 'uppercase', letterSpacing: '0.14em', color: C.creamMute,
+      }}>
         {label}
       </span>
-      {sub && <span style={{ fontSize: 8, color: 'rgba(150,200,160,0.25)' }}>{sub}</span>}
+      {sub && <span style={{ fontSize: 8.5, color: C.creamFade, letterSpacing: '0.04em' }}>{sub}</span>}
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Notification Ticker — scrolling recent publications in footer
+// NotifTicker — scrolling recent publications
 // ─────────────────────────────────────────────────────────────────────────────
 
 function NotifTicker({ items }: { items: RecentPublicado[] }) {
   if (items.length === 0) return null
-  const displayItems = [...items, ...items] // duplicate for seamless loop
+  const displayItems = [...items, ...items]
 
   return (
     <div style={{ overflow: 'hidden', flex: 1, display: 'flex', alignItems: 'center' }}>
       <div style={{
-        display: 'flex', gap: 20, alignItems: 'center',
+        display: 'flex', gap: 24, alignItems: 'center',
         animation: `ticker ${Math.max(20, items.length * 4)}s linear infinite`,
         whiteSpace: 'nowrap',
       }}>
         {displayItems.map((item, i) => (
-          <div key={`${item.id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: CANAL_COLOR[item.canal ?? ''] ?? '#4aa06a', flexShrink: 0 }} />
-            <span style={{ fontSize: 9, color: 'rgba(150,200,160,0.50)' }}>
-              {item.titulo ?? 'Sem título'}{item.canal ? ` · ${CANAL_LABELS[item.canal] ?? item.canal}` : ''}
+          <div key={`${item.id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: CANAL_COLOR[item.canal ?? ''] ?? C.green, flexShrink: 0 }} />
+            <span style={{ fontSize: 10, color: C.creamDim, letterSpacing: '-0.01em' }}>
+              {item.titulo ?? 'Sem título'}
+              {item.canal && <span style={{ color: C.creamMute }}> · {CANAL_LABELS[item.canal] ?? item.canal}</span>}
             </span>
-            <span style={{ fontSize: 8, color: 'rgba(150,200,160,0.20)' }}>·</span>
+            <span style={{ fontSize: 10, color: C.creamFade }}>·</span>
           </div>
         ))}
       </div>
@@ -797,7 +966,6 @@ export function TVDisplay({
   canalBreakdown,
   patrocStats,
   equipeAtiva,
-  setoresCobertos,
   ckTotal,
   ckFeitos,
   jogosHoje,
@@ -822,7 +990,6 @@ export function TVDisplay({
   const prevPublicados = useRef(pipelineStats.publicado)
   const doRefreshRef   = useRef<() => void>(() => {})
 
-  // Detect new publication
   useEffect(() => {
     if (pipelineStats.publicado > prevPublicados.current) {
       setCelebrate(true)
@@ -837,7 +1004,6 @@ export function TVDisplay({
     setLastRefresh(Date.now())
     setRefreshIn(15)
   }
-  // Always keep the ref current so realtime callbacks never capture stale closure
   doRefreshRef.current = doRefresh
 
   useEffect(() => {
@@ -900,67 +1066,105 @@ export function TVDisplay({
     return () => clearTimeout(t)
   }, [])
 
-  // Derived values
-  const now        = new Date()
-  const diffMs     = EVENT_START.getTime() - now.getTime()
-  const diffDays   = Math.max(0, Math.ceil(diffMs / 86_400_000))
+  // Derived
+  const now         = new Date()
+  const diffMs      = EVENT_START.getTime() - now.getTime()
+  const diffDays    = Math.max(0, Math.ceil(diffMs / 86_400_000))
   const eventActive = diffDays === 0
-  const diaIdx     = diaAtualId ? (diasEvento.findIndex(d => d.id === diaAtualId) + 1) : 0
-  const totalHoje  = conteudosPorDia.find(d => diasEvento[d.idx - 1]?.id === diaAtualId)
-  const publicadosHoje      = totalHoje?.publicados ?? 0
-  const totalConteudosHoje  = totalHoje?.total ?? 0
+  const diaIdx      = diaAtualId ? (diasEvento.findIndex(d => d.id === diaAtualId) + 1) : 0
+  const totalHoje   = conteudosPorDia.find(d => diasEvento[d.idx - 1]?.id === diaAtualId)
+  const publicadosHoje     = totalHoje?.publicados ?? 0
+  const totalConteudosHoje = totalHoje?.total ?? 0
   const healthPct    = pipelineStats.total > 0 ? Math.round((pipelineStats.publicado / pipelineStats.total) * 100) : 0
   const checklistPct = ckTotal > 0 ? Math.round((ckFeitos / ckTotal) * 100) : 0
   const hasAlerts    = setoresFrios.length > 0
+  const healthColor  = healthPct >= 70 ? C.green : healthPct >= 40 ? C.gold : C.terracotta
+  const ckColor      = checklistPct >= 70 ? C.green : C.gold
 
   return (
     <div style={{
       width: '100vw', height: '100vh',
-      background: '#060c07',
-      color: 'rgba(200, 220, 205, 0.90)',
-      fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+      background: C.bg,
+      color: C.cream,
+      fontFamily: FONT_DISPLAY,
       overflow: 'hidden',
       display: 'flex', flexDirection: 'column',
-      gap: 8, padding: '10px 12px',
+      gap: 10, padding: '12px 14px',
       boxSizing: 'border-box', position: 'relative',
     }}>
 
-      {/* Background texture */}
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, backgroundImage: 'radial-gradient(circle, rgba(46,107,66,0.06) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
-      <div style={{ position: 'absolute', top: -100, left: -80, width: 500, height: 500, background: 'radial-gradient(circle, rgba(46,107,66,0.08) 0%, transparent 65%)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0 }} />
+      {/* Background atmosphere */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+        backgroundImage: 'radial-gradient(circle, rgba(250,247,240,0.025) 1px, transparent 1px)',
+        backgroundSize: '32px 32px',
+      }} />
+      <div style={{
+        position: 'absolute', top: -120, left: -100, width: 560, height: 560,
+        background: `radial-gradient(circle, ${C.gold}08 0%, transparent 65%)`,
+        borderRadius: '50%', pointerEvents: 'none', zIndex: 0,
+      }} />
+      <div style={{
+        position: 'absolute', bottom: -120, right: -120, width: 600, height: 600,
+        background: `radial-gradient(circle, ${C.green}08 0%, transparent 65%)`,
+        borderRadius: '50%', pointerEvents: 'none', zIndex: 0,
+      }} />
 
       {/* ═══════ ROW 1 — HEADER ═══════════════════════════════════════════════ */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 16,
-        borderBottom: '1px solid rgba(46,107,66,0.12)',
-        paddingBottom: 8, zIndex: 1, position: 'relative', flexShrink: 0,
+        display: 'flex', alignItems: 'center', gap: 18,
+        borderBottom: `1px solid ${C.border}`,
+        paddingBottom: 10, zIndex: 1, position: 'relative', flexShrink: 0,
       }}>
         {/* Left: Brand + day */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11, flexShrink: 0 }}>
           <div style={{
-            background: 'linear-gradient(145deg, #1a3d24, #2e6b42)',
-            border: '1px solid rgba(74,160,106,0.25)',
-            borderRadius: 9, padding: '5px 11px',
-            display: 'flex', alignItems: 'center', gap: 7,
+            background: 'rgba(250,247,240,0.04)',
+            border: `1px solid ${C.borderHi}`,
+            borderRadius: 12, padding: '7px 14px',
+            display: 'flex', alignItems: 'baseline', gap: 9,
           }}>
-            <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 16, fontWeight: 700, color: '#4aa06a', letterSpacing: '0.04em' }}>CIA</span>
-            <div style={{ width: 1, height: 16, background: 'rgba(74,160,106,0.20)' }} />
-            <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 11, color: 'rgba(74,160,106,0.55)', letterSpacing: '0.04em' }}>2026</span>
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 800,
+              color: C.cream, letterSpacing: '-0.04em', lineHeight: 1,
+            }}>
+              CIA
+            </span>
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 13, fontWeight: 600,
+              color: C.creamMute, letterSpacing: '-0.02em', lineHeight: 1,
+            }}>
+              2026
+            </span>
           </div>
           {eventActive && diaIdx > 0 && (
             <div style={{
-              background: 'rgba(46,107,66,0.12)', border: '1px solid rgba(46,107,66,0.25)',
-              borderRadius: 7, padding: '4px 10px',
+              background: `${C.gold}10`, border: `1px solid ${C.gold}30`,
+              borderRadius: 99, padding: '5px 13px',
             }}>
-              <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 10, fontWeight: 700, color: 'rgba(74,160,106,0.70)', letterSpacing: '0.08em' }}>
+              <span style={{
+                fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 800,
+                color: C.gold, letterSpacing: '0.10em',
+              }}>
                 DIA {diaIdx}/4
               </span>
             </div>
           )}
           {!eventActive && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 26, fontWeight: 700, color: '#2e6b42' }}>{diffDays}</span>
-              <span style={{ fontSize: 9, color: 'rgba(150,200,160,0.30)', letterSpacing: '0.10em', textTransform: 'uppercase' }}>dias</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+              <span style={{
+                fontFamily: FONT_DISPLAY, fontSize: 32, fontWeight: 800,
+                color: C.gold, letterSpacing: '-0.04em', lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {diffDays}
+              </span>
+              <span style={{
+                fontSize: 9.5, color: C.creamMute, letterSpacing: '0.14em',
+                textTransform: 'uppercase', fontWeight: 700,
+              }}>
+                dias
+              </span>
             </div>
           )}
         </div>
@@ -972,42 +1176,64 @@ export function TVDisplay({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {eventActive && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'rgba(46,107,66,0.12)', border: '1px solid rgba(74,160,106,0.30)',
-              borderRadius: 18, padding: '4px 12px',
+              display: 'flex', alignItems: 'center', gap: 7,
+              background: `${C.green}10`, border: `1px solid ${C.green}30`,
+              borderRadius: 99, padding: '5px 13px',
             }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4aa06a', display: 'inline-block', boxShadow: '0 0 8px rgba(74,160,106,0.8)', animation: 'ping 2s ease-in-out infinite' }} />
-              <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 11, fontWeight: 700, color: '#4aa06a', letterSpacing: '0.08em' }}>AO VIVO</span>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.green, display: 'inline-block', boxShadow: `0 0 8px ${C.green}`, animation: 'ping 2s ease-in-out infinite' }} />
+              <span style={{
+                fontFamily: FONT_DISPLAY, fontSize: 10.5, fontWeight: 800,
+                color: C.green, letterSpacing: '0.10em',
+              }}>
+                AO VIVO
+              </span>
             </div>
           )}
           {hasAlerts && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: 'rgba(127,29,29,0.30)', border: '1px solid rgba(239,68,68,0.35)',
-              borderRadius: 18, padding: '4px 10px',
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'rgba(216,132,95,0.10)', border: '1px solid rgba(216,132,95,0.30)',
+              borderRadius: 99, padding: '5px 11px',
             }}>
-              <AlertTriangle style={{ width: 10, height: 10, color: '#f87171' }} />
-              <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 9, fontWeight: 700, color: '#f87171', letterSpacing: '0.10em' }}>
+              <AlertTriangle style={{ width: 11, height: 11, color: C.terracotta }} />
+              <span style={{
+                fontFamily: FONT_DISPLAY, fontSize: 10, fontWeight: 800,
+                color: C.terracotta, letterSpacing: '0.10em',
+              }}>
                 {setoresFrios.length} FRIOS
               </span>
             </div>
           )}
           {capturasCount > 0 && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.30)',
-              borderRadius: 18, padding: '4px 10px',
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: `${C.gold}10`, border: `1px solid ${C.gold}30`,
+              borderRadius: 99, padding: '5px 11px',
             }}>
-              <Camera style={{ width: 10, height: 10, color: '#fbbf24' }} />
-              <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 9, fontWeight: 700, color: '#fbbf24' }}>
+              <Camera style={{ width: 11, height: 11, color: C.gold }} />
+              <span style={{
+                fontFamily: FONT_DISPLAY, fontSize: 10, fontWeight: 800,
+                color: C.gold, letterSpacing: '-0.02em',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
                 {capturasCount}
               </span>
             </div>
           )}
-          <button onClick={doRefresh} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 7, background: 'rgba(46,107,66,0.08)', border: '1px solid rgba(46,107,66,0.18)', color: 'rgba(74,160,106,0.55)', cursor: 'pointer' }}>
+          <button onClick={doRefresh} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 32, height: 32, borderRadius: 10,
+            background: C.surface, border: `1px solid ${C.border}`,
+            color: C.creamMute, cursor: 'pointer',
+          }}>
             <RefreshCw size={13} />
           </button>
-          <button onClick={toggleFullscreen} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 7, background: 'rgba(46,107,66,0.08)', border: '1px solid rgba(46,107,66,0.18)', color: 'rgba(74,160,106,0.55)', cursor: 'pointer' }}>
+          <button onClick={toggleFullscreen} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 32, height: 32, borderRadius: 10,
+            background: C.surface, border: `1px solid ${C.border}`,
+            color: C.creamMute, cursor: 'pointer',
+          }}>
             {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
           </button>
         </div>
@@ -1026,21 +1252,21 @@ export function TVDisplay({
       )}
 
       {/* ═══════ ROW 4 — KPI BAR ════════════════════════════════════════════ */}
-      <div style={{ display: 'flex', gap: 6, zIndex: 1, position: 'relative', flexShrink: 0 }}>
-        <KPI value={emCampo.length} label="Em Campo" color={emCampo.length > 0 ? '#4aa06a' : 'rgba(150,200,160,0.30)'} size="sm" />
-        <KPI value={equipeAtiva} label="Escalados" sub="hoje" color="rgba(150,200,160,0.60)" size="sm" />
-        <KPI value={`${publicadosHoje}/${totalConteudosHoje}`} label="Publicados Hoje" color="#4aa06a" size="sm" />
-        <KPI value={pipelineStats.total} label="Total Geral" color="rgba(150,200,160,0.55)" size="sm" />
-        <KPI value={`${healthPct}%`} label="Saúde" color={healthPct >= 70 ? '#4aa06a' : healthPct >= 40 ? '#e8b94f' : '#f87171'} size="sm" />
-        <KPI value={`${checklistPct}%`} label="Checklist" sub={`${ckFeitos}/${ckTotal}`} color={checklistPct >= 70 ? '#4aa06a' : '#e8b94f'} size="sm" />
-        {jogosAoVivo.length > 0 && <KPI value={jogosAoVivo.length} label="Ao Vivo" color="#ef4444" size="sm" />}
+      <div style={{ display: 'flex', gap: 8, zIndex: 1, position: 'relative', flexShrink: 0 }}>
+        <KPI value={emCampo.length} label="Em Campo" color={emCampo.length > 0 ? C.green : C.creamFade} accent={emCampo.length > 0} />
+        <KPI value={equipeAtiva} label="Escalados" sub="hoje" color={C.cream} />
+        <KPI value={`${publicadosHoje}/${totalConteudosHoje}`} label="Publicados Hoje" color={C.gold} accent />
+        <KPI value={pipelineStats.total} label="Total Geral" color={C.cream} />
+        <KPI value={`${healthPct}%`} label="Saúde" color={healthColor} accent={healthPct < 70} />
+        <KPI value={`${checklistPct}%`} label="Checklist" sub={`${ckFeitos}/${ckTotal}`} color={ckColor} accent={checklistPct < 70} />
+        {jogosAoVivo.length > 0 && <KPI value={jogosAoVivo.length} label="Ao Vivo" color={C.red} accent />}
       </div>
 
       {/* ═══════ ROW 5 — MAIN CONTENT ════════════════════════════════════════ */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '190px 1fr 210px',
-        gap: 8, flex: 1, minHeight: 0,
+        gridTemplateColumns: '210px 1fr 230px',
+        gap: 10, flex: 1, minHeight: 0,
         zIndex: 1, position: 'relative',
       }}>
 
@@ -1048,7 +1274,7 @@ export function TVDisplay({
         <EmCampoPanel emCampo={emCampo} setoresFrios={setoresFrios} />
 
         {/* CENTER: Próximo Evento + Timeline */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
           <ProximoEvento jogos={jogosHoje} shows={showsHoje} festas={festasHoje} />
           <TVCard title={`Timeline · ${jogosHoje.length}j · ${showsHoje.length}s · ${festasHoje.length}f`} style={{ flex: 1 }}>
             <TVTimeline jogos={jogosHoje} shows={showsHoje} festas={festasHoje} />
@@ -1056,7 +1282,7 @@ export function TVDisplay({
         </div>
 
         {/* RIGHT: Pipeline + Canal + Patrocínio */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0, overflow: 'hidden' }}>
           <TVCard title="Pipeline · Produção" style={{ flex: '0 0 auto' }}>
             <PipelineDonut stats={pipelineStats} velocidade={velocidade} />
           </TVCard>
@@ -1068,13 +1294,28 @@ export function TVDisplay({
               {patrocStats.slice(0, 3).map((p, i) => {
                 const pct = p.total > 0 ? Math.round((p.publicados / p.total) * 100) : 0
                 return (
-                  <div key={p.id} style={{ marginBottom: i < 2 ? 6 : 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, color: 'rgba(200,220,205,0.60)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{p.nome}</span>
-                      <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 8.5, color: pct >= 70 ? '#4aa06a' : '#e8b94f' }}>{pct}%</span>
+                  <div key={p.id} style={{ marginBottom: i < 2 ? 7 : 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                      <span style={{
+                        fontSize: 10, color: C.creamDim, fontWeight: 600, letterSpacing: '-0.01em',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%',
+                      }}>
+                        {p.nome}
+                      </span>
+                      <span style={{
+                        fontFamily: FONT_DISPLAY, fontSize: 10, fontWeight: 700,
+                        color: pct >= 70 ? C.green : C.gold, letterSpacing: '-0.02em',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {pct}%
+                      </span>
                     </div>
-                    <div style={{ height: 3, borderRadius: 2, background: 'rgba(46,107,66,0.08)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: pct >= 70 ? '#2e6b42' : '#d97706', borderRadius: 2, transition: 'width 1s ease' }} />
+                    <div style={{ height: 4, borderRadius: 3, background: C.surface, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', width: `${pct}%`,
+                        background: pct >= 70 ? C.green : C.gold, borderRadius: 3,
+                        transition: 'width 1s ease',
+                      }} />
                     </div>
                   </div>
                 )
@@ -1087,12 +1328,12 @@ export function TVDisplay({
       {/* ═══════ ROW 6 — FOOTER ══════════════════════════════════════════════ */}
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr auto auto',
-        gap: 8, zIndex: 1, position: 'relative', flexShrink: 0,
-        borderTop: '1px solid rgba(46,107,66,0.10)', paddingTop: 6,
+        gap: 10, zIndex: 1, position: 'relative', flexShrink: 0,
+        borderTop: `1px solid ${C.border}`, paddingTop: 8,
       }}>
         {/* 4-day chart */}
-        <TVCard title="Conteúdos por Dia" style={{ padding: '8px 12px' }}>
-          <div style={{ height: 88 }}>
+        <TVCard title="Conteúdos por Dia" style={{ padding: '10px 14px' }}>
+          <div style={{ height: 92 }}>
             <FourDayChart dias={conteudosPorDia} />
           </div>
         </TVCard>
@@ -1100,19 +1341,36 @@ export function TVDisplay({
         {/* Clima */}
         {weatherData && (
           <div style={{
-            background: 'rgba(10,20,12,0.85)', border: '1px solid rgba(46,107,66,0.16)',
-            borderRadius: 10, padding: '8px 10px', display: 'flex', flexDirection: 'column',
+            background: C.surface, border: `1px solid ${C.border}`,
+            borderRadius: 16, padding: '10px 12px',
+            display: 'flex', flexDirection: 'column',
           }}>
-            <p style={{ fontSize: 7, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.20em', color: 'rgba(74,160,106,0.38)', marginBottom: 6, flexShrink: 0 }}>
+            <p style={{
+              fontFamily: FONT_DISPLAY, fontSize: 8.5, fontWeight: 800,
+              textTransform: 'uppercase', letterSpacing: '0.18em',
+              color: C.creamMute, marginBottom: 7, flexShrink: 0,
+            }}>
               Clima
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 52px)', gap: 4, flex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 56px)', gap: 5, flex: 1 }}>
               {weatherData.map(day => (
-                <div key={day.date} style={{ background: 'rgba(46,107,66,0.05)', border: '1px solid rgba(46,107,66,0.10)', borderRadius: 6, padding: '4px 5px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 6.5, color: 'rgba(150,200,160,0.35)', marginBottom: 2 }}>{day.date.slice(8,10)}/06</div>
-                  <div style={{ fontSize: 14, lineHeight: 1, marginBottom: 2 }}>{day.emoji}</div>
-                  <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(200,220,205,0.75)' }}>{day.tMax}°<span style={{ fontSize: 7.5, color: 'rgba(150,200,160,0.35)' }}>/{day.tMin}°</span></div>
-                  <div style={{ fontSize: 7, color: 'rgba(150,200,160,0.30)', marginTop: 1 }}>💧{day.rain}%</div>
+                <div key={day.date} style={{
+                  background: 'rgba(250,247,240,0.03)',
+                  border: `1px solid ${C.border}`,
+                  borderRadius: 10, padding: '5px 6px', textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 7, color: C.creamFade, marginBottom: 2, letterSpacing: '0.04em' }}>
+                    {day.date.slice(8,10)}/06
+                  </div>
+                  <div style={{ fontSize: 16, lineHeight: 1, marginBottom: 2 }}>{day.emoji}</div>
+                  <div style={{
+                    fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 800,
+                    color: C.cream, letterSpacing: '-0.02em',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {day.tMax}°<span style={{ fontSize: 8, color: C.creamMute, fontWeight: 500 }}>/{day.tMin}°</span>
+                  </div>
+                  <div style={{ fontSize: 7.5, color: C.creamFade, marginTop: 2 }}>💧{day.rain}%</div>
                 </div>
               ))}
             </div>
@@ -1120,11 +1378,24 @@ export function TVDisplay({
         )}
 
         {/* Ticker + meta */}
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 4, padding: '6px 0', maxWidth: 200 }}>
+        <div style={{
+          display: 'flex', flexDirection: 'column',
+          justifyContent: 'space-between', gap: 5, padding: '8px 0', maxWidth: 220,
+        }}>
           <NotifTicker items={recentPublicados} />
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 7.5, color: 'rgba(150,200,160,0.18)', fontFamily: 'monospace', letterSpacing: '0.06em' }}>CIA 2026 · v0.7</div>
-            <div style={{ fontSize: 7.5, color: 'rgba(150,200,160,0.18)', letterSpacing: '0.05em' }}>↻ {refreshIn}s</div>
+            <div style={{
+              fontSize: 8, color: C.creamFade, fontFamily: 'monospace',
+              letterSpacing: '0.06em',
+            }}>
+              CIA 2026 · v0.7
+            </div>
+            <div style={{
+              fontSize: 8, color: C.creamFade, letterSpacing: '0.05em',
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              ↻ {refreshIn}s
+            </div>
           </div>
         </div>
       </div>
@@ -1132,7 +1403,7 @@ export function TVDisplay({
       {/* ═══════ Celebration Overlay ═════════════════════════════════════════ */}
       <CelebrationToast show={celebrate} />
 
-      {/* Global animations */}
+      {/* Animations */}
       <style>{`
         @keyframes ping {
           0%, 100% { opacity: 1; transform: scale(1); }

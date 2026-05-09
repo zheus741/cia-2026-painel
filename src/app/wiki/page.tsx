@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { BookOpen, Camera, Video, Share2, Mic, Edit3, Cpu, Users, Crosshair } from 'lucide-react'
+import { WikiNewButton } from './WikiNewButton'
 
 const funcaoIcon: Record<string, React.ComponentType<{ className?: string }>> = {
   foto: Camera,
@@ -23,11 +24,21 @@ const categoriaLabel: Record<string, string> = {
 export default async function WikiPage() {
   const supabase = await createClient()
 
-  const { data: docs } = await supabase
-    .from('docs')
-    .select('id, titulo, slug, categoria, funcao, atualizado_em')
-    .eq('publicado', true)
-    .order('ordem')
+  const [{ data: docs }, { data: { user } }] = await Promise.all([
+    supabase
+      .from('docs')
+      .select('id, titulo, slug, categoria, funcao, atualizado_em')
+      .eq('publicado', true)
+      .order('ordem'),
+    supabase.auth.getUser(),
+  ])
+
+  let canEdit = false
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles').select('role').eq('id', user.id).maybeSingle()
+    canEdit = ['admin', 'coordenacao'].includes(profile?.role ?? '')
+  }
 
   const rows = docs ?? []
 
@@ -40,14 +51,17 @@ export default async function WikiPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-[var(--accent)]">Documentação</p>
-        <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
-          Wiki
-        </h1>
-        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-          Briefings, manuais e protocolos por função — substitui o Notion.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-[var(--accent)]">Documentação</p>
+          <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
+            Wiki
+          </h1>
+          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+            Briefings, manuais e protocolos por função — substitui o Notion.
+          </p>
+        </div>
+        {canEdit && <WikiNewButton />}
       </div>
 
       {rows.length === 0 ? (

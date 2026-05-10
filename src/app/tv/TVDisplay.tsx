@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Maximize2, Minimize2, RefreshCw, AlertTriangle, Camera } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { CiaLogo } from '@/components/cia-logo'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Editorial TV — color tokens
@@ -1647,6 +1648,37 @@ export function TVDisplay({
               </span>
             </div>
           )}
+          {/* Meta strip — logo + version + refresh countdown */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 9,
+            background: C.surface, border: `1px solid ${C.borderHi}`,
+            borderRadius: 12, padding: '5px 12px',
+            marginLeft: 4,
+          }}>
+            <CiaLogo size={20} showText={false} />
+            <span style={{
+              fontFamily: 'monospace', fontSize: 9, fontWeight: 700,
+              color: C.creamFade, letterSpacing: '0.08em',
+            }}>
+              v0.7
+            </span>
+            <div style={{ width: 1, height: 14, background: C.border, flexShrink: 0 }} />
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+              background: refreshIn <= 3 ? C.gold : C.green,
+              boxShadow: refreshIn <= 3 ? `0 0 6px ${C.gold}` : `0 0 6px ${C.green}`,
+              display: 'inline-block',
+              transition: 'background 0.3s',
+            }} />
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 700,
+              color: C.creamDim, letterSpacing: '-0.02em',
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {refreshIn}s
+            </span>
+          </div>
+
           <button onClick={doRefresh} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             width: 32, height: 32, borderRadius: 10,
@@ -1692,22 +1724,26 @@ export function TVDisplay({
       {/* ═══════ ROW 5 — MAIN CONTENT ════════════════════════════════════════ */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '220px 1fr 300px',
+        gridTemplateColumns: '250px 1fr 300px',
         gap: 12, flex: 1, minHeight: 0,
         zIndex: 1, position: 'relative',
       }}>
 
-        {/* LEFT: Em Campo + Setores Frios */}
-        <EmCampoPanel emCampo={emCampo} setoresFrios={setoresFrios} />
+        {/* LEFT: Em Campo + Setores Frios + Canais Hoje */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <EmCampoPanel emCampo={emCampo} setoresFrios={setoresFrios} />
+          </div>
+          <TVCard title="Canais · Hoje" style={{ flex: '0 0 auto' }}>
+            <CanalChart canais={canalBreakdown} />
+          </TVCard>
+        </div>
 
-        {/* CENTER: Próximo Evento + Pipeline (hero) + Canais */}
+        {/* CENTER: Próximo Evento + Pipeline (hero) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
           <ProximoEvento jogos={jogosHoje} shows={showsHoje} festas={festasHoje} />
           <TVCard title="Pipeline · Saúde da Produção" style={{ flex: '0 0 auto' }}>
             <PipelineDonut stats={pipelineStats} velocidade={velocidade} />
-          </TVCard>
-          <TVCard title="Canais · Hoje" style={{ flex: 1, minHeight: 0 }}>
-            <CanalChart canais={canalBreakdown} />
           </TVCard>
         </div>
 
@@ -1805,47 +1841,6 @@ export function TVDisplay({
           </div>
         )}
 
-        {/* Meta — version + refresh countdown */}
-        <div style={{
-          background: C.surface, border: `1px solid ${C.border}`,
-          borderRadius: 16, padding: '12px 14px',
-          display: 'flex', flexDirection: 'column',
-          justifyContent: 'center', gap: 5, minWidth: 110,
-          marginLeft: 'auto',
-        }}>
-          <div style={{
-            fontFamily: 'monospace', fontSize: 8.5, fontWeight: 700,
-            color: C.creamMute, letterSpacing: '0.10em',
-            textTransform: 'uppercase',
-          }}>
-            CIA 2026
-          </div>
-          <div style={{
-            fontFamily: 'monospace', fontSize: 9, color: C.creamFade,
-            letterSpacing: '0.06em',
-          }}>
-            v0.7
-          </div>
-          <div style={{
-            marginTop: 4, paddingTop: 6,
-            borderTop: `1px solid ${C.border}`,
-            display: 'flex', alignItems: 'center', gap: 5,
-          }}>
-            <span style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: refreshIn <= 3 ? C.gold : C.green,
-              boxShadow: refreshIn <= 3 ? `0 0 6px ${C.gold}` : `0 0 6px ${C.green}`,
-              transition: 'background 0.3s',
-            }} />
-            <span style={{
-              fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 700,
-              color: C.creamDim, letterSpacing: '-0.02em',
-              fontVariantNumeric: 'tabular-nums',
-            }}>
-              ↻ {refreshIn}s
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* ═══════ ROW 7 — BROADCAST TICKER (full-width) ═══════════════════════ */}

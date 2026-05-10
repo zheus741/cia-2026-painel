@@ -514,7 +514,7 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
     { label: 'Rascunho',   value: stats.rascunho,     color: C.creamFade },
   ]
   const total = stats.total || 1
-  const R = 46, CX = 56, CY = 56, stroke = 11
+  const R = 50, CX = 60, CY = 60, stroke = 11
   const Cf = 2 * Math.PI * R
   let cumulative = 0
   const arcs = segments.map(seg => {
@@ -525,11 +525,13 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
     return { ...seg, dashArray, dashOffset }
   })
   const pct = Math.round((stats.publicado / total) * 100)
+  const visibleSegs = segments.filter(s => s.value > 0)
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-      <div style={{ position: 'relative', flexShrink: 0 }}>
-        <svg width={112} height={112} viewBox="0 0 112 112">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Donut centered */}
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignSelf: 'center' }}>
+        <svg width={120} height={120} viewBox="0 0 120 120">
           <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(250,247,240,0.05)" strokeWidth={stroke} />
           {arcs.map((arc) => (
             <circle key={arc.label} cx={CX} cy={CY} r={R} fill="none" stroke={arc.color} strokeWidth={stroke}
@@ -543,59 +545,74 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
           position: 'absolute', inset: 0,
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
         }}>
           <span style={{
-            fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800,
+            fontFamily: FONT_DISPLAY, fontSize: 28, fontWeight: 800,
             color: C.gold, letterSpacing: '-0.04em', lineHeight: 1,
           }}>
             {pct}<span style={{ fontSize: 14, marginLeft: 1 }}>%</span>
           </span>
           <span style={{
-            fontFamily: FONT_DISPLAY, fontSize: 8, fontWeight: 700,
-            color: C.creamMute, letterSpacing: '0.16em',
-            textTransform: 'uppercase', marginTop: 1,
+            fontFamily: FONT_DISPLAY, fontSize: 8, fontWeight: 800,
+            color: C.creamMute, letterSpacing: '0.18em',
+            textTransform: 'uppercase', marginTop: 2,
           }}>
             saúde
           </span>
         </div>
       </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {segments.filter(s => s.value > 0).map(seg => (
-          <div key={seg.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 10.5, color: C.creamDim }}>{seg.label}</span>
+      {/* Legend — 2-column grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+        {visibleSegs.map(seg => (
+          <div key={seg.label} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '4px 8px', borderRadius: 8,
+            background: 'rgba(250,247,240,0.03)',
+            border: `1px solid ${C.border}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
+              <span style={{
+                fontSize: 9.5, color: C.creamDim, letterSpacing: '-0.01em',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {seg.label}
+              </span>
             </div>
             <span style={{
-              fontFamily: FONT_DISPLAY, fontSize: 13, fontWeight: 700,
+              fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 700,
               color: seg.color, letterSpacing: '-0.02em',
               fontVariantNumeric: 'tabular-nums',
+              flexShrink: 0, marginLeft: 4,
             }}>
               {seg.value}
             </span>
           </div>
         ))}
-        <div style={{
-          marginTop: 8, padding: '5px 10px', borderRadius: 10,
-          background: velocidade > 0 ? 'rgba(74,160,106,0.10)' : 'rgba(250,247,240,0.04)',
-          border: `1px solid ${velocidade > 0 ? 'rgba(74,160,106,0.22)' : C.border}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      </div>
+
+      {/* Velocity — full width */}
+      <div style={{
+        padding: '7px 12px', borderRadius: 10,
+        background: velocidade > 0 ? 'rgba(74,160,106,0.10)' : 'rgba(250,247,240,0.04)',
+        border: `1px solid ${velocidade > 0 ? 'rgba(74,160,106,0.22)' : C.border}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span style={{
+          fontFamily: FONT_DISPLAY, fontSize: 9, color: C.creamMute,
+          letterSpacing: '0.16em', fontWeight: 800, textTransform: 'uppercase',
         }}>
-          <span style={{
-            fontSize: 8.5, color: C.creamMute, letterSpacing: '0.14em',
-            fontWeight: 700, textTransform: 'uppercase',
-          }}>
-            Velocidade
-          </span>
-          <span style={{
-            fontFamily: FONT_DISPLAY, fontSize: 14, fontWeight: 800,
-            color: C.green, letterSpacing: '-0.03em',
-            fontVariantNumeric: 'tabular-nums',
-          }}>
-            +{velocidade}<span style={{ fontSize: 10, color: 'rgba(74,160,106,0.55)', marginLeft: 1 }}>/h</span>
-          </span>
-        </div>
+          Velocidade
+        </span>
+        <span style={{
+          fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 800,
+          color: C.green, letterSpacing: '-0.04em',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          +{velocidade}<span style={{ fontSize: 11, color: 'rgba(74,160,106,0.55)', marginLeft: 1, fontWeight: 600 }}>/h</span>
+        </span>
       </div>
     </div>
   )
@@ -608,31 +625,68 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
 function FourDayChart({ dias }: { dias: DiaStat[] }) {
   const maxTotal = Math.max(...dias.map(d => d.total), 1)
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, height: '100%' }}>
+    <div style={{
+      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+      gap: 16, height: '100%', alignItems: 'end',
+    }}>
       {dias.map(d => {
         const barH = (d.total / maxTotal) * 100
         const pubH = d.total > 0 ? (d.publicados / d.total) * barH : 0
         const pct  = d.total > 0 ? Math.round((d.publicados / d.total) * 100) : 0
         return (
-          <div key={d.idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: 52, height: 64, display: 'flex', alignItems: 'flex-end' }}>
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${barH}%`, minHeight: d.total > 0 ? 4 : 0, background: C.surfaceHi, borderRadius: '6px 6px 0 0' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${pubH}%`, minHeight: d.publicados > 0 ? 4 : 0, background: `linear-gradient(180deg, ${C.gold} 0%, #C9AC2F 100%)`, borderRadius: '6px 6px 0 0', boxShadow: d.publicados > 0 ? `0 0 12px ${C.gold}50` : 'none', transition: 'height 1.2s cubic-bezier(0.16, 1, 0.3, 1)' }} />
+          <div key={d.idx} style={{
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'stretch', justifyContent: 'flex-end',
+            height: '100%', minWidth: 0,
+          }}>
+            {/* Day label on top */}
+            <div style={{
+              fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 800,
+              color: C.creamDim, marginBottom: 4,
+              letterSpacing: '0.10em', textTransform: 'uppercase',
+              textAlign: 'center',
+            }}>
+              {d.label.split('·')[0].trim()}
             </div>
-            <div style={{ marginTop: 6, textAlign: 'center' }}>
+
+            {/* Bar */}
+            <div style={{
+              position: 'relative',
+              width: '100%', height: 60,
+              display: 'flex', alignItems: 'flex-end',
+            }}>
               <div style={{
-                fontFamily: FONT_DISPLAY, fontSize: 14, fontWeight: 800,
-                color: C.gold, lineHeight: 1, letterSpacing: '-0.03em',
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                height: `${barH}%`, minHeight: d.total > 0 ? 4 : 0,
+                background: C.surfaceHi, borderRadius: '8px 8px 0 0',
+              }} />
+              <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                height: `${pubH}%`, minHeight: d.publicados > 0 ? 4 : 0,
+                background: `linear-gradient(180deg, ${C.gold} 0%, #C9AC2F 100%)`,
+                borderRadius: '8px 8px 0 0',
+                boxShadow: d.publicados > 0 ? `0 -2px 14px ${C.gold}50` : 'none',
+                transition: 'height 1.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              }} />
+            </div>
+
+            {/* Numbers below */}
+            <div style={{ marginTop: 8, textAlign: 'center' }}>
+              <div style={{
+                fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 800,
+                color: d.publicados > 0 ? C.gold : C.creamMute,
+                lineHeight: 1, letterSpacing: '-0.04em',
                 fontVariantNumeric: 'tabular-nums',
               }}>
-                {d.publicados}<span style={{ fontSize: 9, color: 'rgba(240,208,74,0.42)', fontWeight: 600 }}>/{d.total}</span>
+                {d.publicados}<span style={{ fontSize: 12, color: 'rgba(240,208,74,0.42)', fontWeight: 600 }}>/{d.total}</span>
               </div>
-              <div style={{ fontSize: 9, color: C.creamFade, marginTop: 2 }}>{pct}%</div>
               <div style={{
-                fontSize: 9.5, fontWeight: 600, color: C.creamMute, marginTop: 3,
-                lineHeight: 1.1, letterSpacing: '-0.01em',
+                fontFamily: FONT_DISPLAY, fontSize: 10, fontWeight: 700,
+                color: pct >= 70 ? C.green : pct > 0 ? C.creamDim : C.creamFade,
+                marginTop: 3, letterSpacing: '-0.01em',
+                fontVariantNumeric: 'tabular-nums',
               }}>
-                {d.label.split('·')[0].trim()}
+                {pct}%
               </div>
             </div>
           </div>
@@ -925,30 +979,306 @@ function KPI({ value, label, sub, color = C.cream, accent = false }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NotifTicker — scrolling recent publications
+// BroadcastTicker — full-width newsroom-style scrolling feed
 // ─────────────────────────────────────────────────────────────────────────────
 
-function NotifTicker({ items }: { items: RecentPublicado[] }) {
+type TickerItem = {
+  label:   string
+  text:    string
+  detail?: string
+  color:   string
+  pulse?:  boolean
+}
+
+interface TickerSource {
+  jogosAoVivo:      Jogo[]
+  recentPublicados: RecentPublicado[]
+  jogosHoje:        Jogo[]
+  showsHoje:        EventItem[]
+  festasHoje:       EventItem[]
+  emCampo:          EmCampoItem[]
+  setoresFrios:     string[]
+  capturasCount:    number
+  pipelineStats:    PipelineStats
+  velocidade:       number
+  equipeAtiva:      number
+  weatherData:      WeatherDay[] | null
+  ckTotal:          number
+  ckFeitos:         number
+}
+
+function buildTickerItems(s: TickerSource): TickerItem[] {
+  const items: TickerItem[] = []
+  const now = Date.now()
+
+  // 🔴 Live games (highest priority — pulse)
+  for (const j of s.jogosAoVivo) {
+    items.push({
+      label:  'AO VIVO',
+      text:   `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`,
+      detail: `${j.placar_a ?? 0} × ${j.placar_b ?? 0}`,
+      color:  C.red,
+      pulse:  true,
+    })
+  }
+
+  // ⚠ Setores frios (alert — pulse)
+  if (s.setoresFrios.length > 0) {
+    items.push({
+      label:  'ATENÇÃO',
+      text:   `${s.setoresFrios.length} ${s.setoresFrios.length === 1 ? 'setor sem cobertura' : 'setores sem cobertura'}`,
+      detail: s.setoresFrios.slice(0, 3).join(' · '),
+      color:  C.terracotta,
+      pulse:  true,
+    })
+  }
+
+  // 📊 Pipeline saúde
+  if (s.pipelineStats.total > 0) {
+    const healthPct = Math.round((s.pipelineStats.publicado / s.pipelineStats.total) * 100)
+    items.push({
+      label:  'SAÚDE',
+      text:   `${healthPct}% pipeline`,
+      detail: `${s.pipelineStats.publicado}/${s.pipelineStats.total} publicados`,
+      color:  healthPct >= 70 ? C.green : healthPct >= 40 ? C.gold : C.terracotta,
+    })
+  }
+
+  // 🟢 Em campo
+  if (s.emCampo.length > 0) {
+    items.push({
+      label:  'EM CAMPO',
+      text:   `${s.emCampo.length} ${s.emCampo.length === 1 ? 'pessoa ativa' : 'pessoas ativas'}`,
+      detail: s.emCampo.slice(0, 2).map(p => p.nome.split(' ')[0]).join(' · '),
+      color:  C.green,
+    })
+  }
+
+  // 📈 Ritmo (velocidade)
+  if (s.velocidade > 0) {
+    items.push({
+      label:  'RITMO',
+      text:   `+${s.velocidade}/h publicações`,
+      color:  C.gold,
+    })
+  }
+
+  // ✓ Recent publications (newest first)
+  for (const p of [...s.recentPublicados].reverse().slice(0, 6)) {
+    if (!p.titulo) continue
+    items.push({
+      label:  'PUBLICADO',
+      text:   p.titulo,
+      detail: p.canal ? CANAL_LABELS[p.canal] ?? p.canal : undefined,
+      color:  C.green,
+    })
+  }
+
+  // ⏰ Próximos eventos (next 4)
+  type FutureEv = { inicio: string; label: string; type: string }
+  const futures: FutureEv[] = []
+  for (const j of s.jogosHoje) {
+    if (j.inicio && new Date(j.inicio).getTime() > now) {
+      futures.push({ inicio: j.inicio, label: `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`, type: 'jogo' })
+    }
+  }
+  for (const ev of s.showsHoje) {
+    if (ev.inicio && new Date(ev.inicio).getTime() > now) {
+      futures.push({ inicio: ev.inicio, label: ev.nome ?? '', type: 'show' })
+    }
+  }
+  for (const ev of s.festasHoje) {
+    if (ev.inicio && new Date(ev.inicio).getTime() > now) {
+      futures.push({ inicio: ev.inicio, label: ev.nome ?? '', type: 'festa' })
+    }
+  }
+  futures.sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime())
+  for (const ev of futures.slice(0, 4)) {
+    const minsToStart = Math.round((new Date(ev.inicio).getTime() - now) / 60_000)
+    const timeStr =
+      minsToStart < 60   ? `em ${minsToStart}min` :
+      minsToStart < 1440 ? `em ${Math.floor(minsToStart/60)}h${minsToStart%60>0?`${String(minsToStart%60).padStart(2,'0')}m`:''}` :
+      fmtTime(ev.inicio)
+    items.push({
+      label:  ev.type === 'jogo' ? 'PRÓXIMO JOGO' : ev.type === 'show' ? 'PRÓXIMO SHOW' : 'PRÓXIMA FESTA',
+      text:   ev.label,
+      detail: timeStr,
+      color:  ev.type === 'jogo' ? C.green : ev.type === 'show' ? C.lavender : C.terracotta,
+    })
+  }
+
+  // 📷 Capturas pendentes
+  if (s.capturasCount > 0) {
+    items.push({
+      label:  'PENDENTE',
+      text:   `${s.capturasCount} ${s.capturasCount === 1 ? 'captura aguardando' : 'capturas aguardando'} edição`,
+      color:  C.gold,
+    })
+  }
+
+  // ✅ Checklist
+  if (s.ckTotal > 0) {
+    const ckPct = Math.round((s.ckFeitos / s.ckTotal) * 100)
+    items.push({
+      label:  'CHECKLIST',
+      text:   `${ckPct}% concluído`,
+      detail: `${s.ckFeitos}/${s.ckTotal} itens`,
+      color:  ckPct >= 70 ? C.green : C.gold,
+    })
+  }
+
+  // 👥 Equipe ativa
+  if (s.equipeAtiva > 0) {
+    items.push({
+      label:  'EQUIPE',
+      text:   `${s.equipeAtiva} ${s.equipeAtiva === 1 ? 'pessoa escalada' : 'pessoas escaladas'} hoje`,
+      color:  C.cream,
+    })
+  }
+
+  // 🌡️ Weather today + tomorrow
+  if (s.weatherData?.[0]) {
+    const w = s.weatherData[0]
+    items.push({
+      label:  'CLIMA HOJE',
+      text:   `${w.emoji} ${w.tMax}°/${w.tMin}°`,
+      detail: `${w.rain}% chuva`,
+      color:  C.lavender,
+    })
+  }
+  if (s.weatherData?.[1]) {
+    const w = s.weatherData[1]
+    items.push({
+      label:  'AMANHÃ',
+      text:   `${w.emoji} ${w.tMax}°/${w.tMin}°`,
+      detail: `${w.rain}% chuva`,
+      color:  C.lavender,
+    })
+  }
+
+  return items
+}
+
+function BroadcastTicker({ items }: { items: TickerItem[] }) {
   if (items.length === 0) return null
-  const displayItems = [...items, ...items]
+
+  // Repeat for seamless loop
+  const duplicated = [...items, ...items, ...items]
+
+  // Animation duration scales with content length
+  const totalChars = items.reduce((sum, i) => sum + i.label.length + i.text.length + (i.detail?.length ?? 0), 0)
+  const duration = Math.max(45, Math.min(150, totalChars * 0.22))
 
   return (
-    <div style={{ overflow: 'hidden', flex: 1, display: 'flex', alignItems: 'center' }}>
+    <div style={{
+      background: 'rgba(250,247,240,0.04)',
+      border: `1px solid ${C.border}`,
+      borderRadius: 16,
+      height: 54,
+      display: 'flex',
+      alignItems: 'stretch',
+      overflow: 'hidden',
+      flexShrink: 0,
+      position: 'relative',
+    }}>
+      {/* Fixed brand badge — left */}
       <div style={{
-        display: 'flex', gap: 24, alignItems: 'center',
-        animation: `ticker ${Math.max(20, items.length * 4)}s linear infinite`,
-        whiteSpace: 'nowrap',
+        flexShrink: 0,
+        padding: '0 18px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: `linear-gradient(90deg, ${C.gold}18 0%, ${C.gold}05 100%)`,
+        borderRight: `1px solid ${C.gold}30`,
       }}>
-        {displayItems.map((item, i) => (
-          <div key={`${item.id}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
-            <span style={{ width: 5, height: 5, borderRadius: '50%', background: CANAL_COLOR[item.canal ?? ''] ?? C.green, flexShrink: 0 }} />
-            <span style={{ fontSize: 10, color: C.creamDim, letterSpacing: '-0.01em' }}>
-              {item.titulo ?? 'Sem título'}
-              {item.canal && <span style={{ color: C.creamMute }}> · {CANAL_LABELS[item.canal] ?? item.canal}</span>}
-            </span>
-            <span style={{ fontSize: 10, color: C.creamFade }}>·</span>
-          </div>
-        ))}
+        <span style={{
+          width: 9, height: 9, borderRadius: '50%',
+          background: C.gold,
+          boxShadow: `0 0 12px ${C.gold}cc`,
+          animation: 'ping 1.8s ease-in-out infinite',
+        }} />
+        <span style={{
+          fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 800,
+          color: C.gold, letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+        }}>
+          Newsfeed
+        </span>
+      </div>
+
+      {/* Scrolling rail */}
+      <div style={{
+        flex: 1, overflow: 'hidden',
+        position: 'relative',
+        display: 'flex', alignItems: 'center',
+      }}>
+        <div style={{
+          display: 'flex', gap: 0, alignItems: 'center',
+          animation: `ticker ${duration}s linear infinite`,
+          whiteSpace: 'nowrap', paddingLeft: 28,
+        }}>
+          {duplicated.map((item, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 11,
+              flexShrink: 0, paddingRight: 32,
+            }}>
+              {/* Category badge */}
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontFamily: FONT_DISPLAY,
+                fontSize: 9, fontWeight: 800,
+                letterSpacing: '0.16em', textTransform: 'uppercase',
+                color: item.color,
+                background: `${item.color}14`,
+                border: `1px solid ${item.color}32`,
+                borderRadius: 99,
+                padding: '3px 10px',
+                flexShrink: 0,
+              }}>
+                {item.pulse && (
+                  <span style={{
+                    width: 5, height: 5, borderRadius: '50%',
+                    background: item.color,
+                    boxShadow: `0 0 6px ${item.color}`,
+                    animation: 'ping 1.5s ease-in-out infinite',
+                    flexShrink: 0,
+                  }} />
+                )}
+                {item.label}
+              </span>
+
+              {/* Main text */}
+              <span style={{
+                fontFamily: FONT_DISPLAY,
+                fontSize: 13, fontWeight: 600,
+                color: C.cream,
+                letterSpacing: '-0.01em',
+              }}>
+                {item.text}
+              </span>
+
+              {/* Detail / value */}
+              {item.detail && (
+                <span style={{
+                  fontFamily: FONT_DISPLAY,
+                  fontSize: 13, fontWeight: 800,
+                  color: item.color,
+                  letterSpacing: '-0.02em',
+                  fontVariantNumeric: 'tabular-nums',
+                  paddingLeft: 11,
+                  borderLeft: `1px solid ${C.border}`,
+                }}>
+                  {item.detail}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Soft fade on right edge */}
+        <div style={{
+          position: 'absolute', top: 0, right: 0, bottom: 0, width: 60,
+          background: `linear-gradient(90deg, transparent, ${C.bg})`,
+          pointerEvents: 'none',
+        }} />
       </div>
     </div>
   )
@@ -1080,6 +1410,14 @@ export function TVDisplay({
   const hasAlerts    = setoresFrios.length > 0
   const healthColor  = healthPct >= 70 ? C.green : healthPct >= 40 ? C.gold : C.terracotta
   const ckColor      = checklistPct >= 70 ? C.green : C.gold
+
+  // Broadcast ticker — comprehensive newsroom feed
+  const tickerItems = buildTickerItems({
+    jogosAoVivo, recentPublicados, jogosHoje, showsHoje, festasHoje,
+    emCampo, setoresFrios, capturasCount,
+    pipelineStats, velocidade, equipeAtiva,
+    weatherData, ckTotal, ckFeitos,
+  })
 
   return (
     <div style={{
@@ -1325,15 +1663,15 @@ export function TVDisplay({
         </div>
       </div>
 
-      {/* ═══════ ROW 6 — FOOTER ══════════════════════════════════════════════ */}
+      {/* ═══════ ROW 6 — STATS (chart + weather + meta) ═════════════════════ */}
       <div style={{
         display: 'grid', gridTemplateColumns: '1fr auto auto',
         gap: 10, zIndex: 1, position: 'relative', flexShrink: 0,
         borderTop: `1px solid ${C.border}`, paddingTop: 8,
       }}>
         {/* 4-day chart */}
-        <TVCard title="Conteúdos por Dia" style={{ padding: '10px 14px' }}>
-          <div style={{ height: 92 }}>
+        <TVCard title="Conteúdos por Dia" style={{ padding: '12px 16px' }}>
+          <div style={{ height: 110 }}>
             <FourDayChart dias={conteudosPorDia} />
           </div>
         </TVCard>
@@ -1342,62 +1680,86 @@ export function TVDisplay({
         {weatherData && (
           <div style={{
             background: C.surface, border: `1px solid ${C.border}`,
-            borderRadius: 16, padding: '10px 12px',
+            borderRadius: 16, padding: '12px 14px',
             display: 'flex', flexDirection: 'column',
           }}>
             <p style={{
               fontFamily: FONT_DISPLAY, fontSize: 8.5, fontWeight: 800,
               textTransform: 'uppercase', letterSpacing: '0.18em',
-              color: C.creamMute, marginBottom: 7, flexShrink: 0,
+              color: C.creamMute, marginBottom: 8, flexShrink: 0,
             }}>
               Clima
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 56px)', gap: 5, flex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 60px)', gap: 6, flex: 1 }}>
               {weatherData.map(day => (
                 <div key={day.date} style={{
                   background: 'rgba(250,247,240,0.03)',
                   border: `1px solid ${C.border}`,
-                  borderRadius: 10, padding: '5px 6px', textAlign: 'center',
+                  borderRadius: 10, padding: '6px 7px', textAlign: 'center',
                 }}>
-                  <div style={{ fontSize: 7, color: C.creamFade, marginBottom: 2, letterSpacing: '0.04em' }}>
+                  <div style={{ fontSize: 7.5, color: C.creamFade, marginBottom: 2, letterSpacing: '0.04em' }}>
                     {day.date.slice(8,10)}/06
                   </div>
-                  <div style={{ fontSize: 16, lineHeight: 1, marginBottom: 2 }}>{day.emoji}</div>
+                  <div style={{ fontSize: 16, lineHeight: 1, marginBottom: 3 }}>{day.emoji}</div>
                   <div style={{
-                    fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 800,
+                    fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 800,
                     color: C.cream, letterSpacing: '-0.02em',
                     fontVariantNumeric: 'tabular-nums',
                   }}>
-                    {day.tMax}°<span style={{ fontSize: 8, color: C.creamMute, fontWeight: 500 }}>/{day.tMin}°</span>
+                    {day.tMax}°<span style={{ fontSize: 9, color: C.creamMute, fontWeight: 500 }}>/{day.tMin}°</span>
                   </div>
-                  <div style={{ fontSize: 7.5, color: C.creamFade, marginTop: 2 }}>💧{day.rain}%</div>
+                  <div style={{ fontSize: 8, color: C.creamFade, marginTop: 2 }}>💧{day.rain}%</div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Ticker + meta */}
+        {/* Meta — version + refresh countdown */}
         <div style={{
+          background: C.surface, border: `1px solid ${C.border}`,
+          borderRadius: 16, padding: '12px 14px',
           display: 'flex', flexDirection: 'column',
-          justifyContent: 'space-between', gap: 5, padding: '8px 0', maxWidth: 220,
+          justifyContent: 'center', gap: 5, minWidth: 90,
         }}>
-          <NotifTicker items={recentPublicados} />
-          <div style={{ textAlign: 'right' }}>
-            <div style={{
-              fontSize: 8, color: C.creamFade, fontFamily: 'monospace',
-              letterSpacing: '0.06em',
-            }}>
-              CIA 2026 · v0.7
-            </div>
-            <div style={{
-              fontSize: 8, color: C.creamFade, letterSpacing: '0.05em',
+          <div style={{
+            fontFamily: 'monospace', fontSize: 8.5, fontWeight: 700,
+            color: C.creamMute, letterSpacing: '0.10em',
+            textTransform: 'uppercase',
+          }}>
+            CIA 2026
+          </div>
+          <div style={{
+            fontFamily: 'monospace', fontSize: 9, color: C.creamFade,
+            letterSpacing: '0.06em',
+          }}>
+            v0.7
+          </div>
+          <div style={{
+            marginTop: 4, paddingTop: 6,
+            borderTop: `1px solid ${C.border}`,
+            display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            <span style={{
+              width: 5, height: 5, borderRadius: '50%',
+              background: refreshIn <= 3 ? C.gold : C.green,
+              boxShadow: refreshIn <= 3 ? `0 0 6px ${C.gold}` : `0 0 6px ${C.green}`,
+              transition: 'background 0.3s',
+            }} />
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 700,
+              color: C.creamDim, letterSpacing: '-0.02em',
               fontVariantNumeric: 'tabular-nums',
             }}>
               ↻ {refreshIn}s
-            </div>
+            </span>
           </div>
         </div>
+      </div>
+
+      {/* ═══════ ROW 7 — BROADCAST TICKER (full-width) ═══════════════════════ */}
+      <div style={{ zIndex: 1, position: 'relative', flexShrink: 0 }}>
+        <BroadcastTicker items={tickerItems} />
       </div>
 
       {/* ═══════ Celebration Overlay ═════════════════════════════════════════ */}

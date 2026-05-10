@@ -514,7 +514,7 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
     { label: 'Rascunho',   value: stats.rascunho,     color: C.creamFade },
   ]
   const total = stats.total || 1
-  const R = 50, CX = 60, CY = 60, stroke = 11
+  const R = 56, CX = 66, CY = 66, stroke = 12
   const Cf = 2 * Math.PI * R
   let cumulative = 0
   const arcs = segments.map(seg => {
@@ -526,12 +526,13 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
   })
   const pct = Math.round((stats.publicado / total) * 100)
   const visibleSegs = segments.filter(s => s.value > 0)
+  const velActive = velocidade > 0
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Donut centered */}
-      <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignSelf: 'center' }}>
-        <svg width={120} height={120} viewBox="0 0 120 120">
+    <div style={{ display: 'flex', alignItems: 'stretch', gap: 18 }}>
+      {/* Donut */}
+      <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+        <svg width={132} height={132} viewBox="0 0 132 132">
           <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(250,247,240,0.05)" strokeWidth={stroke} />
           {arcs.map((arc) => (
             <circle key={arc.label} cx={CX} cy={CY} r={R} fill="none" stroke={arc.color} strokeWidth={stroke}
@@ -548,44 +549,49 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
           pointerEvents: 'none',
         }}>
           <span style={{
-            fontFamily: FONT_DISPLAY, fontSize: 28, fontWeight: 800,
+            fontFamily: FONT_DISPLAY, fontSize: 32, fontWeight: 800,
             color: C.gold, letterSpacing: '-0.04em', lineHeight: 1,
           }}>
-            {pct}<span style={{ fontSize: 14, marginLeft: 1 }}>%</span>
+            {pct}<span style={{ fontSize: 16, marginLeft: 1 }}>%</span>
           </span>
           <span style={{
-            fontFamily: FONT_DISPLAY, fontSize: 8, fontWeight: 800,
+            fontFamily: FONT_DISPLAY, fontSize: 8.5, fontWeight: 800,
             color: C.creamMute, letterSpacing: '0.18em',
-            textTransform: 'uppercase', marginTop: 2,
+            textTransform: 'uppercase', marginTop: 3,
           }}>
             saúde
           </span>
         </div>
       </div>
 
-      {/* Legend — 2-column grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+      {/* Legend — vertical list */}
+      <div style={{
+        flex: 1, minWidth: 0,
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', gap: 5,
+      }}>
         {visibleSegs.map(seg => (
           <div key={seg.label} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '4px 8px', borderRadius: 8,
-            background: 'rgba(250,247,240,0.03)',
+            padding: '5px 10px', borderRadius: 9,
+            background: 'rgba(250,247,240,0.035)',
             border: `1px solid ${C.border}`,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
               <span style={{
-                fontSize: 9.5, color: C.creamDim, letterSpacing: '-0.01em',
+                fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 600,
+                color: C.creamDim, letterSpacing: '-0.01em',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {seg.label}
               </span>
             </div>
             <span style={{
-              fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 700,
-              color: seg.color, letterSpacing: '-0.02em',
+              fontFamily: FONT_DISPLAY, fontSize: 14, fontWeight: 800,
+              color: seg.color, letterSpacing: '-0.03em',
               fontVariantNumeric: 'tabular-nums',
-              flexShrink: 0, marginLeft: 4,
+              flexShrink: 0, marginLeft: 6,
             }}>
               {seg.value}
             </span>
@@ -593,25 +599,29 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
         ))}
       </div>
 
-      {/* Velocity — full width */}
+      {/* Velocity — dedicated stat card */}
       <div style={{
-        padding: '7px 12px', borderRadius: 10,
-        background: velocidade > 0 ? 'rgba(74,160,106,0.10)' : 'rgba(250,247,240,0.04)',
-        border: `1px solid ${velocidade > 0 ? 'rgba(74,160,106,0.22)' : C.border}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexShrink: 0,
+        minWidth: 110,
+        padding: '12px 16px', borderRadius: 14,
+        background: velActive ? 'rgba(74,160,106,0.10)' : 'rgba(250,247,240,0.04)',
+        border: `1px solid ${velActive ? 'rgba(74,160,106,0.25)' : C.border}`,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        textAlign: 'center', gap: 4,
       }}>
         <span style={{
-          fontFamily: FONT_DISPLAY, fontSize: 9, color: C.creamMute,
-          letterSpacing: '0.16em', fontWeight: 800, textTransform: 'uppercase',
+          fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 800,
+          color: velActive ? C.green : C.creamMute, letterSpacing: '-0.04em',
+          fontVariantNumeric: 'tabular-nums', lineHeight: 1,
         }}>
-          Velocidade
+          +{velocidade}<span style={{ fontSize: 13, color: velActive ? 'rgba(74,160,106,0.55)' : C.creamFade, marginLeft: 1, fontWeight: 600 }}>/h</span>
         </span>
         <span style={{
-          fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 800,
-          color: C.green, letterSpacing: '-0.04em',
-          fontVariantNumeric: 'tabular-nums',
+          fontFamily: FONT_DISPLAY, fontSize: 8.5, fontWeight: 800,
+          color: C.creamMute, letterSpacing: '0.16em', textTransform: 'uppercase',
         }}>
-          +{velocidade}<span style={{ fontSize: 11, color: 'rgba(74,160,106,0.55)', marginLeft: 1, fontWeight: 600 }}>/h</span>
+          Velocidade
         </span>
       </div>
     </div>
@@ -621,6 +631,85 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
 // ─────────────────────────────────────────────────────────────────────────────
 // FourDayChart — editorial bars
 // ─────────────────────────────────────────────────────────────────────────────
+
+function FourDayChartHorizontal({ dias }: { dias: DiaStat[] }) {
+  const maxTotal = Math.max(...dias.map(d => d.total), 1)
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {dias.map(d => {
+        const totalRel = (d.total / maxTotal) * 100
+        const pubRel   = d.total > 0 ? (d.publicados / d.total) * totalRel : 0
+        const pct      = d.total > 0 ? Math.round((d.publicados / d.total) * 100) : 0
+        const dayLabel = d.label.split('·')[0].trim()
+        return (
+          <div key={d.idx} style={{
+            display: 'grid',
+            gridTemplateColumns: '36px 1fr 64px',
+            alignItems: 'center', gap: 10,
+          }}>
+            {/* Day label */}
+            <div style={{
+              fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 800,
+              color: d.publicados > 0 ? C.creamDim : C.creamMute,
+              letterSpacing: '0.10em', textTransform: 'uppercase',
+              textAlign: 'right',
+            }}>
+              {dayLabel}
+            </div>
+
+            {/* Bar track */}
+            <div style={{
+              position: 'relative', height: 16,
+              background: C.surface,
+              borderRadius: 8,
+              border: `1px solid ${C.border}`,
+              overflow: 'hidden',
+            }}>
+              {/* Total reference */}
+              <div style={{
+                position: 'absolute', top: 0, left: 0, height: '100%',
+                width: `${totalRel}%`,
+                background: 'rgba(250,247,240,0.05)',
+              }} />
+              {/* Published gold fill */}
+              <div style={{
+                position: 'absolute', top: 0, left: 0, height: '100%',
+                width: `${pubRel}%`,
+                minWidth: d.publicados > 0 ? 4 : 0,
+                background: `linear-gradient(90deg, ${C.gold} 0%, #C9AC2F 100%)`,
+                borderRadius: 8,
+                boxShadow: d.publicados > 0 ? `0 0 14px ${C.gold}45` : 'none',
+                transition: 'width 1s cubic-bezier(0.16, 1, 0.3, 1)',
+              }} />
+            </div>
+
+            {/* Numbers */}
+            <div style={{
+              display: 'flex', alignItems: 'baseline', gap: 7,
+              justifyContent: 'flex-end',
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              <span style={{
+                fontFamily: FONT_DISPLAY, fontSize: 14, fontWeight: 800,
+                color: d.publicados > 0 ? C.gold : C.creamMute,
+                letterSpacing: '-0.03em', lineHeight: 1,
+              }}>
+                {d.publicados}<span style={{ fontSize: 10, color: 'rgba(240,208,74,0.42)', fontWeight: 600 }}>/{d.total}</span>
+              </span>
+              <span style={{
+                fontFamily: FONT_DISPLAY, fontSize: 10, fontWeight: 700,
+                color: pct >= 70 ? C.green : pct > 0 ? C.creamDim : C.creamFade,
+                letterSpacing: '-0.01em', minWidth: 26, textAlign: 'right',
+              }}>
+                {pct}%
+              </span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function FourDayChart({ dias }: { dias: DiaStat[] }) {
   const maxTotal = Math.max(...dias.map(d => d.total), 1)
@@ -1603,79 +1692,80 @@ export function TVDisplay({
       {/* ═══════ ROW 5 — MAIN CONTENT ════════════════════════════════════════ */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '210px 1fr 230px',
-        gap: 10, flex: 1, minHeight: 0,
+        gridTemplateColumns: '220px 1fr 300px',
+        gap: 12, flex: 1, minHeight: 0,
         zIndex: 1, position: 'relative',
       }}>
 
         {/* LEFT: Em Campo + Setores Frios */}
         <EmCampoPanel emCampo={emCampo} setoresFrios={setoresFrios} />
 
-        {/* CENTER: Próximo Evento + Timeline */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
+        {/* CENTER: Próximo Evento + Pipeline (hero) + Canais */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
           <ProximoEvento jogos={jogosHoje} shows={showsHoje} festas={festasHoje} />
-          <TVCard title={`Timeline · ${jogosHoje.length}j · ${showsHoje.length}s · ${festasHoje.length}f`} style={{ flex: 1 }}>
-            <TVTimeline jogos={jogosHoje} shows={showsHoje} festas={festasHoje} />
+          <TVCard title="Pipeline · Saúde da Produção" style={{ flex: '0 0 auto' }}>
+            <PipelineDonut stats={pipelineStats} velocidade={velocidade} />
+          </TVCard>
+          <TVCard title="Canais · Hoje" style={{ flex: 1, minHeight: 0 }}>
+            <CanalChart canais={canalBreakdown} />
           </TVCard>
         </div>
 
-        {/* RIGHT: Pipeline + Canal + Patrocínio */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0, overflow: 'hidden' }}>
-          <TVCard title="Pipeline · Produção" style={{ flex: '0 0 auto' }}>
-            <PipelineDonut stats={pipelineStats} velocidade={velocidade} />
-          </TVCard>
-          <TVCard title="Canais · Hoje" style={{ flex: 1 }}>
-            <CanalChart canais={canalBreakdown} />
+        {/* RIGHT: Conteúdos por Dia (horizontal) + Patrocínio */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0, overflow: 'hidden' }}>
+          <TVCard title={`Conteúdos por Dia · ${diasEvento.length || 4} dias`} style={{ flex: '0 0 auto' }}>
+            <FourDayChartHorizontal dias={conteudosPorDia} />
           </TVCard>
           {patrocStats.length > 0 && (
-            <TVCard title="Patrocínio" style={{ flex: '0 0 auto' }}>
-              {patrocStats.slice(0, 3).map((p, i) => {
-                const pct = p.total > 0 ? Math.round((p.publicados / p.total) * 100) : 0
-                return (
-                  <div key={p.id} style={{ marginBottom: i < 2 ? 7 : 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                      <span style={{
-                        fontSize: 10, color: C.creamDim, fontWeight: 600, letterSpacing: '-0.01em',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%',
-                      }}>
-                        {p.nome}
-                      </span>
-                      <span style={{
-                        fontFamily: FONT_DISPLAY, fontSize: 10, fontWeight: 700,
-                        color: pct >= 70 ? C.green : C.gold, letterSpacing: '-0.02em',
-                        fontVariantNumeric: 'tabular-nums',
-                      }}>
-                        {pct}%
-                      </span>
+            <TVCard title="Patrocínio" style={{ flex: 1, minHeight: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {patrocStats.slice(0, 5).map((p) => {
+                  const pct = p.total > 0 ? Math.round((p.publicados / p.total) * 100) : 0
+                  return (
+                    <div key={p.id}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                        <span style={{
+                          fontFamily: FONT_DISPLAY,
+                          fontSize: 11, color: C.creamDim, fontWeight: 600, letterSpacing: '-0.01em',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%',
+                        }}>
+                          {p.nome}
+                        </span>
+                        <span style={{
+                          fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 800,
+                          color: pct >= 70 ? C.green : C.gold, letterSpacing: '-0.03em',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}>
+                          {p.publicados}<span style={{ fontSize: 9, color: C.creamFade, fontWeight: 600 }}>/{p.total}</span>
+                          <span style={{ marginLeft: 6, fontSize: 10, color: C.creamMute, fontWeight: 600 }}>{pct}%</span>
+                        </span>
+                      </div>
+                      <div style={{ height: 5, borderRadius: 3, background: C.surface, overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%', width: `${pct}%`,
+                          background: pct >= 70
+                            ? `linear-gradient(90deg, ${C.green}, #5fb37a)`
+                            : `linear-gradient(90deg, ${C.gold}, #C9AC2F)`,
+                          borderRadius: 3,
+                          boxShadow: pct >= 70 ? `0 0 8px ${C.green}50` : `0 0 8px ${C.gold}40`,
+                          transition: 'width 1s ease',
+                        }} />
+                      </div>
                     </div>
-                    <div style={{ height: 4, borderRadius: 3, background: C.surface, overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', width: `${pct}%`,
-                        background: pct >= 70 ? C.green : C.gold, borderRadius: 3,
-                        transition: 'width 1s ease',
-                      }} />
-                    </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </TVCard>
           )}
         </div>
       </div>
 
-      {/* ═══════ ROW 6 — STATS (chart + weather + meta) ═════════════════════ */}
+      {/* ═══════ ROW 6 — STATS (weather + meta) ═════════════════════════════ */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '1fr auto auto',
-        gap: 10, zIndex: 1, position: 'relative', flexShrink: 0,
+        display: 'flex', gap: 10,
+        zIndex: 1, position: 'relative', flexShrink: 0,
         borderTop: `1px solid ${C.border}`, paddingTop: 8,
       }}>
-        {/* 4-day chart */}
-        <TVCard title="Conteúdos por Dia" style={{ padding: '12px 16px' }}>
-          <div style={{ height: 110 }}>
-            <FourDayChart dias={conteudosPorDia} />
-          </div>
-        </TVCard>
-
         {/* Clima */}
         {weatherData && (
           <div style={{
@@ -1720,7 +1810,8 @@ export function TVDisplay({
           background: C.surface, border: `1px solid ${C.border}`,
           borderRadius: 16, padding: '12px 14px',
           display: 'flex', flexDirection: 'column',
-          justifyContent: 'center', gap: 5, minWidth: 90,
+          justifyContent: 'center', gap: 5, minWidth: 110,
+          marginLeft: 'auto',
         }}>
           <div style={{
             fontFamily: 'monospace', fontSize: 8.5, fontWeight: 700,

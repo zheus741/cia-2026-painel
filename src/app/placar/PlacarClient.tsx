@@ -442,6 +442,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
   const [diaId, setDiaId] = useState(diaAtivo)
   const [recentIds, setRecentIds] = useState<Set<string>>(new Set())
   const [conectado, setConectado] = useState(false)
+  const [filterDiv, setFilterDiv] = useState('')
   const [filterMod, setFilterMod] = useState('')
   const [filterConf, setFilterConf] = useState('')
   const [isPendingTeste, startTransitionTeste] = useTransition()
@@ -559,6 +560,10 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
   const jogos = jogosPorDia[diaId] ?? []
 
   // Options for sub-filters (built from the current day's games)
+  const divOptions = Array.from(new Set(
+    jogos.map(j => j.divisao ?? j.equipe_a?.divisao ?? j.equipe_b?.divisao).filter(Boolean) as string[]
+  )).sort()
+
   const modOptions = Array.from(
     new Map(jogos.filter(j => j.modalidade).map(j => [j.modalidade!.nome, j.modalidade!])).values()
   ).sort((a, b) => a.nome.localeCompare(b.nome))
@@ -567,8 +572,15 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
     jogos.flatMap(j => [j.equipe_a?.conferencia, j.equipe_b?.conferencia]).filter(Boolean) as string[]
   )).sort()
 
+  const hasFilters = filterDiv || filterMod || filterConf
+  const hasAnyFilterOptions = divOptions.length > 1 || modOptions.length > 1 || confOptions.length > 1
+
   // Apply sub-filters
   const jogosFiltrados = jogos.filter(j => {
+    if (filterDiv) {
+      const div = j.divisao ?? j.equipe_a?.divisao ?? j.equipe_b?.divisao
+      if (div !== filterDiv) return false
+    }
     if (filterMod && j.modalidade?.nome !== filterMod) return false
     if (filterConf) {
       const hasConf = j.equipe_a?.conferencia === filterConf || j.equipe_b?.conferencia === filterConf
@@ -591,7 +603,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
           return (
             <button
               key={dia.id}
-              onClick={() => setDiaId(dia.id)}
+              onClick={() => { setDiaId(dia.id); setFilterDiv(''); setFilterMod(''); setFilterConf('') }}
               className={`relative flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
                 diaId === dia.id
                   ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
@@ -650,72 +662,106 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
         </span>
       </div>
 
-      {/* Sub-filtros por modalidade + conferência */}
-      {(modOptions.length > 1 || confOptions.length > 1) && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]/60">
-            <Filter className="h-3 w-3" />
-            Filtrar
-          </span>
-
-          {/* Modalidade pills */}
-          {modOptions.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
+      {/* Sub-filtros: divisão / modalidade / conferência */}
+      {hasAnyFilterOptions && (
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]/40 px-4 py-3 space-y-2.5">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60">
+              <Filter className="h-3 w-3" />
+              Filtros
+            </span>
+            {hasFilters && (
               <button
-                onClick={() => setFilterMod('')}
-                className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
-                  filterMod === ''
-                    ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
-                    : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
-                }`}
+                onClick={() => { setFilterDiv(''); setFilterMod(''); setFilterConf('') }}
+                className="text-[10px] font-semibold text-[var(--muted-foreground)]/60 hover:text-[var(--muted-foreground)] underline underline-offset-2"
               >
-                Todas mod.
+                Limpar tudo
               </button>
-              {modOptions.map(m => (
-                <button
-                  key={m.nome}
-                  onClick={() => setFilterMod(prev => prev === m.nome ? '' : m.nome)}
-                  className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
-                    filterMod === m.nome
-                      ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
-                      : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
-                  }`}
-                >
-                  {m.icone} {m.nome}
-                </button>
-              ))}
+            )}
+          </div>
+
+          {/* Divisão */}
+          {divOptions.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]/50 w-20 shrink-0">
+                Divisão
+              </span>
+              {divOptions.map(div => {
+                const cor = DIV_COLORS[div]
+                const active = filterDiv === div
+                return (
+                  <button
+                    key={div}
+                    onClick={() => setFilterDiv(prev => prev === div ? '' : div)}
+                    className="rounded-full border px-3 py-1 text-[11px] font-semibold transition-all"
+                    style={active && cor ? {
+                      borderColor: `${cor}60`,
+                      background: `${cor}20`,
+                      color: cor,
+                    } : active ? {
+                      borderColor: 'var(--green-bright)',
+                      background: 'var(--green-dim)',
+                      color: 'var(--green-bright)',
+                    } : {
+                      borderColor: 'var(--border)',
+                      color: 'var(--muted-foreground)',
+                    }}
+                  >
+                    {div}
+                  </button>
+                )
+              })}
             </div>
           )}
 
-          {/* Conferência pills */}
+          {/* Modalidade */}
+          {modOptions.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]/50 w-20 shrink-0">
+                Modalidade
+              </span>
+              {modOptions.map(m => {
+                const active = filterMod === m.nome
+                return (
+                  <button
+                    key={m.nome}
+                    onClick={() => setFilterMod(prev => prev === m.nome ? '' : m.nome)}
+                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
+                      active
+                        ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
+                        : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
+                    }`}
+                  >
+                    {m.icone} {m.nome}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Conferência */}
           {confOptions.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => setFilterConf('')}
-                className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
-                  filterConf === ''
-                    ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
-                    : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
-                }`}
-              >
-                Todas conf.
-              </button>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]/50 w-20 shrink-0">
+                Conferência
+              </span>
               {confOptions.map(nome => {
                 const meta = getConferencia(nome)
+                const active = filterConf === nome
                 return (
                   <button
                     key={nome}
                     onClick={() => setFilterConf(prev => prev === nome ? '' : nome)}
-                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
-                      filterConf === nome
-                        ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
-                        : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
-                    }`}
-                    style={filterConf === nome && meta ? {
+                    className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all"
+                    style={active && meta ? {
                       borderColor: `${meta.cor}50`,
                       background: `${meta.cor}18`,
                       color: meta.cor,
-                    } : {}}
+                    } : {
+                      borderColor: 'var(--border)',
+                      color: 'var(--muted-foreground)',
+                    }}
                   >
                     {meta?.icone} {nome}
                   </button>
@@ -724,14 +770,14 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
             </div>
           )}
 
-          {/* Clear filters */}
-          {(filterMod || filterConf) && (
-            <button
-              onClick={() => { setFilterMod(''); setFilterConf('') }}
-              className="ml-1 text-[11px] font-semibold text-[var(--muted-foreground)]/60 underline-offset-2 hover:text-[var(--muted-foreground)] hover:underline"
-            >
-              Limpar
-            </button>
+          {/* Resumo do filtro ativo */}
+          {hasFilters && (
+            <p className="text-[10px] text-[var(--muted-foreground)]/50">
+              Mostrando <strong className="text-[var(--foreground)]">{jogosFiltrados.length}</strong> de {jogos.length} jogos
+              {filterDiv && <> · <span style={{ color: DIV_COLORS[filterDiv] ?? 'inherit' }}>{filterDiv}</span></>}
+              {filterMod && <> · {modOptions.find(m => m.nome === filterMod)?.icone} {filterMod}</>}
+              {filterConf && (() => { const m = getConferencia(filterConf); return <> · <span style={{ color: m?.cor }}>{m?.icone} {filterConf}</span></> })()}
+            </p>
           )}
         </div>
       )}
@@ -745,7 +791,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
         <div className="rounded-xl border border-dashed border-[var(--border)] p-10 text-center">
           <p className="text-sm text-[var(--muted-foreground)]">Nenhum jogo com esse filtro.</p>
           <button
-            onClick={() => { setFilterMod(''); setFilterConf('') }}
+            onClick={() => { setFilterDiv(''); setFilterMod(''); setFilterConf('') }}
             className="mt-2 text-xs font-semibold text-[var(--green-bright)] hover:underline"
           >
             Limpar filtros

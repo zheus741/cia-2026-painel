@@ -187,8 +187,82 @@ function HealthCard({ stats }: { stats: ContentStats }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BottleneckCard — gold, pipeline bars
+// BottleneckCard — pipeline bars, dynamic tone by delivery %
 // ─────────────────────────────────────────────────────────────────────────────
+
+type PipelineTone = 'terracotta' | 'gold' | 'green'
+
+interface ToneTokens {
+  eyebrow:     string   // muted label color
+  title:       string   // heading color
+  count:       string   // big number color
+  barLabel:    string   // stage label color
+  barLabelHl:  string   // bottleneck label color
+  barTrack:    string   // track fill
+  barBorder:   string   // track border
+  bnkBar:      string   // bottleneck bar gradient
+  bnkGlow:     string   // bottleneck bar glow
+  bnkBadgeBg:  string   // bottleneck badge bg
+  bnkBadgeBdr: string   // bottleneck badge border
+  bnkBadgeClr: string   // bottleneck badge text
+  footerBdr:   string   // footer divider
+  footerMuted: string   // "X totais" color
+  pctSuffix:   string   // "% entregues" color
+}
+
+const TONE_TOKENS: Record<PipelineTone, ToneTokens> = {
+  terracotta: {
+    eyebrow:     'rgba(255,255,255,0.70)',
+    title:       '#FFFFFF',
+    count:       '#FFFFFF',
+    barLabel:    'rgba(255,255,255,0.80)',
+    barLabelHl:  '#FFFFFF',
+    barTrack:    'rgba(255,255,255,0.18)',
+    barBorder:   'rgba(255,255,255,0.12)',
+    bnkBar:      'linear-gradient(90deg, #FFFFFF 0%, rgba(255,255,255,0.85) 100%)',
+    bnkGlow:     '0 0 12px rgba(255,255,255,0.35)',
+    bnkBadgeBg:  'rgba(255,255,255,0.22)',
+    bnkBadgeBdr: 'rgba(255,255,255,0.30)',
+    bnkBadgeClr: '#FFFFFF',
+    footerBdr:   'rgba(255,255,255,0.18)',
+    footerMuted: 'rgba(255,255,255,0.65)',
+    pctSuffix:   'rgba(255,255,255,0.55)',
+  },
+  gold: {
+    eyebrow:     'rgba(70,50,5,0.65)',
+    title:       '#0A0F0B',
+    count:       '#0A0F0B',
+    barLabel:    'rgba(10,15,11,0.75)',
+    barLabelHl:  '#46320C',
+    barTrack:    'rgba(255,255,255,0.40)',
+    barBorder:   'rgba(70,50,5,0.10)',
+    bnkBar:      'linear-gradient(90deg, #B58812 0%, #E8B82F 100%)',
+    bnkGlow:     '0 0 12px rgba(232,184,47,0.55)',
+    bnkBadgeBg:  'rgba(255,255,255,0.45)',
+    bnkBadgeBdr: 'rgba(70,50,5,0.18)',
+    bnkBadgeClr: '#46320C',
+    footerBdr:   'rgba(70,50,5,0.12)',
+    footerMuted: 'rgba(70,50,5,0.65)',
+    pctSuffix:   'rgba(10,15,11,0.45)',
+  },
+  green: {
+    eyebrow:     'rgba(255,255,255,0.70)',
+    title:       '#FFFFFF',
+    count:       '#FFFFFF',
+    barLabel:    'rgba(255,255,255,0.80)',
+    barLabelHl:  '#FFFFFF',
+    barTrack:    'rgba(255,255,255,0.15)',
+    barBorder:   'rgba(255,255,255,0.10)',
+    bnkBar:      'linear-gradient(90deg, rgba(255,255,255,0.90) 0%, rgba(255,255,255,0.70) 100%)',
+    bnkGlow:     '0 0 12px rgba(255,255,255,0.30)',
+    bnkBadgeBg:  'rgba(255,255,255,0.20)',
+    bnkBadgeBdr: 'rgba(255,255,255,0.28)',
+    bnkBadgeClr: '#FFFFFF',
+    footerBdr:   'rgba(255,255,255,0.16)',
+    footerMuted: 'rgba(255,255,255,0.65)',
+    pctSuffix:   'rgba(255,255,255,0.55)',
+  },
+}
 
 function BottleneckCard({ stats }: { stats: ContentStats }) {
   const [mounted, setMounted] = useState(false)
@@ -197,27 +271,36 @@ function BottleneckCard({ stats }: { stats: ContentStats }) {
     return () => clearTimeout(t)
   }, [])
 
+  const deliveryPct = stats.total > 0
+    ? Math.round((stats.publicado / stats.total) * 100)
+    : 0
+
+  // Dynamic tone: danger → warning → healthy
+  const tone: PipelineTone =
+    deliveryPct >= 70 ? 'green' :
+    deliveryPct >= 40 ? 'gold'  :
+    'terracotta'
+
+  const tk = TONE_TOKENS[tone]
+
   const stages = [
-    { key: 'rascunho',    label: 'Rascunho',    count: stats.rascunho,    barColor: 'rgba(10,15,11,0.55)',                                                done: false },
+    { key: 'rascunho',    label: 'Rascunho',    count: stats.rascunho,    barColor: tone === 'gold' ? 'rgba(10,15,11,0.55)' : 'rgba(255,255,255,0.40)', done: false },
     { key: 'em_producao', label: 'Em produção', count: stats.em_producao, barColor: 'linear-gradient(90deg, #5C68E8 0%, #3D49E0 100%)',                  done: false },
-    { key: 'publicado',   label: 'Publicado',   count: stats.publicado,   barColor: 'linear-gradient(90deg, #2e6b42 0%, #4aa066 100%)',                  done: true  },
+    { key: 'publicado',   label: 'Publicado',   count: stats.publicado,   barColor: tone === 'green' ? 'rgba(255,255,255,0.55)' : 'linear-gradient(90deg, #2e6b42 0%, #4aa066 100%)', done: true },
   ]
   const maxCount = Math.max(...stages.map(s => s.count), 1)
   const pendingStages = stages.filter(s => !s.done)
   const bottleneck = pendingStages.length > 0
     ? pendingStages.reduce((max, s) => s.count > max.count ? s : max)
     : null
-  const deliveryPct = stats.total > 0
-    ? Math.round((stats.publicado / stats.total) * 100)
-    : 0
 
   return (
-    <div className="cia-edit-card cia-edit-card--gold cia-metrics-cell" style={{ minHeight: 320 }}>
+    <div className={`cia-edit-card cia-edit-card--${tone} cia-metrics-cell`} style={{ minHeight: 320 }}>
       {/* eyebrow */}
       <div className="flex items-center justify-between">
         <span style={{
           fontSize: 11.5, fontWeight: 600,
-          color: 'rgba(70,50,5,0.65)',
+          color: tk.eyebrow,
           letterSpacing: '-0.01em',
         }}>
           detector de gargalo
@@ -225,13 +308,13 @@ function BottleneckCard({ stats }: { stats: ContentStats }) {
         {bottleneck && bottleneck.count > 0 && (
           <span style={{
             fontSize: 11, fontWeight: 700,
-            color: '#46320C',
+            color: tk.bnkBadgeClr,
             letterSpacing: '0.04em',
             textTransform: 'uppercase',
             padding: '3px 10px',
             borderRadius: 999,
-            background: 'rgba(255,255,255,0.45)',
-            border: '1px solid rgba(70,50,5,0.18)',
+            background: tk.bnkBadgeBg,
+            border: `1px solid ${tk.bnkBadgeBdr}`,
           }}>
             ⚡ {bottleneck.label}
           </span>
@@ -244,7 +327,7 @@ function BottleneckCard({ stats }: { stats: ContentStats }) {
         fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
         fontSize: 26, fontWeight: 800,
         letterSpacing: '-0.03em',
-        color: '#0A0F0B',
+        color: tk.title,
         lineHeight: 1.05,
       }}>
         Pipeline
@@ -260,7 +343,7 @@ function BottleneckCard({ stats }: { stats: ContentStats }) {
               <div className="mb-1.5 flex items-baseline justify-between">
                 <span style={{
                   fontSize: 13, fontWeight: 600,
-                  color: isBottleneck ? '#46320C' : 'rgba(10,15,11,0.75)',
+                  color: isBottleneck ? tk.barLabelHl : tk.barLabel,
                   letterSpacing: '-0.01em',
                 }}>
                   {stage.label}
@@ -268,24 +351,22 @@ function BottleneckCard({ stats }: { stats: ContentStats }) {
                 <span style={{
                   fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
                   fontSize: 22, fontWeight: 800,
-                  color: '#0A0F0B', letterSpacing: '-0.03em',
+                  color: tk.count, letterSpacing: '-0.03em',
                 }}>
                   {stage.count}
                 </span>
               </div>
               <div style={{
                 height: 8, borderRadius: 999,
-                background: 'rgba(255,255,255,0.40)',
-                border: '1px solid rgba(70,50,5,0.10)',
+                background: tk.barTrack,
+                border: `1px solid ${tk.barBorder}`,
                 overflow: 'hidden',
               }}>
                 <div style={{
                   height: '100%', width: `${barW}%`,
-                  background: isBottleneck
-                    ? 'linear-gradient(90deg, #B58812 0%, #E8B82F 100%)'
-                    : stage.barColor,
+                  background: isBottleneck ? tk.bnkBar : stage.barColor,
                   transition: `width 1s cubic-bezier(0.16, 1, 0.3, 1) ${i * 180}ms`,
-                  boxShadow: isBottleneck ? '0 0 12px rgba(232,184,47,0.55)' : 'none',
+                  boxShadow: isBottleneck ? tk.bnkGlow : 'none',
                   borderRadius: 999,
                 }} />
               </div>
@@ -296,21 +377,21 @@ function BottleneckCard({ stats }: { stats: ContentStats }) {
 
       {/* footer */}
       <div className="mt-4 pt-3 flex items-baseline justify-between" style={{
-        borderTop: '1px solid rgba(70,50,5,0.12)',
+        borderTop: `1px solid ${tk.footerBdr}`,
       }}>
         <span style={{
           fontSize: 11.5, fontWeight: 600,
-          color: 'rgba(70,50,5,0.65)',
+          color: tk.footerMuted,
         }}>
           {stats.total} totais
         </span>
         <span style={{
           fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
           fontSize: 18, fontWeight: 800,
-          color: '#0A0F0B',
+          color: tk.count,
           letterSpacing: '-0.02em',
         }}>
-          {deliveryPct}<span style={{ fontSize: 12, color: 'rgba(10,15,11,0.45)', fontWeight: 700 }}>% entregues</span>
+          {deliveryPct}<span style={{ fontSize: 12, color: tk.pctSuffix, fontWeight: 700 }}>% entregues</span>
         </span>
       </div>
     </div>

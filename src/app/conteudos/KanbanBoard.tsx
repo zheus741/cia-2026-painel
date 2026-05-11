@@ -118,6 +118,12 @@ function parseTipos(tipo: string | null | undefined): string[] {
   return tipo.split(',').map(t => t.trim()).filter(Boolean)
 }
 
+/** Parse comma-separated canal string → array of canal keys */
+function parseCanais(canal: string | null | undefined): string[] {
+  if (!canal) return []
+  return canal.split(',').map(c => c.trim()).filter(Boolean)
+}
+
 // ── Canais: cor de destaque (borda topo do card) + badge ─────────────────────
 const CANAL_CONFIG: Record<string, {
   label:  string
@@ -216,7 +222,9 @@ function ConteudoCard({
 }) {
   const hasPrev = !!PREV_STATUS[c.status]
   const hasNext = !!NEXT_STATUS[c.status]
-  const canalCfg = c.canal_publicacao ? CANAL_CONFIG[c.canal_publicacao] : null
+  const canais     = parseCanais(c.canal_publicacao)
+  const canalCfgs  = canais.map(k => CANAL_CONFIG[k]).filter(Boolean)
+  const canalCfg   = canalCfgs[0] ?? null  // primary canal (for top border)
 
   // Responsáveis via lookup local no array de perfis
   const findPerfil = (id: string | null) => id ? perfis.find(p => p.id === id) ?? null : null
@@ -245,10 +253,18 @@ function ConteudoCard({
       )}
       style={{
         borderRadius: 14,
-        border: canalCfg ? `1px solid rgba(10,15,11,0.07)` : '1px solid rgba(10,15,11,0.07)',
+        border: '1px solid rgba(10,15,11,0.07)',
         background: 'var(--card)',
         padding: '12px 12px 10px',
-        borderTop: canalCfg ? `2.5px solid ${canalCfg.cor}` : '1px solid rgba(10,15,11,0.07)',
+        borderTop: canalCfgs.length === 0
+          ? '1px solid rgba(10,15,11,0.07)'
+          : canalCfgs.length === 1
+          ? `2.5px solid ${canalCfgs[0].cor}`
+          : undefined,
+        backgroundImage: canalCfgs.length >= 2
+          ? `linear-gradient(to right, ${canalCfgs.map((cfg, i) => `${cfg.cor} ${Math.round(i * 100 / canalCfgs.length)}%, ${cfg.cor} ${Math.round((i + 1) * 100 / canalCfgs.length)}%`).join(', ')}) top / 100% 2.5px no-repeat`
+          : undefined,
+        backgroundOrigin: canalCfgs.length >= 2 ? 'border-box' : undefined,
       }}
     >
       {/* Priority stripe */}
@@ -271,12 +287,14 @@ function ConteudoCard({
         {/* Título */}
         <p className="text-xs font-medium leading-snug text-[var(--foreground)] line-clamp-2">{c.titulo}</p>
 
-        {/* Canal badge */}
-        {canalCfg && (
-          <div className="mt-1.5">
-            <span className={cn('inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold tracking-wide', canalCfg.badge)}>
-              {canalCfg.label}
-            </span>
+        {/* Canal badges — multi */}
+        {canalCfgs.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {canalCfgs.map((cfg, i) => (
+              <span key={canais[i]} className={cn('inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold tracking-wide', cfg.badge)}>
+                {cfg.label}
+              </span>
+            ))}
           </div>
         )}
 
@@ -495,10 +513,14 @@ function ConteudoViewDialog({
           </PropRow>
 
           <PropRow icon={Radio} label="Canal">
-            {c.canal_publicacao
-              ? <Pill color={CANAL_CONFIG[c.canal_publicacao]?.badge}>
-                  {CANAL_CONFIG[c.canal_publicacao]?.label ?? c.canal_publicacao}
-                </Pill>
+            {parseCanais(c.canal_publicacao).length > 0
+              ? <>
+                  {parseCanais(c.canal_publicacao).map(k => (
+                    <Pill key={k} color={CANAL_CONFIG[k]?.badge}>
+                      {CANAL_CONFIG[k]?.label ?? k}
+                    </Pill>
+                  ))}
+                </>
               : <Empty />}
           </PropRow>
 
@@ -618,13 +640,15 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
   const [selectedTipos, setSelectedTipos] = React.useState<string[]>(
     editing?.tipo ? parseTipos(editing.tipo) : ['feed']
   )
+  const [selectedCanais, setSelectedCanais] = React.useState<string[]>(
+    editing?.canal_publicacao ? parseCanais(editing.canal_publicacao) : []
+  )
   const [status, setStatus_]        = React.useState(editing?.status ?? defaultStatus ?? 'rascunho')
   const [prioridade, setPrioridade] = React.useState(String(editing?.prioridade ?? 3))
   const [diaId, setDiaId]           = React.useState(editing?.dia_id ?? '')
   const [horario, setHorario]       = React.useState(editing?.horario_previsto ?? '')
   const [setorId, setSetorId]       = React.useState(editing?.setor_id ?? '')
   const [patroId, setPatroId]       = React.useState(editing?.patrocinador_id ?? '')
-  const [canal, setCanal]           = React.useState(editing?.canal_publicacao ?? '')
   const [briefing, setBriefing]     = React.useState(editing?.briefing ?? '')
   const [link, setLink]             = React.useState(editing?.link_publicado ?? '')
   const [captacaoId, setCaptacaoId] = React.useState(editing?.responsavel_captacao_id ?? '')
@@ -636,13 +660,13 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
     setError(null); setLoading(false)
     setTitulo(editing?.titulo ?? '')
     setSelectedTipos(editing?.tipo ? parseTipos(editing.tipo) : ['feed'])
+    setSelectedCanais(editing?.canal_publicacao ? parseCanais(editing.canal_publicacao) : [])
     setStatus_(editing?.status ?? defaultStatus ?? 'rascunho')
     setPrioridade(String(editing?.prioridade ?? 3))
     setDiaId(editing?.dia_id ?? '')
     setHorario(editing?.horario_previsto ?? '')
     setSetorId(editing?.setor_id ?? '')
     setPatroId(editing?.patrocinador_id ?? '')
-    setCanal(editing?.canal_publicacao ?? '')
     setBriefing(editing?.briefing ?? '')
     setLink(editing?.link_publicado ?? '')
     setCaptacaoId(editing?.responsavel_captacao_id ?? '')
@@ -665,7 +689,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
         horario_previsto:        horario || null,
         setor_id:                nullIfNone(setorId),
         patrocinador_id:         nullIfNone(patroId),
-        canal_publicacao:        nullIfNone(canal),
+        canal_publicacao:        selectedCanais.length > 0 ? selectedCanais.join(',') : null,
         briefing:                briefing || null,
         responsavel_captacao_id: nullIfNone(captacaoId),
         responsavel_design_id:   nullIfNone(designId),
@@ -767,30 +791,54 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
             </div>
           </div>
 
-          {/* Prioridade + Canal */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1.5 block text-xs">Prioridade</Label>
-              <Select value={prioridade} onValueChange={setPrioridade}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">🔴 1 — Alta</SelectItem>
-                  <SelectItem value="2">🟠 2 — Importante</SelectItem>
-                  <SelectItem value="3">🟡 3 — Normal</SelectItem>
-                  <SelectItem value="4">🔵 4 — Baixa</SelectItem>
-                  <SelectItem value="5">⚪ 5 — Quando der</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-xs">Canal</Label>
-              <Select value={canal} onValueChange={setCanal}>
-                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="— canal —" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Indefinido</SelectItem>
-                  {CANAL_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+          {/* Prioridade */}
+          <div>
+            <Label className="mb-1.5 block text-xs">Prioridade</Label>
+            <Select value={prioridade} onValueChange={setPrioridade}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">🔴 1 — Alta</SelectItem>
+                <SelectItem value="2">🟠 2 — Importante</SelectItem>
+                <SelectItem value="3">🟡 3 — Normal</SelectItem>
+                <SelectItem value="4">🔵 4 — Baixa</SelectItem>
+                <SelectItem value="5">⚪ 5 — Quando der</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Canal(is) — multi-chip */}
+          <div>
+            <Label className="mb-2 block text-xs">
+              Canal(is)
+              <span className="ml-1.5 font-normal text-[var(--muted-foreground)]">selecione um ou mais</span>
+            </Label>
+            <div className="flex flex-wrap gap-1.5">
+              {CANAL_OPTIONS.map(o => {
+                const active = selectedCanais.includes(o.value)
+                const cfg = CANAL_CONFIG[o.value]
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => setSelectedCanais(prev =>
+                      prev.includes(o.value) ? prev.filter(k => k !== o.value) : [...prev, o.value]
+                    )}
+                    className={cn(
+                      'rounded border px-2.5 py-1 text-[11px] font-semibold transition-all',
+                      active
+                        ? cfg?.badge ?? 'border-[var(--border)] text-[var(--muted-foreground)]'
+                        : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green)]/40 hover:text-[var(--foreground)]',
+                    )}
+                    style={active && cfg ? { borderColor: `${cfg.cor}60` } : undefined}
+                  >
+                    <span
+                      className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
+                      style={{ background: cfg?.cor ?? '#999', verticalAlign: 'middle' }}
+                    />
+                    {o.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -1046,7 +1094,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       )
     }
     if (filterCanal && filterCanal !== '__all__') {
-      list = list.filter(c => c.canal_publicacao === filterCanal)
+      list = list.filter(c => parseCanais(c.canal_publicacao).includes(filterCanal))
     }
     return list
   }, [conteudos, search, filterDia, filterTipo, filterPerfil, filterCanal])

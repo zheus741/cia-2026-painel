@@ -3,8 +3,8 @@
 import { useState, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2 } from 'lucide-react'
-import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo } from './actions'
+import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter } from 'lucide-react'
+import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo, reativarJogo } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 
@@ -129,6 +129,11 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
   function handleCancelar() {
     onLocalUpdate(jogo.id, { status: 'cancelado' })
     startTransition(async () => { await cancelarJogo(jogo.id) })
+  }
+
+  function handleReativar() {
+    onLocalUpdate(jogo.id, { status: 'agendado', placar_a: 0, placar_b: 0 })
+    startTransition(async () => { await reativarJogo(jogo.id) })
   }
 
   const isAoVivo = jogo.status === 'ao_vivo'
@@ -376,8 +381,23 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
             onClick={handleCancelar}
             disabled={isPending}
             className="flex items-center justify-center gap-1 rounded-lg border border-[var(--border)] px-3 py-2 text-xs text-[var(--muted-foreground)] transition-colors hover:border-red-700/40 hover:text-red-400 disabled:opacity-30"
+            title="Cancelar jogo"
           >
             <XCircle className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Reativar (jogo cancelado) */}
+      {isCancelado && (
+        <div className="mt-3">
+          <button
+            onClick={handleReativar}
+            disabled={isPending}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-600/30 bg-amber-500/8 px-3 py-2 text-xs font-semibold text-amber-500 transition-all hover:border-amber-500/50 hover:bg-amber-500/15 disabled:opacity-40"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reativar jogo
           </button>
         </div>
       )}
@@ -404,6 +424,8 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
   const [diaId, setDiaId] = useState(diaAtivo)
   const [recentIds, setRecentIds] = useState<Set<string>>(new Set())
   const [conectado, setConectado] = useState(false)
+  const [filterMod, setFilterMod] = useState('')
+  const [filterConf, setFilterConf] = useState('')
 
   const lastLocalChangeRef = useRef<Map<string, number>>(new Map())
 
@@ -516,6 +538,26 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
   }, [router, handleLocalUpdate, flashRecent])
 
   const jogos = jogosPorDia[diaId] ?? []
+
+  // Options for sub-filters (built from the current day's games)
+  const modOptions = Array.from(
+    new Map(jogos.filter(j => j.modalidade).map(j => [j.modalidade!.nome, j.modalidade!])).values()
+  ).sort((a, b) => a.nome.localeCompare(b.nome))
+
+  const confOptions = Array.from(new Set(
+    jogos.flatMap(j => [j.equipe_a?.conferencia, j.equipe_b?.conferencia]).filter(Boolean) as string[]
+  )).sort()
+
+  // Apply sub-filters
+  const jogosFiltrados = jogos.filter(j => {
+    if (filterMod && j.modalidade?.nome !== filterMod) return false
+    if (filterConf) {
+      const hasConf = j.equipe_a?.conferencia === filterConf || j.equipe_b?.conferencia === filterConf
+      if (!hasConf) return false
+    }
+    return true
+  })
+
   const aoVivo = jogos.filter((j) => j.status === 'ao_vivo').length
   const agendados = jogos.filter((j) => j.status === 'agendado').length
   const encerrados = jogos.filter((j) => j.status === 'encerrado').length
@@ -576,14 +618,110 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
         </span>
       </div>
 
+      {/* Sub-filtros por modalidade + conferência */}
+      {(modOptions.length > 1 || confOptions.length > 1) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]/60">
+            <Filter className="h-3 w-3" />
+            Filtrar
+          </span>
+
+          {/* Modalidade pills */}
+          {modOptions.length > 1 && (
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setFilterMod('')}
+                className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
+                  filterMod === ''
+                    ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
+                    : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
+                }`}
+              >
+                Todas mod.
+              </button>
+              {modOptions.map(m => (
+                <button
+                  key={m.nome}
+                  onClick={() => setFilterMod(prev => prev === m.nome ? '' : m.nome)}
+                  className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
+                    filterMod === m.nome
+                      ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
+                      : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
+                  }`}
+                >
+                  {m.icone} {m.nome}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Conferência pills */}
+          {confOptions.length > 1 && (
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setFilterConf('')}
+                className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
+                  filterConf === ''
+                    ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
+                    : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
+                }`}
+              >
+                Todas conf.
+              </button>
+              {confOptions.map(nome => {
+                const meta = getConferencia(nome)
+                return (
+                  <button
+                    key={nome}
+                    onClick={() => setFilterConf(prev => prev === nome ? '' : nome)}
+                    className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
+                      filterConf === nome
+                        ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
+                        : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
+                    }`}
+                    style={filterConf === nome && meta ? {
+                      borderColor: `${meta.cor}50`,
+                      background: `${meta.cor}18`,
+                      color: meta.cor,
+                    } : {}}
+                  >
+                    {meta?.icone} {nome}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Clear filters */}
+          {(filterMod || filterConf) && (
+            <button
+              onClick={() => { setFilterMod(''); setFilterConf('') }}
+              className="ml-1 text-[11px] font-semibold text-[var(--muted-foreground)]/60 underline-offset-2 hover:text-[var(--muted-foreground)] hover:underline"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Grid de jogos */}
       {jogos.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--border)] p-12 text-center">
           <p className="text-sm text-[var(--muted-foreground)]">Nenhum jogo neste dia.</p>
         </div>
+      ) : jogosFiltrados.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[var(--border)] p-10 text-center">
+          <p className="text-sm text-[var(--muted-foreground)]">Nenhum jogo com esse filtro.</p>
+          <button
+            onClick={() => { setFilterMod(''); setFilterConf('') }}
+            className="mt-2 text-xs font-semibold text-[var(--green-bright)] hover:underline"
+          >
+            Limpar filtros
+          </button>
+        </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {jogos.map((jogo) => (
+          {jogosFiltrados.map((jogo) => (
             <PlacarCard
               key={jogo.id}
               jogo={jogo}

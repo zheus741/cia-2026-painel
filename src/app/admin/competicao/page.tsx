@@ -3,7 +3,7 @@ import CompeticaoClient from './CompeticaoClient'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata = { title: 'Competição · Admin · CIA 2026' }
+export const metadata = { title: 'Dados Esportivo · Admin · CIA 2026' }
 
 export default async function CompeticaoPage() {
   const supabase = await createClient()
@@ -11,7 +11,7 @@ export default async function CompeticaoPage() {
   const [atleticasRes, inscricoesRes, modalidadesRes] = await Promise.all([
     supabase
       .from('equipes')
-      .select('id, nome, slug, divisao, conferencia, seed, universidade')
+      .select('id, nome, slug, divisao, conferencia, seed, universidade, logo_url')
       .eq('tipo', 'atletica')
       .order('divisao', { ascending: true, nullsFirst: false })
       .order('seed', { ascending: true, nullsFirst: false })

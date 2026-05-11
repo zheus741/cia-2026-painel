@@ -14,8 +14,10 @@ import {
   Users,
   Trophy,
   AlertCircle,
+  Plus,
+  ImageIcon,
 } from 'lucide-react'
-import { updateAtletica, updateInscricao } from './actions'
+import { updateAtletica, updateInscricao, createAtletica } from './actions'
 import { CONFERENCIAS, type ConferenciaMeta } from '@/lib/conferencias'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -24,6 +26,7 @@ interface Atletica {
   id: string; nome: string; slug: string
   divisao: string | null; conferencia: string | null
   seed: number | null; universidade: string | null
+  logo_url: string | null
 }
 interface NormalizedInscricao {
   id: string; equipe_id: string; modalidade_id: string
@@ -62,10 +65,12 @@ function divCor(nome: string | null): string {
 // ─── Edit Modal ──────────────────────────────────────────────────────────────
 
 interface EditForm {
+  nome: string
   divisao: string
   conferencia: string
   seed: string
   universidade: string
+  logo_url: string
 }
 
 interface EditModalProps {
@@ -107,15 +112,60 @@ function EditModal({ atletica, form, saving, saveError, onClose, onChange, onSav
           </button>
         </div>
 
-        {/* Nome read-only */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>
-            Atlética
-          </label>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#0A0F0B' }}>{atletica.nome}</div>
+        {/* Logo preview + URL */}
+        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          {/* Brasão preview */}
+          <div style={{
+            width: 56, height: 56, borderRadius: 10, border: '1px solid rgba(10,15,11,0.12)',
+            background: '#f4f6f4', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, overflow: 'hidden',
+          }}>
+            {form.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.logo_url} alt="brasão" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ) : (
+              <ImageIcon size={22} color="#d1d5db" />
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
+              Brasão (URL da imagem)
+            </label>
+            <input
+              type="url"
+              value={form.logo_url}
+              onChange={e => onChange({ ...form, logo_url: e.target.value })}
+              placeholder="https://..."
+              style={{
+                width: '100%', padding: '8px 12px', borderRadius: 8,
+                border: '1px solid rgba(10,15,11,0.15)', fontSize: 13,
+                color: '#0A0F0B', background: '#fff', outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Nome */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
+              Nome da atlética
+            </label>
+            <input
+              type="text"
+              value={form.nome}
+              onChange={e => onChange({ ...form, nome: e.target.value })}
+              placeholder={atletica.nome}
+              style={{
+                width: '100%', padding: '8px 12px', borderRadius: 8,
+                border: '1px solid rgba(10,15,11,0.15)', fontSize: 14,
+                color: '#0A0F0B', background: '#fff', outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
           {/* Divisão */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
@@ -260,7 +310,7 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
 
   // Edit modal
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<EditForm>({ divisao: '', conferencia: '', seed: '', universidade: '' })
+  const [editForm, setEditForm] = useState<EditForm>({ nome: '', divisao: '', conferencia: '', seed: '', universidade: '', logo_url: '' })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -268,6 +318,12 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
   // Cabeça de chave optimistic overrides
   const [ckOverride, setCkOverride] = useState<Record<string, 1 | 2 | null>>({})
   const [ckLoading, setCkLoading] = useState<Record<string, boolean>>({})
+
+  // Nova atlética modal
+  const [showNova, setShowNova] = useState(false)
+  const [novaForm, setNovaForm] = useState({ nome: '', divisao: '', conferencia: '', seed: '', universidade: '', logo_url: '' })
+  const [novaSaving, setNovaSaving] = useState(false)
+  const [novaError, setNovaError] = useState<string | null>(null)
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -297,10 +353,12 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
   const openEditModal = (a: Atletica) => {
     setEditingId(a.id)
     setEditForm({
+      nome: a.nome,
       divisao: a.divisao ?? '',
       conferencia: a.conferencia ?? '',
       seed: a.seed != null ? String(a.seed) : '',
       universidade: a.universidade ?? '',
+      logo_url: a.logo_url ?? '',
     })
     setSaveError(null)
     setSaveSuccess(false)
@@ -312,10 +370,12 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
     setSaveError(null)
     const seedNum = editForm.seed.trim() !== '' ? parseInt(editForm.seed, 10) : null
     const result = await updateAtletica(editingId, {
+      nome: editForm.nome.trim() || undefined,
       divisao: editForm.divisao || null,
       conferencia: editForm.conferencia || null,
       seed: seedNum,
       universidade: editForm.universidade.trim() || null,
+      logo_url: editForm.logo_url.trim() || null,
     })
     setSaving(false)
     if (result.ok) {
@@ -338,6 +398,31 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
     await updateInscricao(id, { cabeca_chave: next })
     setCkLoading(prev => ({ ...prev, [id]: false }))
     router.refresh()
+  }
+
+  const handleCriarAtletica = async () => {
+    if (!novaForm.nome.trim()) { setNovaError('Nome obrigatório.'); return }
+    setNovaSaving(true)
+    setNovaError(null)
+    const seedNum = novaForm.seed.trim() ? parseInt(novaForm.seed, 10) : null
+    const result = await createAtletica({
+      nome: novaForm.nome.trim(),
+      divisao: novaForm.divisao || null,
+      conferencia: novaForm.conferencia || null,
+      seed: seedNum,
+      universidade: novaForm.universidade.trim() || null,
+      logo_url: novaForm.logo_url.trim() || null,
+    })
+    setNovaSaving(false)
+    if (result.ok) {
+      setShowNova(false)
+      setNovaForm({ nome: '', divisao: '', conferencia: '', seed: '', universidade: '', logo_url: '' })
+      setSaveSuccess(true)
+      router.refresh()
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } else {
+      setNovaError(result.error ?? 'Erro ao criar.')
+    }
   }
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -621,6 +706,20 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
                     ? <ChevronDown size={14} color="#9ca3af" style={{ flexShrink: 0 }} />
                     : <ChevronRight size={14} color="#c4c9c5" style={{ flexShrink: 0 }} />
                   }
+                  {/* Brasão */}
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 6, flexShrink: 0, overflow: 'hidden',
+                    border: '1px solid rgba(10,15,11,0.08)',
+                    background: '#f4f6f4',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {atletica.logo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={atletica.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <Users size={12} color="#d1d5db" />
+                    )}
+                  </div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: '#0A0F0B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {atletica.nome}
@@ -819,17 +918,32 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
         padding: '16px 24px 0',
       }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ marginBottom: 12 }}>
-            <h1 style={{
-              fontFamily: 'var(--font-dm-sans)',
-              fontSize: 28, fontWeight: 700, color: '#0A0F0B',
-              margin: '0 0 2px',
-            }}>
-              Competição · Gestão
-            </h1>
-            <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
-              Atléticas, inscrições e cabeças de chave
-            </p>
+          <div style={{ marginBottom: 12, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+            <div>
+              <h1 style={{
+                fontFamily: 'var(--font-dm-sans)',
+                fontSize: 28, fontWeight: 700, color: '#0A0F0B',
+                margin: '0 0 2px',
+              }}>
+                Dados Esportivo
+              </h1>
+              <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>
+                Atléticas, brasões, inscrições e cabeças de chave
+              </p>
+            </div>
+            <button
+              onClick={() => { setShowNova(true); setNovaError(null) }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 14px', borderRadius: 8, border: 'none',
+                background: '#0A0F0B', color: '#fff',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                flexShrink: 0,
+              }}
+            >
+              <Plus size={14} />
+              Nova atlética
+            </button>
           </div>
 
           {/* Success banner */}
@@ -885,6 +999,198 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
           onChange={setEditForm}
           onSave={handleSave}
         />
+      )}
+
+      {/* Nova atlética modal */}
+      {showNova && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            background: 'rgba(10,15,11,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setShowNova(false) }}
+        >
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 28,
+            width: '100%', maxWidth: 480,
+            boxShadow: '0 20px 60px rgba(10,15,11,0.18)',
+            maxHeight: '90vh', overflowY: 'auto',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'var(--font-dm-sans)', fontSize: 20, fontWeight: 700, color: '#0A0F0B', margin: 0 }}>
+                Nova Atlética
+              </h2>
+              <button
+                onClick={() => setShowNova(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4, display: 'flex' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Brasão preview + URL */}
+            <div style={{ marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <div style={{
+                width: 56, height: 56, borderRadius: 10, border: '1px solid rgba(10,15,11,0.12)',
+                background: '#f4f6f4', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, overflow: 'hidden',
+              }}>
+                {novaForm.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={novaForm.logo_url} alt="brasão" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                ) : (
+                  <ImageIcon size={22} color="#d1d5db" />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
+                  Brasão (URL da imagem)
+                </label>
+                <input
+                  type="url"
+                  value={novaForm.logo_url}
+                  onChange={e => setNovaForm(f => ({ ...f, logo_url: e.target.value }))}
+                  placeholder="https://..."
+                  style={{
+                    width: '100%', padding: '8px 12px', borderRadius: 8,
+                    border: '1px solid rgba(10,15,11,0.15)', fontSize: 13,
+                    color: '#0A0F0B', background: '#fff', outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Nome */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
+                  Nome da atlética <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={novaForm.nome}
+                  onChange={e => setNovaForm(f => ({ ...f, nome: e.target.value }))}
+                  placeholder="AA Engenharia"
+                  style={{
+                    width: '100%', padding: '8px 12px', borderRadius: 8,
+                    border: '1px solid rgba(10,15,11,0.15)', fontSize: 14,
+                    color: '#0A0F0B', background: '#fff', outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              {/* Universidade */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
+                  Universidade
+                </label>
+                <input
+                  type="text"
+                  value={novaForm.universidade}
+                  onChange={e => setNovaForm(f => ({ ...f, universidade: e.target.value }))}
+                  placeholder="Nome da universidade"
+                  style={{
+                    width: '100%', padding: '8px 12px', borderRadius: 8,
+                    border: '1px solid rgba(10,15,11,0.15)', fontSize: 14,
+                    color: '#0A0F0B', background: '#fff', outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              {/* Divisão */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
+                  Divisão
+                </label>
+                <select
+                  value={novaForm.divisao}
+                  onChange={e => setNovaForm(f => ({ ...f, divisao: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(10,15,11,0.15)', fontSize: 14, color: '#0A0F0B', background: '#fff', outline: 'none' }}
+                >
+                  <option value="">Sem divisão</option>
+                  <option value="1ª Divisão">1ª Divisão</option>
+                  <option value="2ª Divisão">2ª Divisão</option>
+                  <option value="Super 08">Super 08</option>
+                </select>
+              </div>
+              {/* Conferência */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
+                  Conferência
+                </label>
+                <select
+                  value={novaForm.conferencia}
+                  onChange={e => setNovaForm(f => ({ ...f, conferencia: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(10,15,11,0.15)', fontSize: 14, color: '#0A0F0B', background: '#fff', outline: 'none' }}
+                >
+                  <option value="">Nenhuma</option>
+                  {CONFERENCIAS.map(c => (
+                    <option key={c.nome} value={c.nome}>{c.icone} {c.nome}</option>
+                  ))}
+                </select>
+              </div>
+              {/* Seed */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
+                  Seed
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={16}
+                  value={novaForm.seed}
+                  onChange={e => setNovaForm(f => ({ ...f, seed: e.target.value }))}
+                  placeholder="—"
+                  style={{
+                    width: '100%', padding: '8px 12px', borderRadius: 8,
+                    border: '1px solid rgba(10,15,11,0.15)', fontSize: 14,
+                    color: '#0A0F0B', background: '#fff', outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Error */}
+            {novaError && (
+              <div style={{
+                marginTop: 12, padding: '8px 12px', borderRadius: 8,
+                background: '#fef2f2', border: '1px solid #fecaca',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <AlertCircle size={14} color="#ef4444" />
+                <span style={{ fontSize: 13, color: '#dc2626' }}>{novaError}</span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>
+              <button
+                onClick={() => setShowNova(false)}
+                disabled={novaSaving}
+                style={{
+                  padding: '8px 18px', borderRadius: 8, border: '1px solid rgba(10,15,11,0.15)',
+                  background: '#fff', color: '#0A0F0B', fontSize: 14, fontWeight: 500,
+                  cursor: 'pointer', opacity: novaSaving ? 0.5 : 1,
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCriarAtletica}
+                disabled={novaSaving}
+                style={{
+                  padding: '8px 18px', borderRadius: 8, border: 'none',
+                  background: '#0A0F0B', color: '#fff', fontSize: 14, fontWeight: 600,
+                  cursor: novaSaving ? 'not-allowed' : 'pointer',
+                  opacity: novaSaving ? 0.6 : 1,
+                }}
+              >
+                {novaSaving ? 'Criando...' : 'Criar atlética'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

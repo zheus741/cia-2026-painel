@@ -59,3 +59,16 @@ export async function cancelarJogo(id: string): Promise<ActionResult> {
     revalidatePath('/placar')
   })
 }
+
+export async function reativarJogo(id: string): Promise<ActionResult> {
+  return safe(async () => {
+    await requireCoordOrAdmin()
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('jogos')
+      .update({ status: 'agendado', placar_a: null, placar_b: null })
+      .eq('id', id)
+    if (error) throw error
+    revalidatePath('/placar')
+  })
+}

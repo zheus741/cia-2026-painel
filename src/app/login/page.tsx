@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { signupSemEmail } from './actions'
 import { Lock, Loader2, Eye, EyeOff, UserPlus } from 'lucide-react'
 
 type Mode = 'login' | 'signup'
@@ -44,21 +45,23 @@ export default function LoginPage() {
         router.refresh()
       }
     } else {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { nome } },
-      })
-      setLoading(false)
-      if (error) {
-        setError(
-          error.message.includes('already registered')
-            ? 'Este e-mail já tem uma conta. Faça login.'
-            : error.message
-        )
-      } else {
-        setDone(true)
+      // Signup via server action — pula email confirmação, evita rate limit
+      const result = await signupSemEmail(email, password, nome)
+      if (!result.ok) {
+        setLoading(false)
+        setError(result.error ?? 'Erro ao criar conta.')
+        return
       }
+      // Conta criada com email pré-confirmado → login direto
+      const { error: signinError } = await supabase.auth.signInWithPassword({ email, password })
+      setLoading(false)
+      if (signinError) {
+        // Conta foi criada mas o login falhou — pelo menos avisa pra entrar manualmente
+        setDone(true)
+        return
+      }
+      router.push('/')
+      router.refresh()
     }
   }
 
@@ -127,7 +130,7 @@ export default function LoginPage() {
               </div>
               <p className="text-sm font-semibold">Conta criada!</p>
               <p className="text-xs text-[var(--muted-foreground)]">
-                Verifique seu e-mail para confirmar o cadastro, depois faça login.
+                Faça login agora com seu e-mail e senha.
               </p>
               <button onClick={() => switchMode('login')}
                 className="mt-1 text-xs text-[var(--green-bright)] underline underline-offset-4">

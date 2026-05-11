@@ -15,24 +15,41 @@ export default async function PlacarPage() {
     supabase.from('dias_evento').select('id, nome_dia, data').order('data'),
     supabase
       .from('jogos')
-      .select('id, equipe_a_nome, equipe_b_nome, placar_a, placar_b, status, inicio, dia_id, modalidade:modalidades(nome, icone), setor:setores(nome)')
+      .select(`
+        id, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
+        placar_a, placar_b, status, inicio, dia_id, divisao, fase, categoria,
+        modalidade:modalidades(nome, icone),
+        setor:setores(nome),
+        equipe_a:equipe_a_id(slug, divisao, conferencia, cor_primaria, universidade),
+        equipe_b:equipe_b_id(slug, divisao, conferencia, cor_primaria, universidade)
+      `)
       .order('inicio', { ascending: true, nullsFirst: false }),
   ])
 
   const dias = (diasDB?.length ? diasDB : DIAS_FIXOS) as { id: string; nome_dia: string; data: string }[]
 
+  type EquipeRef = { slug: string; divisao: string | null; conferencia: string | null; cor_primaria: string | null; universidade: string | null }
   type Jogo = {
-    id: string; equipe_a_nome: string | null; equipe_b_nome: string | null
-    placar_a: number | null; placar_b: number | null; status: string
-    inicio: string | null; dia_id: string
+    id: string
+    equipe_a_id: string | null; equipe_b_id: string | null
+    equipe_a_nome: string | null; equipe_b_nome: string | null
+    placar_a: number | null; placar_b: number | null
+    status: string; inicio: string | null; dia_id: string
+    divisao: string | null; fase: string | null; categoria: string | null
     modalidade: { nome: string; icone: string } | null
     setor: { nome: string } | null
+    equipe_a: EquipeRef | null
+    equipe_b: EquipeRef | null
   }
+
+  const arr = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v)
 
   const jogos: Jogo[] = (jogosDB ?? []).map((j) => ({
     ...j,
-    modalidade: j.modalidade as unknown as { nome: string; icone: string } | null,
-    setor: j.setor as unknown as { nome: string } | null,
+    modalidade: arr(j.modalidade as unknown as { nome: string; icone: string } | { nome: string; icone: string }[] | null),
+    setor:      arr(j.setor      as unknown as { nome: string } | { nome: string }[] | null),
+    equipe_a:   arr(j.equipe_a   as unknown as EquipeRef | EquipeRef[] | null),
+    equipe_b:   arr(j.equipe_b   as unknown as EquipeRef | EquipeRef[] | null),
   }))
 
   const jogosPorDia: Record<string, Jogo[]> = {}

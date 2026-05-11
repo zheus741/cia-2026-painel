@@ -1,23 +1,98 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Radio, CheckCircle2, XCircle, Minus, Plus } from 'lucide-react'
+import Link from 'next/link'
+import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight } from 'lucide-react'
 import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo } from './actions'
+import { getConferencia } from '@/lib/conferencias'
+
+interface EquipeRef {
+  slug: string
+  divisao: string | null
+  conferencia: string | null
+  cor_primaria: string | null
+  universidade: string | null
+}
 
 interface Jogo {
   id: string
+  equipe_a_id: string | null
+  equipe_b_id: string | null
   equipe_a_nome: string | null
   equipe_b_nome: string | null
   placar_a: number | null
   placar_b: number | null
   status: string
   inicio: string | null
+  divisao: string | null
+  fase: string | null
+  categoria: string | null
   modalidade: { nome: string; icone: string } | null
   setor: { nome: string } | null
+  equipe_a: EquipeRef | null
+  equipe_b: EquipeRef | null
+}
+
+// ── Identity helpers ─────────────────────────────────────────────────────────
+
+const DIV_COLORS: Record<string, string> = {
+  '1ª Divisão': '#A67D14',
+  '2ª Divisão': '#2e6b42',
+  'Super 08':   '#D8845F',
+}
+
+const FASE_LABEL: Record<string, string> = {
+  grupos:    'Grupos',
+  oitavas:   'Oitavas',
+  quartas:   'Quartas',
+  semifinal: 'Semi',
+  final:     'Final',
+}
+
+/** Cor do lado da equipe — usa conferência se houver, senão cor da divisão. */
+function teamAccent(eq: EquipeRef | null, fallbackDiv: string | null): string {
+  if (eq?.conferencia) {
+    return getConferencia(eq.conferencia)?.cor ?? '#94a3b8'
+  }
+  const div = eq?.divisao ?? fallbackDiv
+  if (div && DIV_COLORS[div]) return DIV_COLORS[div]
+  return '#94a3b8'
 }
 
 function fmtTime(ts: string) {
   return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+}
+
+/** Nome da equipe — link pra wiki se houver equipe_id, senão texto puro. */
+function TeamName({ eq, fallback, accent }: { eq: EquipeRef | null; fallback: string | null; accent: string }) {
+  const display = fallback ?? '—'
+  if (!eq?.slug) {
+    return (
+      <p className="text-center text-sm font-semibold leading-snug">
+        {display}
+      </p>
+    )
+  }
+  return (
+    <Link
+      href={`/atleticas/${eq.slug}`}
+      className="group/team inline-flex flex-col items-center gap-0.5 text-center transition-colors"
+      style={{ textDecoration: 'none' }}
+    >
+      <span className="inline-flex items-center gap-1 text-sm font-semibold leading-snug">
+        {display}
+        <ArrowUpRight
+          className="h-3 w-3 opacity-0 transition-all group-hover/team:opacity-60"
+          style={{ color: accent }}
+        />
+      </span>
+      {eq.universidade && (
+        <span className="text-[9.5px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]/60">
+          {eq.universidade}
+        </span>
+      )}
+    </Link>
+  )
 }
 
 function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
@@ -56,8 +131,16 @@ function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
   const isCancelado = jogo.status === 'cancelado'
   const isAgendado = jogo.status === 'agendado'
 
+  // Identity
+  const accentA = teamAccent(jogo.equipe_a, jogo.divisao)
+  const accentB = teamAccent(jogo.equipe_b, jogo.divisao)
+  const divisaoLabel = jogo.divisao ?? jogo.equipe_a?.divisao ?? jogo.equipe_b?.divisao ?? null
+  const divisaoColor = divisaoLabel ? DIV_COLORS[divisaoLabel] : null
+  const faseLabel = jogo.fase ? (FASE_LABEL[jogo.fase] ?? jogo.fase) : null
+  const confMeta = jogo.equipe_a?.conferencia ? getConferencia(jogo.equipe_a.conferencia) : null
+
   return (
-    <div className={`relative rounded-xl border p-4 transition-all ${
+    <div className={`relative overflow-hidden rounded-xl border p-4 transition-all ${
       isAoVivo
         ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/10 shadow-[0_0_20px_rgba(74,138,92,0.08)]'
         : isEncerrado
@@ -73,13 +156,19 @@ function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
         </div>
       )}
 
-      {/* Meta */}
-      <div className="mb-3 flex items-center gap-2 text-[10px] text-[var(--muted-foreground)]">
+      {/* Meta + identity badges */}
+      <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--muted-foreground)]">
         {jogo.inicio && <span className="tabular-nums">{fmtTime(jogo.inicio)}</span>}
         {jogo.modalidade && (
           <>
             <span>·</span>
             <span>{jogo.modalidade.icone} {jogo.modalidade.nome}</span>
+          </>
+        )}
+        {jogo.categoria && (
+          <>
+            <span>·</span>
+            <span>{jogo.categoria}</span>
           </>
         )}
         {jogo.setor && (
@@ -88,6 +177,43 @@ function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
             <span>{jogo.setor.nome}</span>
           </>
         )}
+
+        {/* Divisão badge */}
+        {divisaoLabel && divisaoColor && (
+          <span
+            className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+            style={{
+              background: `${divisaoColor}22`,
+              color: divisaoColor,
+              border: `1px solid ${divisaoColor}44`,
+            }}
+          >
+            {divisaoLabel}
+          </span>
+        )}
+
+        {/* Conferência badge (Super 08) */}
+        {confMeta && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+            style={{
+              background: `${confMeta.cor}22`,
+              color: confMeta.cor,
+              border: `1px solid ${confMeta.cor}44`,
+            }}
+          >
+            <span>{confMeta.icone}</span>
+            {confMeta.nome}
+          </span>
+        )}
+
+        {/* Fase */}
+        {faseLabel && (
+          <span className="inline-flex items-center rounded-full bg-[var(--card)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] border border-[var(--border)]">
+            {faseLabel}
+          </span>
+        )}
+
         {isEncerrado && (
           <>
             <span>·</span>
@@ -103,12 +229,17 @@ function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
       </div>
 
       {/* Placar */}
-      <div className="flex items-center gap-3">
+      <div className="relative flex items-stretch gap-3">
+
         {/* Equipe A */}
-        <div className="flex flex-1 flex-col items-center gap-2">
-          <p className="text-center text-sm font-semibold leading-snug">
-            {jogo.equipe_a_nome ?? 'Equipe A'}
-          </p>
+        <div className="relative flex flex-1 flex-col items-center gap-2 pl-3">
+          {/* color stripe */}
+          <span
+            aria-hidden
+            className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full"
+            style={{ background: accentA }}
+          />
+          <TeamName eq={jogo.equipe_a} fallback={jogo.equipe_a_nome} accent={accentA} />
           {(isAoVivo || isEncerrado) && (
             <div className="flex items-center gap-1">
               {isAoVivo && (
@@ -137,13 +268,17 @@ function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
         </div>
 
         {/* VS / X */}
-        <div className="shrink-0 text-lg font-bold text-[var(--muted-foreground)]/40">×</div>
+        <div className="shrink-0 self-center text-lg font-bold text-[var(--muted-foreground)]/40">×</div>
 
         {/* Equipe B */}
-        <div className="flex flex-1 flex-col items-center gap-2">
-          <p className="text-center text-sm font-semibold leading-snug">
-            {jogo.equipe_b_nome ?? 'Equipe B'}
-          </p>
+        <div className="relative flex flex-1 flex-col items-center gap-2 pr-3">
+          {/* color stripe */}
+          <span
+            aria-hidden
+            className="absolute right-0 top-0 bottom-0 w-[3px] rounded-full"
+            style={{ background: accentB }}
+          />
+          <TeamName eq={jogo.equipe_b} fallback={jogo.equipe_b_nome} accent={accentB} />
           {(isAoVivo || isEncerrado) && (
             <div className="flex items-center gap-1">
               {isAoVivo && (
@@ -171,6 +306,14 @@ function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
           )}
         </div>
       </div>
+
+      {/* Aviso: equipe sem vínculo */}
+      {(!jogo.equipe_a_id || !jogo.equipe_b_id) && jogo.equipe_a_nome && jogo.equipe_b_nome && (
+        <div className="mt-3 flex items-center gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/5 px-2 py-1 text-[10px] text-amber-400">
+          <AlertCircle className="h-3 w-3 shrink-0" />
+          <span>Equipe sem vínculo — corrija em /admin/competicao</span>
+        </div>
+      )}
 
       {/* Ações */}
       {!isEncerrado && !isCancelado && (

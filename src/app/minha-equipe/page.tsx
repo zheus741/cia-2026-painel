@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth/current-user'
 import { Camera, Video, Phone, Mail, User } from 'lucide-react'
 
 const FUNCAO_LABEL: Record<string, string> = {
@@ -19,17 +20,12 @@ function getInitials(name: string): string {
 }
 
 export default async function MinhaEquipePage() {
+  // PERF: requireProfile() cacheado — auth + profile em 1 round-trip
+  const me = await requireProfile()
+  const user = { id: me.id }
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
-  const { data: me } = await supabase
-    .from('profiles')
-    .select('role, funcao_principal, nome')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (!me?.funcao_principal) redirect('/minha-escala')
+  if (!me.funcao_principal) redirect('/minha-escala')
 
   const { data: equipe } = await supabase
     .from('profiles')

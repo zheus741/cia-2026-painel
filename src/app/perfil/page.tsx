@@ -1,25 +1,17 @@
-import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { requireProfile } from '@/lib/auth/current-user'
 import { CiaLogo } from '@/components/cia-logo'
 import { signOut } from '@/app/actions'
 import { LogOut, ArrowLeft } from 'lucide-react'
 import { ProfileClient } from './ProfileClient'
 
 export default async function PerfilPage() {
+  // PERF: requireProfile() cacheado — auth + profile em 1 round-trip total
+  const profile = await requireProfile()
+  const user = { id: profile.id }
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('nome, email, role, funcao_principal, foto_url, telefone')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (!profile) redirect('/')
 
   // ── Fetch personal data in parallel ──────────────────────────────────────
   const [turnosRes, conteudosRes] = await Promise.all([

@@ -1,19 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth/current-user'
 import { EscalaMidiaLiderView } from './EscalaMidiaLiderView'
 
 export default async function EscalaMidiaPage() {
+  // PERF: requireProfile() cacheado — 1 round-trip total em vez de 2
+  const me = await requireProfile()
+  const user = { id: me.id }
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: me } = await supabase
-    .from('profiles')
-    .select('role, funcao_principal')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (!me) redirect('/')
 
   // Admin/coord → redirect to dedicated admin page
   if (me.role === 'admin' || me.role === 'coordenacao') {

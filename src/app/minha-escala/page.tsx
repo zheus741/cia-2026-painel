@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
+import { requireProfile } from '@/lib/auth/current-user'
 import Link from 'next/link'
 import { Calendar, CheckSquare, FileText, MapPin, Clock } from 'lucide-react'
 import { TurnoCard } from './TurnoCard'
@@ -39,9 +39,10 @@ function fmtDate(date: string) {
 }
 
 export default async function MinhaEscalaPage() {
+  // PERF: requireProfile() cacheado em layouts/pages da mesma request
+  const profile = await requireProfile()
+  const user = { id: profile.id }
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
   const [turnosRes, checklistsRes, estagiosRes] = await Promise.all([
     supabase

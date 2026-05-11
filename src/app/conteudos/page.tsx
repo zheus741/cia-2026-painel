@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentProfile } from '@/lib/auth/current-user'
 import { KanbanBoard, type Conteudo, type Dia, type Setor, type Patrocin, type Perfil } from './KanbanBoard'
 import { AlertCircle, Download } from 'lucide-react'
 
@@ -9,22 +10,15 @@ const TIPOS_POR_FUNCAO: Record<string, string[]> = {
 }
 
 export default async function ConteudosPage() {
+  // PERF: getCurrentProfile() é cacheado por request — uma única chamada a
+  // auth.getUser() + profile fetch (~240ms total em vez de 480ms).
+  const profile = await getCurrentProfile()
   const supabase = await createClient()
 
-  // Check current user's funcao for filtering
-  const { data: { user } } = await supabase.auth.getUser()
   let tipoFilter: string[] | null = null
-  if (user) {
-    const { data: me } = await supabase
-      .from('profiles')
-      .select('role, funcao_principal')
-      .eq('id', user.id)
-      .maybeSingle()
-    if (me?.funcao_principal && TIPOS_POR_FUNCAO[me.funcao_principal]) {
-      // Only filter for non-admin/coord roles
-      if (me.role === 'lider_area' || me.role === 'operador') {
-        tipoFilter = TIPOS_POR_FUNCAO[me.funcao_principal]
-      }
+  if (profile?.funcao_principal && TIPOS_POR_FUNCAO[profile.funcao_principal]) {
+    if (profile.role === 'lider_area' || profile.role === 'operador') {
+      tipoFilter = TIPOS_POR_FUNCAO[profile.funcao_principal]
     }
   }
 

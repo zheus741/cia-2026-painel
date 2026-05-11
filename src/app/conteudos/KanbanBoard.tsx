@@ -1062,24 +1062,56 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
   React.useEffect(() => { setConteudos(initial) }, [initial])
 
   // ── Supabase real-time: sincroniza mudanças de outros usuários ──────────────
+  // PERF: cada evento dispara apenas 1 SELECT por PK (com joins), em vez de
+  // router.refresh() que refazia o SSR de TODA a página em todos os clientes.
+  // Em 250 acessos simultâneos isso evita thundering herd no banco.
   React.useEffect(() => {
     const supabase = createClient()
-    const debounceRef = { timer: null as ReturnType<typeof setTimeout> | null }
+    const SELECT_COLS = `
+      id, titulo, tipo, status, prioridade,
+      dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
+      canal_publicacao, briefing, horario_previsto, link_publicado,
+      responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
+      dia:dia_id (nome_dia, data),
+      setor:setor_id (nome),
+      patrocinador:patrocinador_id (nome),
+      jogo:jogo_id (equipe_a_nome, equipe_b_nome, modalidade:modalidade_id (nome, icone)),
+      show:show_id (nome, inicio),
+      festa:festa_id (nome, tema, inicio),
+      modalidade:modalidade_id (nome, icone)
+    `
+
+    async function fetchOne(id: string): Promise<Conteudo | null> {
+      const { data } = await supabase
+        .from('conteudos')
+        .select(SELECT_COLS)
+        .eq('id', id)
+        .maybeSingle()
+      return (data ?? null) as unknown as Conteudo | null
+    }
 
     const channel = supabase
       .channel('kanban-conteudos')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conteudos' }, () => {
-        // Debounce: aguarda 800ms sem novos eventos antes de refrescar
-        if (debounceRef.timer) clearTimeout(debounceRef.timer)
-        debounceRef.timer = setTimeout(() => { router.refresh() }, 800)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'conteudos' }, async (payload) => {
+        const id = (payload.new as { id: string }).id
+        const card = await fetchOne(id)
+        if (!card) return
+        setConteudos(prev => prev.some(c => c.id === id) ? prev : [...prev, card])
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conteudos' }, async (payload) => {
+        const id = (payload.new as { id: string }).id
+        const card = await fetchOne(id)
+        if (!card) return
+        setConteudos(prev => prev.map(c => c.id === id ? card : c))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'conteudos' }, (payload) => {
+        const id = (payload.old as { id: string }).id
+        setConteudos(prev => prev.filter(c => c.id !== id))
       })
       .subscribe()
 
-    return () => {
-      if (debounceRef.timer) clearTimeout(debounceRef.timer)
-      supabase.removeChannel(channel)
-    }
-  }, [router])
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   const filtered = React.useMemo(() => {
     let list = conteudos

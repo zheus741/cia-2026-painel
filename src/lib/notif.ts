@@ -42,6 +42,8 @@ export async function enviarNotif(payload: NotifPayload): Promise<void> {
 
 /**
  * Envia notificações para uma lista de userIds (deduplicados, exclui o ator).
+ * PERF: usa um único INSERT em batch (em vez de N inserts paralelos) — reduz
+ * pressão no pool de conexões e no Realtime broadcast no D-Day.
  */
 export async function enviarNotifParaVarios(
   userIds: (string | null | undefined)[],
@@ -50,5 +52,18 @@ export async function enviarNotifParaVarios(
 ): Promise<void> {
   const ids = [...new Set(userIds.filter((id): id is string => !!id && id !== excludeUserId))]
   if (ids.length === 0) return
-  await Promise.all(ids.map(userId => enviarNotif({ ...payload, userId })))
+  try {
+    const supabase = createServiceClient()
+    await supabase.from('notificacoes').insert(
+      ids.map(userId => ({
+        user_id: userId,
+        titulo:  payload.titulo,
+        corpo:   payload.corpo  ?? null,
+        tipo:    payload.tipo   ?? 'sistema',
+        link:    payload.link   ?? null,
+      })),
+    )
+  } catch {
+    // Best-effort — notificação não pode quebrar o fluxo da action
+  }
 }

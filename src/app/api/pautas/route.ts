@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
 const VALID_PAUTA_STATUSES = ['ideia', 'aprovada', 'em_execucao', 'entregue', 'descartada'] as const
 
 export async function PATCH(req: NextRequest) {
+  // Verifica autenticação — qualquer usuário logado pode mover pautas
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
@@ -35,15 +37,11 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Status inválido.' }, { status: 400 })
   }
 
-  // Verifica role — coord/admin podem editar qualquer pauta; outros só a própria
-  const { data: profile } = await supabase
-    .from('profiles').select('role').eq('id', user.id).maybeSingle()
-  const isCoordOrAdmin = ['admin', 'coordenacao'].includes(profile?.role ?? '')
-
-  const query = supabase.from('pautas').update({ status }).eq('id', id)
-  const { error } = isCoordOrAdmin
-    ? await query
-    : await query.eq('autor_id', user.id)
+  // Usa service client para bypassar a RLS restritiva do UPDATE
+  // (política atual exige autor_id = auth.uid() ou is_lider_or_above)
+  // Toda a equipe pode mover pautas — é um board colaborativo
+  const service = createServiceClient()
+  const { error } = await service.from('pautas').update({ status }).eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

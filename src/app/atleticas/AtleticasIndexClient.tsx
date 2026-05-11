@@ -317,7 +317,7 @@ export function AtleticasIndexClient({ div1, div2, super08ByConf, semDiv, totals
               marginTop: 8,
               letterSpacing: '-0.02em',
             }}>
-              {totals.total} confirmadas · 3 níveis · 8 conferências
+              {totals.total} confirmadas · 2 divisões · 8 conferências
             </span>
           </h1>
         </header>
@@ -377,7 +377,7 @@ export function AtleticasIndexClient({ div1, div2, super08ByConf, semDiv, totals
           icon={<Trophy style={{ width: 16, height: 16 }} />}
         />
 
-        {/* ─── SUPER 08 (3ª Divisão · 8 conferências) ─── */}
+        {/* ─── CONFERÊNCIAS (Super 08) ─── */}
         <section style={{ marginBottom: 36 }}>
           <header style={{
             display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
@@ -402,14 +402,14 @@ export function AtleticasIndexClient({ div1, div2, super08ByConf, semDiv, totals
                   letterSpacing: '-0.03em',
                   lineHeight: 1,
                 }}>
-                  Super 08
+                  Conferências
                 </h2>
                 <p style={{
                   fontSize: 11, color: 'rgba(10,15,11,0.50)',
                   marginTop: 4, letterSpacing: '0.08em',
                   textTransform: 'uppercase', fontWeight: 700,
                 }}>
-                  Nível 03 · 8 conferências · 1 campeão cada
+                  Super 08 · cada conferência elege 1 campeão
                 </p>
               </div>
             </div>

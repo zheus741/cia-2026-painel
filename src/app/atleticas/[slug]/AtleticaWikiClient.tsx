@@ -139,6 +139,9 @@ export function AtleticaWikiClient({
     .slice(-10)
     .reverse()
 
+  // Competição ainda não iniciou
+  const semJogos = jogos.length === 0
+
   return (
     <div style={{
       minHeight: '100%',
@@ -146,6 +149,24 @@ export function AtleticaWikiClient({
       background: 'transparent',
     }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+
+        {/* Banner pré-competição */}
+        {semJogos && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '10px 16px',
+            background: 'rgba(240,208,74,0.08)',
+            border: '1px solid rgba(240,208,74,0.22)',
+            borderRadius: 10,
+            marginBottom: 16,
+            fontSize: 12.5, fontWeight: 600,
+            color: 'rgba(10,15,11,0.60)',
+            letterSpacing: '0.01em',
+          }}>
+            <span style={{ fontSize: 16 }}>⏳</span>
+            Competição ainda não iniciou — dados atualizados em tempo real quando os jogos começarem
+          </div>
+        )}
 
         {/* Voltar */}
         <Link

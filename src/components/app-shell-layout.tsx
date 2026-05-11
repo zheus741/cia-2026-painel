@@ -46,9 +46,11 @@ const ADMIN_GROUPS: NavGroup[] = [
   {
     label: 'Esportivo',
     items: [
-      { label: 'Atléticas',      href: '/atleticas',          icon: Trophy },
+      { label: 'Hub Esportivo',  href: '/esportivo',          icon: Trophy },
+      { label: 'Atléticas',      href: '/atleticas',          icon: Users },
       { label: 'Jogos',          href: '/admin/jogos',        icon: Swords },
       { label: 'Placar Ao Vivo', href: '/placar',             icon: Radio },
+      { label: 'Competição',     href: '/admin/competicao',   icon: GitBranch },
       { label: 'Modalidades',    href: '/admin/modalidades',  icon: Trophy },
     ],
   },

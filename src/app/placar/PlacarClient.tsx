@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight } from 'lucide-react'
+import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap } from 'lucide-react'
 import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo } from './actions'
 import { getConferencia } from '@/lib/conferencias'
+import { createClient } from '@/lib/supabase/client'
 
 interface EquipeRef {
   slug: string
@@ -95,8 +97,11 @@ function TeamName({ eq, fallback, accent }: { eq: EquipeRef | null; fallback: st
   )
 }
 
-function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
-  const [jogo, setJogo] = useState(initial)
+function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
+  jogo: Jogo
+  onLocalUpdate: (id: string, patch: Partial<Jogo>) => void
+  recentlyChanged: boolean
+}) {
   const [isPending, startTransition] = useTransition()
 
   const placarA = jogo.placar_a ?? 0
@@ -105,24 +110,24 @@ function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
   function adjustScore(team: 'a' | 'b', delta: number) {
     const na = team === 'a' ? Math.max(0, placarA + delta) : placarA
     const nb = team === 'b' ? Math.max(0, placarB + delta) : placarB
-    setJogo((p) => ({ ...p, placar_a: na, placar_b: nb }))
+    onLocalUpdate(jogo.id, { placar_a: na, placar_b: nb })
     startTransition(async () => {
       await atualizarPlacar(jogo.id, na, nb)
     })
   }
 
   function handleAoVivo() {
-    setJogo((p) => ({ ...p, status: 'ao_vivo', placar_a: 0, placar_b: 0 }))
+    onLocalUpdate(jogo.id, { status: 'ao_vivo', placar_a: 0, placar_b: 0 })
     startTransition(async () => { await setJogoAoVivo(jogo.id) })
   }
 
   function handleEncerrar() {
-    setJogo((p) => ({ ...p, status: 'encerrado' }))
+    onLocalUpdate(jogo.id, { status: 'encerrado' })
     startTransition(async () => { await encerrarJogo(jogo.id) })
   }
 
   function handleCancelar() {
-    setJogo((p) => ({ ...p, status: 'cancelado' }))
+    onLocalUpdate(jogo.id, { status: 'cancelado' })
     startTransition(async () => { await cancelarJogo(jogo.id) })
   }
 
@@ -153,6 +158,21 @@ function PlacarCard({ jogo: initial }: { jogo: Jogo }) {
         <div className="absolute right-3 top-3 flex items-center gap-1.5">
           <Radio className="h-3 w-3 text-[var(--green-bright)] animate-pulse" />
           <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--green-bright)]">Ao vivo</span>
+        </div>
+      )}
+
+      {/* Pulse de update remoto */}
+      {recentlyChanged && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-[var(--green-bright)]/50 animate-[pulse_1.2s_ease-out_1]"
+          style={{ boxShadow: '0 0 24px rgba(106,184,126,0.25)' }}
+        />
+      )}
+      {recentlyChanged && (
+        <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-[var(--green-dim)]/30 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--green-bright)]">
+          <Zap className="h-2.5 w-2.5" />
+          Sync
         </div>
       )}
 
@@ -357,10 +377,131 @@ interface Props {
   diaAtivo: string
 }
 
-export function PlacarBoard({ dias, jogosPorDia, diaAtivo }: Props) {
-  const [diaId, setDiaId] = useState(diaAtivo)
-  const jogos = jogosPorDia[diaId] ?? []
+// Campos escalares que o realtime pode atualizar in-place (sem perder joins).
+const REALTIME_MERGEABLE: (keyof Jogo)[] = [
+  'status', 'placar_a', 'placar_b',
+  'equipe_a_nome', 'equipe_b_nome',
+  'inicio', 'fase', 'categoria', 'divisao',
+]
 
+export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }: Props) {
+  const router = useRouter()
+  const [jogosPorDia, setJogosPorDia] = useState(initialJogosPorDia)
+  const [diaId, setDiaId] = useState(diaAtivo)
+  const [recentIds, setRecentIds] = useState<Set<string>>(new Set())
+  const [conectado, setConectado] = useState(false)
+
+  const lastLocalChangeRef = useRef<Map<string, number>>(new Map())
+
+  // Quando server re-renderiza (router.refresh), sincroniza state local
+  useEffect(() => {
+    setJogosPorDia(initialJogosPorDia)
+  }, [initialJogosPorDia])
+
+  // Helper: aplica patch local em um jogo (otimístico ou via realtime)
+  const handleLocalUpdate = useCallback((id: string, patch: Partial<Jogo>) => {
+    lastLocalChangeRef.current.set(id, Date.now())
+    setJogosPorDia(prev => {
+      let changed = false
+      const next: typeof prev = {}
+      for (const dia of Object.keys(prev)) {
+        const list = prev[dia]
+        const idx = list.findIndex(j => j.id === id)
+        if (idx >= 0) {
+          next[dia] = [...list.slice(0, idx), { ...list[idx], ...patch }, ...list.slice(idx + 1)]
+          changed = true
+        } else {
+          next[dia] = list
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [])
+
+  // Helper: flag um jogo como "atualizado agora" por 1.5s
+  const flashRecent = useCallback((id: string) => {
+    setRecentIds(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+    setTimeout(() => {
+      setRecentIds(prev => {
+        if (!prev.has(id)) return prev
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }, 1500)
+  }, [])
+
+  // Realtime subscription
+  useEffect(() => {
+    const supabase = createClient()
+    let refreshTimeout: ReturnType<typeof setTimeout> | null = null
+    const scheduleRefresh = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout)
+      refreshTimeout = setTimeout(() => { router.refresh() }, 1000)
+    }
+
+    const channel = supabase
+      .channel('placar-realtime')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'jogos',
+      }, (payload) => {
+        const newRow = payload.new as Partial<Jogo> & { id: string }
+        const oldRow = payload.old as Partial<Jogo>
+
+        // Mudança de equipe/modalidade/setor/dia → precisa re-fetch pros joins
+        if (
+          newRow.equipe_a_id !== oldRow.equipe_a_id ||
+          newRow.equipe_b_id !== oldRow.equipe_b_id
+        ) {
+          scheduleRefresh()
+          return
+        }
+
+        // Detecta mudança real (ignora echo da nossa própria edição < 800ms)
+        const lastLocal = lastLocalChangeRef.current.get(newRow.id) ?? 0
+        const wasRecentLocal = Date.now() - lastLocal < 800
+
+        // Aplica patch escalar
+        const patch: Partial<Jogo> = {}
+        for (const key of REALTIME_MERGEABLE) {
+          if (newRow[key] !== undefined) {
+            (patch as Record<string, unknown>)[key] = newRow[key]
+          }
+        }
+        handleLocalUpdate(newRow.id, patch)
+
+        // Flash visual só se mudança veio de fora
+        if (!wasRecentLocal) {
+          flashRecent(newRow.id)
+        }
+      })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'jogos',
+      }, () => { scheduleRefresh() })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'jogos',
+      }, () => { scheduleRefresh() })
+      .subscribe((status) => {
+        setConectado(status === 'SUBSCRIBED')
+      })
+
+    return () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout)
+      supabase.removeChannel(channel)
+    }
+  }, [router, handleLocalUpdate, flashRecent])
+
+  const jogos = jogosPorDia[diaId] ?? []
   const aoVivo = jogos.filter((j) => j.status === 'ao_vivo').length
   const agendados = jogos.filter((j) => j.status === 'agendado').length
   const encerrados = jogos.filter((j) => j.status === 'encerrado').length
@@ -392,8 +533,8 @@ export function PlacarBoard({ dias, jogosPorDia, diaAtivo }: Props) {
         })}
       </div>
 
-      {/* Stats rápidas */}
-      <div className="flex flex-wrap gap-4 text-sm">
+      {/* Stats rápidas + status realtime */}
+      <div className="flex flex-wrap items-center gap-4 text-sm">
         {aoVivo > 0 && (
           <span className="flex items-center gap-1.5 font-semibold text-[var(--green-bright)]">
             <Radio className="h-3.5 w-3.5 animate-pulse" />
@@ -402,6 +543,23 @@ export function PlacarBoard({ dias, jogosPorDia, diaAtivo }: Props) {
         )}
         <span className="text-[var(--muted-foreground)]">{agendados} agendados</span>
         <span className="text-[var(--muted-foreground)]">{encerrados} encerrados</span>
+
+        {/* Indicador de realtime */}
+        <span
+          className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+            conectado
+              ? 'border-[var(--green-bright)]/30 bg-[var(--green-dim)]/10 text-[var(--green-bright)]'
+              : 'border-[var(--border)] bg-[var(--card)]/40 text-[var(--muted-foreground)]'
+          }`}
+          title={conectado ? 'Sincronizado em tempo real' : 'Conectando...'}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              conectado ? 'bg-[var(--green-bright)] animate-pulse' : 'bg-[var(--muted-foreground)]/50'
+            }`}
+          />
+          {conectado ? 'Tempo real' : 'Conectando'}
+        </span>
       </div>
 
       {/* Grid de jogos */}
@@ -412,7 +570,12 @@ export function PlacarBoard({ dias, jogosPorDia, diaAtivo }: Props) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {jogos.map((jogo) => (
-            <PlacarCard key={jogo.id} jogo={jogo} />
+            <PlacarCard
+              key={jogo.id}
+              jogo={jogo}
+              onLocalUpdate={handleLocalUpdate}
+              recentlyChanged={recentIds.has(jogo.id)}
+            />
           ))}
         </div>
       )}

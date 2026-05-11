@@ -1,9 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Trophy, Calendar, Radio } from 'lucide-react'
 import { CONFERENCIAS } from '@/lib/conferencias'
+import { createClient } from '@/lib/supabase/client'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -339,7 +341,26 @@ export function EsportivoClient({
   div1, div2, super08, upcoming,
   totalJogos, totalAtleticas, aoVivoCount,
 }: Props) {
+  const router = useRouter()
   const [tab, setTab] = useState<'div1' | 'div2' | 'super08'>('div1')
+  const [liveSync, setLiveSync] = useState(false)
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Realtime: quando jogos mudam, recomputa classificação no servidor
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('esportivo-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos' }, () => {
+        if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+        refreshTimerRef.current = setTimeout(() => { router.refresh() }, 1200)
+      })
+      .subscribe((status) => { setLiveSync(status === 'SUBSCRIBED') })
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      supabase.removeChannel(channel)
+    }
+  }, [router])
 
   const tabs: { key: 'div1' | 'div2' | 'super08'; label: string; accent: string }[] = [
     { key: 'div1',    label: '1ª Divisão',    accent: '#A67D14' },
@@ -393,6 +414,26 @@ export function EsportivoClient({
               {aoVivoCount} ao vivo
             </span>
           )}
+
+          {/* Realtime indicator */}
+          <span style={{
+            marginLeft: 'auto',
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            borderRadius: 20, padding: '4px 12px',
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            background: liveSync ? 'rgba(106,184,126,0.18)' : 'rgba(255,255,255,0.06)',
+            color: liveSync ? '#9be3a8' : 'rgba(255,255,255,0.40)',
+            border: liveSync ? '1px solid rgba(106,184,126,0.30)' : '1px solid rgba(255,255,255,0.10)',
+          }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: liveSync ? '#6ab87e' : 'rgba(255,255,255,0.40)',
+              animation: liveSync ? 'pulse 1.6s infinite' : 'none',
+              boxShadow: liveSync ? '0 0 6px rgba(106,184,126,0.55)' : 'none',
+            }} />
+            {liveSync ? 'Tempo real' : 'Conectando'}
+          </span>
         </div>
 
         {/* Tab strip */}

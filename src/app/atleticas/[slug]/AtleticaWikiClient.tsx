@@ -1,11 +1,14 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Crown, Trophy, Flame, TrendingUp, Calendar } from 'lucide-react'
 import type {
   Atletica, InscricaoDetalhe, JogoDetalhe, AtleticaStats,
 } from '@/lib/competicao/queries'
 import type { ConferenciaMeta, DivisaoMeta } from '@/lib/conferencias'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   atletica:   Atletica
@@ -115,6 +118,32 @@ function FormaRow({ forma }: { forma: ('V'|'E'|'D')[] }) {
 export function AtleticaWikiClient({
   atletica, inscricoes, jogos, stats, forma, confMeta, divMeta, accent,
 }: Props) {
+  const router = useRouter()
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Realtime: quando jogo desta atlética muda, recalcula stats e forma
+  useEffect(() => {
+    const supabase = createClient()
+    const scheduleRefresh = () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current)
+      refreshTimer.current = setTimeout(() => { router.refresh() }, 1000)
+    }
+    const channel = supabase
+      .channel(`wiki-atletica:${atletica.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'jogos',
+        filter: `equipe_a_id=eq.${atletica.id}`,
+      }, scheduleRefresh)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'jogos',
+        filter: `equipe_b_id=eq.${atletica.id}`,
+      }, scheduleRefresh)
+      .subscribe()
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current)
+      supabase.removeChannel(channel)
+    }
+  }, [atletica.id, router])
 
   // Agrupa inscrições por modalidade
   const modGroups = new Map<string, InscricaoDetalhe[]>()

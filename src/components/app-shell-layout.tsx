@@ -37,11 +37,19 @@ const ADMIN_GROUPS: NavGroup[] = [
     label: 'Principal',
     items: [
       { label: 'Conteúdos',      href: '/conteudos',          icon: Camera },
-      { label: 'Placar Ao Vivo', href: '/placar',             icon: Radio },
       { label: 'Checklists',     href: '/checklist',          icon: CheckSquare },
       { label: 'Pautas',         href: '/pautas',             icon: Lightbulb },
       { label: 'Cronograma',     href: '/cronograma',         icon: LayoutList },
       { label: 'Wiki',           href: '/wiki',               icon: BookOpen },
+    ],
+  },
+  {
+    label: 'Esportivo',
+    items: [
+      { label: 'Atléticas',      href: '/atleticas',          icon: Trophy },
+      { label: 'Jogos',          href: '/admin/jogos',        icon: Swords },
+      { label: 'Placar Ao Vivo', href: '/placar',             icon: Radio },
+      { label: 'Modalidades',    href: '/admin/modalidades',  icon: Trophy },
     ],
   },
   {
@@ -50,7 +58,6 @@ const ADMIN_GROUPS: NavGroup[] = [
       { label: 'Minha Escala',   href: '/minha-escala',       icon: UserCircle },
       { label: 'Escala',         href: '/admin/escala',       icon: ClipboardList },
       { label: 'Foto & Vídeo',   href: '/admin/escala-av',    icon: Aperture },
-      { label: 'Jogos',          href: '/admin/jogos',        icon: Swords },
       { label: 'Mapa Ao Vivo',   href: '/mapa',               icon: MapPin },
       { label: 'Shows',          href: '/admin/shows',        icon: Music },
       { label: 'Festas',         href: '/admin/festas',       icon: PartyPopper },
@@ -63,7 +70,6 @@ const ADMIN_GROUPS: NavGroup[] = [
       { label: 'Edições',        href: '/admin/edicoes',        icon: Settings },
       { label: 'Dias',           href: '/admin/dias',           icon: Calendar },
       { label: 'Setores',        href: '/admin/setores',        icon: Map },
-      { label: 'Modalidades',    href: '/admin/modalidades',    icon: Trophy },
       { label: 'Equipes',        href: '/admin/equipes',        icon: Users },
       { label: 'Pipelines',      href: '/admin/pipelines',      icon: GitBranch },
       { label: 'Tags',           href: '/admin/tags',           icon: Tag },

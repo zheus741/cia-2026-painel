@@ -21,6 +21,68 @@ export default async function PerfilPage() {
 
   if (!profile) redirect('/')
 
+  // ── Fetch personal data in parallel ──────────────────────────────────────
+  const [turnosRes, conteudosRes] = await Promise.all([
+    // All turnos assigned to this user (all event days)
+    supabase
+      .from('turnos')
+      .select('id, funcao, inicio, fim, observacoes, dia:dias_evento(nome_dia, data), setor:setores(nome)')
+      .eq('user_id', user.id)
+      .order('inicio'),
+
+    // Conteúdos where user is responsible in any role
+    supabase
+      .from('conteudos')
+      .select(`
+        id, titulo, tipo, status, prioridade, horario_previsto,
+        responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
+        dia:dias_evento(nome_dia, data),
+        setor:setores(nome)
+      `)
+      .or(
+        `responsavel_captacao_id.eq.${user.id},responsavel_design_id.eq.${user.id},responsavel_edicao_id.eq.${user.id}`
+      )
+      .not('status', 'in', '(arquivado,cancelado)')
+      .order('prioridade'),
+  ])
+
+  type RawTurno = {
+    id: string; funcao: string; inicio: string; fim: string; observacoes: string | null
+    dia: { nome_dia: string; data: string } | { nome_dia: string; data: string }[] | null
+    setor: { nome: string } | { nome: string }[] | null
+  }
+
+  type RawConteudo = {
+    id: string; titulo: string; tipo: string; status: string; prioridade: number
+    horario_previsto: string | null
+    responsavel_captacao_id: string | null
+    responsavel_design_id: string | null
+    responsavel_edicao_id: string | null
+    dia: { nome_dia: string; data: string } | { nome_dia: string; data: string }[] | null
+    setor: { nome: string } | { nome: string }[] | null
+  }
+
+  const arr = <T,>(v: T | T[] | null | undefined): T | null =>
+    Array.isArray(v) ? (v[0] ?? null) : v ?? null
+
+  const turnos = (turnosRes.data ?? []).map((t) => ({
+    ...(t as RawTurno),
+    dia:   arr((t as RawTurno).dia),
+    setor: arr((t as RawTurno).setor),
+  }))
+
+  const conteudos = (conteudosRes.data ?? []).map((c) => ({
+    ...(c as RawConteudo),
+    dia:   arr((c as RawConteudo).dia),
+    setor: arr((c as RawConteudo).setor),
+    // compute which roles this user has on this content
+    myRoles: [
+      (c as RawConteudo).responsavel_captacao_id === user.id ? 'captacao' : null,
+      (c as RawConteudo).responsavel_design_id   === user.id ? 'design'   : null,
+      (c as RawConteudo).responsavel_edicao_id   === user.id ? 'edicao'   : null,
+    ].filter(Boolean) as string[],
+  }))
+
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden cia-bg">
 
@@ -47,7 +109,7 @@ export default async function PerfilPage() {
       {/* Header */}
       <header
         className="relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-[var(--border)] px-4 sm:px-6"
-        style={{ background: 'var(--background)', borderBottom: '1px solid var(--border)' }}
+        style={{ background: 'var(--background)' }}
       >
         <CiaLogo />
         <div className="flex items-center gap-3">
@@ -71,27 +133,13 @@ export default async function PerfilPage() {
       </header>
 
       {/* Content */}
-      <main className="relative z-10 flex-1 overflow-y-auto px-4 py-10 sm:px-6">
-        <div className="mx-auto max-w-md">
-
-          <div className="mb-8 cia-fade-in">
-            <p className="text-[10px] uppercase tracking-[0.3em]" style={{ color: 'var(--gold)' }}>
-              Meu perfil
-            </p>
-            <h1
-              className="mt-2 text-3xl font-bold cia-gold-text"
-              style={{ fontFamily: 'Orbitron, sans-serif' }}
-            >
-              {profile.nome.split(' ')[0]}
-            </h1>
-            <div className="cia-gold-rule mt-3 w-32" />
-          </div>
-
-          <ProfileClient
-            userId={user.id}
-            profile={profile}
-          />
-        </div>
+      <main className="relative z-10 flex-1 overflow-y-auto">
+        <ProfileClient
+          userId={user.id}
+          profile={profile}
+          turnos={turnos}
+          conteudos={conteudos}
+        />
       </main>
     </div>
   )

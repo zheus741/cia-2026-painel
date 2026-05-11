@@ -7,6 +7,7 @@ import {
   safe,
   type ActionResult,
 } from '@/lib/admin/actions-helper'
+import { enviarNotif } from '@/lib/notif'
 
 export interface TurnoAVPayload {
   dia_id:               string
@@ -43,6 +44,20 @@ export async function createTurnoAV(payload: TurnoAVPayload): Promise<ActionResu
       is_roaming:          false,
     })
     if (error) throw error
+
+    // Notifica o usuário se já foi atribuído na criação
+    if (payload.user_id) {
+      const funcao = payload.funcao.charAt(0).toUpperCase() + payload.funcao.slice(1)
+      const inicio = new Date(payload.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+      const fim    = new Date(payload.fim).toLocaleTimeString('pt-BR',    { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+      await enviarNotif({
+        userId: payload.user_id,
+        titulo: `📅 Turno agendado — ${funcao}`,
+        corpo:  `${inicio}–${fim} · Confira sua escala para detalhes.`,
+        tipo:   'escala',
+        link:   '/minha-escala',
+      })
+    }
   })
 }
 
@@ -53,8 +68,33 @@ export async function updateTurnoAV(
   return safe(async () => {
     await requireCoordOrAdmin()
     const supabase = await createClient()
+
+    // Busca user_id anterior para detectar nova atribuição
+    const { data: antes } = await supabase
+      .from('turnos')
+      .select('user_id, funcao, inicio, fim')
+      .eq('id', id)
+      .maybeSingle()
+
     const { error } = await supabase.from('turnos').update(payload).eq('id', id)
     if (error) throw error
+
+    // Notifica se um novo usuário foi atribuído
+    const novoUserId = payload.user_id
+    if (novoUserId && novoUserId !== (antes?.user_id as string | null)) {
+      const funcao   = ((payload.funcao ?? antes?.funcao) as string ?? '').replace(/^./, c => c.toUpperCase())
+      const inicioTs = (payload.inicio ?? antes?.inicio) as string | undefined
+      const fimTs    = (payload.fim    ?? antes?.fim)    as string | undefined
+      const inicio   = inicioTs ? new Date(inicioTs).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : ''
+      const fim      = fimTs    ? new Date(fimTs).toLocaleTimeString('pt-BR',    { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : ''
+      await enviarNotif({
+        userId: novoUserId,
+        titulo: `📅 Você foi escalado — ${funcao}`,
+        corpo:  `${inicio}–${fim} · Confira sua escala para detalhes.`,
+        tipo:   'escala',
+        link:   '/minha-escala',
+      })
+    }
   })
 }
 

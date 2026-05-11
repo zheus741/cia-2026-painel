@@ -17,7 +17,7 @@ export default async function PlacarPage() {
       .from('jogos')
       .select(`
         id, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
-        placar_a, placar_b, status, inicio, dia_id, divisao, fase, categoria,
+        placar_a, placar_b, status, inicio, dia_id, divisao, fase, categoria, teste,
         modalidade:modalidades(nome, icone),
         setor:setores(nome),
         equipe_a:equipe_a_id(slug, divisao, conferencia, cor_primaria, universidade),
@@ -35,7 +35,7 @@ export default async function PlacarPage() {
     equipe_a_nome: string | null; equipe_b_nome: string | null
     placar_a: number | null; placar_b: number | null
     status: string; inicio: string | null; dia_id: string
-    divisao: string | null; fase: string | null; categoria: string | null
+    divisao: string | null; fase: string | null; categoria: string | null; teste: boolean | null
     modalidade: { nome: string; icone: string } | null
     setor: { nome: string } | null
     equipe_a: EquipeRef | null

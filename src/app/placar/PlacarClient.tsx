@@ -3,8 +3,8 @@
 import { useState, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter } from 'lucide-react'
-import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo, reativarJogo } from './actions'
+import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical } from 'lucide-react'
+import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo, reativarJogo, criarJogoTeste } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 
@@ -29,6 +29,7 @@ interface Jogo {
   divisao: string | null
   fase: string | null
   categoria: string | null
+  teste: boolean | null
   modalidade: { nome: string; icone: string } | null
   setor: { nome: string } | null
   equipe_a: EquipeRef | null
@@ -140,6 +141,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
   const isEncerrado = jogo.status === 'encerrado'
   const isCancelado = jogo.status === 'cancelado'
   const isAgendado = jogo.status === 'agendado'
+  const isTeste = !!jogo.teste
 
   // Identity
   const accentA = teamAccent(jogo.equipe_a, jogo.divisao)
@@ -151,7 +153,9 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
 
   return (
     <div className={`relative overflow-hidden rounded-xl border p-4 transition-all ${
-      isAoVivo
+      isTeste
+        ? 'border-amber-600/40 bg-amber-500/5'
+        : isAoVivo
         ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/10 shadow-[0_0_20px_rgba(74,138,92,0.08)]'
         : isEncerrado
         ? 'border-[var(--border)]/50 bg-[var(--card)]/40 opacity-70'
@@ -159,10 +163,24 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
         ? 'border-red-800/30 bg-red-900/10 opacity-50'
         : 'border-[var(--border)] bg-[var(--card)]/60'
     }`}>
-      {isAoVivo && (
+      {/* TESTE badge */}
+      {isTeste && (
+        <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5">
+          <FlaskConical className="h-2.5 w-2.5 text-amber-400" />
+          <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400">Teste</span>
+        </div>
+      )}
+
+      {isAoVivo && !isTeste && (
         <div className="absolute right-3 top-3 flex items-center gap-1.5">
           <Radio className="h-3 w-3 text-[var(--green-bright)] animate-pulse" />
           <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--green-bright)]">Ao vivo</span>
+        </div>
+      )}
+      {isAoVivo && isTeste && (
+        <div className="absolute left-3 top-3 flex items-center gap-1.5">
+          <Radio className="h-3 w-3 text-amber-400 animate-pulse" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">Ao vivo · Teste</span>
         </div>
       )}
 
@@ -415,7 +433,7 @@ interface Props {
 const REALTIME_MERGEABLE: (keyof Jogo)[] = [
   'status', 'placar_a', 'placar_b',
   'equipe_a_nome', 'equipe_b_nome',
-  'inicio', 'fase', 'categoria', 'divisao',
+  'inicio', 'fase', 'categoria', 'divisao', 'teste',
 ]
 
 export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }: Props) {
@@ -426,6 +444,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
   const [conectado, setConectado] = useState(false)
   const [filterMod, setFilterMod] = useState('')
   const [filterConf, setFilterConf] = useState('')
+  const [isPendingTeste, startTransitionTeste] = useTransition()
 
   const lastLocalChangeRef = useRef<Map<string, number>>(new Map())
 
@@ -600,9 +619,22 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
         <span className="text-[var(--muted-foreground)]">{agendados} agendados</span>
         <span className="text-[var(--muted-foreground)]">{encerrados} encerrados</span>
 
+        {/* Criar jogo teste */}
+        <button
+          onClick={() => startTransitionTeste(async () => {
+            await criarJogoTeste(diaId)
+          })}
+          disabled={isPendingTeste}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-amber-600/30 bg-amber-500/8 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-500 transition-all hover:border-amber-500/50 hover:bg-amber-500/15 disabled:opacity-40"
+          title="Cria um jogo fictício para testar o placar ao vivo e o Modo TV"
+        >
+          <FlaskConical className="h-3 w-3" />
+          {isPendingTeste ? 'Criando...' : 'Jogo teste'}
+        </button>
+
         {/* Indicador de realtime */}
         <span
-          className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
             conectado
               ? 'border-[var(--green-bright)]/30 bg-[var(--green-dim)]/10 text-[var(--green-bright)]'
               : 'border-[var(--border)] bg-[var(--card)]/40 text-[var(--muted-foreground)]'

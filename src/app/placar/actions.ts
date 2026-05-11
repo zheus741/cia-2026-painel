@@ -60,6 +60,29 @@ export async function cancelarJogo(id: string): Promise<ActionResult> {
   })
 }
 
+export async function criarJogoTeste(diaId: string): Promise<ActionResult & { data?: { id: string } }> {
+  return safe(async () => {
+    await requireCoordOrAdmin()
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('jogos')
+      .insert({
+        equipe_a_nome: 'Equipe Alfa',
+        equipe_b_nome: 'Equipe Beta',
+        status: 'agendado',
+        dia_id: diaId,
+        placar_a: 0,
+        placar_b: 0,
+        teste: true,
+      })
+      .select('id')
+      .single()
+    if (error) throw error
+    revalidatePath('/placar')
+    return data as { id: string }
+  })
+}
+
 export async function reativarJogo(id: string): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()

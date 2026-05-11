@@ -7,7 +7,7 @@ export const metadata = { title: 'CIA 2026 · Placar Ao Vivo' }
 
 const JOGO_SELECT = `
   id, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
-  placar_a, placar_b, status, inicio, fim_previsto, divisao, fase, categoria,
+  placar_a, placar_b, status, inicio, fim_previsto, divisao, fase, categoria, teste,
   modalidade:modalidades(nome, icone),
   setor:setores(nome),
   equipe_a:equipe_a_id(slug, divisao, conferencia, cor_primaria, universidade),
@@ -23,7 +23,7 @@ interface RawJogo {
   equipe_a_nome: string | null; equipe_b_nome: string | null
   placar_a: number | null; placar_b: number | null
   status: string | null; inicio: string | null; fim_previsto: string | null
-  divisao: string | null; fase: string | null; categoria: string | null
+  divisao: string | null; fase: string | null; categoria: string | null; teste: boolean | null
   modalidade: RawMod | RawMod[] | null
   setor: RawSetor | RawSetor[] | null
   equipe_a: RawEquipe | RawEquipe[] | null
@@ -59,6 +59,7 @@ export default async function PlacarTVPage() {
       .order('inicio', { ascending: true, nullsFirst: false }),
     supabase.from('jogos').select(JOGO_SELECT)
       .eq('status', 'encerrado')
+      .neq('teste', true)
       .gte('inicio', startOfTodayISO)
       .order('inicio', { ascending: false })
       .limit(10),

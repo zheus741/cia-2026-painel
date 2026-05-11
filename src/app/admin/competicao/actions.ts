@@ -96,5 +96,40 @@ export async function deleteInscricaoById(id: string): Promise<ActionResult> {
     const supabase = await createClient()
     const { error } = await supabase.from('inscricoes').delete().eq('id', id)
     if (error) throw error
+    revalidatePath('/admin/competicao')
+  })
+}
+
+export interface NovaInscricaoInput {
+  equipe_id: string
+  modalidade_id: string
+  categoria: string  // 'M' | 'F' | 'COED'
+  divisao: string
+  conferencia?: string | null
+}
+
+export async function createInscricao(input: NovaInscricaoInput): Promise<ActionResult> {
+  return safe(async () => {
+    await requireCoordOrAdmin()
+    const supabase = await createClient()
+    // Fetch active edicao
+    const { data: edicao, error: edErr } = await supabase
+      .from('edicoes')
+      .select('id')
+      .order('criado_em', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (edErr) throw edErr
+    if (!edicao) throw new Error('Nenhuma edição encontrada.')
+    const { error } = await supabase.from('inscricoes').insert({
+      edicao_id: edicao.id,
+      equipe_id: input.equipe_id,
+      modalidade_id: input.modalidade_id,
+      categoria: input.categoria,
+      divisao: input.divisao,
+      conferencia: input.conferencia ?? null,
+    })
+    if (error) throw error
+    revalidatePath('/admin/competicao')
   })
 }

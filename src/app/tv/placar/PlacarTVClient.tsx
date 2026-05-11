@@ -25,6 +25,7 @@ export interface JogoTV {
   status: string | null
   inicio: string | null; fim_previsto: string | null
   divisao: string | null; fase: string | null; categoria: string | null
+  teste: boolean | null
   modalidade: { nome: string; icone: string } | null
   setor: { nome: string } | null
   equipe_a: EquipeRef | null
@@ -150,12 +151,28 @@ function LiveCard({
         }}
       />
 
+      {/* TESTE watermark */}
+      {jogo.teste && (
+        <div style={{
+          position: 'absolute', top: 12, right: 14, zIndex: 10,
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '4px 10px', borderRadius: 99,
+          background: 'rgba(245,158,11,0.20)',
+          border: '1px solid rgba(245,158,11,0.45)',
+          fontSize: 10, fontWeight: 800, letterSpacing: '0.14em',
+          color: '#fbbf24', textTransform: 'uppercase',
+        }}>
+          ⚗ TESTE
+        </div>
+      )}
+
       {/* Top meta strip */}
       <div style={{
         position: 'relative',
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
         padding: `${padding * 0.45}px ${padding}px 0`,
         marginBottom: padding * 0.5,
+        paddingRight: jogo.teste ? padding + 80 : padding,
       }}>
         {/* AO VIVO badge */}
         <span style={{

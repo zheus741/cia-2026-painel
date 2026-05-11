@@ -71,19 +71,36 @@ export default async function PlacarPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-[var(--accent)]">Guerra</p>
-        <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
-          Placar Ao Vivo
-        </h1>
-        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-          Gerencie o status e placar dos jogos em tempo real durante o evento.
-          {totalAoVivo > 0 && (
-            <span className="ml-2 font-semibold text-[var(--green-bright)]">
-              {totalAoVivo} jogo{totalAoVivo > 1 ? 's' : ''} acontecendo agora
-            </span>
-          )}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-[var(--accent)]">Guerra</p>
+          <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
+            Placar Ao Vivo
+          </h1>
+          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+            Gerencie o status e placar dos jogos em tempo real durante o evento.
+            {totalAoVivo > 0 && (
+              <span className="ml-2 font-semibold text-[var(--green-bright)]">
+                {totalAoVivo} jogo{totalAoVivo > 1 ? 's' : ''} acontecendo agora
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* Modo TV — abre em nova aba */}
+        <a
+          href="/tv/placar"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)]/60 px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-all hover:border-[var(--green-bright)]/40 hover:bg-[var(--green-dim)]/10 hover:text-[var(--green-bright)]"
+          title="Abre placar em modo TV (transmissão/projeção)"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="7" width="20" height="15" rx="2"/>
+            <polyline points="17,2 12,7 7,2"/>
+          </svg>
+          Modo TV
+        </a>
       </div>
 
       <PlacarBoard

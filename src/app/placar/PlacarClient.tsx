@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap } from 'lucide-react'
+import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2 } from 'lucide-react'
 import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
@@ -333,6 +333,20 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
           <AlertCircle className="h-3 w-3 shrink-0" />
           <span>Equipe sem vínculo — corrija em /admin/competicao</span>
         </div>
+      )}
+
+      {/* Compartilhar resultado (só pra encerrados) */}
+      {isEncerrado && (
+        <a
+          href={`/api/og/resultado/${jogo.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[11px] font-semibold text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)]/40 hover:bg-[var(--green-dim)]/10 hover:text-[var(--green-bright)]"
+          title="Abrir imagem do resultado em 1080×1080 (para compartilhar)"
+        >
+          <Share2 className="h-3 w-3" />
+          Compartilhar resultado
+        </a>
       )}
 
       {/* Ações */}

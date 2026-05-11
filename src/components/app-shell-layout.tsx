@@ -50,6 +50,7 @@ const ADMIN_GROUPS: NavGroup[] = [
       { label: 'Atléticas',      href: '/atleticas',          icon: Users },
       { label: 'Jogos',          href: '/admin/jogos',        icon: Swords },
       { label: 'Placar Ao Vivo', href: '/placar',             icon: Radio },
+      { label: 'Placar TV',      href: '/tv/placar',          icon: Tv2 },
       { label: 'Competição',     href: '/admin/competicao',   icon: GitBranch },
       { label: 'Modalidades',    href: '/admin/modalidades',  icon: Trophy },
     ],

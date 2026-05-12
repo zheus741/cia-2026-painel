@@ -3,8 +3,8 @@
 import { useState, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical } from 'lucide-react'
-import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo, reativarJogo, criarJogoTeste } from './actions'
+import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2 } from 'lucide-react'
+import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 
@@ -25,6 +25,8 @@ interface Jogo {
   placar_a: number | null
   placar_b: number | null
   status: string
+  /** W.O. — Art. 58-65. 'a'=A não compareceu, 'b'=B, 'duplo'=ambas. */
+  wo: 'a' | 'b' | 'duplo' | null
   inicio: string | null
   divisao: string | null
   fase: string | null
@@ -66,12 +68,19 @@ function fmtTime(ts: string) {
   return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
 }
 
-/** Nome da equipe — link pra wiki se houver equipe_id, senão texto puro. */
-function TeamName({ eq, fallback, accent }: { eq: EquipeRef | null; fallback: string | null; accent: string }) {
+/** Nome da equipe — link pra wiki se houver equipe_id, senão texto puro.
+ *  Quando `loserByWO=true`, aplica strikethrough + opacidade reduzida. */
+function TeamName({ eq, fallback, accent, loserByWO = false }: {
+  eq: EquipeRef | null
+  fallback: string | null
+  accent: string
+  loserByWO?: boolean
+}) {
   const display = fallback ?? '—'
+  const decorClass = loserByWO ? 'line-through opacity-50' : ''
   if (!eq?.slug) {
     return (
-      <p className="text-center text-sm font-semibold leading-snug">
+      <p className={`text-center text-sm font-semibold leading-snug ${decorClass}`}>
         {display}
       </p>
     )
@@ -82,7 +91,7 @@ function TeamName({ eq, fallback, accent }: { eq: EquipeRef | null; fallback: st
       className="group/team inline-flex flex-col items-center gap-0.5 text-center transition-colors"
       style={{ textDecoration: 'none' }}
     >
-      <span className="inline-flex items-center gap-1 text-sm font-semibold leading-snug">
+      <span className={`inline-flex items-center gap-1 text-sm font-semibold leading-snug ${decorClass}`}>
         {display}
         <ArrowUpRight
           className="h-3 w-3 opacity-0 transition-all group-hover/team:opacity-60"
@@ -90,7 +99,7 @@ function TeamName({ eq, fallback, accent }: { eq: EquipeRef | null; fallback: st
         />
       </span>
       {eq.universidade && (
-        <span className="text-[9.5px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]/60">
+        <span className={`text-[9.5px] font-medium uppercase tracking-wider text-[var(--muted-foreground)]/60 ${loserByWO ? 'line-through' : ''}`}>
           {eq.universidade}
         </span>
       )}
@@ -104,6 +113,8 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
   recentlyChanged: boolean
 }) {
   const [isPending, startTransition] = useTransition()
+  // woMode: quando true, troca a barra de ações pelo seletor "qual equipe não veio?"
+  const [woMode, setWoMode] = useState(false)
 
   const placarA = jogo.placar_a ?? 0
   const placarB = jogo.placar_b ?? 0
@@ -133,15 +144,31 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
   }
 
   function handleReativar() {
-    onLocalUpdate(jogo.id, { status: 'agendado', placar_a: 0, placar_b: 0 })
+    onLocalUpdate(jogo.id, { status: 'agendado', placar_a: 0, placar_b: 0, wo: null })
     startTransition(async () => { await reativarJogo(jogo.id) })
   }
 
-  const isAoVivo = jogo.status === 'ao_vivo'
+  // ── W.O. handlers (Art. 58-65 do regulamento) ─────────────────────────────
+  function handleDeclararWO(lado: 'a' | 'b' | 'duplo') {
+    onLocalUpdate(jogo.id, { wo: lado, status: 'encerrado' })
+    setWoMode(false)
+    startTransition(async () => { await declararWO(jogo.id, lado) })
+  }
+
+  function handleRemoverWO() {
+    onLocalUpdate(jogo.id, { wo: null })
+    startTransition(async () => { await removerWO(jogo.id) })
+  }
+
+  const isAoVivo    = jogo.status === 'ao_vivo'
   const isEncerrado = jogo.status === 'encerrado'
   const isCancelado = jogo.status === 'cancelado'
-  const isAgendado = jogo.status === 'agendado'
-  const isTeste = !!jogo.teste
+  const isAgendado  = jogo.status === 'agendado'
+  const isTeste     = !!jogo.teste
+  // W.O. state derivado
+  const hasWO       = !!jogo.wo
+  const aPerdeuWO   = jogo.wo === 'a' || jogo.wo === 'duplo'
+  const bPerdeuWO   = jogo.wo === 'b' || jogo.wo === 'duplo'
 
   // Identity
   const accentA = teamAccent(jogo.equipe_a, jogo.divisao)
@@ -153,7 +180,9 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
 
   return (
     <div className={`relative overflow-hidden rounded-xl border p-4 transition-all ${
-      isTeste
+      hasWO
+        ? 'border-red-500/40 bg-red-500/5 opacity-90'
+        : isTeste
         ? 'border-amber-600/40 bg-amber-500/5'
         : isAoVivo
         ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/10 shadow-[0_0_20px_rgba(74,138,92,0.08)]'
@@ -257,7 +286,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
           </span>
         )}
 
-        {isEncerrado && (
+        {isEncerrado && !hasWO && (
           <>
             <span>·</span>
             <span className="text-[var(--muted-foreground)]/60">Encerrado</span>
@@ -268,6 +297,13 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
             <span>·</span>
             <span className="text-red-400">Cancelado</span>
           </>
+        )}
+        {/* W.O. badge no header — substitui "Encerrado" quando aplicável */}
+        {hasWO && (
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-400">
+            <UserX className="h-2.5 w-2.5" />
+            {jogo.wo === 'duplo' ? 'W.O. duplo' : 'W.O.'}
+          </span>
         )}
       </div>
 
@@ -282,29 +318,38 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
             className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full"
             style={{ background: accentA }}
           />
-          <TeamName eq={jogo.equipe_a} fallback={jogo.equipe_a_nome} accent={accentA} />
+          <TeamName eq={jogo.equipe_a} fallback={jogo.equipe_a_nome} accent={accentA} loserByWO={aPerdeuWO} />
           {(isAoVivo || isEncerrado) && (
             <div className="flex items-center gap-1">
-              {isAoVivo && (
-                <button
-                  onClick={() => adjustScore('a', -1)}
-                  disabled={isPending || placarA === 0}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
-                >
-                  <Minus className="h-3 w-3" />
-                </button>
-              )}
-              <span className={`tabular-nums font-bold ${isAoVivo ? 'text-3xl' : 'text-2xl text-[var(--muted-foreground)]'}`}>
-                {placarA}
-              </span>
-              {isAoVivo && (
-                <button
-                  onClick={() => adjustScore('a', 1)}
-                  disabled={isPending}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
+              {/* W.O.: substitui o número pelo selo */}
+              {aPerdeuWO ? (
+                <span className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red-400">
+                  W.O.
+                </span>
+              ) : (
+                <>
+                  {isAoVivo && !hasWO && (
+                    <button
+                      onClick={() => adjustScore('a', -1)}
+                      disabled={isPending || placarA === 0}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </button>
+                  )}
+                  <span className={`tabular-nums font-bold ${isAoVivo ? 'text-3xl' : 'text-2xl text-[var(--muted-foreground)]'}`}>
+                    {placarA}
+                  </span>
+                  {isAoVivo && !hasWO && (
+                    <button
+                      onClick={() => adjustScore('a', 1)}
+                      disabled={isPending}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -321,29 +366,37 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
             className="absolute right-0 top-0 bottom-0 w-[3px] rounded-full"
             style={{ background: accentB }}
           />
-          <TeamName eq={jogo.equipe_b} fallback={jogo.equipe_b_nome} accent={accentB} />
+          <TeamName eq={jogo.equipe_b} fallback={jogo.equipe_b_nome} accent={accentB} loserByWO={bPerdeuWO} />
           {(isAoVivo || isEncerrado) && (
             <div className="flex items-center gap-1">
-              {isAoVivo && (
-                <button
-                  onClick={() => adjustScore('b', -1)}
-                  disabled={isPending || placarB === 0}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
-                >
-                  <Minus className="h-3 w-3" />
-                </button>
-              )}
-              <span className={`tabular-nums font-bold ${isAoVivo ? 'text-3xl' : 'text-2xl text-[var(--muted-foreground)]'}`}>
-                {placarB}
-              </span>
-              {isAoVivo && (
-                <button
-                  onClick={() => adjustScore('b', 1)}
-                  disabled={isPending}
-                  className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
+              {bPerdeuWO ? (
+                <span className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red-400">
+                  W.O.
+                </span>
+              ) : (
+                <>
+                  {isAoVivo && !hasWO && (
+                    <button
+                      onClick={() => adjustScore('b', -1)}
+                      disabled={isPending || placarB === 0}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </button>
+                  )}
+                  <span className={`tabular-nums font-bold ${isAoVivo ? 'text-3xl' : 'text-2xl text-[var(--muted-foreground)]'}`}>
+                    {placarB}
+                  </span>
+                  {isAoVivo && !hasWO && (
+                    <button
+                      onClick={() => adjustScore('b', 1)}
+                      disabled={isPending}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -372,8 +425,53 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
         </a>
       )}
 
+      {/* Painel inline de W.O. — substitui a barra de ações quando ativado */}
+      {woMode && !hasWO && !isCancelado && (
+        <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-red-400">
+            <AlertCircle className="h-3 w-3" />
+            Qual equipe não compareceu?
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => handleDeclararWO('a')}
+              disabled={isPending}
+              className="rounded-md border border-red-500/30 bg-[var(--card)] px-2 py-2 text-[11px] font-semibold text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-40"
+              title={`${jogo.equipe_a_nome ?? 'A'} perde por W.O.`}
+            >
+              {jogo.equipe_a_nome ?? 'Equipe A'}
+            </button>
+            <button
+              onClick={() => handleDeclararWO('b')}
+              disabled={isPending}
+              className="rounded-md border border-red-500/30 bg-[var(--card)] px-2 py-2 text-[11px] font-semibold text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-40"
+              title={`${jogo.equipe_b_nome ?? 'B'} perde por W.O.`}
+            >
+              {jogo.equipe_b_nome ?? 'Equipe B'}
+            </button>
+            <button
+              onClick={() => handleDeclararWO('duplo')}
+              disabled={isPending}
+              className="col-span-2 rounded-md border border-red-500/40 bg-red-500/10 px-2 py-2 text-[11px] font-bold uppercase tracking-wider text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-40"
+            >
+              W.O. duplo — ambas não compareceram
+            </button>
+            <button
+              onClick={() => setWoMode(false)}
+              disabled={isPending}
+              className="col-span-2 rounded-md border border-[var(--border)] px-2 py-1.5 text-[10px] text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)] disabled:opacity-40"
+            >
+              Cancelar
+            </button>
+          </div>
+          <p className="mt-2 text-[10px] leading-snug text-[var(--muted-foreground)]/70">
+            Art. 59 §I: equipe(s) que não compareceram perdem 13 pts gerais. Reversível.
+          </p>
+        </div>
+      )}
+
       {/* Ações */}
-      {!isEncerrado && !isCancelado && (
+      {!isEncerrado && !isCancelado && !woMode && (
         <div className="mt-4 flex gap-2">
           {isAgendado && (
             <button
@@ -395,6 +493,16 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
               Encerrar
             </button>
           )}
+          {/* W.O. — disponível em agendado e ao_vivo */}
+          <button
+            onClick={() => setWoMode(true)}
+            disabled={isPending}
+            className="flex items-center justify-center gap-1 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-30"
+            title="Declarar W.O. (não-comparecimento)"
+          >
+            <UserX className="h-3.5 w-3.5" />
+            W.O.
+          </button>
           <button
             onClick={handleCancelar}
             disabled={isPending}
@@ -402,6 +510,21 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
             title="Cancelar jogo"
           >
             <XCircle className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Jogo encerrado por W.O. — opção de reverter */}
+      {hasWO && (
+        <div className="mt-3">
+          <button
+            onClick={handleRemoverWO}
+            disabled={isPending}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[11px] font-semibold text-[var(--muted-foreground)] transition-all hover:border-amber-500/40 hover:text-amber-400 disabled:opacity-40"
+            title="Remover marcação de W.O. (em caso de erro)"
+          >
+            <Undo2 className="h-3 w-3" />
+            Reverter W.O.
           </button>
         </div>
       )}
@@ -431,7 +554,7 @@ interface Props {
 
 // Campos escalares que o realtime pode atualizar in-place (sem perder joins).
 const REALTIME_MERGEABLE: (keyof Jogo)[] = [
-  'status', 'placar_a', 'placar_b',
+  'status', 'placar_a', 'placar_b', 'wo',
   'equipe_a_nome', 'equipe_b_nome',
   'inicio', 'fase', 'categoria', 'divisao', 'teste',
 ]

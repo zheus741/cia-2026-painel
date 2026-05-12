@@ -20,6 +20,14 @@ interface BriefingProps {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+// EVENT_START — duplicado de page.tsx pois HomeBriefing é client component
+// e precisa do tempo exato para o LiveTicker.
+const EVENT_START = new Date('2026-06-04T00:00:00-03:00')
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CountUp — animated number counter
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -41,6 +49,49 @@ function CountUp({ to, duration = 1400 }: { to: number; duration?: number }) {
   }, [to, duration])
 
   return <>{val}</>
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LiveTicker — tique-taque preciso até o início do evento
+// Mostra Hh MMmin SSs (resto sub-dia) — visualmente conta para baixo
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LiveTicker({ target }: { target: Date }) {
+  const [now, setNow] = useState<Date | null>(null)
+
+  useEffect(() => {
+    setNow(new Date())
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Reserva espaço durante SSR/pré-hidratação — evita layout shift
+  if (!now) {
+    return (
+      <span className="cia-live-ticker" style={{ visibility: 'hidden' }} aria-hidden="true">
+        00h 00min 00s
+      </span>
+    )
+  }
+
+  const diffMs = Math.max(0, target.getTime() - now.getTime())
+  if (diffMs === 0) return null
+
+  const fullDays = Math.floor(diffMs / 86_400_000)
+  const rest     = diffMs - fullDays * 86_400_000
+  const hours    = Math.floor(rest / 3_600_000)
+  const min      = Math.floor((rest % 3_600_000) / 60_000)
+  const sec      = Math.floor((rest % 60_000) / 1000)
+  const pad      = (n: number) => n.toString().padStart(2, '0')
+
+  return (
+    <span
+      className="cia-live-ticker"
+      aria-label={`Faltam ${fullDays} dias, ${hours} horas, ${min} minutos e ${sec} segundos`}
+    >
+      {pad(hours)}h {pad(min)}min {pad(sec)}s
+    </span>
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,6 +187,8 @@ function HeroVisualCard({ diffDays, eventActive }: { diffDays: number; eventActi
           </span>
           <Pill bg="rgba(120,60,40,0.08)" color="#5A2A18">
             <span
+              className={eventActive ? '' : 'cia-dot-pulse'}
+              aria-hidden="true"
               style={{
                 width: 6, height: 6, borderRadius: '50%',
                 background: eventActive ? '#22C55E' : '#C46B4A',
@@ -171,15 +224,17 @@ function HeroVisualCard({ diffDays, eventActive }: { diffDays: number; eventActi
           </>
         ) : (
           <>
-            <div className="flex items-baseline gap-3" style={{ marginBottom: 6 }}>
-              <span style={{
-                fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                fontSize: 'clamp(72px, 8.5vw, 124px)',
-                fontWeight: 800,
-                lineHeight: 0.85,
-                letterSpacing: '-0.05em',
-                color: '#0A0F0B',
-              }}>
+            <div className="flex items-baseline gap-3" style={{ marginBottom: 2 }}>
+              <span
+                className="cia-digit-sweep"
+                style={{
+                  fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                  fontSize: 'clamp(72px, 8.5vw, 124px)',
+                  fontWeight: 800,
+                  lineHeight: 0.85,
+                  letterSpacing: '-0.05em',
+                }}
+              >
                 <CountUp to={diffDays} />
               </span>
               <span style={{
@@ -190,6 +245,10 @@ function HeroVisualCard({ diffDays, eventActive }: { diffDays: number; eventActi
               }}>
                 {diffDays === 1 ? 'dia' : 'dias'}
               </span>
+            </div>
+            {/* Live ticker — tique-taque preciso, atualiza a cada 1s */}
+            <div style={{ marginBottom: 12 }}>
+              <LiveTicker target={EVENT_START} />
             </div>
             <p style={{
               fontSize: 14, fontWeight: 500,

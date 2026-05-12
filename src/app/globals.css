@@ -1040,6 +1040,91 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   ── Hero countdown — animações de vida ──
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Heartbeat do ponto "● live" — pulse + halo expansivo */
+@keyframes cia-dot-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(196, 107, 74, 0.55);
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 6px rgba(196, 107, 74, 0);
+  }
+}
+.cia-dot-pulse { animation: cia-dot-pulse 1.8s ease-in-out infinite; }
+
+/* Sweep quente no número grande — passa lentamente como um reflexo */
+@keyframes cia-digit-sweep {
+  0%   { background-position: -120% 50%; }
+  55%  { background-position:  220% 50%; }
+  100% { background-position:  220% 50%; }
+}
+.cia-digit-sweep {
+  background: linear-gradient(
+    110deg,
+    #0A0F0B 0%,
+    #0A0F0B 38%,
+    #6B3A22 48%,
+    #B85A3F 52%,
+    #6B3A22 56%,
+    #0A0F0B 66%,
+    #0A0F0B 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: cia-digit-sweep 7s ease-in-out infinite;
+}
+
+/* Entrada do glass card — fade-up suave (uma vez) */
+@keyframes cia-hero-glass-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cia-hero-glass {
+  animation: cia-hero-glass-in 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Hover lift no canvas inteiro */
+.cia-hero-canvas {
+  transition:
+    transform   0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow  0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cia-hero-canvas:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.45) inset,
+    0 18px 44px rgba(196,107,74,0.22);
+}
+
+/* Live ticker — monospace tabular, evita layout shift */
+.cia-live-ticker {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'ShareTechMono', ui-monospace, monospace;
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: rgba(120, 60, 40, 0.60);
+  font-variant-numeric: tabular-nums;
+}
+.cia-live-ticker::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 1px;
+  background: rgba(120, 60, 40, 0.35);
+  transform: translateY(-3px);
+}
+
+/* ══════════════════════════════════════════════════════════════════
    ── Acessibilidade & Interação ──
    ══════════════════════════════════════════════════════════════════ */
 

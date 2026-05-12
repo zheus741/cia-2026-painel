@@ -368,6 +368,28 @@ export function EsportivoClient({
     { key: 'super08', label: 'Conferências',  accent: '#D8845F' },
   ]
 
+  // Card de destaque para a Liga Super 8 (playoff)
+  const super8LeagueLink = (
+    <Link
+      href="/esportivo/super-8"
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8,
+        background: 'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.08))',
+        border: '1px solid rgba(245,158,11,0.35)',
+        borderRadius: 20, padding: '5px 14px 5px 10px',
+        fontSize: 12, fontWeight: 700, letterSpacing: '0.02em',
+        color: '#FCD34D', textDecoration: 'none',
+        transition: 'all 0.18s ease',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(245,158,11,0.28), rgba(245,158,11,0.14))' }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.08))' }}
+    >
+      <Trophy size={13} />
+      Liga Super 8 — playoff dos campeões
+      <span style={{ fontSize: 10, opacity: 0.7 }}>↗</span>
+    </Link>
+  )
+
   return (
     <div style={{ fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif', background: '#f3f4f6', minHeight: '100vh' }}>
 
@@ -414,6 +436,9 @@ export function EsportivoClient({
               {aoVivoCount} ao vivo
             </span>
           )}
+
+          {/* Liga Super 8 — link de destaque */}
+          {super8LeagueLink}
 
           {/* Realtime indicator */}
           <span style={{

@@ -52,6 +52,7 @@ const ADMIN_GROUPS: NavGroup[] = [
       { label: 'Placar Ao Vivo', href: '/placar',             icon: Radio },
       { label: 'Placar TV',      href: '/tv/placar',          icon: Tv2 },
       { label: 'Dados Esportivo', href: '/admin/competicao',   icon: GitBranch },
+      { label: 'Liga Super 8',    href: '/admin/competicao/super8', icon: Trophy },
       { label: 'Modalidades',    href: '/admin/modalidades',  icon: Trophy },
     ],
   },

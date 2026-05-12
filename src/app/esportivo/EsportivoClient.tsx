@@ -259,7 +259,9 @@ function hexToRgb(hex: string): string {
 
 function Div1Tab({ equipes }: { equipes: AtleticaWithStats[] }) {
   const accent = '#A67D14'
-  const allZero = equipes.every(e => e.pontos === 0)
+  // Empty state check: usa pontos CIA atuais + máximo. Se TODAS as atléticas
+  // tem 0 atual E 0 max, a competição realmente não começou (nem prevista).
+  const allZero = equipes.every(e => e.pontos_cia === 0 && e.pontos_cia_max === 0)
 
   return (
     <div>
@@ -291,7 +293,9 @@ function Div1Tab({ equipes }: { equipes: AtleticaWithStats[] }) {
 
 function Div2Tab({ equipes }: { equipes: AtleticaWithStats[] }) {
   const accent = '#2e6b42'
-  const allZero = equipes.every(e => e.pontos === 0)
+  // Empty state check: usa pontos CIA atuais + máximo. Se TODAS as atléticas
+  // tem 0 atual E 0 max, a competição realmente não começou (nem prevista).
+  const allZero = equipes.every(e => e.pontos_cia === 0 && e.pontos_cia_max === 0)
 
   return (
     <div>

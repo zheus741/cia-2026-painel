@@ -1039,13 +1039,17 @@ interface KanbanBoardProps {
   setores:        Setor[]
   patrocinadores: Patrocin[]
   perfis:         Perfil[]
+  /** dia_id ativo vindo da URL (?dia=<uuid>). Quando presente, o servidor já
+   *  filtrou os cards por esse dia — o cliente sincroniza o filtro visual. */
+  activeDiaId?:   string
 }
 
-export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, perfis }: KanbanBoardProps) {
+export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, perfis, activeDiaId }: KanbanBoardProps) {
   const router = useRouter()
   const [conteudos, setConteudos] = React.useState(initial)
   const [search, setSearch]             = React.useState('')
-  const [filterDia, setFilterDia]       = React.useState('')
+  // filterDia é controlado pela URL (?dia=) → inicia com activeDiaId se presente
+  const [filterDia, setFilterDia]       = React.useState(activeDiaId ?? '')
   const [filterTipo, setFilterTipo]     = React.useState('')
   const [filterPerfil, setFilterPerfil] = React.useState('')
   const [filterCanal, setFilterCanal]   = React.useState('')
@@ -1060,11 +1064,15 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
   const [moving, setMoving]             = React.useState<string | null>(null)
 
   React.useEffect(() => { setConteudos(initial) }, [initial])
+  // Sync filterDia com URL (caso o usuário navegue back/forward)
+  React.useEffect(() => { setFilterDia(activeDiaId ?? '') }, [activeDiaId])
 
   // ── Supabase real-time: sincroniza mudanças de outros usuários ──────────────
   // PERF: cada evento dispara apenas 1 SELECT por PK (com joins), em vez de
   // router.refresh() que refazia o SSR de TODA a página em todos os clientes.
   // Em 250 acessos simultâneos isso evita thundering herd no banco.
+  // Quando activeDiaId está presente, INSERT/UPDATE de outros dias são ignorados
+  // (o servidor só carregou cards desse dia — manter consistência).
   React.useEffect(() => {
     const supabase = createClient()
     const SELECT_COLS = `
@@ -1096,12 +1104,20 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         const id = (payload.new as { id: string }).id
         const card = await fetchOne(id)
         if (!card) return
+        // Se o servidor filtrou por dia, só mostra cards do mesmo dia
+        if (activeDiaId && card.dia_id !== activeDiaId) return
         setConteudos(prev => prev.some(c => c.id === id) ? prev : [...prev, card])
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conteudos' }, async (payload) => {
         const id = (payload.new as { id: string }).id
         const card = await fetchOne(id)
         if (!card) return
+        // Se o servidor filtrou por dia, só atualiza cards do mesmo dia
+        if (activeDiaId && card.dia_id !== activeDiaId) {
+          // O card pode ter mudado de dia — remove da lista atual
+          setConteudos(prev => prev.filter(c => c.id !== id))
+          return
+        }
         setConteudos(prev => prev.map(c => c.id === id ? card : c))
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'conteudos' }, (payload) => {
@@ -1111,7 +1127,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [activeDiaId])
 
   const filtered = React.useMemo(() => {
     let list = conteudos
@@ -1192,7 +1208,18 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
           />
         </div>
 
-        <Select value={filterDia} onValueChange={setFilterDia}>
+        <Select
+          value={filterDia || '__all__'}
+          onValueChange={(v) => {
+            // Navega via URL para que o servidor filtre os cards server-side.
+            // Isso reduz em ~4x o volume da query pesada no D-Day.
+            if (v === '__all__') {
+              router.push('/conteudos')
+            } else {
+              router.push(`/conteudos?dia=${v}`)
+            }
+          }}
+        >
           <SelectTrigger className="h-8 w-36 text-[11px] rounded-full border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)]">
             <SelectValue placeholder="Todos os dias" />
           </SelectTrigger>

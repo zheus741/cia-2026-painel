@@ -1,17 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
+import { getCachedDias, getCachedSetores } from '@/lib/cache/lookups'
 import { EscalaMidiaAdminGrid } from './EscalaMidiaAdminGrid'
 
 export default async function EscalaMidiaAdminPage() {
   const supabase = await createClient()
 
+  // PERF: dias e setores servidos do cache (revalidate: 300s)
   const [
-    { data: dias },
-    { data: setores },
+    dias,
+    setores,
     { data: profiles },
     { data: turnos },
   ] = await Promise.all([
-    supabase.from('dias_evento').select('id, nome_dia, data').order('data'),
-    supabase.from('setores').select('id, nome').order('nome'),
+    getCachedDias(),
+    getCachedSetores(),
     supabase
       .from('profiles')
       .select('id, nome, funcao_principal')
@@ -38,8 +40,8 @@ export default async function EscalaMidiaAdminPage() {
       </div>
 
       <EscalaMidiaAdminGrid
-        dias={(dias ?? []) as { id: string; nome_dia: string; data: string }[]}
-        setores={(setores ?? []) as { id: string; nome: string }[]}
+        dias={dias as { id: string; nome_dia: string; data: string }[]}
+        setores={setores as { id: string; nome: string }[]}
         profiles={(profiles ?? []) as { id: string; nome: string; funcao_principal: string | null }[]}
         turnos={(turnos ?? []) as unknown as import('./EscalaMidiaAdminGrid').TurnoMidia[]}
       />

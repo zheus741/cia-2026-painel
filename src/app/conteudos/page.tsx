@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/current-user'
+import { getCachedDias, getCachedSetores, getCachedPatrocinadores, getCachedPerfis } from '@/lib/cache/lookups'
 import { KanbanBoard, type Conteudo, type Dia, type Setor, type Patrocin, type Perfil } from './KanbanBoard'
 import { AlertCircle, Download } from 'lucide-react'
 
@@ -9,11 +10,19 @@ const TIPOS_POR_FUNCAO: Record<string, string[]> = {
   video: ['reels', 'story_rapido', 'story_editado', 'cobertura_ao_vivo'],
 }
 
-export default async function ConteudosPage() {
+export default async function ConteudosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
   // PERF: getCurrentProfile() é cacheado por request — uma única chamada a
   // auth.getUser() + profile fetch (~240ms total em vez de 480ms).
   const profile = await getCurrentProfile()
   const supabase = await createClient()
+
+  // ?dia=<uuid> → filtra server-side, reduz carga da query pesada em ~4x no D-Day
+  const { dia: diaParam } = await searchParams
+  const activeDiaId = typeof diaParam === 'string' ? diaParam : undefined
 
   let tipoFilter: string[] | null = null
   if (profile?.funcao_principal && TIPOS_POR_FUNCAO[profile.funcao_principal]) {
@@ -41,31 +50,36 @@ export default async function ConteudosPage() {
     .order('horario_previsto', { ascending: true,  nullsFirst: false })
     .order('prioridade',       { ascending: true })
 
+  // PERF: filtra por dia quando URL param presente — evita trazer todos os
+  // cards de todos os dias na query mais pesada do sistema.
+  if (activeDiaId) {
+    conteudosQuery = conteudosQuery.eq('dia_id', activeDiaId) as typeof conteudosQuery
+  }
+
   if (tipoFilter) {
     conteudosQuery = conteudosQuery.in('tipo', tipoFilter) as typeof conteudosQuery
   }
 
+  // PERF: lookup tables servidas do cache Next.js (revalidate: 300s)
+  // Economiza ~150ms por request nos ~3 queries de referência.
   const [
     edicaoRes,
     conteudosRes,
-    diasRes,
-    setoresRes,
-    patrocinRes,
-    perfisRes,
+    dias,
+    setores,
+    patrocinadores,
+    perfis,
   ] = await Promise.all([
     supabase.from('edicoes').select('id').eq('ativa', true).maybeSingle(),
     conteudosQuery,
-    supabase.from('dias_evento').select('id, nome_dia, data').order('data'),
-    supabase.from('setores').select('id, nome').order('nome'),
-    supabase.from('patrocinadores').select('id, nome').eq('ativo', true).order('nome'),
-    supabase.from('profiles').select('id, nome, foto_url').eq('ativo', true).order('nome'),
+    getCachedDias(),
+    getCachedSetores(),
+    getCachedPatrocinadores(),
+    getCachedPerfis(),
   ])
 
-  // Log all errors server-side
+  // Log errors server-side (lookup tables já logam dentro de lookups.ts)
   if (conteudosRes.error) console.error('[conteudos] query error:', JSON.stringify(conteudosRes.error))
-  if (diasRes.error)      console.error('[dias] query error:', JSON.stringify(diasRes.error))
-  if (setoresRes.error)   console.error('[setores] query error:', JSON.stringify(setoresRes.error))
-  if (perfisRes.error)    console.error('[perfis] query error:', JSON.stringify(perfisRes.error))
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -117,10 +131,11 @@ export default async function ConteudosPage() {
         <KanbanBoard
           edicaoId={edicaoRes.data?.id ?? ''}
           conteudos={(conteudosRes.data ?? []) as unknown as Conteudo[]}
-          dias={(diasRes.data ?? []) as Dia[]}
-          setores={(setoresRes.data ?? []) as Setor[]}
-          patrocinadores={(patrocinRes.data ?? []) as Patrocin[]}
-          perfis={(perfisRes.data ?? []) as Perfil[]}
+          dias={dias as Dia[]}
+          setores={setores as Setor[]}
+          patrocinadores={patrocinadores as Patrocin[]}
+          perfis={perfis as Perfil[]}
+          activeDiaId={activeDiaId}
         />
       </div>
     </div>

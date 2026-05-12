@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { requireProfile } from '@/lib/auth/current-user'
+import { getCachedDias } from '@/lib/cache/lookups'
 import { EscalaMidiaLiderView } from './EscalaMidiaLiderView'
 
 export default async function EscalaMidiaPage() {
@@ -34,9 +35,10 @@ export default async function EscalaMidiaPage() {
     turnosQuery = turnosQuery.eq('user_id', user.id) as typeof turnosQuery
   }
 
-  const [{ data: turnos }, { data: diasRaw }, { data: teamProfiles }] = await Promise.all([
+  // PERF: dias servidos do cache (revalidate: 300s)
+  const [{ data: turnos }, diasRaw, { data: teamProfiles }] = await Promise.all([
     turnosQuery,
-    supabase.from('dias_evento').select('id, nome_dia, data').order('data'),
+    getCachedDias(),
     // Profiles of same funcao (for lider's assignment dropdown)
     isLider
       ? supabase
@@ -53,7 +55,7 @@ export default async function EscalaMidiaPage() {
       funcao={myFuncao as 'foto' | 'video'}
       isLider={isLider}
       turnos={(turnos ?? []) as unknown as import('./EscalaMidiaLiderView').TurnoMidiaEx[]}
-      dias={(diasRaw ?? []) as { id: string; nome_dia: string; data: string }[]}
+      dias={diasRaw as { id: string; nome_dia: string; data: string }[]}
       teamProfiles={(teamProfiles ?? []) as { id: string; nome: string; funcao_principal: string | null }[]}
     />
   )

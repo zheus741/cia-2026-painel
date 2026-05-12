@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { DM_Sans } from 'next/font/google'
 import { PushNotificationSetup } from '@/components/PushNotificationSetup'
+import { NavigationProgress } from '@/components/NavigationProgress'
 import './globals.css'
 
 const dmSans = DM_Sans({
@@ -36,6 +37,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`h-full antialiased ${dmSans.variable}`}>
       <body className="min-h-full flex flex-col">
+        <NavigationProgress />
         {children}
         <PushNotificationSetup />
       </body>

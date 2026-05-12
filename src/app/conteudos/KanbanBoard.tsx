@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { emitNavStart } from '@/components/NavigationProgress'
 import {
   Plus, Pencil, Trash2, Loader2, AlertCircle, ChevronRight,
   ChevronLeft, Search, Filter, Eye, Calendar, Layers,
@@ -1211,8 +1212,9 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         <Select
           value={filterDia || '__all__'}
           onValueChange={(v) => {
+            // emitNavStart dispara a barra de progresso antes da navegação.
             // Navega via URL para que o servidor filtre os cards server-side.
-            // Isso reduz em ~4x o volume da query pesada no D-Day.
+            emitNavStart()
             if (v === '__all__') {
               router.push('/conteudos')
             } else {

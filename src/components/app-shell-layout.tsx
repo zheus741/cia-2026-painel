@@ -114,7 +114,9 @@ function getMediaGroups(isLider: boolean): NavGroup[] {
 // ── NavDropdown ────────────────────────────────────────────────────────────────
 function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string }) {
   const [open, setOpen] = React.useState(false)
-  const ref = React.useRef<HTMLDivElement>(null)
+  const ref     = React.useRef<HTMLDivElement>(null)
+  const trigRef = React.useRef<HTMLButtonElement>(null)
+
   const isGroupActive = group.items.some(
     item => pathname === item.href || pathname.startsWith(item.href + '/'),
   )
@@ -129,14 +131,30 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  // Escape fecha e devolve foco ao trigger (acessibilidade teclado)
+  React.useEffect(() => {
+    if (!open) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        trigRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [open])
+
   // Close on route change
   React.useEffect(() => { setOpen(false) }, [pathname])
 
   return (
     <div ref={ref} className="relative">
       <button
+        ref={trigRef}
         onClick={() => setOpen(o => !o)}
         className="cia-nav-btn"
+        aria-expanded={open}
+        aria-haspopup="menu"
         style={{
           color: isGroupActive || open ? '#0A0F0B' : 'rgba(10,15,11,0.48)',
           background: open ? 'rgba(10,15,11,0.07)' : 'transparent',
@@ -144,6 +162,7 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
       >
         {group.label}
         <ChevronDown
+          aria-hidden="true"
           style={{
             width: 11, height: 11,
             transition: 'transform 0.20s',
@@ -153,29 +172,30 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
         />
         {/* Gold underline when group has active child */}
         {isGroupActive && (
-          <span className="cia-nav-active-bar" />
+          <span className="cia-nav-active-bar" aria-hidden="true" />
         )}
       </button>
 
       {/* Dropdown panel */}
       {open && (
-        <div className="cia-nav-panel">
+        <div className="cia-nav-panel" role="menu">
           {group.items.map(({ label, href, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
             return (
               <Link
                 key={href}
                 href={href}
+                role="menuitem"
                 onClick={() => setOpen(false)}
                 className={cn('cia-nav-panel-item', active && 'active')}
               >
-                <Icon style={{
+                <Icon aria-hidden="true" style={{
                   width: 14, height: 14, flexShrink: 0,
                   color: active ? '#F0D04A' : 'rgba(250,247,240,0.30)',
                 }} />
                 {label}
                 {active && (
-                  <span style={{
+                  <span aria-hidden="true" style={{
                     width: 5, height: 5, borderRadius: '50%',
                     background: '#F0D04A', marginLeft: 'auto', flexShrink: 0,
                     boxShadow: '0 0 6px rgba(240,208,74,0.55)',
@@ -192,8 +212,26 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
 
 // ── MobileMenu (fullscreen overlay) ───────────────────────────────────────────
 function MobileMenu({ groups, pathname, onClose }: { groups: NavGroup[]; pathname: string; onClose: () => void }) {
+  const closeRef = React.useRef<HTMLButtonElement>(null)
+
+  // Foca o botão fechar ao abrir (trap inicial) e Escape fecha
+  React.useEffect(() => {
+    closeRef.current?.focus()
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#0C1410' }}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: '#0C1410' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menu de navegação"
+    >
       {/* Header */}
       <div
         className="flex shrink-0 items-center justify-between px-5 py-4"
@@ -201,21 +239,29 @@ function MobileMenu({ groups, pathname, onClose }: { groups: NavGroup[]; pathnam
       >
         <CiaLogo size={26} />
         <button
+          ref={closeRef}
           onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-          style={{ color: 'rgba(250,247,240,0.40)', background: 'rgba(250,247,240,0.06)' }}
+          aria-label="Fechar menu"
+          /* touch target 44×44 */
+          className="flex items-center justify-center rounded-xl transition-colors"
+          style={{
+            width: 44, height: 44,
+            color: 'rgba(250,247,240,0.40)',
+            background: 'rgba(250,247,240,0.06)',
+          }}
         >
-          <X className="h-4 w-4" />
+          <X className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
 
       {/* Nav groups */}
-      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
+      <nav className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
         {groups.map(group => (
           <div key={group.label}>
+            {/* Label: 11px em vez de 9px — legível */}
             <p style={{
-              fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
-              textTransform: 'uppercase', color: 'rgba(250,247,240,0.28)',
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+              textTransform: 'uppercase', color: 'rgba(250,247,240,0.35)',
               marginBottom: 6, paddingLeft: 4,
             }}>
               {group.label}
@@ -230,7 +276,9 @@ function MobileMenu({ groups, pathname, onClose }: { groups: NavGroup[]; pathnam
                     onClick={onClose}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '9px 12px', borderRadius: 10,
+                      /* 44px+ touch target: padding 13px vertical */
+                      minHeight: 44,
+                      padding: '13px 14px', borderRadius: 10,
                       textDecoration: 'none',
                       fontSize: 14, fontWeight: active ? 600 : 500,
                       letterSpacing: '-0.01em',
@@ -239,7 +287,7 @@ function MobileMenu({ groups, pathname, onClose }: { groups: NavGroup[]; pathnam
                       border: active ? '1px solid rgba(240,208,74,0.20)' : '1px solid transparent',
                     }}
                   >
-                    <Icon style={{
+                    <Icon aria-hidden="true" style={{
                       width: 16, height: 16, flexShrink: 0,
                       color: active ? '#F0D04A' : 'rgba(250,247,240,0.35)',
                     }} />
@@ -250,7 +298,7 @@ function MobileMenu({ groups, pathname, onClose }: { groups: NavGroup[]; pathnam
             </div>
           </div>
         ))}
-      </div>
+      </nav>
 
       {/* Version */}
       <div style={{ padding: '12px 20px 20px', flexShrink: 0, borderTop: '1px solid rgba(250,247,240,0.07)' }}>
@@ -289,20 +337,32 @@ export function AppShellLayout({
   return (
     <div className="flex h-screen flex-col overflow-hidden">
 
+      {/* Skip link — aparece ao receber foco (teclado), invisível para mouse */}
+      <a href="#main-content" className="cia-skip-link">
+        Ir para o conteúdo principal
+      </a>
+
       {/* ── Top Navigation Bar ────────────────────────────────────────── */}
       <header className="mac-toolbar sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 px-4">
 
-        {/* Mobile hamburger */}
+        {/* Mobile hamburger — 40×40px para touch target adequado */}
         <button
           onClick={() => setMobileOpen(true)}
-          className="md:hidden flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[rgba(10,15,11,0.06)]"
-          aria-label="Menu"
+          className="md:hidden flex items-center justify-center rounded-lg transition-colors hover:bg-[rgba(10,15,11,0.06)]"
+          style={{ width: 40, height: 40, flexShrink: 0 }}
+          aria-label="Abrir menu de navegação"
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-nav"
         >
-          <Menu className="h-4 w-4" style={{ color: 'rgba(10,15,11,0.42)' }} />
+          <Menu className="h-4 w-4" aria-hidden="true" style={{ color: 'rgba(10,15,11,0.42)' }} />
         </button>
 
         {/* Logo */}
-        <Link href="/" className="flex items-center opacity-90 hover:opacity-100 transition-opacity shrink-0">
+        <Link
+          href="/"
+          aria-label="CIA 2026 — Ir para a página inicial"
+          className="flex items-center opacity-90 hover:opacity-100 transition-opacity shrink-0"
+        >
           <CiaLogo size={26} />
         </Link>
 
@@ -376,8 +436,8 @@ export function AppShellLayout({
           </div>
 
           <form action={signOut}>
-            <button type="submit" className="mac-logout-btn" title="Sair">
-              <LogOut className="h-3.5 w-3.5" />
+            <button type="submit" className="mac-logout-btn" title="Sair" aria-label="Sair da conta">
+              <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </form>
         </div>
@@ -394,6 +454,7 @@ export function AppShellLayout({
 
       {/* ── Main content ──────────────────────────────────────────────── */}
       <main
+        id="main-content"
         className="relative flex-1 overflow-auto"
         style={{ background: 'var(--background)' }}
       >

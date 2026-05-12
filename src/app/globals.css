@@ -1038,3 +1038,53 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   ── Acessibilidade & Interação ──
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Focus rings — visíveis em todos os interativos do shell */
+.mac-nav-item:focus-visible,
+.cia-nav-panel-item:focus-visible {
+  outline: 2px solid rgba(240, 208, 74, 0.70);
+  outline-offset: 2px;
+}
+.cia-nav-btn:focus-visible {
+  outline: 2px solid rgba(10, 15, 11, 0.40);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.mac-logout-btn:focus-visible {
+  outline: 2px solid rgba(192, 57, 43, 0.55);
+  outline-offset: 2px;
+}
+
+/* Skip link — visível apenas ao receber foco (teclado) */
+.cia-skip-link {
+  position: fixed;
+  top: -100%;
+  left: 1rem;
+  z-index: 9999;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #F0D04A;
+  color: #0A0F0B;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  transition: top 0.15s ease;
+  white-space: nowrap;
+}
+.cia-skip-link:focus {
+  top: 1rem;
+}
+
+/* prefers-reduced-motion — respeita usuários com sensibilidade a movimento */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:       0.01ms !important;
+    animation-iteration-count: 1     !important;
+    transition-duration:      0.01ms !important;
+    scroll-behavior:          auto   !important;
+  }
+}

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, Crown, Trophy, Flame, TrendingUp, Calendar } from 'lucide-react'
 import type {
   Atletica, InscricaoDetalhe, JogoDetalhe, AtleticaStats,
+  PrevisaoAtletica,
 } from '@/lib/competicao/queries'
 import type { ConferenciaMeta, DivisaoMeta } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
@@ -16,6 +17,8 @@ interface Props {
   jogos:      JogoDetalhe[]
   stats:      AtleticaStats
   forma:      ('V'|'E'|'D')[]
+  /** Previsão Mín/Máx CIA — calculada server-side a partir das inscrições. */
+  previsao:   PrevisaoAtletica
   confMeta:   ConferenciaMeta | null
   divMeta:    DivisaoMeta | null
   accent:     string
@@ -116,7 +119,7 @@ function FormaRow({ forma }: { forma: ('V'|'E'|'D')[] }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function AtleticaWikiClient({
-  atletica, inscricoes, jogos, stats, forma, confMeta, divMeta, accent,
+  atletica, inscricoes, jogos, stats, forma, previsao, confMeta, divMeta, accent,
 }: Props) {
   const router = useRouter()
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -336,26 +339,25 @@ export function AtleticaWikiClient({
                 <InlineMiniStat label="modalidades" value={modalidades.length} />
                 <InlineMiniStat label="jogados"     value={stats.jogados}     accent="#0A0F0B" />
                 <InlineMiniStat label="vitórias"    value={stats.vitorias}    accent="#22C55E" />
-                <InlineMiniStat label="pontos"      value={stats.pontos}      accent={accent} />
+                <InlineMiniStat label="pontos CIA"  value={previsao.atual}    accent={accent} />
               </div>
             </div>
           </div>
         </section>
 
-        {/* ─── STATS GRID ─── */}
+        {/* ─── PREVISÃO MÍN/MÁX — destaque editorial ─── */}
+        <PrevisaoCard previsao={previsao} accent={accent} />
+
+        {/* ─── STATS DE JOGOS (V/D/SG — não-CIA) ─── */}
         <section style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
           gap: 10, marginBottom: 28,
         }}>
-          <StatBlock big label="Pontos"  value={stats.pontos}     accent={accent} sub="3·V + 1·E" />
-          <StatBlock     label="Jogados" value={stats.jogados} />
+          <StatBlock     label="Jogados"  value={stats.jogados} />
           <StatBlock     label="Vitórias" value={stats.vitorias} accent="#22C55E" />
-          <StatBlock     label="Empates"  value={stats.empates}  accent="#94A3B8" />
           <StatBlock     label="Derrotas" value={stats.derrotas} accent="#EF4444" />
-          <StatBlock     label="Gols pró"    value={stats.gols_pro} />
-          <StatBlock     label="Gols contra" value={stats.gols_contra} />
-          <StatBlock     label="Saldo" value={stats.saldo >= 0 ? `+${stats.saldo}` : stats.saldo}
+          <StatBlock     label="Saldo"    value={stats.saldo >= 0 ? `+${stats.saldo}` : stats.saldo}
                          accent={stats.saldo >= 0 ? '#22C55E' : '#EF4444'} />
         </section>
 
@@ -627,6 +629,172 @@ function JogoRow({ j, myId, accent }: { j: JogoDetalhe; myId: string; accent: st
         textAlign: 'right',
       }}>
         {j.modalidade_nome ?? '—'}
+      </div>
+    </div>
+  )
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PrevisaoCard — Atual / Máx + barra + breakdown por modalidade
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PrevisaoCard({ previsao, accent }: { previsao: PrevisaoAtletica; accent: string }) {
+  const decidida = previsao.minimo === previsao.maximo
+  // Escala da barra: usa o teto máximo POSSÍVEL (#inscricoes × 13)
+  const tetoTeorico = Math.max(previsao.maximo, 13)
+  const pctAtual    = (previsao.minimo / tetoTeorico) * 100
+  const pctMax      = (previsao.maximo / tetoTeorico) * 100
+
+  return (
+    <section style={{
+      background: '#FFFFFF',
+      border: '1px solid rgba(10,15,11,0.08)',
+      borderRadius: 16,
+      padding: '20px 22px',
+      marginBottom: 24,
+      position: 'relative', overflow: 'hidden',
+    }}>
+      {/* Eyebrow */}
+      <p style={{
+        fontSize: 10, fontWeight: 800, letterSpacing: '0.18em',
+        textTransform: 'uppercase', color: accent, margin: 0,
+      }}>
+        Pontuação CIA
+      </p>
+
+      {/* Header: Atual / Máx */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginTop: 6, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+          <span style={{
+            fontSize: 'clamp(36px, 5vw, 56px)', fontWeight: 800,
+            color: accent, lineHeight: 0.95, letterSpacing: '-0.04em',
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {previsao.atual}
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'rgba(10,15,11,0.5)' }}>
+            pts atuais
+          </span>
+        </div>
+        {!decidida && (
+          <>
+            <span style={{ fontSize: 18, color: 'rgba(10,15,11,0.30)' }}>→</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{
+                fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 700,
+                color: 'rgba(10,15,11,0.65)', lineHeight: 0.95,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {previsao.maximo}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(10,15,11,0.45)' }}>
+                pts máximo
+              </span>
+            </div>
+          </>
+        )}
+        <div style={{
+          marginLeft: 'auto',
+          display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+          gap: 2,
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: accent, letterSpacing: '0.04em' }}>
+            {previsao.vivas} modalidade{previsao.vivas !== 1 ? 's' : ''} viva{previsao.vivas !== 1 ? 's' : ''}
+          </span>
+          <span style={{ fontSize: 10, color: 'rgba(10,15,11,0.45)' }}>
+            {previsao.decididas} já decidida{previsao.decididas !== 1 ? 's' : ''}
+          </span>
+        </div>
+      </div>
+
+      {/* Barra Atual → Máx */}
+      <div style={{
+        position: 'relative', height: 10, marginTop: 14,
+        background: 'rgba(10,15,11,0.05)', borderRadius: 99, overflow: 'hidden',
+      }}>
+        {!decidida && (
+          <div style={{
+            position: 'absolute', inset: 0, width: `${pctMax}%`,
+            background: `${accent}26`, borderRadius: 99,
+          }} />
+        )}
+        <div style={{
+          position: 'absolute', inset: 0, width: `${pctAtual}%`,
+          background: accent, borderRadius: 99,
+          transition: 'width 0.4s ease',
+        }} />
+      </div>
+
+      {/* Breakdown por modalidade */}
+      {previsao.por_modalidade.length > 0 && (
+        <details style={{ marginTop: 16 }}>
+          <summary style={{
+            cursor: 'pointer', userSelect: 'none',
+            fontSize: 11, fontWeight: 700, color: 'rgba(10,15,11,0.55)',
+            letterSpacing: '0.04em',
+          }}>
+            Ver detalhamento por modalidade ({previsao.por_modalidade.length})
+          </summary>
+          <div style={{
+            marginTop: 10,
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8,
+          }}>
+            {previsao.por_modalidade.map((m, idx) => (
+              <PrevisaoModalidadeRow key={`${m.modalidade_id}-${m.categoria}-${idx}`} mod={m} accent={accent} />
+            ))}
+          </div>
+        </details>
+      )}
+    </section>
+  )
+}
+
+function PrevisaoModalidadeRow({ mod, accent }: {
+  mod:    PrevisaoAtletica['por_modalidade'][number]
+  accent: string
+}) {
+  const ESTADO_LABEL: Record<string, { label: string; cor: string; bg: string }> = {
+    campeao:    { label: '🥇 Campeã',    cor: '#A67D14', bg: 'rgba(166,125,20,0.10)' },
+    vice:       { label: '🥈 Vice',       cor: '#6b7280', bg: 'rgba(107,114,128,0.10)' },
+    eliminada:  { label: 'Eliminada',     cor: '#6b7280', bg: 'rgba(107,114,128,0.06)' },
+    wo:         { label: 'W.O.',          cor: '#DC2626', bg: 'rgba(220,38,38,0.10)' },
+    viva:       { label: 'Em disputa',    cor: accent,    bg: `${accent}14` },
+    sem_jogos:  { label: 'Aguardando',    cor: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
+    prova:      { label: 'Prova',         cor: '#3b82f6', bg: 'rgba(59,130,246,0.10)' },
+  }
+  const meta = ESTADO_LABEL[mod.estado] ?? ESTADO_LABEL.sem_jogos
+
+  return (
+    <div style={{
+      background: '#FAFAFA',
+      border: '1px solid rgba(10,15,11,0.06)',
+      borderRadius: 10,
+      padding: '8px 10px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+        {mod.modalidade_icone && <span style={{ fontSize: 12 }}>{mod.modalidade_icone}</span>}
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#0A0F0B' }}>
+          {mod.modalidade_nome ?? '?'}
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 600, color: 'rgba(10,15,11,0.50)' }}>
+          {mod.categoria ?? ''}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{
+          fontSize: 9, fontWeight: 800, letterSpacing: '0.06em',
+          textTransform: 'uppercase', color: meta.cor,
+          background: meta.bg, padding: '2px 6px', borderRadius: 4,
+        }}>
+          {meta.label}
+        </span>
+        <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: '#0A0F0B', fontVariantNumeric: 'tabular-nums' }}>
+          {mod.decidida || mod.pontos_min === mod.pontos_max
+            ? `${mod.pontos_min} pts`
+            : `${mod.pontos_min} → ${mod.pontos_max} pts`
+          }
+        </span>
       </div>
     </div>
   )

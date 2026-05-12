@@ -4,6 +4,7 @@ import {
   getInscricoesByEquipe,
   getJogosByEquipe,
   computeStats,
+  computePrevisaoAtletica,
   getForma,
 } from '@/lib/competicao/queries'
 import { getConferencia, getDivisao } from '@/lib/conferencias'
@@ -25,8 +26,10 @@ export default async function AtleticaWikiPage({ params }: PageProps) {
     getJogosByEquipe(atletica.id),
   ])
 
-  const stats = computeStats(jogos, atletica.id)
-  const forma = getForma(jogos, atletica.id, 5)
+  const stats    = computeStats(jogos, atletica.id)
+  const forma    = getForma(jogos, atletica.id, 5)
+  // Previsão Mín/Máx CIA — pontos garantidos + teto possível por modalidade
+  const previsao = computePrevisaoAtletica(jogos, inscricoes, atletica.id)
 
   const confMeta = getConferencia(atletica.conferencia)
   const divMeta  = getDivisao(atletica.divisao)
@@ -39,6 +42,7 @@ export default async function AtleticaWikiPage({ params }: PageProps) {
       jogos={jogos}
       stats={stats}
       forma={forma}
+      previsao={previsao}
       confMeta={confMeta}
       divMeta={divMeta}
       accent={accent}

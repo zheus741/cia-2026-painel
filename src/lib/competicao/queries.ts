@@ -67,6 +67,8 @@ export interface JogoDetalhe {
   equipe_b_id:       string | null
   equipe_a_nome:     string | null
   equipe_b_nome:     string | null
+  /** W.O. (Art. 58-65). 'a'=A não compareceu (perdeu), 'b'=B, 'duplo'=ambas. */
+  wo?:               'a' | 'b' | 'duplo' | null
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -205,7 +207,7 @@ export async function getJogosByEquipe(equipeId: string): Promise<JogoDetalhe[]>
     .from('jogos')
     .select(`
       id, modalidade_id, categoria, divisao, fase,
-      inicio, fim_previsto, status, placar_a, placar_b,
+      inicio, fim_previsto, status, placar_a, placar_b, wo,
       equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
       modalidades:modalidade_id (nome, icone)
     `)
@@ -226,6 +228,7 @@ export async function getJogosByEquipe(equipeId: string): Promise<JogoDetalhe[]>
     status: string | null
     placar_a: number | null
     placar_b: number | null
+    wo: 'a' | 'b' | 'duplo' | null
     equipe_a_id: string | null
     equipe_b_id: string | null
     equipe_a_nome: string | null
@@ -248,6 +251,7 @@ export async function getJogosByEquipe(equipeId: string): Promise<JogoDetalhe[]>
       status:           r.status,
       placar_a:         r.placar_a,
       placar_b:         r.placar_b,
+      wo:               r.wo,
       equipe_a_id:      r.equipe_a_id,
       equipe_b_id:      r.equipe_b_id,
       equipe_a_nome:    r.equipe_a_nome,
@@ -539,4 +543,249 @@ export function computePontuacaoAtletica(
   por_modalidade.sort((a, b) => b.total - a.total)
 
   return { total, por_modalidade }
+}
+
+
+// ────────────────────────────────────────────────────────────────────────────
+// Previsão Mín/Máx — projeção de pontuação considerando jogos restantes
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Detecta se a modalidade é "prova" (natação, atletismo, etc.) onde a
+ * pontuação só é conhecida ao final do evento, não dá pra prever min/max
+ * por chaveamento.
+ */
+function isModalidadeProva(modalidadeNome: string | null | undefined): boolean {
+  if (!modalidadeNome) return false
+  return /natação|atletismo|nat\.|atl\./i.test(modalidadeNome)
+}
+
+/**
+ * Piso garantido (pontuação MÍNIMA se a atlética perder o próximo jogo).
+ *
+ * Diferencia eliminatórias normais (1ª/2ª Div, top 8 pontuam) de
+ * intraconferências (Super 08, top 4 pontuam).
+ */
+function pisoSePerderProxima(proximaFase: string, isIntraConf: boolean): number {
+  if (isIntraConf) {
+    // Acesso: só 1-4º pontuam. Eliminada antes do top 4 → 0 pts.
+    if (proximaFase === 'quartas') return 0   // 5-8º (intraconf = 0 pts)
+    if (proximaFase === 'semi')    return 6   // 3-4º
+    if (proximaFase === 'final')   return 10  // 2º
+    return 0
+  }
+  // 1ª/2ª Div: 1-8º pontuam.
+  if (proximaFase === 'oitavas') return 0   // 9-12º
+  if (proximaFase === 'quartas') return 1   // 5-8º (mín = 8º = 1 pt)
+  if (proximaFase === 'semi')    return 6   // 3-4º (mín = 4º)
+  if (proximaFase === 'final')   return 10  // 2º
+  return 0
+}
+
+const FASE_ORDEM_PESO: Record<string, number> = {
+  oitavas: 1, quartas: 2, semi: 3, semifinal: 3, '3lugar': 3.5, terceiro: 3.5, final: 4,
+}
+
+export type EstadoModalidade =
+  | 'campeao' | 'vice'
+  | 'eliminada'
+  | 'viva'
+  | 'wo'
+  | 'sem_jogos'
+  | 'prova'
+
+export interface PrevisaoModalidade {
+  modalidade_id:    string
+  modalidade_nome:  string | null
+  modalidade_icone: string | null
+  categoria:        string | null
+  divisao:          string | null
+  estado:           EstadoModalidade
+  /** Última fase jogada OU próxima fase a jogar (se viva). */
+  fase_atual:       string | null
+  /** Piso garantido (pontos se perder a próxima fase ou colocação final). */
+  pontos_min:       number
+  /** Teto possível (pontos se ganhar tudo até a final). */
+  pontos_max:       number
+  /** True se min === max (modalidade já decidida). */
+  decidida:         boolean
+}
+
+export interface PrevisaoAtletica {
+  /** Pontos garantidos AGORA (soma dos pisos + colocações fechadas). */
+  atual:            number
+  /** Sinônimo de `atual` — pior cenário possível daqui pra frente. */
+  minimo:           number
+  /** Melhor cenário possível se ganhar tudo. */
+  maximo:           number
+  /** Quantas modalidades ainda permitem variação (min < max). */
+  vivas:            number
+  /** Quantas modalidades já têm pontuação definitiva. */
+  decididas:        number
+  por_modalidade:   PrevisaoModalidade[]
+}
+
+/**
+ * Computa previsão Mín/Máx da pontuação CIA total de uma atlética.
+ *
+ * Para cada modalidade onde a atlética está inscrita:
+ *   • Prova (natação/atletismo): mostra pontos atuais (sem range)
+ *   • Eliminada/W.O./campeão/vice: pontos fixos (min === max)
+ *   • Ainda viva: min = piso da próxima fase, max = 13
+ *
+ * Para a Divisão de Acesso (Super 08), aplica tabela reduzida (só top 4).
+ *
+ * @param todosJogos   Jogos da atlética (de getJogosByEquipe — já filtrados)
+ * @param inscricoes   Inscrições da atlética (de getInscricoesByEquipe)
+ * @param equipeId     ID da atlética
+ */
+export function computePrevisaoAtletica(
+  todosJogos: JogoDetalhe[],
+  inscricoes: InscricaoDetalhe[],
+  equipeId: string,
+): PrevisaoAtletica {
+  const por_modalidade: PrevisaoModalidade[] = []
+  let totalMin = 0
+  let totalMax = 0
+  let vivas = 0
+  let decididas = 0
+
+  for (const insc of inscricoes) {
+    // Jogos desta modalidade+categoria especificamente
+    const jogosMod = todosJogos.filter(j =>
+      j.modalidade_id === insc.modalidade_id && j.categoria === insc.categoria,
+    )
+    const isIntraConf = insc.divisao === 'Super 08'
+
+    // Modalidade de prova (natação, atletismo) — sem range
+    if (isModalidadeProva(insc.modalidade_nome)) {
+      const dec = derivarColocacao(jogosMod, equipeId)
+      const decidida = dec.colocacao != null
+      por_modalidade.push({
+        modalidade_id:    insc.modalidade_id,
+        modalidade_nome:  insc.modalidade_nome ?? null,
+        modalidade_icone: insc.modalidade_icone,
+        categoria:        insc.categoria,
+        divisao:          insc.divisao,
+        estado:           'prova',
+        fase_atual:       null,
+        pontos_min:       dec.total,
+        pontos_max:       dec.total,
+        decidida,
+      })
+      totalMin += dec.total
+      totalMax += dec.total
+      if (decidida) decididas++
+      else vivas++
+      continue
+    }
+
+    // Modalidade eliminatória normal
+    const prev = computePrevisaoEliminatoria(jogosMod, equipeId, isIntraConf)
+
+    por_modalidade.push({
+      modalidade_id:    insc.modalidade_id,
+      modalidade_nome:  insc.modalidade_nome ?? null,
+      modalidade_icone: insc.modalidade_icone,
+      categoria:        insc.categoria,
+      divisao:          insc.divisao,
+      estado:           prev.estado,
+      fase_atual:       prev.fase_atual,
+      pontos_min:       prev.min,
+      pontos_max:       prev.max,
+      decidida:         prev.min === prev.max,
+    })
+    totalMin += prev.min
+    totalMax += prev.max
+    if (prev.min === prev.max) decididas++
+    else vivas++
+  }
+
+  // Ordena: vivas primeiro (mais interessante), depois decididas por pts
+  por_modalidade.sort((a, b) => {
+    if (a.decidida !== b.decidida) return a.decidida ? 1 : -1
+    return b.pontos_max - a.pontos_max
+  })
+
+  return { atual: totalMin, minimo: totalMin, maximo: totalMax, vivas, decididas, por_modalidade }
+}
+
+/**
+ * Sub-rotina: previsão para uma única modalidade eliminatória.
+ * Não trata prova — chamador é responsável por filtrar.
+ */
+function computePrevisaoEliminatoria(
+  jogosMod: JogoDetalhe[],
+  equipeId: string,
+  isIntraConf: boolean,
+): { estado: EstadoModalidade; fase_atual: string | null; min: number; max: number } {
+  const meusJogos = jogosMod.filter(j =>
+    (j.equipe_a_id === equipeId || j.equipe_b_id === equipeId),
+  )
+  const encerrados = meusJogos.filter(j => j.status === 'encerrado')
+
+  // W.O. — penalidade fixa
+  const tomouWO = encerrados.some(j => {
+    if (!j.wo) return false
+    if (j.wo === 'duplo') return true
+    if (j.wo === 'a' && j.equipe_a_id === equipeId) return true
+    if (j.wo === 'b' && j.equipe_b_id === equipeId) return true
+    return false
+  })
+  if (tomouWO) {
+    return { estado: 'wo', fase_atual: null, min: PENALIDADE_WO, max: PENALIDADE_WO }
+  }
+
+  // Sem jogos encerrados — vai entrar na primeira fase
+  if (encerrados.length === 0) {
+    // Heurística: intraconf → 8 atléticas → 1ª fase = quartas; senão oitavas
+    const proxima = isIntraConf ? 'quartas' : 'oitavas'
+    return { estado: 'sem_jogos', fase_atual: proxima, min: pisoSePerderProxima(proxima, isIntraConf), max: 13 }
+  }
+
+  // Pega o último jogo (maior peso de fase)
+  const ordenados = [...encerrados].sort((a, b) =>
+    (FASE_ORDEM_PESO[(a.fase ?? '').toLowerCase().trim()] ?? 0) -
+    (FASE_ORDEM_PESO[(b.fase ?? '').toLowerCase().trim()] ?? 0),
+  )
+  const ultimo     = ordenados[ordenados.length - 1]
+  const faseUlt    = (ultimo.fase ?? '').toLowerCase().trim()
+  const isA        = ultimo.equipe_a_id === equipeId
+  const meu        = isA ? ultimo.placar_a : ultimo.placar_b
+  const dele       = isA ? ultimo.placar_b : ultimo.placar_a
+  const venceu     = meu != null && dele != null && meu > dele
+
+  if (!venceu) {
+    // Perdeu o último → eliminada (ou vice se foi a final)
+    const dec = derivarColocacao(jogosMod, equipeId)
+    let estado: EstadoModalidade = 'eliminada'
+    if (dec.fase_eliminada === 'campeao') estado = 'campeao'
+    else if (dec.fase_eliminada === 'vice')    estado = 'vice'
+    // Intraconf: posições > 4 não pontuam
+    const pts = (isIntraConf && dec.colocacao != null && dec.colocacao > 4) ? 0 : dec.total
+    return { estado, fase_atual: faseUlt, min: pts, max: pts }
+  }
+
+  // Venceu o último → próxima fase
+  const proximaFase =
+    faseUlt === 'oitavas'                              ? 'quartas' :
+    faseUlt === 'quartas'                              ? 'semi'    :
+    faseUlt === 'semi' || faseUlt === 'semifinal'      ? 'final'   :
+    faseUlt === 'final'                                ? 'campea'  :
+    faseUlt === '3lugar' || faseUlt === 'terceiro'     ? 'terceira':
+    'quartas'  // fallback
+
+  if (proximaFase === 'campea') {
+    return { estado: 'campeao', fase_atual: 'final', min: 13, max: 13 }
+  }
+  if (proximaFase === 'terceira') {
+    return { estado: 'eliminada', fase_atual: '3lugar', min: 7, max: 7 }
+  }
+
+  return {
+    estado:     'viva',
+    fase_atual: proximaFase,
+    min:        pisoSePerderProxima(proximaFase, isIntraConf),
+    max:        13,
+  }
 }

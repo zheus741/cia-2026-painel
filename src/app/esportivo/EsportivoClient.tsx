@@ -14,7 +14,19 @@ interface AtleticaWithStats {
   divisao: string | null; conferencia: string | null
   seed: number | null; universidade: string | null; cor_primaria: string | null
   jogados: number; vitorias: number; empates: number; derrotas: number
-  gols_pro: number; gols_contra: number; saldo: number; pontos: number
+  gols_pro: number; gols_contra: number; saldo: number
+  /** Legado: 3V+1E (Brasileirão) — mantido só pra compatibilidade. */
+  pontos: number
+  /** Pontuação CIA — soma dos pisos garantidos (Art. 44/46 do regulamento). */
+  pontos_cia: number
+  /** Pontuação CIA máxima possível (vence tudo a partir de agora). */
+  pontos_cia_max: number
+  /** Modalidades onde a previsão ainda pode variar. */
+  vivas: number
+  /** Modalidades já decididas (min === max). */
+  decididas: number
+  /** Total de inscrições da atlética. */
+  total_inscricoes: number
 }
 
 interface UpcomingJogo {
@@ -70,6 +82,9 @@ function StandingsTable({ equipes, accentColor, promoteSpots, compact }: Standin
   const cellPad = compact ? '6px 8px' : '10px 12px'
   const fontSize = compact ? '12px' : '13px'
 
+  // Calcula o teto global da tabela pra dimensionar a barra
+  const globalMax = Math.max(13, ...equipes.map(e => e.pontos_cia_max))
+
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif' }}>
@@ -78,13 +93,33 @@ function StandingsTable({ equipes, accentColor, promoteSpots, compact }: Standin
             background: `rgba(${hexToRgb(accentColor)}, 0.06)`,
             borderBottom: `2px solid rgba(${hexToRgb(accentColor)}, 0.20)`,
           }}>
-            {['Pos', 'Atlética', 'Pts', 'J', 'V', 'E', 'D', ...(compact ? [] : ['GP', 'GC']), 'SG'].map(col => (
-              <th key={col} style={{
-                padding: cellPad, textAlign: col === 'Atlética' ? 'left' : 'center',
-                fontSize, fontWeight: 700, color: accentColor, letterSpacing: '0.03em',
-                whiteSpace: 'nowrap',
-              }}>
-                {col}
+            {[
+              { key: 'pos',   label: 'Pos', align: 'center' },
+              { key: 'time',  label: 'Atlética', align: 'left' },
+              { key: 'atual', label: 'Atual', align: 'center', tip: 'Pontos garantidos (Art. 44/46)' },
+              { key: 'max',   label: 'Máx',   align: 'center', tip: 'Pontos máximos se vencer tudo daqui' },
+              { key: 'faixa', label: 'Faixa', align: 'left',   tip: 'Espaço de manobra restante' },
+              { key: 'mod',   label: 'Mod',   align: 'center', tip: 'Vivas / total de modalidades' },
+              ...(compact ? [] : [
+                { key: 'j', label: 'J', align: 'center' as const, tip: 'Jogos disputados' },
+                { key: 'v', label: 'V', align: 'center' as const, tip: 'Vitórias' },
+                { key: 'd', label: 'D', align: 'center' as const, tip: 'Derrotas' },
+                { key: 'sg', label: 'SG', align: 'center' as const, tip: 'Saldo' },
+              ]),
+            ].map(col => (
+              <th
+                key={col.key}
+                title={'tip' in col ? col.tip : undefined}
+                style={{
+                  padding: cellPad,
+                  textAlign: col.align as 'left' | 'center',
+                  fontSize, fontWeight: 700,
+                  color: accentColor,
+                  letterSpacing: '0.03em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {col.label}
               </th>
             ))}
           </tr>
@@ -95,6 +130,8 @@ function StandingsTable({ equipes, accentColor, promoteSpots, compact }: Standin
             const isPromote = promoteSpots != null && pos <= promoteSpots
             const rowBg = idx % 2 === 0 ? '#ffffff' : '#f9fafb'
             const medal = pos === 1 ? '🥇' : ''
+            const decisivo = eq.pontos_cia === eq.pontos_cia_max
+
             return (
               <tr key={eq.id} style={{
                 background: rowBg,
@@ -114,25 +151,96 @@ function StandingsTable({ equipes, accentColor, promoteSpots, compact }: Standin
                     {eq.nome}
                   </Link>
                 </td>
-                <td style={{ padding: cellPad, textAlign: 'center', fontSize, fontWeight: 700, color: '#0A0F0B' }}>{eq.pontos}</td>
-                <td style={{ padding: cellPad, textAlign: 'center', fontSize, color: '#374151' }}>{eq.jogados}</td>
-                <td style={{ padding: cellPad, textAlign: 'center', fontSize, color: '#374151' }}>{eq.vitorias}</td>
-                <td style={{ padding: cellPad, textAlign: 'center', fontSize, color: '#374151' }}>{eq.empates}</td>
-                <td style={{ padding: cellPad, textAlign: 'center', fontSize, color: '#374151' }}>{eq.derrotas}</td>
+                {/* Atual — número de destaque */}
+                <td style={{ padding: cellPad, textAlign: 'center', fontSize: '15px', fontWeight: 800, color: accentColor, fontVariantNumeric: 'tabular-nums' }}>
+                  {eq.pontos_cia}
+                </td>
+                {/* Máx — secundário */}
+                <td style={{ padding: cellPad, textAlign: 'center', fontSize: '13px', fontWeight: 600, color: decisivo ? '#9ca3af' : '#374151', fontVariantNumeric: 'tabular-nums' }}>
+                  {decisivo ? '—' : eq.pontos_cia_max}
+                </td>
+                {/* Barra Atual → Máx */}
+                <td style={{ padding: cellPad }}>
+                  <PrevisaoBar
+                    atual={eq.pontos_cia}
+                    max={eq.pontos_cia_max}
+                    globalMax={globalMax}
+                    accentColor={accentColor}
+                  />
+                </td>
+                {/* Modalidades vivas/total */}
+                <td style={{ padding: cellPad, textAlign: 'center', fontSize: '11px', color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'baseline', gap: 2,
+                  }}>
+                    <span style={{ fontWeight: 700, color: eq.vivas > 0 ? '#0A0F0B' : '#9ca3af' }}>
+                      {eq.vivas}
+                    </span>
+                    <span style={{ opacity: 0.5 }}>/</span>
+                    <span>{eq.total_inscricoes}</span>
+                  </span>
+                </td>
                 {!compact && (
                   <>
-                    <td style={{ padding: cellPad, textAlign: 'center', fontSize, color: '#374151' }}>{eq.gols_pro}</td>
-                    <td style={{ padding: cellPad, textAlign: 'center', fontSize, color: '#374151' }}>{eq.gols_contra}</td>
+                    <td style={{ padding: cellPad, textAlign: 'center', fontSize, color: '#374151' }}>{eq.jogados}</td>
+                    <td style={{ padding: cellPad, textAlign: 'center', fontSize, color: '#374151' }}>{eq.vitorias}</td>
+                    <td style={{ padding: cellPad, textAlign: 'center', fontSize, color: '#374151' }}>{eq.derrotas}</td>
+                    <td style={{ padding: cellPad, textAlign: 'center', fontSize }}>
+                      <SaldoCell saldo={eq.saldo} />
+                    </td>
                   </>
                 )}
-                <td style={{ padding: cellPad, textAlign: 'center', fontSize }}>
-                  <SaldoCell saldo={eq.saldo} />
-                </td>
               </tr>
             )
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PrevisaoBar — visualização Atual → Máximo
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PrevisaoBar({ atual, max, globalMax, accentColor }: {
+  atual:       number
+  max:         number
+  globalMax:   number
+  accentColor: string
+}) {
+  // Normaliza ambos para a escala global
+  const safeMax = Math.max(globalMax, 1)
+  const pctAtual = Math.max(0, Math.min(100, (atual / safeMax) * 100))
+  const pctMax   = Math.max(0, Math.min(100, (max   / safeMax) * 100))
+  const decidido = atual === max
+
+  return (
+    <div style={{
+      position: 'relative', width: '100%', minWidth: 80, maxWidth: 160,
+      height: 6, background: '#f3f4f6', borderRadius: 99, overflow: 'hidden',
+    }}>
+      {/* Faixa "Máx possível" — clarinha, indica espaço de manobra */}
+      {!decidido && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute', inset: 0, width: `${pctMax}%`,
+            background: `rgba(${hexToRgb(accentColor)}, 0.16)`,
+            borderRadius: 99,
+          }}
+        />
+      )}
+      {/* Faixa "Atual" — sólida, indica o garantido */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute', inset: 0, width: `${pctAtual}%`,
+          background: accentColor,
+          borderRadius: 99,
+          transition: 'width 0.3s ease',
+        }}
+      />
     </div>
   )
 }

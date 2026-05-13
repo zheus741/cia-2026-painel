@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { updateRole, updateFuncao, toggleAtivo } from './actions'
 import { Shield, UserCog, Users, Crown, Power, PowerOff } from 'lucide-react'
 
-type Role = 'admin' | 'coordenacao' | 'lider_area' | 'operador'
+type Role = 'admin' | 'coordenacao' | 'lider_area' | 'operador' | 'coordenador_esportivo' | 'operador_esportivo'
 type Funcao = string | null
 
 interface Usuario {
@@ -22,10 +22,12 @@ interface Usuario {
 }
 
 const ROLE_META: Record<Role, { label: string; cor: string; icon: typeof Shield }> = {
-  admin:       { label: 'Admin',       cor: 'text-red-600 bg-red-50 border-red-200',             icon: Crown },
-  coordenacao: { label: 'Coordenação', cor: 'text-yellow-700 bg-yellow-50 border-yellow-200',    icon: Shield },
-  lider_area:  { label: 'Líder',       cor: 'text-purple-700 bg-purple-50 border-purple-200',    icon: UserCog },
-  operador:    { label: 'Operador',    cor: 'text-[var(--green-bright)] bg-[var(--green-dim)]/30 border-[var(--green-dim)]/40', icon: Users },
+  admin:                  { label: 'Admin',          cor: 'text-red-600 bg-red-50 border-red-200',              icon: Crown },
+  coordenacao:            { label: 'Coordenação',    cor: 'text-yellow-700 bg-yellow-50 border-yellow-200',     icon: Shield },
+  lider_area:             { label: 'Líder',          cor: 'text-purple-700 bg-purple-50 border-purple-200',     icon: UserCog },
+  operador:               { label: 'Operador',       cor: 'text-[var(--green-bright)] bg-[var(--green-dim)]/30 border-[var(--green-dim)]/40', icon: Users },
+  coordenador_esportivo:  { label: 'Coord. Esport.', cor: 'text-blue-700 bg-blue-50 border-blue-200',           icon: Shield },
+  operador_esportivo:     { label: 'Op. Esportivo',  cor: 'text-sky-700 bg-sky-50 border-sky-200',              icon: Users },
 }
 
 const FUNCOES = [
@@ -125,6 +127,8 @@ function UsuarioCard({ u, onUpdate }: { u: Usuario; onUpdate: () => void }) {
           <option value="coordenacao">Coordenação</option>
           <option value="lider_area">Líder de área</option>
           <option value="operador">Operador</option>
+          <option value="coordenador_esportivo">Coord. Esportivo</option>
+          <option value="operador_esportivo">Op. Esportivo</option>
         </select>
 
         {/* Trocar função */}
@@ -178,10 +182,12 @@ export function UsuariosClient({ usuarios }: { usuarios: Usuario[] }) {
     )
 
   const contagem = {
-    admin:       usuarios.filter((u) => u.role === 'admin').length,
-    coordenacao: usuarios.filter((u) => u.role === 'coordenacao').length,
-    lider_area:  usuarios.filter((u) => u.role === 'lider_area').length,
-    operador:    usuarios.filter((u) => u.role === 'operador').length,
+    admin:                 usuarios.filter((u) => u.role === 'admin').length,
+    coordenacao:           usuarios.filter((u) => u.role === 'coordenacao').length,
+    lider_area:            usuarios.filter((u) => u.role === 'lider_area').length,
+    operador:              usuarios.filter((u) => u.role === 'operador').length,
+    coordenador_esportivo: usuarios.filter((u) => u.role === 'coordenador_esportivo').length,
+    operador_esportivo:    usuarios.filter((u) => u.role === 'operador_esportivo').length,
   }
 
   return (

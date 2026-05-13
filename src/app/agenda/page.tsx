@@ -56,10 +56,10 @@ export default async function AgendaPage() {
       <AgendaClient
         dias={dias}
         jogos={(jogosRes.data ?? []) as unknown as Parameters<typeof AgendaClient>[0]['jogos']}
-        shows={(showsRes.data ?? []) as Parameters<typeof AgendaClient>[0]['shows']}
-        festas={(festasRes.data ?? []) as Parameters<typeof AgendaClient>[0]['festas']}
-        setores={(setoresRes.data ?? []) as Parameters<typeof AgendaClient>[0]['setores']}
-        turnosCoberturaAV={(turnosRes.data ?? []) as Parameters<typeof AgendaClient>[0]['turnosCoberturaAV']}
+        shows={(showsRes.data ?? []) as unknown as Parameters<typeof AgendaClient>[0]['shows']}
+        festas={(festasRes.data ?? []) as unknown as Parameters<typeof AgendaClient>[0]['festas']}
+        setores={(setoresRes.data ?? []) as unknown as Parameters<typeof AgendaClient>[0]['setores']}
+        turnosCoberturaAV={(turnosRes.data ?? []) as unknown as Parameters<typeof AgendaClient>[0]['turnosCoberturaAV']}
         todayDiaId={todayDia?.id ?? null}
         userRole={profile.role}
       />

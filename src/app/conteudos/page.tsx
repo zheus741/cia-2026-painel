@@ -31,6 +31,9 @@ export default async function ConteudosPage({
     }
   }
 
+  // PERF: dia/setor/patrocinador removidos do JOIN — já temos esses dados nos
+  // cached lookups. Hidratamos client-side com Maps (O(1)) depois da query.
+  // Mantemos apenas joins dinâmicos (jogo/show/festa/modalidade).
   let conteudosQuery = supabase
     .from('conteudos')
     .select(`
@@ -38,9 +41,6 @@ export default async function ConteudosPage({
       dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
       canal_publicacao, briefing, horario_previsto, link_publicado,
       responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
-      dia:dia_id (nome_dia, data),
-      setor:setor_id (nome),
-      patrocinador:patrocinador_id (nome),
       jogo:jogo_id (equipe_a_nome, equipe_b_nome, modalidade:modalidade_id (nome, icone)),
       show:show_id (nome, inicio),
       festa:festa_id (nome, tema, inicio),
@@ -80,6 +80,19 @@ export default async function ConteudosPage({
 
   // Log errors server-side (lookup tables já logam dentro de lookups.ts)
   if (conteudosRes.error) console.error('[conteudos] query error:', JSON.stringify(conteudosRes.error))
+
+  // PERF: hidrata dia/setor/patrocinador a partir dos lookups cacheados (O(1) por row)
+  // em vez de depender dos JOINs SQL — economiza o custo de serializar N objetos aninhados.
+  const diasMap         = new Map((dias         as Dia[]).map(d => [d.id, d]))
+  const setoresMap      = new Map((setores      as Setor[]).map(s => [s.id, s]))
+  const patrocinadoresMap = new Map((patrocinadores as Patrocin[]).map(p => [p.id, p]))
+
+  const conteudos = ((conteudosRes.data ?? []) as unknown as Conteudo[]).map(c => ({
+    ...c,
+    dia:          c.dia_id          ? (diasMap.get(c.dia_id)          ?? null) : null,
+    setor:        c.setor_id        ? (setoresMap.get(c.setor_id)      ?? null) : null,
+    patrocinador: c.patrocinador_id ? (patrocinadoresMap.get(c.patrocinador_id) ?? null) : null,
+  }))
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -130,7 +143,7 @@ export default async function ConteudosPage({
       <div className="min-h-0 flex-1">
         <KanbanBoard
           edicaoId={edicaoRes.data?.id ?? ''}
-          conteudos={(conteudosRes.data ?? []) as unknown as Conteudo[]}
+          conteudos={conteudos}
           dias={dias as Dia[]}
           setores={setores as Setor[]}
           patrocinadores={patrocinadores as Patrocin[]}

@@ -1,24 +1,27 @@
 /**
  * Helpers cacheados para auth + profile.
  *
- * Por que React.cache?
- *   No App Router, `supabase.auth.getUser()` bate no endpoint /auth/v1/user do
- *   Supabase a cada chamada — em medições reais, ~240ms por hit. Como toda
- *   page.tsx (e layouts) precisam saber quem é o usuário, esse custo se
- *   multiplicava.
+ * Duas camadas de cache:
  *
- *   `cache()` faz dedupe DENTRO de uma mesma request: chamadas idênticas
- *   reutilizam o resultado do primeiro await. Layout + page + loading
- *   compartilham o mesmo cache.
+ * 1. React.cache() — dedupe DENTRO de uma mesma request.
+ *    Layout + page + loading compartilham o mesmo resultado sem bater
+ *    novamente no banco na mesma renderização.
  *
- *   Resultado típico:
- *     /conteudos antes: auth.getUser() 240ms + profile fetch 240ms = 480ms
- *     /conteudos depois: 240ms total (e zero em chamadas subsequentes)
+ * 2. unstable_cache() no fetchProfile — persiste o profile entre requests
+ *    do mesmo usuário por até 30s. Economiza ~240ms por navegação depois
+ *    da primeira carga, sem risco de dados críticos defasados (role, nome).
+ *    Invalidado via revalidateTag('profile:<id>') ao salvar o perfil.
+ *
+ * Resultado típico (Pro Micro, sem upgrade):
+ *   /conteudos antes: auth 230ms + profile 240ms = 470ms
+ *   /conteudos depois: auth 230ms + profile ~0ms = 230ms (nas reqs seguintes)
  */
 
 import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export type Role = 'admin' | 'coordenacao' | 'lider_area' | 'operador'
 
@@ -33,6 +36,24 @@ export interface CurrentProfile {
   bio:               string | null
 }
 
+// Fetcher cacheado cross-request: persiste por 30s, key = user id.
+// Usa service client para não depender do cookie de sessão neste contexto.
+function makeCachedProfileFetch(userId: string) {
+  return unstable_cache(
+    async () => {
+      const supabase = createServiceClient()
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, nome, email, foto_url, role, funcao_principal, telefone, bio')
+        .eq('id', userId)
+        .maybeSingle()
+      return (data ?? null) as CurrentProfile | null
+    },
+    ['profile', userId],
+    { revalidate: 30, tags: [`profile:${userId}`] },
+  )
+}
+
 /** Apenas o user do Supabase Auth (sem profile). Cacheado por request. */
 export const getCurrentUser = cache(async () => {
   const supabase = await createClient()
@@ -40,17 +61,11 @@ export const getCurrentUser = cache(async () => {
   return user
 })
 
-/** User + profile da tabela `profiles`. Cacheado por request. */
+/** User + profile da tabela `profiles`. Cacheado por request + 30s cross-request. */
 export const getCurrentProfile = cache(async (): Promise<CurrentProfile | null> => {
   const user = await getCurrentUser()
   if (!user) return null
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('profiles')
-    .select('id, nome, email, foto_url, role, funcao_principal, telefone, bio')
-    .eq('id', user.id)
-    .maybeSingle()
-  return (data ?? null) as CurrentProfile | null
+  return makeCachedProfileFetch(user.id)()
 })
 
 /** Versão que faz redirect('/login') se não autenticado. Cacheada. */

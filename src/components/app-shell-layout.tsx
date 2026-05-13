@@ -23,9 +23,11 @@ type NavGroup = { label: string; items: NavItem[] }
 // ── Role meta ──────────────────────────────────────────────────────────────────
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin', coordenacao: 'Coord', lider_area: 'Líder', operador: 'Op',
+  coordenador_esportivo: 'Coord. Esp.', operador_esportivo: 'Op. Esp.',
 }
 const ROLE_COLOR: Record<string, string> = {
   admin: '#2e6b42', coordenacao: '#8a5f06', lider_area: '#2563eb', operador: '#64748b',
+  coordenador_esportivo: '#c0392b', operador_esportivo: '#7c3aed',
 }
 function getInitials(name: string) {
   return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
@@ -84,22 +86,25 @@ const ADMIN_GROUPS: NavGroup[] = [
   },
 ]
 
-function getMediaGroups(isLider: boolean): NavGroup[] {
+// Nav para coordenacao/lider/operador — sem aba Gestão
+function getMediaGroups(role: string): NavGroup[] {
+  const isLider   = role === 'lider_area'
+  const isOperador = role === 'operador'
   return [
     {
       label: 'Conteúdo',
       items: [
-        { label: 'Agenda',       href: '/agenda',       icon: LayoutList },
-        { label: 'Pautas',       href: '/pautas',       icon: Lightbulb },
-        { label: 'Conteúdos',    href: '/conteudos',    icon: Camera },
-        { label: 'Mapa Ao Vivo', href: '/mapa',         icon: MapPin },
-        { label: 'Croqui Evento', href: '/croqui',      icon: Map },
+        { label: 'Agenda',        href: '/agenda',       icon: LayoutList },
+        ...(!isOperador ? [{ label: 'Pautas', href: '/pautas', icon: Lightbulb }] : []),
+        { label: 'Conteúdos',     href: '/conteudos',    icon: Camera },
+        { label: 'Mapa Ao Vivo',  href: '/mapa',         icon: MapPin },
+        { label: 'Croqui Evento', href: '/croqui',       icon: Map },
       ],
     },
     {
       label: 'Escala',
       items: [
-        { label: 'Minha Escala',      href: '/minha-escala',  icon: UserCircle },
+        { label: 'Minha Escala', href: '/minha-escala', icon: UserCircle },
         ...(isLider ? [{ label: 'Escala da Equipe', href: '/escala-midia', icon: ClipboardList }] : []),
       ],
     },
@@ -110,6 +115,50 @@ function getMediaGroups(isLider: boolean): NavGroup[] {
       ],
     },
   ]
+}
+
+// Nav para coordenador_esportivo
+const COORD_ESPORTIVO_GROUPS: NavGroup[] = [
+  {
+    label: 'Esportivo',
+    items: [
+      { label: 'Hub Esportivo',  href: '/esportivo',          icon: Trophy },
+      { label: 'Atléticas',      href: '/atleticas',          icon: Users },
+      { label: 'Placar Ao Vivo', href: '/placar',             icon: Radio },
+      { label: 'Liga Super 8',   href: '/esportivo/super-8',  icon: Trophy },
+    ],
+  },
+  {
+    label: 'Ferramentas',
+    items: [
+      { label: 'Importar Tabela', href: '/esportivo/importar', icon: FileSpreadsheet },
+    ],
+  },
+]
+
+// Nav para operador_esportivo
+const OP_ESPORTIVO_GROUPS: NavGroup[] = [
+  {
+    label: 'Esportivo',
+    items: [
+      { label: 'Hub Esportivo',  href: '/esportivo',         icon: Trophy },
+      { label: 'Atléticas',      href: '/atleticas',         icon: Users },
+      { label: 'Placar Ao Vivo', href: '/placar',            icon: Radio },
+      { label: 'Liga Super 8',   href: '/esportivo/super-8', icon: Trophy },
+    ],
+  },
+]
+
+// Nav para coordenacao — tudo menos aba Gestão
+const COORDENACAO_GROUPS: NavGroup[] = ADMIN_GROUPS.filter(g => g.label !== 'Gestão')
+
+function getNavGroups(role: string | null | undefined, funcao: string | null | undefined): NavGroup[] {
+  if (role === 'admin')                  return ADMIN_GROUPS
+  if (role === 'coordenacao')            return COORDENACAO_GROUPS
+  if (role === 'coordenador_esportivo')  return COORD_ESPORTIVO_GROUPS
+  if (role === 'operador_esportivo')     return OP_ESPORTIVO_GROUPS
+  // lider_area e operador: nav de mídia (baseada em funcao_principal ou role)
+  return getMediaGroups(role ?? 'operador')
 }
 
 // ── NavDropdown ────────────────────────────────────────────────────────────────
@@ -327,9 +376,7 @@ export function AppShellLayout({
   const pathname    = usePathname()
   const [mobileOpen, setMobileOpen] = React.useState(false)
 
-  const isMediaRole = profile?.funcao_principal === 'foto' || profile?.funcao_principal === 'video'
-  const isLider     = profile?.role === 'lider_area'
-  const navGroups   = isMediaRole ? getMediaGroups(isLider) : ADMIN_GROUPS
+  const navGroups = getNavGroups(profile?.role, profile?.funcao_principal)
 
   const initials  = profile?.nome  ? getInitials(profile.nome) : '??'
   const roleColor = profile?.role  ? (ROLE_COLOR[profile.role] ?? '#6ab87e') : '#6ab87e'

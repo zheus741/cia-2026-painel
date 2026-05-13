@@ -6,6 +6,7 @@ import { CiaLogo } from '@/components/cia-logo'
 import { signOut } from './actions'
 import { LogOut, ChevronRight, Tv2 } from 'lucide-react'
 import { HomeClient } from './HomeClient'
+import { HomeEsportivo } from './HomeEsportivo'
 import type {
   CoordConteudoHoje,
   CoordJogo,
@@ -71,6 +72,26 @@ export default async function Home() {
   const profile = await requireProfile()
   const user = { id: profile.id }
   const supabase = await createClient()
+
+  const isEsportivoRole = profile.role === 'coordenador_esportivo' || profile.role === 'operador_esportivo'
+
+  // Early return para roles esportivos — home minimalista, sem buscar dados pesados
+  if (isEsportivoRole) {
+    const now        = new Date()
+    const diffMs     = EVENT_START.getTime() - now.getTime()
+    const diffDays   = Math.max(0, Math.ceil(diffMs / 86_400_000))
+    const eventActive = now >= EVENT_START && now <= new Date('2026-06-08T00:00:00-03:00')
+
+    return (
+      <HomeEsportivo
+        nome={profile.nome}
+        role={profile.role}
+        isCoordEsportivo={profile.role === 'coordenador_esportivo'}
+        diffDays={diffDays}
+        eventActive={eventActive}
+      />
+    )
+  }
 
   const isOperador = profile.role === 'operador'
   const isCoord    = ['coordenacao', 'admin', 'lider_area'].includes(profile.role)

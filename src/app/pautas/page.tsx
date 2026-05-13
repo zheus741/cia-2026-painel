@@ -1,7 +1,14 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { requireProfile } from '@/lib/auth/current-user'
 import { PautasBoard } from './PautasBoard'
 
+const BLOCKED_ROLES = ['operador', 'coordenador_esportivo', 'operador_esportivo']
+
 export default async function PautasPage() {
+  const profile = await requireProfile()
+  if (BLOCKED_ROLES.includes(profile.role)) redirect('/')
+
   const supabase = await createClient()
 
   const { data } = await supabase

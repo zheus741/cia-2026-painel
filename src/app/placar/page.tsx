@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
+import { requireProfile } from '@/lib/auth/current-user'
 import { PlacarBoard } from './PlacarClient'
+
+const CAN_EDIT_ROLES = ['admin', 'coordenador_esportivo']
 
 const DIAS_FIXOS = [
   { id: '00000000-0000-0001-0000-000000000001', nome_dia: 'Quinta', data: '2026-06-04' },
@@ -9,6 +12,8 @@ const DIAS_FIXOS = [
 ]
 
 export default async function PlacarPage() {
+  const profile = await requireProfile()
+  const canEdit = CAN_EDIT_ROLES.includes(profile.role)
   const supabase = await createClient()
 
   const [{ data: diasDB }, { data: jogosDB }] = await Promise.all([
@@ -108,6 +113,7 @@ export default async function PlacarPage() {
         dias={dias}
         jogosPorDia={jogosPorDia as Record<string, Parameters<typeof PlacarBoard>[0]['jogosPorDia'][string]>}
         diaAtivo={diaAtivo}
+        canEdit={canEdit}
       />
     </div>
   )

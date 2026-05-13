@@ -6,7 +6,7 @@ import { AppShell } from '@/components/app-shell'
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // PERF: requireProfile() cacheado — chamada deduplicada com page.tsx filho
   const profile = await requireProfile()
-  if (!['admin', 'coordenacao'].includes(profile.role)) {
+  if (profile.role !== 'admin') {
     redirect('/')
   }
 

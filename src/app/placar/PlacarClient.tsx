@@ -107,10 +107,11 @@ function TeamName({ eq, fallback, accent, loserByWO = false }: {
   )
 }
 
-function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
+function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   jogo: Jogo
   onLocalUpdate: (id: string, patch: Partial<Jogo>) => void
   recentlyChanged: boolean
+  canEdit?: boolean
 }) {
   const [isPending, startTransition] = useTransition()
   // woMode: quando true, troca a barra de ações pelo seletor "qual equipe não veio?"
@@ -328,7 +329,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
                 </span>
               ) : (
                 <>
-                  {isAoVivo && !hasWO && (
+                  {canEdit && isAoVivo && !hasWO && (
                     <button
                       onClick={() => adjustScore('a', -1)}
                       disabled={isPending || placarA === 0}
@@ -340,7 +341,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
                   <span className={`tabular-nums font-bold ${isAoVivo ? 'text-3xl' : 'text-2xl text-[var(--muted-foreground)]'}`}>
                     {placarA}
                   </span>
-                  {isAoVivo && !hasWO && (
+                  {canEdit && isAoVivo && !hasWO && (
                     <button
                       onClick={() => adjustScore('a', 1)}
                       disabled={isPending}
@@ -375,7 +376,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
                 </span>
               ) : (
                 <>
-                  {isAoVivo && !hasWO && (
+                  {canEdit && isAoVivo && !hasWO && (
                     <button
                       onClick={() => adjustScore('b', -1)}
                       disabled={isPending || placarB === 0}
@@ -387,7 +388,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
                   <span className={`tabular-nums font-bold ${isAoVivo ? 'text-3xl' : 'text-2xl text-[var(--muted-foreground)]'}`}>
                     {placarB}
                   </span>
-                  {isAoVivo && !hasWO && (
+                  {canEdit && isAoVivo && !hasWO && (
                     <button
                       onClick={() => adjustScore('b', 1)}
                       disabled={isPending}
@@ -471,7 +472,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged }: {
       )}
 
       {/* Ações */}
-      {!isEncerrado && !isCancelado && !woMode && (
+      {canEdit && !isEncerrado && !isCancelado && !woMode && (
         <div className="mt-4 flex gap-2">
           {isAgendado && (
             <button
@@ -550,6 +551,7 @@ interface Props {
   dias: { id: string; nome_dia: string; data: string }[]
   jogosPorDia: Record<string, Jogo[]>
   diaAtivo: string
+  canEdit?: boolean
 }
 
 // Campos escalares que o realtime pode atualizar in-place (sem perder joins).
@@ -559,7 +561,7 @@ const REALTIME_MERGEABLE: (keyof Jogo)[] = [
   'inicio', 'fase', 'categoria', 'divisao', 'teste',
 ]
 
-export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }: Props) {
+export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, canEdit }: Props) {
   const router = useRouter()
   const [jogosPorDia, setJogosPorDia] = useState(initialJogosPorDia)
   const [diaId, setDiaId] = useState(diaAtivo)
@@ -928,6 +930,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo }:
               jogo={jogo}
               onLocalUpdate={handleLocalUpdate}
               recentlyChanged={recentIds.has(jogo.id)}
+              canEdit={canEdit}
             />
           ))}
         </div>

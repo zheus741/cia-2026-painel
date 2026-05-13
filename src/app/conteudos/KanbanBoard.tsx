@@ -211,7 +211,7 @@ function MiniAvatar({ perfil, size = 20 }: { perfil: Perfil; size?: number }) {
 // ── Card ──────────────────────────────────────────────────────────────────────
 
 function ConteudoCard({
-  c, perfis, onEdit, onDelete, onMove, onView, isBeingDragged,
+  c, perfis, onEdit, onDelete, onMove, onView, isBeingDragged, readOnly,
 }: {
   c: Conteudo
   perfis: Perfil[]
@@ -220,6 +220,7 @@ function ConteudoCard({
   onMove: (status: string) => void
   onView: () => void
   isBeingDragged: boolean
+  readOnly?: boolean
 }) {
   const hasPrev = !!PREV_STATUS[c.status]
   const hasNext = !!NEXT_STATUS[c.status]
@@ -328,7 +329,7 @@ function ConteudoCard({
 
         {/* Actions — aparecem no hover */}
         <div className="mt-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          {hasPrev && (
+          {!readOnly && hasPrev && (
             <button
               title="Voltar status"
               onClick={(e) => { e.stopPropagation(); onMove(PREV_STATUS[c.status]) }}
@@ -344,21 +345,25 @@ function ConteudoCard({
           >
             <Eye className="h-3 w-3" />
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit() }}
-            title="Editar"
-            className="rounded p-1 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-          >
-            <Pencil className="h-3 w-3" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete() }}
-            title="Excluir"
-            className="rounded p-1 hover:bg-red-500/20 text-[var(--muted-foreground)] hover:text-red-400"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-          {hasNext && (
+          {!readOnly && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit() }}
+              title="Editar"
+              className="rounded p-1 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
+          {!readOnly && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete() }}
+              title="Excluir"
+              className="rounded p-1 hover:bg-red-500/20 text-[var(--muted-foreground)] hover:text-red-400"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          )}
+          {!readOnly && hasNext && (
             <button
               title="Avançar status"
               onClick={(e) => { e.stopPropagation(); onMove(NEXT_STATUS[c.status]) }}
@@ -922,7 +927,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
 
 function KanbanColumn({
   col, conteudos, perfis, onAdd, onEdit, onDelete, onMove, onView,
-  isDragOver, onDragOver, onDragLeave, onDrop, dragId,
+  isDragOver, onDragOver, onDragLeave, onDrop, dragId, readOnly,
 }: {
   col: (typeof COLUNAS)[number]
   conteudos: Conteudo[]
@@ -937,6 +942,7 @@ function KanbanColumn({
   onDragLeave: () => void
   onDrop: (cardId: string, srcStatus: string) => void
   dragId: string | null
+  readOnly?: boolean
 }) {
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault()
@@ -977,34 +983,38 @@ function KanbanColumn({
         >
           {conteudos.length}
         </span>
-        <button
-          onClick={onAdd}
-          title="Adicionar"
-          className="rounded-full transition-colors"
-          style={{ padding: '3px', color: 'rgba(10,15,11,0.30)' }}
-        >
-          <Plus className="h-3.5 w-3.5" />
-        </button>
+        {!readOnly && (
+          <button
+            onClick={onAdd}
+            title="Adicionar"
+            className="rounded-full transition-colors"
+            style={{ padding: '3px', color: 'rgba(10,15,11,0.30)' }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto p-3" style={{ maxHeight: 'calc(100vh - 260px)' }}>
         {conteudos.length === 0 && !isDragOver ? (
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
             <p className="text-[11px]" style={{ color: 'rgba(10,15,11,0.28)' }}>Vazio</p>
-            <button
-              onClick={onAdd}
-              className="transition-colors"
-              style={{
-                borderRadius: 999,
-                border: '1px dashed rgba(10,15,11,0.18)',
-                padding: '4px 14px',
-                fontSize: 10,
-                fontWeight: 600,
-                color: 'rgba(10,15,11,0.38)',
-              }}
-            >
-              + Adicionar
-            </button>
+            {!readOnly && (
+              <button
+                onClick={onAdd}
+                className="transition-colors"
+                style={{
+                  borderRadius: 999,
+                  border: '1px dashed rgba(10,15,11,0.18)',
+                  padding: '4px 14px',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  color: 'rgba(10,15,11,0.38)',
+                }}
+              >
+                + Adicionar
+              </button>
+            )}
           </div>
         ) : (
           conteudos.map(c => (
@@ -1017,6 +1027,7 @@ function KanbanColumn({
               onMove={(s) => onMove(c, s)}
               onView={() => onView(c)}
               isBeingDragged={dragId === c.id}
+              readOnly={readOnly}
             />
           ))
         )}
@@ -1043,9 +1054,11 @@ interface KanbanBoardProps {
   /** dia_id ativo vindo da URL (?dia=<uuid>). Quando presente, o servidor já
    *  filtrou os cards por esse dia — o cliente sincroniza o filtro visual. */
   activeDiaId?:   string
+  /** Oculta todos os botões de criar/editar/mover/excluir. Somente leitura. */
+  readOnly?:      boolean
 }
 
-export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, perfis, activeDiaId }: KanbanBoardProps) {
+export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, perfis, activeDiaId, readOnly }: KanbanBoardProps) {
   const router = useRouter()
   const [conteudos, setConteudos] = React.useState(initial)
   const [search, setSearch]             = React.useState('')
@@ -1352,21 +1365,23 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         </div>
 
         {/* CTA editorial */}
-        <button
-          onClick={() => setDialog({ open: true })}
-          className="flex items-center gap-1.5 transition-all hover:opacity-90"
-          style={{
-            borderRadius: 999,
-            padding: '6px 16px',
-            fontSize: 12, fontWeight: 700, letterSpacing: '-0.01em',
-            background: '#0A0F0B',
-            color: '#FAF7F0',
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          <Plus className="h-3.5 w-3.5" /> Novo conteúdo
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => setDialog({ open: true })}
+            className="flex items-center gap-1.5 transition-all hover:opacity-90"
+            style={{
+              borderRadius: 999,
+              padding: '6px 16px',
+              fontSize: 12, fontWeight: 700, letterSpacing: '-0.01em',
+              background: '#0A0F0B',
+              color: '#FAF7F0',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" /> Novo conteúdo
+          </button>
+        )}
       </div>
 
       {/* ── Columns ────────────────────────────────────────────────── */}
@@ -1390,6 +1405,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
                 onDragLeave={() => setDragOver(prev => prev === col.status ? null : prev)}
                 onDrop={(id, src) => handleDrop(col.status, id, src)}
                 dragId={dragId}
+                readOnly={readOnly}
               />
             )
           })}

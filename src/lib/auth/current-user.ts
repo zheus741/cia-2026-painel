@@ -23,7 +23,23 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
-export type Role = 'admin' | 'coordenacao' | 'lider_area' | 'operador'
+export type Role =
+  | 'admin'
+  | 'coordenacao'
+  | 'lider_area'
+  | 'operador'
+  | 'coordenador_esportivo'
+  | 'operador_esportivo'
+
+// Helpers de role — use em page.tsx e layouts
+export const ROLES_ADMIN_ONLY     = ['admin'] as const
+export const ROLES_GESTAO         = ['admin', 'coordenacao'] as const
+export const ROLES_ESPORTIVO      = ['admin', 'coordenador_esportivo', 'operador_esportivo'] as const
+export const ROLES_PLACAR_EDITOR  = ['admin', 'coordenador_esportivo'] as const
+
+export function hasRole(profile: { role: string }, ...roles: string[]): boolean {
+  return roles.includes(profile.role)
+}
 
 export interface CurrentProfile {
   id:                string

@@ -145,9 +145,7 @@ function EditorialHeader({
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AgendaSection — timeline separado com filtro de dia + categoria
-// ─────────────────────────────────────────────────────────────────────────────
+// AgendaSection foi movida para /agenda (página dedicada)
 
 type CatFilter = 'todos' | 'jogos' | 'shows' | 'festas' | 'youtube'
 
@@ -335,6 +333,86 @@ function AgendaSection({
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// OperacionalSection — turnos + checklists do dia (role: operador)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function OperacionalSection({
+  turnosHoje,
+  checklistsAtivos,
+}: {
+  turnosHoje: TurnoHoje[]
+  checklistsAtivos: ChecklistInst[]
+}) {
+  return (
+    <>
+      {/* Minha escala */}
+      <div className="cia-metrics-col-6 cia-edit-card cia-edit-card--cream cia-metrics-cell" style={{ minHeight: 240 }}>
+        <span style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(10,15,11,0.55)', letterSpacing: '-0.01em' }}>
+          minha escala hoje
+        </span>
+        <h3 style={{ marginTop: 4, fontFamily: 'var(--font-dm-sans), system-ui, sans-serif', fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: '#0A0F0B', lineHeight: 1.05 }}>
+          {turnosHoje.length === 0 ? 'Livre hoje' : `${turnosHoje.length} turno${turnosHoje.length === 1 ? '' : 's'}`}
+        </h3>
+        {turnosHoje.length === 0 ? (
+          <p style={{ marginTop: 12, fontSize: 13, color: 'rgba(10,15,11,0.45)' }}>Sem turnos agendados para hoje.</p>
+        ) : (
+          <ul className="mt-4 space-y-2 flex-1 overflow-y-auto" style={{ maxHeight: 180 }}>
+            {turnosHoje.map(t => (
+              <li key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 14, background: 'rgba(46,107,66,0.06)', border: '1px solid rgba(46,107,66,0.15)' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2e6b42', boxShadow: '0 0 6px rgba(46,107,66,0.50)', flexShrink: 0 }} />
+                <div className="min-w-0 flex-1">
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#0A0F0B', letterSpacing: '-0.01em', textTransform: 'capitalize' }}>
+                    {t.funcao.replace(/_/g, ' ')}
+                  </p>
+                  {t.setor && <p style={{ fontSize: 11, color: 'rgba(10,15,11,0.55)', marginTop: 1 }}>{t.setor.nome}</p>}
+                </div>
+                <span style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif', fontSize: 12, fontWeight: 700, color: '#2e6b42', letterSpacing: '-0.02em', flexShrink: 0 }}>
+                  {new Date(t.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  {' '}–{' '}
+                  {new Date(t.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Checklists */}
+      <div className="cia-metrics-col-6 cia-edit-card cia-edit-card--lavender cia-metrics-cell" style={{ minHeight: 240 }}>
+        <div className="flex items-center justify-between">
+          <span style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(45,27,92,0.65)', letterSpacing: '-0.01em' }}>checklists ativos</span>
+          <Link href="/checklist" style={{ fontSize: 11, fontWeight: 700, color: '#2D1B5C', letterSpacing: '-0.01em', textDecoration: 'underline', textUnderlineOffset: 3 }}>ver todos</Link>
+        </div>
+        <h3 style={{ marginTop: 4, fontFamily: 'var(--font-dm-sans), system-ui, sans-serif', fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: '#0A0F0B', lineHeight: 1.05 }}>
+          {checklistsAtivos.length === 0 ? 'Nada criado' : `${checklistsAtivos.length} aberto${checklistsAtivos.length === 1 ? '' : 's'}`}
+        </h3>
+        {checklistsAtivos.length === 0 ? (
+          <p style={{ marginTop: 12, fontSize: 13, color: 'rgba(45,27,92,0.50)' }}>Nenhum checklist criado ainda.</p>
+        ) : (
+          <ul className="mt-4 space-y-2 flex-1 overflow-y-auto" style={{ maxHeight: 180 }}>
+            {checklistsAtivos.map(inst => {
+              const itens = inst.checklist_itens ?? []
+              const feitos = itens.filter(i => i.status === 'feito').length
+              const pctCheck = itens.length > 0 ? Math.round((feitos / itens.length) * 100) : 0
+              const titulo = inst.nome_override ?? inst.show?.nome ?? (inst.jogo ? `${inst.jogo.equipe_a_nome} × ${inst.jogo.equipe_b_nome}` : 'Checklist')
+              return (
+                <li key={inst.id}>
+                  <Link href={`/checklist/${inst.id}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 14, background: 'rgba(255,255,255,0.40)', border: '1px solid rgba(45,27,92,0.14)', textDecoration: 'none', transition: 'all 0.18s ease' }} className="hover:bg-white">
+                    <CheckSquare style={{ width: 14, height: 14, color: '#2D1B5C', flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: '#0A0F0B', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{titulo}</span>
+                    <span style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif', fontSize: 13, fontWeight: 800, color: pctCheck === 100 ? '#2e6b42' : '#2D1B5C', letterSpacing: '-0.02em', flexShrink: 0 }}>{pctCheck}%</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HomeClient
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -370,11 +448,13 @@ export function HomeClient({
     ? Math.round((contentStats.publicado / contentStats.total) * 100)
     : 0
 
+  const [tab, setTab] = useState<'comandos' | 'analises'>('comandos')
+
   // Quick-access cards (editorial bold)
   const quickCards: Parameters<typeof HomeQuickGrid>[0]['cards'] = [
     { href: '/conteudos',            label: 'Conteúdos',    meta: `${contentStats.total} ativos · ${pct}% publicados`, tone: 'terracotta', span: 'lg', icon: Camera },
     { href: '/pautas',               label: 'Pautas',       meta: 'Banco de ideias',                                    tone: 'lavender',   span: 'md', icon: Lightbulb },
-    { href: '/cronograma',           label: 'Cronograma',   meta: 'Jogos · shows · festas',                             tone: 'electric',   span: 'md', icon: Calendar },
+    { href: '/agenda',               label: 'Agenda',       meta: 'Jogos · shows · festas',                             tone: 'electric',   span: 'md', icon: Calendar },
     { href: '/wiki',                 label: 'Wiki',         meta: 'Acervo',                                              tone: 'gold',       span: 'sm', icon: BookOpen },
     { href: '/checklist',            label: 'Checklists',   meta: 'Tarefas por evento',                                  tone: 'green',      span: 'md', icon: CheckSquare },
     { href: '/minha-escala',         label: 'Minha escala', meta: 'Seus turnos',                                         tone: 'lavender',   span: 'md', icon: UserCircle },
@@ -418,286 +498,114 @@ export function HomeClient({
       />
 
       {/* ══════════════════════════════════════════════════════════
-          CENTRO DE COMANDOS — coord/admin overview
+          TABS — Comandos / Análises
           ══════════════════════════════════════════════════════════ */}
-      <section style={{ padding: '8px 24px 32px' }}>
+      <section style={{ padding: '8px 24px 40px' }}>
         <div className="mx-auto max-w-7xl">
-          <EditorialHeader
-            title="Centro de comandos"
-            subtitle="Equipe · setores · canais · checklist · patrocínio"
-            cta={
-              <a
-                href="/tv"
-                target="_blank"
-                rel="noopener noreferrer"
+
+          {/* Tab bar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            borderBottom: '1px solid var(--border)',
+            marginBottom: 28,
+          }}>
+            {([
+              { key: 'comandos', label: 'Comandos' },
+              { key: 'analises', label: 'Análises' },
+            ] as const).map(t => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 16px',
-                  borderRadius: 999,
-                  background: '#0A0F0B',
-                  color: '#FFFFFF',
-                  fontSize: 12, fontWeight: 700,
+                  padding: '10px 18px',
+                  fontSize: 13,
+                  fontWeight: 700,
                   letterSpacing: '-0.01em',
-                  textDecoration: 'none',
-                  transition: 'transform 0.2s ease',
+                  color: tab === t.key ? 'var(--foreground)' : 'rgba(10,15,11,0.40)',
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: tab === t.key
+                    ? '2px solid var(--foreground)'
+                    : '2px solid transparent',
+                  cursor: 'pointer',
+                  transition: 'color 0.18s ease, border-color 0.18s ease',
+                  marginBottom: -1,
+                  whiteSpace: 'nowrap',
                 }}
-                className="hover:-translate-y-0.5"
               >
-                <Tv2 style={{ width: 13, height: 13 }} />
-                Modo TV
-              </a>
-            }
-          />
-          <CoordDashboard
-            conteudosHoje={coordConteudosHoje}
-            jogosHoje={coordJogosHoje}
-            showsHoje={coordShowsHoje}
-            festasHoje={coordFestasHoje}
-            turnosHoje={coordTurnosHoje}
-            patrocinadores={coordPatrocinadores}
-            conteudosPorPatrocinador={coordConteudosPorPatrocinador}
-            checklistItens={coordChecklistItens}
-            diasEvento={coordDiasEvento}
-            diaAtualId={coordDiaAtualId}
-          />
-        </div>
-      </section>
+                {t.label}
+              </button>
+            ))}
 
-      {/* ══════════════════════════════════════════════════════════
-          AGENDA — cronograma do dia
-          ══════════════════════════════════════════════════════════ */}
-      <section style={{ padding: '8px 24px 32px' }}>
-        <div className="mx-auto max-w-7xl">
-          <EditorialHeader
-            title="Agenda"
-            subtitle="Jogos, shows e festas — filtre por dia ou categoria"
-          />
-          <AgendaSection
-            jogosHoje={coordJogosHoje}
-            showsHoje={coordShowsHoje}
-            festasHoje={coordFestasHoje}
-            diasEvento={coordDiasEvento}
-            diaAtualId={coordDiaAtualId ?? null}
-            turnosCoberturaAV={coordTurnosCoberturaAV}
-            youtubeSetorIds={coordYoutubeSetorIds}
-          />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════
-          ANÁLISES — ranking, lacunas, volume, atléticas
-          ══════════════════════════════════════════════════════════ */}
-      <section style={{ padding: '8px 24px 32px' }}>
-        <div className="mx-auto max-w-7xl">
-          <EditorialHeader
-            title="Análises"
-            subtitle="Produtividade, lacunas e cobertura"
-          />
-          <AnalyticsCards
-            ranking={analyticsRanking}
-            lacunas={analyticsLacunas}
-            volumePorHora={analyticsVolumePorHora}
-            atleticas={analyticsAtleticas}
-          />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════
-          OPERACIONAL (operador role)
-          ══════════════════════════════════════════════════════════ */}
-      {isOperador && (
-        <section style={{ padding: '8px 24px 32px' }}>
-          <div className="mx-auto max-w-7xl">
-            <EditorialHeader
-              title="Seu dia"
-              subtitle="Turnos atribuídos e checklists ativos"
-            />
-            <div className="grid" style={{
-              gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
-              gap: 14,
-            }}>
-              {/* Minha escala */}
-              <div className="cia-metrics-col-6 cia-edit-card cia-edit-card--cream cia-metrics-cell" style={{ minHeight: 240 }}>
-                <span style={{
-                  fontSize: 11.5, fontWeight: 600,
-                  color: 'rgba(10,15,11,0.55)',
-                  letterSpacing: '-0.01em',
-                }}>
-                  minha escala hoje
-                </span>
-                <h3 style={{
-                  marginTop: 4,
-                  fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                  fontSize: 24, fontWeight: 800,
-                  letterSpacing: '-0.03em',
-                  color: '#0A0F0B',
-                  lineHeight: 1.05,
-                }}>
-                  {turnosHoje.length === 0 ? 'Livre hoje' : `${turnosHoje.length} turno${turnosHoje.length === 1 ? '' : 's'}`}
-                </h3>
-                {turnosHoje.length === 0 ? (
-                  <p style={{
-                    marginTop: 12,
-                    fontSize: 13,
-                    color: 'rgba(10,15,11,0.45)',
-                  }}>
-                    Sem turnos agendados para hoje.
-                  </p>
-                ) : (
-                  <ul className="mt-4 space-y-2 flex-1 overflow-y-auto" style={{ maxHeight: 180 }}>
-                    {turnosHoje.map(t => (
-                      <li key={t.id} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: '10px 14px',
-                        borderRadius: 14,
-                        background: 'rgba(46,107,66,0.06)',
-                        border: '1px solid rgba(46,107,66,0.15)',
-                      }}>
-                        <span style={{
-                          width: 8, height: 8, borderRadius: '50%',
-                          background: '#2e6b42',
-                          boxShadow: '0 0 6px rgba(46,107,66,0.50)',
-                          flexShrink: 0,
-                        }} />
-                        <div className="min-w-0 flex-1">
-                          <p style={{
-                            fontSize: 13, fontWeight: 700,
-                            color: '#0A0F0B',
-                            letterSpacing: '-0.01em',
-                            textTransform: 'capitalize',
-                          }}>
-                            {t.funcao.replace(/_/g, ' ')}
-                          </p>
-                          {t.setor && (
-                            <p style={{
-                              fontSize: 11,
-                              color: 'rgba(10,15,11,0.55)',
-                              marginTop: 1,
-                            }}>
-                              {t.setor.nome}
-                            </p>
-                          )}
-                        </div>
-                        <span style={{
-                          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                          fontSize: 12, fontWeight: 700,
-                          color: '#2e6b42',
-                          letterSpacing: '-0.02em',
-                          flexShrink: 0,
-                        }}>
-                          {new Date(t.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          {' '}–{' '}
-                          {new Date(t.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* Checklists */}
-              <div className="cia-metrics-col-6 cia-edit-card cia-edit-card--lavender cia-metrics-cell" style={{ minHeight: 240 }}>
-                <div className="flex items-center justify-between">
-                  <span style={{
-                    fontSize: 11.5, fontWeight: 600,
-                    color: 'rgba(45,27,92,0.65)',
-                    letterSpacing: '-0.01em',
-                  }}>
-                    checklists ativos
-                  </span>
-                  <Link href="/checklist" style={{
-                    fontSize: 11, fontWeight: 700,
-                    color: '#2D1B5C',
-                    letterSpacing: '-0.01em',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: 3,
-                  }}>
-                    ver todos
-                  </Link>
-                </div>
-                <h3 style={{
-                  marginTop: 4,
-                  fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                  fontSize: 24, fontWeight: 800,
-                  letterSpacing: '-0.03em',
-                  color: '#0A0F0B',
-                  lineHeight: 1.05,
-                }}>
-                  {checklistsAtivos.length === 0 ? 'Nada criado' : `${checklistsAtivos.length} aberto${checklistsAtivos.length === 1 ? '' : 's'}`}
-                </h3>
-
-                {checklistsAtivos.length === 0 ? (
-                  <p style={{
-                    marginTop: 12,
-                    fontSize: 13, color: 'rgba(45,27,92,0.50)',
-                  }}>
-                    Nenhum checklist criado ainda.
-                  </p>
-                ) : (
-                  <ul className="mt-4 space-y-2 flex-1 overflow-y-auto" style={{ maxHeight: 180 }}>
-                    {checklistsAtivos.map(inst => {
-                      const itens = inst.checklist_itens ?? []
-                      const feitos = itens.filter(i => i.status === 'feito').length
-                      const pctCheck = itens.length > 0 ? Math.round((feitos / itens.length) * 100) : 0
-                      const titulo =
-                        inst.nome_override ??
-                        inst.show?.nome ??
-                        (inst.jogo
-                          ? `${inst.jogo.equipe_a_nome} × ${inst.jogo.equipe_b_nome}`
-                          : 'Checklist')
-                      return (
-                        <li key={inst.id}>
-                          <Link
-                            href={`/checklist/${inst.id}`}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 12,
-                              padding: '10px 14px',
-                              borderRadius: 14,
-                              background: 'rgba(255,255,255,0.40)',
-                              border: '1px solid rgba(45,27,92,0.14)',
-                              textDecoration: 'none',
-                              transition: 'all 0.18s ease',
-                            }}
-                            className="hover:bg-white"
-                          >
-                            <CheckSquare style={{ width: 14, height: 14, color: '#2D1B5C', flexShrink: 0 }} />
-                            <span style={{
-                              flex: 1,
-                              fontSize: 12.5, fontWeight: 600,
-                              color: '#0A0F0B',
-                              letterSpacing: '-0.01em',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}>
-                              {titulo}
-                            </span>
-                            <span style={{
-                              fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                              fontSize: 13, fontWeight: 800,
-                              color: pctCheck === 100 ? '#2e6b42' : '#2D1B5C',
-                              letterSpacing: '-0.02em',
-                              flexShrink: 0,
-                            }}>
-                              {pctCheck}%
-                            </span>
-                          </Link>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </div>
-            </div>
+            {/* TV mode — move aqui, sai do header */}
+            <a
+              href="/tv"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                marginLeft: 'auto',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '7px 14px',
+                borderRadius: 999,
+                background: '#0A0F0B',
+                color: '#FFFFFF',
+                fontSize: 12, fontWeight: 700,
+                letterSpacing: '-0.01em',
+                textDecoration: 'none',
+              }}
+            >
+              <Tv2 style={{ width: 13, height: 13 }} />
+              Modo TV
+            </a>
           </div>
-        </section>
-      )}
+
+          {/* Tab: Comandos */}
+          {tab === 'comandos' && (
+            <div>
+              <CoordDashboard
+                conteudosHoje={coordConteudosHoje}
+                jogosHoje={coordJogosHoje}
+                showsHoje={coordShowsHoje}
+                festasHoje={coordFestasHoje}
+                turnosHoje={coordTurnosHoje}
+                patrocinadores={coordPatrocinadores}
+                conteudosPorPatrocinador={coordConteudosPorPatrocinador}
+                checklistItens={coordChecklistItens}
+                diasEvento={coordDiasEvento}
+                diaAtualId={coordDiaAtualId}
+              />
+
+              {/* Operacional — só para role operador */}
+              {isOperador && (
+                <div className="mt-6 grid" style={{
+                  gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+                  gap: 14,
+                }}>
+                  <OperacionalSection
+                    turnosHoje={turnosHoje}
+                    checklistsAtivos={checklistsAtivos}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab: Análises */}
+          {tab === 'analises' && (
+            <AnalyticsCards
+              ranking={analyticsRanking}
+              lacunas={analyticsLacunas}
+              volumePorHora={analyticsVolumePorHora}
+              atleticas={analyticsAtleticas}
+            />
+          )}
+        </div>
+      </section>
+
 
       {/* ══════════════════════════════════════════════════════════
           STATUS BAR — final do scroll

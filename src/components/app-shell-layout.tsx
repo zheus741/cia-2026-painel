@@ -39,7 +39,7 @@ const ADMIN_GROUPS: NavGroup[] = [
       { label: 'Conteúdos',      href: '/conteudos',          icon: Camera },
       { label: 'Checklists',     href: '/checklist',          icon: CheckSquare },
       { label: 'Pautas',         href: '/pautas',             icon: Lightbulb },
-      { label: 'Cronograma',     href: '/cronograma',         icon: LayoutList },
+      { label: 'Agenda',         href: '/agenda',             icon: LayoutList },
       { label: 'Wiki',           href: '/wiki',               icon: BookOpen },
     ],
   },
@@ -89,7 +89,7 @@ function getMediaGroups(isLider: boolean): NavGroup[] {
     {
       label: 'Conteúdo',
       items: [
-        { label: 'Cronograma',   href: '/cronograma',   icon: LayoutList },
+        { label: 'Agenda',       href: '/agenda',       icon: LayoutList },
         { label: 'Pautas',       href: '/pautas',       icon: Lightbulb },
         { label: 'Conteúdos',    href: '/conteudos',    icon: Camera },
         { label: 'Mapa Ao Vivo', href: '/mapa',         icon: MapPin },

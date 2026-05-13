@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireCoordOrAdmin } from '@/lib/admin/actions-helper'
 
-const VALID_ROLES    = ['admin', 'coordenacao', 'lider_area', 'operador'] as const
+const VALID_ROLES    = ['admin', 'coordenacao', 'lider_area', 'operador', 'coordenador_esportivo', 'operador_esportivo'] as const
 const VALID_FUNCOES  = ['foto', 'video', 'social', 'design', 'texto', 'coordenacao', null] as const
 
 type ValidRole   = typeof VALID_ROLES[number]

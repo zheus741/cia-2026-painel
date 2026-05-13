@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireCoordOrAdmin } from '@/lib/admin/actions-helper'
 
@@ -20,7 +20,6 @@ export async function updateRole(userId: string, role: string) {
     .eq('id', userId)
   if (error) throw error
   revalidatePath('/admin/usuarios')
-  revalidateTag(`profile:${userId}`)
 }
 
 export async function updateFuncao(userId: string, funcao: string | null) {
@@ -33,7 +32,6 @@ export async function updateFuncao(userId: string, funcao: string | null) {
     .eq('id', userId)
   if (error) throw error
   revalidatePath('/admin/usuarios')
-  revalidateTag(`profile:${userId}`)
 }
 
 export async function toggleAtivo(userId: string, ativo: boolean) {
@@ -45,7 +43,6 @@ export async function toggleAtivo(userId: string, ativo: boolean) {
     .eq('id', userId)
   if (error) throw error
   revalidatePath('/admin/usuarios')
-  revalidateTag(`profile:${userId}`)
 }
 
 // Mantidos por compatibilidade com eventuais referências antigas

@@ -530,8 +530,8 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
         </div>
       )}
 
-      {/* Reativar (jogo cancelado) */}
-      {isCancelado && (
+      {/* Resetar / Reativar */}
+      {canEdit && (isCancelado || isEncerrado || isAoVivo) && (
         <div className="mt-3">
           <button
             onClick={handleReativar}
@@ -539,7 +539,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
             className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-amber-600/30 bg-amber-500/8 px-3 py-2 text-xs font-semibold text-amber-500 transition-all hover:border-amber-500/50 hover:bg-amber-500/15 disabled:opacity-40"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Reativar jogo
+            {isCancelado ? 'Reativar jogo' : 'Resetar jogo (volta a agendado, placar zerado)'}
           </button>
         </div>
       )}

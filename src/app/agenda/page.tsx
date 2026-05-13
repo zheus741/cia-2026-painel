@@ -55,7 +55,7 @@ export default async function AgendaPage() {
     <div className="flex h-full flex-col overflow-hidden">
       <AgendaClient
         dias={dias}
-        jogos={(jogosRes.data ?? []) as Parameters<typeof AgendaClient>[0]['jogos']}
+        jogos={(jogosRes.data ?? []) as unknown as Parameters<typeof AgendaClient>[0]['jogos']}
         shows={(showsRes.data ?? []) as Parameters<typeof AgendaClient>[0]['shows']}
         festas={(festasRes.data ?? []) as Parameters<typeof AgendaClient>[0]['festas']}
         setores={(setoresRes.data ?? []) as Parameters<typeof AgendaClient>[0]['setores']}

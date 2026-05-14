@@ -9,6 +9,7 @@ import { LogOut, Menu, Tv2, X, ChevronDown } from 'lucide-react'
 import { NotifBell } from '@/components/NotifBell'
 import { QuickCapture } from '@/components/QuickCapture'
 import { CommandPalette } from '@/components/command-palette'
+import { useNavBadges } from '@/components/use-nav-badges'
 import { cn } from '@/lib/utils'
 import {
   Camera, Radio, CheckSquare, Lightbulb, LayoutList, BookOpen,
@@ -213,7 +214,7 @@ function getBottomNavItems(role: string | null | undefined): NavItem[] {
 }
 
 // ── MobileBottomNav ────────────────────────────────────────────────────────────
-function MobileBottomNav({ role, pathname }: { role: string | null | undefined; pathname: string }) {
+function MobileBottomNav({ role, pathname, badges }: { role: string | null | undefined; pathname: string; badges: { aoVivo: number } }) {
   const items = getBottomNavItems(role)
   return (
     <nav
@@ -234,6 +235,8 @@ function MobileBottomNav({ role, pathname }: { role: string | null | undefined; 
           const active = href === '/'
             ? pathname === '/'
             : pathname === href || pathname.startsWith(href + '/')
+          // Badge "Ao vivo" só no item /placar
+          const showAoVivoBadge = href === '/placar' && badges.aoVivo > 0
           return (
             <Link
               key={href}
@@ -259,10 +262,23 @@ function MobileBottomNav({ role, pathname }: { role: string | null | undefined; 
                   }}
                 />
               )}
-              <Icon style={{
-                width: 18, height: 18,
-                color: active ? '#F0D04A' : 'rgba(250,247,240,0.45)',
-              }} aria-hidden="true" />
+              {/* Wrapper do ícone p/ poder posicionar badge */}
+              <div className="relative">
+                <Icon style={{
+                  width: 18, height: 18,
+                  color: active ? '#F0D04A' : 'rgba(250,247,240,0.45)',
+                }} aria-hidden="true" />
+                {/* Pulse dot vermelho quando há jogo ao vivo */}
+                {showAoVivoBadge && (
+                  <span
+                    aria-label={`${badges.aoVivo} jogo${badges.aoVivo > 1 ? 's' : ''} ao vivo`}
+                    className="absolute -top-1 -right-2 flex items-center justify-center h-3.5 min-w-[14px] px-1 rounded-full bg-red-500 text-[8px] font-bold text-white animate-pulse"
+                    style={{ boxShadow: '0 0 8px rgba(239,68,68,0.55)' }}
+                  >
+                    {badges.aoVivo}
+                  </span>
+                )}
+              </div>
               <span style={{
                 fontSize: 10,
                 fontWeight: active ? 700 : 500,
@@ -280,7 +296,7 @@ function MobileBottomNav({ role, pathname }: { role: string | null | undefined; 
 }
 
 // ── NavDropdown ────────────────────────────────────────────────────────────────
-function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string }) {
+function NavDropdown({ group, pathname, badges }: { group: NavGroup; pathname: string; badges: { aoVivo: number } }) {
   const [open, setOpen] = React.useState(false)
   const ref     = React.useRef<HTMLDivElement>(null)
   const trigRef = React.useRef<HTMLButtonElement>(null)
@@ -288,6 +304,8 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
   const isGroupActive = group.items.some(
     item => pathname === item.href || pathname.startsWith(item.href + '/'),
   )
+  // Indica que o grupo contém algum item com "atividade ao vivo"
+  const hasLiveItem = badges.aoVivo > 0 && group.items.some(item => item.href === '/placar')
 
   // Close on outside click
   React.useEffect(() => {
@@ -329,6 +347,14 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
         }}
       >
         {group.label}
+        {/* Live indicator no grupo — pulse vermelho quando há jogo ao vivo */}
+        {hasLiveItem && (
+          <span
+            aria-label={`${badges.aoVivo} jogo ao vivo`}
+            className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse"
+            style={{ boxShadow: '0 0 6px rgba(239,68,68,0.55)' }}
+          />
+        )}
         <ChevronDown
           aria-hidden="true"
           style={{
@@ -349,6 +375,7 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
         <div className="cia-nav-panel" role="menu">
           {group.items.map(({ label, href, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
+            const showLive = href === '/placar' && badges.aoVivo > 0
             return (
               <Link
                 key={href}
@@ -362,6 +389,16 @@ function NavDropdown({ group, pathname }: { group: NavGroup; pathname: string })
                   color: active ? '#F0D04A' : 'rgba(250,247,240,0.30)',
                 }} />
                 {label}
+                {/* Live badge no item Placar */}
+                {showLive && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-red-400"
+                    style={{ marginLeft: 6 }}
+                  >
+                    <span className="h-1 w-1 rounded-full bg-red-400 animate-pulse" />
+                    {badges.aoVivo} ao vivo
+                  </span>
+                )}
                 {active && (
                   <span aria-hidden="true" style={{
                     width: 5, height: 5, borderRadius: '50%',
@@ -493,6 +530,9 @@ export function AppShellLayout({
 }: Props) {
   const pathname    = usePathname()
   const [mobileOpen, setMobileOpen] = React.useState(false)
+  // Badges em tempo real (jogos ao vivo etc.) — usado pra indicar atividade
+  // tanto no NavDropdown (desktop) quanto no MobileBottomNav (mobile)
+  const badges = useNavBadges()
 
   const navGroups = getNavGroups(profile?.role, profile?.funcao_principal)
 
@@ -541,7 +581,7 @@ export function AppShellLayout({
         {/* Desktop nav groups */}
         <nav className="hidden md:flex items-center gap-0.5">
           {navGroups.map(group => (
-            <NavDropdown key={group.label} group={group} pathname={pathname} />
+            <NavDropdown key={group.label} group={group} pathname={pathname} badges={badges} />
           ))}
         </nav>
 
@@ -654,7 +694,7 @@ export function AppShellLayout({
       </main>
 
       {/* Mobile bottom nav — só aparece em telas md menores */}
-      <MobileBottomNav role={profile?.role} pathname={pathname} />
+      <MobileBottomNav role={profile?.role} pathname={pathname} badges={badges} />
 
       {/* Command Palette — Cmd+K busca global */}
       <CommandPalette />

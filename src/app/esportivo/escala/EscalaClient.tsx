@@ -2,9 +2,10 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   CheckCircle2, MapPin, Clock, Plus, X, UserCheck,
-  Loader2, AlertTriangle, Users, Search,
+  Loader2, AlertTriangle, Users, Search, Radio, ChevronDown, ChevronUp, ArrowRight,
 } from 'lucide-react'
 import { atribuirDelegado, removerDelegado, confirmarChegada } from './actions'
 
@@ -22,12 +23,23 @@ export interface Escala  {
   criado_em: string
   perfil: { id: string; nome: string; foto_url?: string | null } | null
 }
+export interface JogoEscala {
+  id: string
+  setor_id: string | null
+  dia_id: string
+  inicio: string | null
+  status: string
+  equipe_a_nome: string | null
+  equipe_b_nome: string | null
+  modalidade: { nome: string; icone: string } | null
+}
 
 interface Props {
   setores:  Setor[]
   dias:     Dia[]
   escalas:  Escala[]
   perfis:   Perfil[]
+  jogos:    JogoEscala[]
   isCoord:  boolean
   userId:   string
 }
@@ -38,6 +50,16 @@ function fmtHora(ts: string) {
   return new Date(ts).toLocaleTimeString('pt-BR', {
     hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
   })
+}
+
+function fmtRange(jogos: JogoEscala[]) {
+  const horarios = jogos
+    .map(j => j.inicio)
+    .filter((v): v is string => !!v)
+    .sort()
+  if (horarios.length === 0) return null
+  if (horarios.length === 1) return fmtHora(horarios[0])
+  return `${fmtHora(horarios[0])} → ${fmtHora(horarios[horarios.length - 1])}`
 }
 
 function getInitials(nome: string) {
@@ -119,10 +141,11 @@ function UserPicker({ perfis, onSelect, onClose }: {
 
 // ── Setor Card ────────────────────────────────────────────────────────────────
 
-function SetorCard({ setor, diaId, escalasCell, perfis, isCoord, userId, onAdd, onRemove }: {
+function SetorCard({ setor, diaId, escalasCell, jogosCell, perfis, isCoord, userId, onAdd, onRemove }: {
   setor: Setor
   diaId: string
   escalasCell: Escala[]
+  jogosCell: JogoEscala[]
   perfis: Perfil[]
   isCoord: boolean
   userId: string
@@ -130,11 +153,14 @@ function SetorCard({ setor, diaId, escalasCell, perfis, isCoord, userId, onAdd, 
   onRemove: (escalaId: string, nome: string) => void
 }) {
   const [picking, setPicking] = useState(false)
+  const [expandJogos, setExpandJogos] = useState(false)
   const assignedIds = new Set(escalasCell.map(e => e.user_id))
   const available = perfis.filter(p => !assignedIds.has(p.id))
   const confirmed = escalasCell.filter(e => e.confirmado_em).length
   const isEmpty = escalasCell.length === 0
   const allConfirmed = escalasCell.length > 0 && confirmed === escalasCell.length
+  const range = fmtRange(jogosCell)
+  const aoVivoCount = jogosCell.filter(j => j.status === 'ao_vivo').length
 
   return (
     <div className={`relative flex flex-col gap-3 rounded-2xl border p-4 transition-all ${
@@ -217,13 +243,83 @@ function SetorCard({ setor, diaId, escalasCell, perfis, isCoord, userId, onAdd, 
       {isEmpty && !isCoord && (
         <p className="text-[10px] text-[var(--muted-foreground)]/30">Sem delegado</p>
       )}
+
+      {/* ── Footer: jogos da praça neste dia ────────────────────────────── */}
+      {jogosCell.length > 0 ? (
+        <div className="mt-1 border-t border-[var(--border)]/40 pt-2.5">
+          <button
+            onClick={() => setExpandJogos(v => !v)}
+            className="group flex w-full items-center justify-between text-left transition-colors"
+            aria-expanded={expandJogos}
+          >
+            <span className="flex items-center gap-2 text-[11px] font-medium text-[var(--muted-foreground)]/80 group-hover:text-[var(--foreground)]">
+              {aoVivoCount > 0 ? (
+                <Radio className="h-3 w-3 text-red-400 animate-pulse" />
+              ) : (
+                <Clock className="h-3 w-3 text-[var(--muted-foreground)]/40" />
+              )}
+              <span>
+                <span className="font-semibold tabular-nums">{jogosCell.length}</span>
+                {' '}{jogosCell.length === 1 ? 'jogo' : 'jogos'}
+                {range && <span className="text-[var(--muted-foreground)]/40"> · {range}</span>}
+              </span>
+            </span>
+            <ChevronDown
+              className={`h-3 w-3 shrink-0 text-[var(--muted-foreground)]/40 transition-transform ${expandJogos ? 'rotate-180' : ''}`}
+              aria-hidden
+            />
+          </button>
+
+          {/* Lista expandida */}
+          {expandJogos && (
+            <div className="mt-2 space-y-1" style={{ animation: 'popIn 150ms ease-out' }}>
+              {jogosCell.map(j => {
+                const aoVivo = j.status === 'ao_vivo'
+                const encerrado = j.status === 'encerrado'
+                return (
+                  <Link
+                    key={j.id}
+                    href="/placar"
+                    className="flex items-center gap-2 rounded-lg border border-[var(--border)]/50 bg-[var(--card)]/40 px-2.5 py-1.5 text-[10.5px] transition-all hover:border-[var(--green)]/40 hover:bg-[var(--green-dim)]/8"
+                    title="Ver no placar ao vivo"
+                  >
+                    <span className={`tabular-nums font-bold w-9 shrink-0 ${aoVivo ? 'text-red-400' : 'text-[var(--muted-foreground)]/60'}`}>
+                      {j.inicio ? fmtHora(j.inicio) : '—'}
+                    </span>
+                    {aoVivo && <span className="h-1 w-1 rounded-full bg-red-400 animate-pulse shrink-0" aria-label="Ao vivo" />}
+                    <span className={`truncate flex-1 ${encerrado ? 'text-[var(--muted-foreground)]/50 line-through' : 'text-[var(--foreground)]'}`}>
+                      {j.equipe_a_nome ?? '—'} <span className="text-[var(--muted-foreground)]/40">×</span> {j.equipe_b_nome ?? '—'}
+                    </span>
+                    {j.modalidade && (
+                      <span className="shrink-0 text-[9px] text-[var(--muted-foreground)]/50">{j.modalidade.icone}</span>
+                    )}
+                  </Link>
+                )
+              })}
+              <Link
+                href="/placar"
+                className="flex items-center justify-center gap-1 rounded-lg border border-dashed border-[var(--border)]/40 px-2 py-1 text-[10px] font-semibold text-[var(--muted-foreground)]/40 transition-all hover:border-[var(--green)]/40 hover:text-[var(--green-bright)]"
+              >
+                Ver tudo no placar <ArrowRight className="h-2.5 w-2.5" />
+              </Link>
+            </div>
+          )}
+        </div>
+      ) : (
+        // Praça sem jogos no dia — info discreta só pra contexto
+        !isEmpty && (
+          <div className="mt-1 border-t border-[var(--border)]/40 pt-2">
+            <p className="text-[10px] text-[var(--muted-foreground)]/30 italic">Sem jogos agendados</p>
+          </div>
+        )
+      )}
     </div>
   )
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, isCoord, userId }: Props) {
+export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, jogos, isCoord, userId }: Props) {
   const router = useRouter()
   const [escalas, setEscalas] = useState<Escala[]>(initialEscalas)
   const [isPending, startTransition] = useTransition()
@@ -238,6 +334,9 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
 
   function getCell(setorId: string, diaId: string) {
     return escalas.filter(e => e.setor_id === setorId && e.dia_id === diaId)
+  }
+  function getJogosCell(setorId: string, diaId: string) {
+    return jogos.filter(j => j.setor_id === setorId && j.dia_id === diaId)
   }
 
   const minhasEscalas = escalas
@@ -339,6 +438,9 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
               {minhasEscalas.map(e => {
                 const dia   = dias.find(d => d.id === e.dia_id)
                 const setor = setores.find(s => s.id === e.setor_id)
+                const jogosMeu = jogos.filter(j => j.setor_id === e.setor_id && j.dia_id === e.dia_id)
+                const rangeMeu = fmtRange(jogosMeu)
+                const aoVivoMeu = jogosMeu.some(j => j.status === 'ao_vivo')
                 const isConfirming = confirmingId === e.id
                 return (
                   <div
@@ -360,10 +462,28 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
                     <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/50">
                       {dia?.nome_dia ?? '—'}
                     </p>
-                    <p className="mb-4 flex items-center gap-1.5 text-base font-bold text-[var(--foreground)]">
+                    <p className="mb-2 flex items-center gap-1.5 text-base font-bold text-[var(--foreground)]">
                       <MapPin className="h-4 w-4 shrink-0 text-[var(--green-bright)]" />
                       {setor?.nome ?? '—'}
                     </p>
+
+                    {/* Info dos jogos da praça */}
+                    {jogosMeu.length > 0 && (
+                      <Link
+                        href="/placar"
+                        className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)]/60 bg-[var(--card)]/40 px-2.5 py-1 text-[11px] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)]/40 hover:text-[var(--green-bright)]"
+                      >
+                        {aoVivoMeu ? (
+                          <Radio className="h-3 w-3 text-red-400 animate-pulse" />
+                        ) : (
+                          <Clock className="h-3 w-3" />
+                        )}
+                        <span className="tabular-nums font-semibold">{jogosMeu.length}</span>
+                        {jogosMeu.length === 1 ? ' jogo' : ' jogos'}
+                        {rangeMeu && <span className="opacity-60">· {rangeMeu}</span>}
+                        <ArrowRight className="h-2.5 w-2.5 ml-0.5 opacity-50" />
+                      </Link>
+                    )}
 
                     {e.confirmado_em ? (
                       <div className="flex items-center gap-2 text-xs font-semibold text-[var(--green-bright)]">
@@ -464,6 +584,7 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
                     setor={setor}
                     diaId={diaAtivo}
                     escalasCell={getCell(setor.id, diaAtivo)}
+                    jogosCell={getJogosCell(setor.id, diaAtivo)}
                     perfis={perfis}
                     isCoord={isCoord}
                     userId={userId}

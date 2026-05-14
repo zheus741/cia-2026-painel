@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { requireProfile } from '@/lib/auth/current-user'
 import { createClient } from '@/lib/supabase/server'
-import { EscalaClient, type Setor, type Dia, type Perfil, type Escala } from './EscalaClient'
+import { EscalaClient, type Setor, type Dia, type Perfil, type Escala, type JogoEscala } from './EscalaClient'
 
 const ALLOWED = ['admin', 'coordenador_esportivo', 'operador_esportivo']
 
@@ -12,7 +12,7 @@ export default async function EscalaPage() {
   const supabase = await createClient()
   const isCoord = profile.role === 'admin' || profile.role === 'coordenador_esportivo'
 
-  const [setoresRes, diasRes, escalasRes, perfisRes] = await Promise.all([
+  const [setoresRes, diasRes, escalasRes, perfisRes, jogosRes] = await Promise.all([
     supabase.from('setores').select('id, nome').order('nome'),
     supabase.from('dias_evento').select('id, nome_dia, data').order('data'),
     supabase
@@ -22,6 +22,16 @@ export default async function EscalaPage() {
     isCoord
       ? supabase.from('profiles').select('id, nome, role').eq('ativo', true).order('nome')
       : Promise.resolve({ data: [] as Perfil[] }),
+    supabase
+      .from('jogos')
+      .select(`
+        id, setor_id, dia_id, inicio, status,
+        equipe_a_nome, equipe_b_nome,
+        modalidade:modalidades(nome, icone)
+      `)
+      .not('setor_id', 'is', null)
+      .neq('status', 'cancelado')
+      .order('inicio', { ascending: true, nullsFirst: false }),
   ])
 
   const arr = <T,>(v: T | T[] | null): T | null =>
@@ -32,6 +42,11 @@ export default async function EscalaPage() {
     perfil: arr(e.perfil as unknown as { id: string; nome: string } | { id: string; nome: string }[] | null),
   })) as Escala[]
 
+  const jogos = (jogosRes.data ?? []).map(j => ({
+    ...j,
+    modalidade: arr(j.modalidade as unknown as { nome: string; icone: string } | { nome: string; icone: string }[] | null),
+  })) as JogoEscala[]
+
   return (
     <div className="space-y-8">
       <EscalaClient
@@ -39,6 +54,7 @@ export default async function EscalaPage() {
         dias={(diasRes.data ?? []) as Dia[]}
         escalas={escalas}
         perfis={(perfisRes.data ?? []) as Perfil[]}
+        jogos={jogos}
         isCoord={isCoord}
         userId={profile.id}
       />

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { Plus, Lightbulb, Zap, CheckCircle, XCircle, Trash2, ChevronRight } from 'lucide-react'
+import { FAB } from '@/components/fab'
 
 type StatusPauta = 'ideia' | 'aprovada' | 'em_execucao' | 'entregue' | 'descartada'
 
@@ -51,6 +52,15 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
   const [showNew, setShowNew] = useState(false)
   const [newTitulo, setNewTitulo] = useState('')
   const [newDesc, setNewDesc] = useState('')
+  const ideiaColRef = useRef<HTMLDivElement | null>(null)
+
+  function handleFabClick() {
+    setShowNew(true)
+    // Scroll para a coluna "ideia" (especialmente útil em mobile)
+    setTimeout(() => {
+      ideiaColRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 50)
+  }
 
   const nextStatus: Partial<Record<StatusPauta, StatusPauta>> = {
     ideia: 'aprovada',
@@ -92,11 +102,16 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
   }
 
   return (
+    <>
     <div className="flex flex-col md:flex-row gap-4 md:overflow-x-auto pb-4">
       {COLS.map((col) => {
         const itens = pautas.filter((p) => p.status === col.key)
         return (
-          <div key={col.key} className="flex w-full md:w-72 shrink-0 flex-col gap-3">
+          <div
+            key={col.key}
+            ref={col.key === 'ideia' ? ideiaColRef : undefined}
+            className="flex w-full md:w-72 shrink-0 flex-col gap-3"
+          >
             {/* Header da coluna */}
             <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2">
               <span className={col.color}>{col.icon}</span>
@@ -222,5 +237,14 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
         </div>
       </div>
     </div>
+
+    {/* FAB — visível globalmente; em mobile fica acima da bottom nav */}
+    <FAB
+      onClick={handleFabClick}
+      label="Nova pauta"
+      ariaLabel="Criar nova pauta"
+      hidden={showNew || isPending}
+    />
+    </>
   )
 }

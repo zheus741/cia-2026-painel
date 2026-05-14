@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, X, Save, FileText } from 'lucide-react'
 import { createDoc } from '@/app/actions/wiki'
+import { FAB } from '@/components/fab'
 
 const CATEGORIAS = [
   { value: 'briefing',   label: 'Briefing' },
@@ -92,14 +93,23 @@ export function WikiNewButton() {
 
   return (
     <>
-      {/* Botão */}
+      {/* Botão inline no header (desktop) — escondido em mobile (substituído pelo FAB) */}
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--green-deep)] px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+        className="hidden md:inline-flex items-center gap-1.5 rounded-lg bg-[var(--green-deep)] px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
       >
         <Plus className="h-3.5 w-3.5" />
         Novo documento
       </button>
+
+      {/* FAB — aparece em mobile (o botão inline fica escondido) e também em desktop como atalho */}
+      <FAB
+        onClick={() => setOpen(true)}
+        label="Novo documento"
+        ariaLabel="Criar novo documento"
+        hidden={open}
+      />
+
 
       {/* Modal */}
       {open && (

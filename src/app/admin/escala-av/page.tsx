@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { EscalaAVGrid } from './EscalaAVGrid'
 import type { Dia, Setor, Parceiro, ProfileAV, TurnoAV } from './EscalaAVGrid'
+import { PageHeader } from '@/components/page-header'
 
 export default async function EscalaAVPage() {
   const supabase = await createClient()
@@ -74,10 +75,12 @@ export default async function EscalaAVPage() {
 
   return (
     <div>
-      <div className="px-6 pt-6 pb-4 cia-page-header" style={{ marginBottom: 0 }}>
-        <p className="cia-page-header__eyebrow">Operacional</p>
-        <h1 className="cia-page-header__title">Escala Foto & Vídeo</h1>
-        <p className="cia-page-header__subtitle">Distribua fotógrafos e videomakers por setor e dia. O colaborador é notificado ao ser escalado.</p>
+      <div className="px-6 pt-6 pb-4">
+        <PageHeader
+          eyebrow="Operacional"
+          title="Escala Foto & Vídeo"
+          subtitle="Distribua fotógrafos e videomakers por setor e dia. O colaborador é notificado ao ser escalado."
+        />
       </div>
 
       <EscalaAVGrid

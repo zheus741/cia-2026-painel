@@ -61,6 +61,7 @@ export default async function PipelinesPage() {
   return (
     <CrudClient<Pipeline>
       entityLabel="Pipeline" entityLabelPlural="Pipeline templates"
+      eyebrow="Gestão"
       description="Defina os estágios pelos quais cada tipo de peça passa. SLA é tempo-alvo por estágio."
       columns={columns} fields={fields} data={processed}
       onCreate={createPipeline} onUpdate={updatePipeline} onDelete={deletePipeline}

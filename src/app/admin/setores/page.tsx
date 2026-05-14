@@ -58,6 +58,7 @@ export default async function SetoresPage() {
   return (
     <CrudClient<Setor>
       entityLabel="Setor" entityLabelPlural="Setores"
+      eyebrow="Gestão"
       description="Locais físicos onde a equipe atua. Coordenadas alimentam o mapa."
       columns={columns} fields={fields} data={processed}
       onCreate={createSetor} onUpdate={updateSetor} onDelete={deleteSetor}

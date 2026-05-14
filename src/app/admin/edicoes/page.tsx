@@ -43,6 +43,7 @@ export default async function EdicoesPage() {
   return (
     <CrudClient<Edicao>
       entityLabel="Edição" entityLabelPlural="Edições"
+      eyebrow="Gestão"
       description="Cada edição é um evento (ano). A ativa é a fonte das demais entidades."
       columns={columns} fields={fields} data={processed}
       onCreate={createEdicao} onUpdate={updateEdicao} onDelete={deleteEdicao}

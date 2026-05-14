@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCachedDias, getCachedSetores } from '@/lib/cache/lookups'
 import { EscalaGrid } from './EscalaGrid'
+import { PageHeader } from '@/components/page-header'
 
 export default async function EscalaPage() {
   const supabase = await createClient()
@@ -28,10 +29,11 @@ export default async function EscalaPage() {
   return (
     <div>
       <div className="px-6 pt-6 pb-4">
-        <h1 className="text-xl font-semibold">Escala de equipe</h1>
-        <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-          Distribua a equipe por função, setor e turno. Adicione pessoas genéricas antes dos usuários se cadastrarem.
-        </p>
+        <PageHeader
+          eyebrow="Operacional"
+          title="Escala de equipe"
+          subtitle="Distribua a equipe por função, setor e turno. Adicione pessoas genéricas antes dos usuários se cadastrarem."
+        />
       </div>
 
       <EscalaGrid

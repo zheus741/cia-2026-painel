@@ -65,9 +65,11 @@ export default async function ShowsPage() {
   return (
     <CrudClient<Show>
       entityLabel="Show" entityLabelPlural="Shows"
+      eyebrow="Operacional"
       description="Atrações por dia e palco. Cadastre quem sobe, em qual ordem, e janela esperada."
       columns={columns} fields={fields} data={processed}
       onCreate={createShow} onUpdate={updateShow} onDelete={deleteShow}
+      searchKeys={['nome', 'inicio_label']}
     />
   )
 }

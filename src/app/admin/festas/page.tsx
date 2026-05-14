@@ -57,9 +57,11 @@ export default async function FestasPage() {
   return (
     <CrudClient<Festa>
       entityLabel="Festa" entityLabelPlural="Festas"
+      eyebrow="Operacional"
       description="Blocos de festa: tarde (Sexta Arena, Sábado Arena) e noturna."
       columns={columns} fields={fields} data={processed}
       onCreate={createFesta} onUpdate={updateFesta} onDelete={deleteFesta}
+      searchKeys={['nome', 'tema', 'janela_label']}
     />
   )
 }

@@ -44,6 +44,7 @@ export default async function ModalidadesPage() {
   return (
     <CrudClient<Modalidade>
       entityLabel="Modalidade" entityLabelPlural="Modalidades"
+      eyebrow="Esportivo"
       description="Modalidades esportivas + Cheer + Bateria. Cada uma com categorias e/ou divisões."
       columns={columns} fields={fields} data={processed}
       onCreate={createModalidade} onUpdate={updateModalidade} onDelete={deleteModalidade}

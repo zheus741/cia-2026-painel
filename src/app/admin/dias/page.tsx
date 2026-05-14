@@ -38,6 +38,7 @@ export default async function DiasPage() {
   return (
     <CrudClient<Dia>
       entityLabel="Dia" entityLabelPlural="Dias do evento"
+      eyebrow="Gestão"
       description="Os 4 dias da CIA. Cada dia pode ter um tema (ex: Festa do Pijama)."
       columns={columns} fields={fields}
       data={(data ?? []) as Dia[]}

@@ -38,6 +38,7 @@ export default async function TagsPage() {
   return (
     <CrudClient<Tag>
       entityLabel="Tag" entityLabelPlural="Tags"
+      eyebrow="Gestão"
       description="Tags pra organizar referências do moodboard. Categorias: tema, formato, patrocínio, dia, vibe."
       columns={columns} fields={fields} data={(data ?? []) as Tag[]}
       onCreate={createTag} onUpdate={updateTag} onDelete={deleteTag}

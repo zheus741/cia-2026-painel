@@ -249,7 +249,7 @@ function TurnoDialog({
           </div>
 
           {/* Parceiro + Colaborador */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="mb-1.5 block text-xs">Empresa / Parceiro</Label>
               <Select value={parceiro} onValueChange={setParceiro}>
@@ -290,7 +290,7 @@ function TurnoDialog({
           </div>
 
           {/* Horário */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="mb-1.5 block text-xs">Início</Label>
               <input

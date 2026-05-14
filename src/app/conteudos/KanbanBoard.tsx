@@ -961,7 +961,8 @@ function KanbanColumn({
   return (
     <div
       className={cn(
-        'flex w-72 shrink-0 flex-col overflow-hidden transition-all duration-150',
+        // Mobile: largura total. Desktop: largura fixa de coluna (288px).
+        'flex w-full md:w-72 shrink-0 flex-col overflow-hidden transition-all duration-150',
         isDragOver ? 'ring-2 ring-[var(--green)]/30' : '',
       )}
       style={{
@@ -1385,8 +1386,9 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       </div>
 
       {/* ── Columns ────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-x-auto">
-        <div className="flex gap-4 p-6 min-w-max">
+      {/* Mobile: empilha vertical (column). Desktop: row horizontal com scroll-x. */}
+      <div className="flex-1 md:overflow-x-auto overflow-y-auto">
+        <div className="flex flex-col md:flex-row gap-4 p-4 md:p-6 md:min-w-max">
           {COLUNAS.map(col => {
             const colConteudos = filtered.filter(c => c.status === col.status).sort(sortCronologico)
             return (

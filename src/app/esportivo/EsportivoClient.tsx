@@ -506,9 +506,9 @@ export function EsportivoClient({
     <div style={{ fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif', background: '#f3f4f6', minHeight: '100vh' }}>
 
       {/* Page header */}
-      <div style={{ background: '#0C1410', padding: '24px 32px 0', color: '#ffffff' }}>
+      <div style={{ background: '#0C1410', padding: 'clamp(16px, 4vw, 24px) clamp(16px, 4vw, 32px) 0', color: '#ffffff' }}>
         {/* Row 1: title */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
           <span style={{
             fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.45)',
             background: 'rgba(255,255,255,0.08)', borderRadius: 6,
@@ -517,7 +517,7 @@ export function EsportivoClient({
             CIA 2026
           </span>
           <h1 style={{
-            margin: 0, fontSize: 42, fontWeight: 800, color: '#ffffff',
+            margin: 0, fontSize: 'clamp(28px, 6vw, 42px)', fontWeight: 800, color: '#ffffff',
             letterSpacing: '-0.04em', lineHeight: 1,
           }}>
             Núcleo Esportivo

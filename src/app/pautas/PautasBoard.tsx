@@ -92,11 +92,11 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
   }
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <div className="flex flex-col md:flex-row gap-4 md:overflow-x-auto pb-4">
       {COLS.map((col) => {
         const itens = pautas.filter((p) => p.status === col.key)
         return (
-          <div key={col.key} className="flex w-72 shrink-0 flex-col gap-3">
+          <div key={col.key} className="flex w-full md:w-72 shrink-0 flex-col gap-3">
             {/* Header da coluna */}
             <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2">
               <span className={col.color}>{col.icon}</span>
@@ -205,7 +205,7 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
       })}
 
       {/* Coluna descartadas (colapsada) */}
-      <div className="flex w-64 shrink-0 flex-col gap-3">
+      <div className="flex w-full md:w-64 shrink-0 flex-col gap-3">
         <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 opacity-50">
           <XCircle className="h-3.5 w-3.5 text-red-400" />
           <span className="text-sm font-semibold">Descartadas</span>

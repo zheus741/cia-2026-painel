@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   Camera, CheckSquare, ClipboardList, Swords, MapPin, Music,
   Heart, Lightbulb, BookOpen, Calendar,
-  BarChart3, Radio, UserCircle, Tv2,
+  BarChart3, Radio, UserCircle, Tv2, LayoutGrid,
 } from 'lucide-react'
 import { CoordDashboard, TimelineVertical, dayLabel } from './CoordDashboard'
 import type {
@@ -503,49 +503,58 @@ export function HomeClient({
       <section style={{ padding: '8px 24px 40px' }}>
         <div className="mx-auto max-w-7xl">
 
-          {/* Tab bar */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            borderBottom: '1px solid var(--border)',
-            marginBottom: 28,
-          }}>
-            {([
-              { key: 'comandos', label: 'Comandos' },
-              { key: 'analises', label: 'Análises' },
-            ] as const).map(t => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                style={{
-                  padding: '10px 18px',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  letterSpacing: '-0.01em',
-                  color: tab === t.key ? 'var(--foreground)' : 'rgba(10,15,11,0.40)',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: tab === t.key
-                    ? '2px solid var(--foreground)'
-                    : '2px solid transparent',
-                  cursor: 'pointer',
-                  transition: 'color 0.18s ease, border-color 0.18s ease',
-                  marginBottom: -1,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
+          {/* Tab bar + TV mode em flex parent */}
+          <div className="flex items-center justify-between flex-wrap gap-3" style={{ marginBottom: 28 }}>
+            {/* Tab pill */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px',
+              background: 'rgba(10,15,11,0.04)',
+              borderRadius: 12,
+            }}>
+              {([
+                { key: 'comandos', label: 'Comandos', icon: LayoutGrid },
+                { key: 'analises', label: 'Análises', icon: BarChart3 },
+              ] as const).map(t => {
+                const active = tab === t.key
+                const Icon = t.icon
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setTab(t.key)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      padding: '8px 16px',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      letterSpacing: '-0.01em',
+                      color: active ? '#0A0F0B' : 'rgba(10,15,11,0.50)',
+                      background: active ? '#FFFFFF' : 'transparent',
+                      border: 'none',
+                      borderRadius: 9,
+                      cursor: 'pointer',
+                      transition: 'all 0.18s ease',
+                      boxShadow: active ? '0 1px 2px rgba(10,15,11,0.06), 0 1px 0 rgba(10,15,11,0.04)' : 'none',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <Icon style={{ width: 14, height: 14, color: active ? '#2e6b42' : 'rgba(10,15,11,0.35)' }} />
+                    {t.label}
+                  </button>
+                )
+              })}
+            </div>
 
-            {/* TV mode — move aqui, sai do header */}
+            {/* TV mode */}
             <a
               href="/tv"
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                marginLeft: 'auto',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,

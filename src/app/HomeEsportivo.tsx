@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Trophy, Users, Radio, FileSpreadsheet, Star } from 'lucide-react'
+import { Trophy, Users, Radio, FileSpreadsheet, Star, Calendar, Zap } from 'lucide-react'
 
 interface Props {
   nome: string
@@ -59,11 +59,13 @@ export function HomeEsportivo({ nome, role, isCoordEsportivo, diffDays, eventAct
   const firstName = nome.trim().split(' ')[0]
   const roleName  = ROLE_LABEL[role] ?? role
 
-  const countdown = eventActive
-    ? 'Evento em andamento'
+  // Status do countdown: cor e ícone variam conforme momento do evento
+  const countdownStatus = eventActive
+    ? { label: 'Evento em andamento', icon: Zap,      bg: 'rgba(220,38,38,0.10)',   color: '#DC2626', border: 'rgba(220,38,38,0.28)' }
     : diffDays > 0
-      ? `${diffDays} dia${diffDays !== 1 ? 's' : ''} para a CIA`
-      : 'CIA 2026 encerrada'
+      ? { label: `${diffDays} dia${diffDays !== 1 ? 's' : ''} para a CIA`, icon: Calendar, bg: 'rgba(46,107,66,0.10)',   color: '#2e6b42', border: 'rgba(46,107,66,0.28)' }
+      : { label: 'CIA 2026 encerrada', icon: Calendar, bg: 'rgba(148,163,184,0.10)', color: '#64748b', border: 'rgba(148,163,184,0.28)' }
+  const CountdownIcon = countdownStatus.icon
 
   return (
     <main className="relative z-10 flex-1 overflow-y-auto">
@@ -84,9 +86,20 @@ export function HomeEsportivo({ nome, role, isCoordEsportivo, diffDays, eventAct
         >
           Olá, {firstName}
         </h1>
-        <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-          {countdown}
-        </p>
+        {/* Countdown pill — destaque visual com ícone + cor por status */}
+        <div className="mt-3">
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold"
+            style={{
+              background: countdownStatus.bg,
+              color:      countdownStatus.color,
+              borderColor: countdownStatus.border,
+            }}
+          >
+            <CountdownIcon className={`h-3.5 w-3.5 ${eventActive ? 'animate-pulse' : ''}`} />
+            {countdownStatus.label}
+          </span>
+        </div>
       </div>
 
       {/* ── Cards esportivos ─────────────────────────────────── */}

@@ -900,6 +900,7 @@ export function EscalaAVGrid({
   const router = useRouter()
 
   const [activeDiaIdx, setActiveDiaIdx] = React.useState(0)
+  const [filterFuncao, setFilterFuncao] = React.useState<'all' | 'foto' | 'video'>('all')
   const [dialog, setDialog] = React.useState<{
     open: boolean
     defaultFuncao: 'foto' | 'video'
@@ -927,13 +928,16 @@ export function EscalaAVGrid({
 
   const turnosPorSetor = React.useMemo(() => {
     const map = new Map<string, TurnoAV[]>()
-    for (const t of turnosDia) {
+    const filtered = filterFuncao === 'all'
+      ? turnosDia
+      : turnosDia.filter(t => t.funcao === filterFuncao)
+    for (const t of filtered) {
       const key = t.setor_id ?? '__sem_setor__'
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(t)
     }
     return map
-  }, [turnosDia])
+  }, [turnosDia, filterFuncao])
 
   const buracos = React.useMemo(() => {
     const result: { setor: Setor; faltaFoto: boolean; faltaVideo: boolean }[] = []
@@ -994,22 +998,53 @@ export function EscalaAVGrid({
         ))}
       </div>
 
-      {/* ── Stats bar ── */}
-      <div className="flex flex-wrap items-center gap-4 border-b border-[var(--border)] px-6 py-3">
-        <div className="flex items-center gap-2">
+      {/* ── Stats bar + filtros ── */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] px-6 py-3">
+        {/* Filter pills — clica pra filtrar por função */}
+        <button
+          onClick={() => setFilterFuncao('all')}
+          className={cn(
+            'flex items-center gap-2 rounded-full border px-3 py-1 transition-all',
+            filterFuncao === 'all'
+              ? 'border-[var(--foreground)] bg-[var(--foreground)] text-white'
+              : 'border-[var(--border)] hover:border-[var(--foreground)]/40',
+          )}
+        >
+          <span className="text-[11px] font-semibold">Todos</span>
+          <span className="tabular-nums text-xs font-bold">
+            {totalFoto + totalVideo}
+          </span>
+        </button>
+        <button
+          onClick={() => setFilterFuncao('foto')}
+          className={cn(
+            'flex items-center gap-2 rounded-full border px-3 py-1 transition-all',
+            filterFuncao === 'foto'
+              ? 'border-[#7c3aed] bg-[#7c3aed]/10'
+              : 'border-[var(--border)] hover:border-[#7c3aed]/40',
+          )}
+        >
           <Camera className="h-3.5 w-3.5" style={{ color: '#7c3aed' }} />
-          <span className="text-xs text-[var(--muted-foreground)]">Foto</span>
-          <span className="tabular-nums text-sm font-bold" style={{ fontFamily: 'Orbitron, monospace', color: '#7c3aed' }}>
+          <span className="text-[11px] font-semibold" style={{ color: filterFuncao === 'foto' ? '#7c3aed' : 'var(--muted-foreground)' }}>Foto</span>
+          <span className="tabular-nums text-xs font-bold" style={{ fontFamily: 'Orbitron, monospace', color: '#7c3aed' }}>
             {totalFoto}
           </span>
-        </div>
-        <div className="flex items-center gap-2">
+        </button>
+        <button
+          onClick={() => setFilterFuncao('video')}
+          className={cn(
+            'flex items-center gap-2 rounded-full border px-3 py-1 transition-all',
+            filterFuncao === 'video'
+              ? 'border-[#1a5c5c] bg-[#1a5c5c]/10'
+              : 'border-[var(--border)] hover:border-[#1a5c5c]/40',
+          )}
+        >
           <Video className="h-3.5 w-3.5" style={{ color: '#1a5c5c' }} />
-          <span className="text-xs text-[var(--muted-foreground)]">Vídeo</span>
-          <span className="tabular-nums text-sm font-bold" style={{ fontFamily: 'Orbitron, monospace', color: '#1a5c5c' }}>
+          <span className="text-[11px] font-semibold" style={{ color: filterFuncao === 'video' ? '#1a5c5c' : 'var(--muted-foreground)' }}>Vídeo</span>
+          <span className="tabular-nums text-xs font-bold" style={{ fontFamily: 'Orbitron, monospace', color: '#1a5c5c' }}>
             {totalVideo}
           </span>
-        </div>
+        </button>
         <div className="flex items-center gap-2">
           <span className="text-xs text-[var(--muted-foreground)]">Setores c/ evento</span>
           <span className="tabular-nums text-sm font-bold text-[var(--foreground)]" style={{ fontFamily: 'Orbitron, monospace' }}>

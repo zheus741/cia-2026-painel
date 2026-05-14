@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Crown, Trophy, Flame, TrendingUp, Calendar } from 'lucide-react'
+import { ArrowLeft, Crown, Trophy, Flame, TrendingUp, Calendar, Radio, ArrowRight, Clock } from 'lucide-react'
 import type {
   Atletica, InscricaoDetalhe, JogoDetalhe, AtleticaStats,
   PrevisaoAtletica,
@@ -173,6 +173,17 @@ export function AtleticaWikiClient({
 
   // Competição ainda não iniciou
   const semJogos = jogos.length === 0
+
+  // ── Status ao vivo / hoje / próximo (cross-link com Placar) ──────────────
+  const agora     = new Date()
+  const hojeStr   = agora.toISOString().slice(0, 10)
+  const jogoAoVivo = jogos.find(j => j.status === 'ao_vivo') ?? null
+  const jogosHoje = jogos.filter(j =>
+    j.inicio && j.inicio.slice(0, 10) === hojeStr && j.status !== 'encerrado' && j.status !== 'cancelado'
+  )
+  const proximoFuturo = jogos
+    .filter(j => j.inicio && new Date(j.inicio) > agora && j.inicio.slice(0, 10) !== hojeStr && j.status !== 'encerrado' && j.status !== 'cancelado')
+    .sort((a, b) => new Date(a.inicio!).getTime() - new Date(b.inicio!).getTime())[0] ?? null
 
   return (
     <div style={{
@@ -344,6 +355,15 @@ export function AtleticaWikiClient({
             </div>
           </div>
         </section>
+
+        {/* ─── LIVE WIDGET — ao vivo / hoje / próximo (cross-link Placar) ─── */}
+        <LiveStatusWidget
+          atleticaId={atletica.id}
+          jogoAoVivo={jogoAoVivo}
+          jogosHoje={jogosHoje}
+          proximo={proximoFuturo}
+          accent={accent}
+        />
 
         {/* ─── PREVISÃO MÍN/MÁX — destaque editorial ─── */}
         <PrevisaoCard previsao={previsao} accent={accent} />
@@ -554,14 +574,28 @@ function JogoRow({ j, myId, accent }: { j: JogoDetalhe; myId: string; accent: st
   const resultColor = win ? '#22C55E' : loss ? '#EF4444' : draw ? '#94A3B8' : accent
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '110px 1fr auto auto 1fr 80px',
-      alignItems: 'center', gap: 12,
-      background: '#FFFFFF',
-      border: '1px solid rgba(10,15,11,0.08)',
-      borderRadius: 12, padding: '10px 14px',
-    }}>
+    <Link
+      href="/placar"
+      title="Ver no Placar Ao Vivo"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '110px 1fr auto auto 1fr 80px',
+        alignItems: 'center', gap: 12,
+        background: '#FFFFFF',
+        border: '1px solid rgba(10,15,11,0.08)',
+        borderRadius: 12, padding: '10px 14px',
+        textDecoration: 'none',
+        transition: 'border-color 150ms, transform 150ms, box-shadow 150ms',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = `${accent}55`
+        e.currentTarget.style.boxShadow = `0 2px 12px ${accent}18`
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = 'rgba(10,15,11,0.08)'
+        e.currentTarget.style.boxShadow = 'none'
+      }}
+    >
       <div style={{
         fontSize: 10.5, color: 'rgba(10,15,11,0.50)',
         letterSpacing: '0.04em', fontVariantNumeric: 'tabular-nums',
@@ -630,10 +664,201 @@ function JogoRow({ j, myId, accent }: { j: JogoDetalhe; myId: string; accent: st
       }}>
         {j.modalidade_nome ?? '—'}
       </div>
-    </div>
+    </Link>
   )
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LiveStatusWidget — exibe (ao vivo | jogos de hoje | próximo jogo) no topo
+// Lógica: prioriza ao vivo > hoje > próximo. Esconde se nada relevante.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LiveStatusWidget({
+  atleticaId, jogoAoVivo, jogosHoje, proximo, accent,
+}: {
+  atleticaId: string
+  jogoAoVivo: JogoDetalhe | null
+  jogosHoje:  JogoDetalhe[]
+  proximo:    JogoDetalhe | null
+  accent:     string
+}) {
+  // Se não tem nada, esconde o bloco inteiro
+  if (!jogoAoVivo && jogosHoje.length === 0 && !proximo) return null
+
+  // ── Caso 1: AO VIVO AGORA ────────────────────────────────────────────────
+  if (jogoAoVivo) {
+    const isA = jogoAoVivo.equipe_a_id === atleticaId
+    const eu  = isA ? jogoAoVivo.equipe_a_nome : jogoAoVivo.equipe_b_nome
+    const ele = isA ? jogoAoVivo.equipe_b_nome : jogoAoVivo.equipe_a_nome
+    const meu  = isA ? jogoAoVivo.placar_a : jogoAoVivo.placar_b
+    const dele = isA ? jogoAoVivo.placar_b : jogoAoVivo.placar_a
+    return (
+      <Link href="/placar" style={{ textDecoration: 'none', display: 'block', marginBottom: 28 }}>
+        <section style={{
+          background: 'linear-gradient(135deg, rgba(220,38,38,0.06) 0%, rgba(220,38,38,0.02) 100%)',
+          border: '1px solid rgba(220,38,38,0.30)',
+          borderRadius: 16, padding: '18px 22px',
+          display: 'flex', alignItems: 'center', gap: 20,
+          position: 'relative', overflow: 'hidden',
+        }}>
+          {/* Pulse ring */}
+          <span aria-hidden style={{
+            position: 'absolute', top: 14, left: 18,
+            width: 8, height: 8, borderRadius: '50%',
+            background: '#DC2626',
+            boxShadow: '0 0 0 0 rgba(220,38,38,0.5)',
+            animation: 'liveBlink 1.4s ease-out infinite',
+          }} />
+          <style>{`@keyframes liveBlink { 0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.45); } 60% { box-shadow: 0 0 0 8px rgba(220,38,38,0); } }`}</style>
+
+          <div style={{ flex: 1, paddingLeft: 18 }}>
+            <p style={{
+              fontSize: 10, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase',
+              color: '#DC2626', marginBottom: 8,
+            }}>
+              <Radio style={{ width: 12, height: 12, display: 'inline', marginRight: 6, verticalAlign: '-1.5px' }} />
+              Ao vivo agora
+            </p>
+            <p style={{
+              fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+              fontSize: 22, fontWeight: 800, color: '#0A0F0B',
+              letterSpacing: '-0.025em', lineHeight: 1.1,
+            }}>
+              <span>{eu}</span>
+              <span style={{ color: accent, margin: '0 12px', fontVariantNumeric: 'tabular-nums' }}>
+                {meu ?? 0} × {dele ?? 0}
+              </span>
+              <span style={{ color: 'rgba(10,15,11,0.55)' }}>{ele}</span>
+            </p>
+            <p style={{ fontSize: 11, color: 'rgba(10,15,11,0.50)', marginTop: 6, letterSpacing: '0.04em' }}>
+              {jogoAoVivo.modalidade_nome ?? 'Jogo'}
+              {jogoAoVivo.fase && <> · {jogoAoVivo.fase}</>}
+            </p>
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            fontSize: 12, fontWeight: 700, color: '#DC2626',
+            padding: '8px 14px', borderRadius: 999,
+            background: 'rgba(220,38,38,0.10)', border: '1px solid rgba(220,38,38,0.25)',
+          }}>
+            Ver placar <ArrowRight style={{ width: 13, height: 13 }} />
+          </div>
+        </section>
+      </Link>
+    )
+  }
+
+  // ── Caso 2: JOGOS HOJE ──────────────────────────────────────────────────
+  if (jogosHoje.length > 0) {
+    return (
+      <Link href="/placar" style={{ textDecoration: 'none', display: 'block', marginBottom: 28 }}>
+        <section style={{
+          background: `linear-gradient(135deg, ${accent}10 0%, ${accent}04 100%)`,
+          border: `1px solid ${accent}33`,
+          borderRadius: 16, padding: '18px 22px',
+        }}>
+          <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <p style={{
+              fontSize: 10, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase',
+              color: accent,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <Calendar style={{ width: 12, height: 12 }} />
+              Hoje · {jogosHoje.length} {jogosHoje.length === 1 ? 'jogo' : 'jogos'}
+            </p>
+            <span style={{
+              fontSize: 11, fontWeight: 600, color: accent,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+              Ver placar <ArrowRight style={{ width: 12, height: 12 }} />
+            </span>
+          </header>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {jogosHoje.slice(0, 4).map(j => {
+              const isA  = j.equipe_a_id === atleticaId
+              const ele  = isA ? j.equipe_b_nome : j.equipe_a_nome
+              const hora = j.inicio ? new Date(j.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '—'
+              return (
+                <div key={j.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  fontSize: 13, color: '#0A0F0B',
+                }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 800, fontVariantNumeric: 'tabular-nums',
+                    color: accent, minWidth: 42,
+                  }}>{hora}</span>
+                  <span style={{ color: 'rgba(10,15,11,0.45)', fontSize: 12 }}>vs</span>
+                  <span style={{ fontWeight: 700, flex: 1, letterSpacing: '-0.015em' }}>{ele}</span>
+                  <span style={{
+                    fontSize: 9.5, fontWeight: 800, color: 'rgba(10,15,11,0.45)',
+                    letterSpacing: '0.10em', textTransform: 'uppercase',
+                  }}>{j.modalidade_nome ?? '—'}</span>
+                </div>
+              )
+            })}
+            {jogosHoje.length > 4 && (
+              <p style={{ fontSize: 10, color: 'rgba(10,15,11,0.40)', marginTop: 4 }}>
+                +{jogosHoje.length - 4} {jogosHoje.length - 4 === 1 ? 'outro' : 'outros'}
+              </p>
+            )}
+          </div>
+        </section>
+      </Link>
+    )
+  }
+
+  // ── Caso 3: PRÓXIMO JOGO ────────────────────────────────────────────────
+  if (proximo) {
+    const isA  = proximo.equipe_a_id === atleticaId
+    const ele  = isA ? proximo.equipe_b_nome : proximo.equipe_a_nome
+    const data = proximo.inicio
+      ? new Date(proximo.inicio).toLocaleString('pt-BR', {
+          weekday: 'short', day: '2-digit', month: '2-digit',
+          hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+        })
+      : '—'
+    return (
+      <section style={{
+        background: '#FFFFFF',
+        border: '1px solid rgba(10,15,11,0.08)',
+        borderRadius: 16, padding: '16px 22px',
+        marginBottom: 28,
+        display: 'flex', alignItems: 'center', gap: 18,
+      }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 38, height: 38, borderRadius: 12,
+          background: `${accent}12`, border: `1px solid ${accent}28`,
+          flexShrink: 0,
+        }}>
+          <Clock style={{ width: 16, height: 16, color: accent }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{
+            fontSize: 9.5, fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase',
+            color: 'rgba(10,15,11,0.45)', marginBottom: 3,
+          }}>
+            Próximo jogo
+          </p>
+          <p style={{
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 16, fontWeight: 700, color: '#0A0F0B',
+            letterSpacing: '-0.02em',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            vs <span style={{ color: accent }}>{ele}</span>
+          </p>
+          <p style={{ fontSize: 11, color: 'rgba(10,15,11,0.55)', marginTop: 2, letterSpacing: '0.02em' }}>
+            {data} · {proximo.modalidade_nome ?? '—'}
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  return null
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PrevisaoCard — Atual / Máx + barra + breakdown por modalidade

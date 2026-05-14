@@ -145,3 +145,60 @@ export async function removerWO(id: string): Promise<ActionResult> {
     revalidatePath('/placar')
   })
 }
+
+/**
+ * Registra um evento de jogo (gol, cartão, falta, timeout).
+ * Para gols: incrementa automaticamente o placar da equipe correspondente.
+ */
+export async function registrarEvento(
+  jogoId: string,
+  tipo: string,
+  equipe: 'a' | 'b',
+): Promise<ActionResult> {
+  return safe(async () => {
+    await requireCoordOrAdmin()
+    const TIPOS_VALIDOS = ['gol', 'cartao_amarelo', 'cartao_vermelho', 'falta', 'timeout']
+    if (!TIPOS_VALIDOS.includes(tipo)) throw new Error(`Tipo inválido: ${tipo}`)
+
+    const supabase = await createClient()
+
+    // Para gol: incrementa o placar da equipe
+    if (tipo === 'gol') {
+      const { data: jogo } = await supabase
+        .from('jogos')
+        .select('placar_a, placar_b, status')
+        .eq('id', jogoId)
+        .single()
+      if (jogo?.status === 'ao_vivo') {
+        const patch = equipe === 'a'
+          ? { placar_a: (jogo.placar_a ?? 0) + 1 }
+          : { placar_b: (jogo.placar_b ?? 0) + 1 }
+        const { error: eScore } = await supabase.from('jogos').update(patch).eq('id', jogoId)
+        if (eScore) throw eScore
+      }
+    }
+
+    const { error } = await supabase
+      .from('eventos_jogo')
+      .insert({ jogo_id: jogoId, tipo, equipe })
+    if (error) throw error
+    revalidatePath('/placar')
+  })
+}
+
+/**
+ * Remove um evento de jogo — para corrigir registro errado.
+ * Nota: não reverte o placar automaticamente (use os botões +/- para isso).
+ */
+export async function removerEvento(eventoId: string): Promise<ActionResult> {
+  return safe(async () => {
+    await requireCoordOrAdmin()
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('eventos_jogo')
+      .delete()
+      .eq('id', eventoId)
+    if (error) throw error
+    revalidatePath('/placar')
+  })
+}

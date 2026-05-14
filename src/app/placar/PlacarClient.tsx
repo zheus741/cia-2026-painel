@@ -3,8 +3,8 @@
 import { useState, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2 } from 'lucide-react'
-import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO } from './actions'
+import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2, X } from 'lucide-react'
+import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 
@@ -36,6 +36,41 @@ interface Jogo {
   setor: { nome: string } | null
   equipe_a: EquipeRef | null
   equipe_b: EquipeRef | null
+}
+
+// ── Eventos helpers ──────────────────────────────────────────────────────────
+
+interface EventoJogo {
+  id: string
+  jogo_id: string
+  tipo: string
+  equipe: 'a' | 'b'
+  minuto: number | null
+  criado_em: string
+}
+
+const EVENTOS_CONFIG: Record<string, { label: string; icon: string; cor: string }> = {
+  gol:             { label: 'Gol',      icon: '⚽', cor: '#4ab87a' },
+  cartao_amarelo:  { label: 'Amarelo',  icon: '🟨', cor: '#d97706' },
+  cartao_vermelho: { label: 'Vermelho', icon: '🟥', cor: '#ef4444' },
+  falta:           { label: 'Falta',    icon: '✋', cor: '#ef4444' },
+  timeout:         { label: 'Timeout',  icon: '⏱️', cor: '#3b82f6' },
+}
+
+function getEventosTipos(modalidadeNome: string | null): string[] {
+  if (!modalidadeNome) return []
+  const n = modalidadeNome.toLowerCase()
+  if (n.includes('futsal'))                                              return ['gol', 'cartao_amarelo', 'cartao_vermelho']
+  if (n.includes('basquete') || n.includes('basket'))                   return ['falta']
+  if (n.includes('vôlei') || n.includes('volei') || n.includes('vole')) return ['timeout']
+  return []
+}
+
+function fmtEventoTime(criado_em: string): string {
+  const diff = Math.floor((Date.now() - new Date(criado_em).getTime()) / 1000)
+  if (diff < 60)  return 'agora'
+  if (diff < 3600) return `${Math.floor(diff / 60)}min`
+  return new Date(criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
 // ── Identity helpers ─────────────────────────────────────────────────────────
@@ -114,11 +149,62 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   canEdit?: boolean
 }) {
   const [isPending, startTransition] = useTransition()
-  // woMode: quando true, troca a barra de ações pelo seletor "qual equipe não veio?"
   const [woMode, setWoMode] = useState(false)
+  const [eventos, setEventos] = useState<EventoJogo[]>([])
 
   const placarA = jogo.placar_a ?? 0
   const placarB = jogo.placar_b ?? 0
+
+  // Carrega eventos quando o jogo está ao vivo ou encerrado
+  const isLoadable = jogo.status === 'ao_vivo' || jogo.status === 'encerrado'
+  useEffect(() => {
+    if (!isLoadable) return
+    const supabase = createClient()
+    supabase
+      .from('eventos_jogo')
+      .select('*')
+      .eq('jogo_id', jogo.id)
+      .order('criado_em')
+      .then(({ data }) => setEventos(data ?? []))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jogo.id, isLoadable])
+
+  function handleRegistrarEvento(tipo: string, equipe: 'a' | 'b') {
+    // Otimista: adiciona evento temporário
+    const temp: EventoJogo = {
+      id: `temp-${Date.now()}`,
+      jogo_id: jogo.id,
+      tipo,
+      equipe,
+      minuto: null,
+      criado_em: new Date().toISOString(),
+    }
+    setEventos(prev => [...prev, temp])
+
+    // Gol: também atualiza placar otimisticamente
+    if (tipo === 'gol') {
+      const na = equipe === 'a' ? placarA + 1 : placarA
+      const nb = equipe === 'b' ? placarB + 1 : placarB
+      onLocalUpdate(jogo.id, { placar_a: na, placar_b: nb })
+    }
+
+    startTransition(async () => {
+      await registrarEvento(jogo.id, tipo, equipe)
+      // Recarrega lista confirmada do servidor
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('eventos_jogo')
+        .select('*')
+        .eq('jogo_id', jogo.id)
+        .order('criado_em')
+      setEventos(data ?? [])
+    })
+  }
+
+  function handleRemoverEvento(eventoId: string) {
+    setEventos(prev => prev.filter(e => e.id !== eventoId))
+    startTransition(async () => { await removerEvento(eventoId) })
+  }
 
   function adjustScore(team: 'a' | 'b', delta: number) {
     const na = team === 'a' ? Math.max(0, placarA + delta) : placarA
@@ -166,6 +252,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   const isCancelado = jogo.status === 'cancelado'
   const isAgendado  = jogo.status === 'agendado'
   const isTeste     = !!jogo.teste
+  const eventoTipos = getEventosTipos(jogo.modalidade?.nome ?? null)
   // W.O. state derivado
   const hasWO       = !!jogo.wo
   const aPerdeuWO   = jogo.wo === 'a' || jogo.wo === 'duplo'
@@ -426,6 +513,109 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
         </a>
       )}
 
+      {/* ── Painel de eventos por modalidade ─────────────────────────── */}
+      {canEdit && isAoVivo && eventoTipos.length > 0 && (
+        <div className="mt-3 rounded-lg border border-[var(--border)]/60 bg-[var(--card)]/40 p-3">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/40">
+            Registrar evento
+          </p>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            {/* Coluna A */}
+            <div className="space-y-1">
+              <p className="truncate text-[9px] font-semibold uppercase tracking-wider" style={{ color: accentA }}>
+                {jogo.equipe_a_nome ?? 'Equipe A'}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {eventoTipos.map(tipo => {
+                  const cfg = EVENTOS_CONFIG[tipo]
+                  return (
+                    <button
+                      key={tipo}
+                      onClick={() => handleRegistrarEvento(tipo, 'a')}
+                      disabled={isPending}
+                      title={`${cfg.label} — ${jogo.equipe_a_nome ?? 'A'}`}
+                      className="flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[10px] font-semibold transition-all hover:scale-105 hover:border-current disabled:opacity-40"
+                      style={{ color: cfg.cor }}
+                    >
+                      {cfg.icon} {cfg.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            {/* Coluna B */}
+            <div className="space-y-1">
+              <p className="truncate text-[9px] font-semibold uppercase tracking-wider" style={{ color: accentB }}>
+                {jogo.equipe_b_nome ?? 'Equipe B'}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {eventoTipos.map(tipo => {
+                  const cfg = EVENTOS_CONFIG[tipo]
+                  return (
+                    <button
+                      key={tipo}
+                      onClick={() => handleRegistrarEvento(tipo, 'b')}
+                      disabled={isPending}
+                      title={`${cfg.label} — ${jogo.equipe_b_nome ?? 'B'}`}
+                      className="flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[10px] font-semibold transition-all hover:scale-105 hover:border-current disabled:opacity-40"
+                      style={{ color: cfg.cor }}
+                    >
+                      {cfg.icon} {cfg.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Timeline de eventos ───────────────────────────────────────── */}
+      {(isAoVivo || isEncerrado) && eventos.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/40">
+            Eventos
+          </p>
+          <div className="space-y-1">
+            {eventos.map(ev => {
+              const cfg = EVENTOS_CONFIG[ev.tipo]
+              const isTemp = ev.id.startsWith('temp-')
+              const teamName = ev.equipe === 'a' ? jogo.equipe_a_nome : jogo.equipe_b_nome
+              const teamColor = ev.equipe === 'a' ? accentA : accentB
+              return (
+                <div
+                  key={ev.id}
+                  className={`flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-opacity ${
+                    isTemp ? 'opacity-50' : 'bg-[var(--card)]/40'
+                  }`}
+                >
+                  <span className="shrink-0">{cfg?.icon ?? '•'}</span>
+                  <span className="font-semibold truncate" style={{ color: teamColor }}>
+                    {teamName ?? (ev.equipe === 'a' ? 'A' : 'B')}
+                  </span>
+                  <span className="text-[var(--muted-foreground)]/60 shrink-0">
+                    {cfg?.label ?? ev.tipo}
+                  </span>
+                  <span className="ml-auto text-[9px] text-[var(--muted-foreground)]/40 shrink-0 tabular-nums">
+                    {isTemp ? '…' : fmtEventoTime(ev.criado_em)}
+                  </span>
+                  {canEdit && !isTemp && (
+                    <button
+                      onClick={() => handleRemoverEvento(ev.id)}
+                      disabled={isPending}
+                      title="Remover evento"
+                      className="shrink-0 rounded p-0.5 text-[var(--muted-foreground)]/30 transition-colors hover:text-red-400 disabled:opacity-40"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Painel inline de W.O. — substitui a barra de ações quando ativado */}
       {woMode && !hasWO && !isCancelado && (
         <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
@@ -671,6 +861,16 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
         event: 'DELETE',
         schema: 'public',
         table: 'jogos',
+      }, () => { scheduleRefresh() })
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'eventos_jogo',
+      }, () => { scheduleRefresh() })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'eventos_jogo',
       }, () => { scheduleRefresh() })
       .subscribe((status) => {
         setConectado(status === 'SUBSCRIBED')

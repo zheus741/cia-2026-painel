@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Radio, Search, Trophy, Music, PartyPopper, Tv2, ArrowUpRight } from 'lucide-react'
+import { Radio, Search, Trophy, Music, PartyPopper, Tv2, ArrowUpRight, LayoutList, Inbox } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -288,7 +288,7 @@ export function AgendaClient({
   ].length
 
   const cats: { key: Cat; icon: React.ReactNode; label: string; count: number }[] = [
-    { key: 'todos',   icon: '📋', label: 'Todos',   count: jogosDia.length + showsDia.length + festasDia.length },
+    { key: 'todos',   icon: <LayoutList size={13} />, label: 'Todos',   count: jogosDia.length + showsDia.length + festasDia.length },
     { key: 'jogos',   icon: <Trophy   size={13} />, label: 'Jogos',   count: jogosDia.length },
     { key: 'shows',   icon: <Music    size={13} />, label: 'Shows',   count: showsDia.length },
     { key: 'festas',  icon: <PartyPopper size={13} />, label: 'Festas',  count: festasDia.length },
@@ -455,9 +455,9 @@ export function AgendaClient({
           {entries.length === 0 && (
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', minHeight: 200, gap: 8,
+              justifyContent: 'center', minHeight: 200, gap: 10,
             }}>
-              <span style={{ fontSize: 32 }}>📭</span>
+              <Inbox style={{ width: 32, height: 32, color: 'rgba(10,15,11,0.20)' }} aria-hidden />
               <p style={{ fontSize: 14, color: 'rgba(10,15,11,0.40)', fontWeight: 600 }}>
                 {q ? `Nenhum resultado para "${q}"` : 'Sem eventos para este filtro'}
               </p>

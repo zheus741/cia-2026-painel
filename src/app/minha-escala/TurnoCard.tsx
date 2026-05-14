@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { MapPin, Loader2, Wifi, WifiOff, Navigation } from 'lucide-react'
+import { MapPin, Loader2, Wifi, WifiOff, Navigation, Camera, Video } from 'lucide-react'
 import { updateStatusEscala } from '@/app/admin/escala-av/actions'
 import { TurnoComments } from '@/components/TurnoComments'
 
@@ -84,14 +84,14 @@ export function TurnoCard({ turno }: { turno: TurnoCardData }) {
         <div>
           <span
             className="tabular-nums text-xl font-bold"
-            style={{ fontFamily: 'Orbitron, monospace', color: '#101d12' }}
+            style={{ fontFamily: 'Orbitron, monospace', color: 'var(--foreground)' }}
           >
             {fmtTime(turno.inicio)}
           </span>
           <span className="mx-1.5 text-sm text-[var(--muted-foreground)]">–</span>
           <span
             className="tabular-nums text-xl font-bold"
-            style={{ fontFamily: 'Orbitron, monospace', color: '#101d12' }}
+            style={{ fontFamily: 'Orbitron, monospace', color: 'var(--foreground)' }}
           >
             {fmtTime(turno.fim)}
           </span>
@@ -118,13 +118,15 @@ export function TurnoCard({ turno }: { turno: TurnoCardData }) {
       {/* ── Função + Prioridade + Empresa ── */}
       <div className="flex flex-wrap items-center gap-2">
         <span
-          className="rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider"
+          className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider"
           style={{
             background: turno.funcao === 'foto' ? 'rgba(124,58,237,0.10)' : 'rgba(26,92,92,0.10)',
             color:      turno.funcao === 'foto' ? '#7c3aed' : '#1a5c5c',
           }}
         >
-          {turno.funcao === 'foto' ? '📸 FOTO' : '🎬 VÍDEO'}
+          {turno.funcao === 'foto'
+            ? <><Camera className="h-3 w-3" /> Foto</>
+            : <><Video  className="h-3 w-3" /> Vídeo</>}
         </span>
 
         <span

@@ -167,7 +167,7 @@ export function QuickCapture() {
       {/* ── FAB ── */}
       <button
         onClick={() => setStep('choose')}
-        className="fixed bottom-6 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all active:scale-95"
+        className="fixed bottom-20 right-5 md:bottom-6 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all active:scale-95"
         style={{
           background:    'linear-gradient(135deg, #2e6b42 0%, #1a4a2e 100%)',
           boxShadow:     '0 4px 20px rgba(46,107,66,0.45)',

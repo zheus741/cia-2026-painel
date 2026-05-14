@@ -13,7 +13,7 @@ import {
   Camera, Radio, CheckSquare, Lightbulb, LayoutList, BookOpen,
   UserCircle, ClipboardList, Aperture, Swords, MapPin, Music, PartyPopper,
   Heart, Settings, Calendar, Map, Trophy, Users, GitBranch, Tag, UserCog,
-  FileSpreadsheet, Users2,
+  FileSpreadsheet, Users2, Home,
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -161,6 +161,121 @@ function getNavGroups(role: string | null | undefined, funcao: string | null | u
   if (role === 'operador_esportivo')     return OP_ESPORTIVO_GROUPS
   // lider_area e operador: nav de mídia (baseada em funcao_principal ou role)
   return getMediaGroups(role ?? 'operador')
+}
+
+// ── Bottom nav mobile (5 itens críticos por role) ──────────────────────────────
+// Curado manualmente — não é só "primeiros 5 do menu". São os destinos
+// que cada role mais acessa durante o evento ao vivo.
+function getBottomNavItems(role: string | null | undefined): NavItem[] {
+  const home = { label: 'Início', href: '/', icon: Home }
+
+  if (role === 'admin') return [
+    home,
+    { label: 'Conteúdos', href: '/conteudos', icon: LayoutList },
+    { label: 'Esportivo', href: '/esportivo', icon: Trophy },
+    { label: 'Placar',    href: '/placar',    icon: Radio },
+    { label: 'Agenda',    href: '/agenda',    icon: Calendar },
+  ]
+
+  if (role === 'coordenacao') return [
+    home,
+    { label: 'Conteúdos', href: '/conteudos', icon: LayoutList },
+    { label: 'Pautas',    href: '/pautas',    icon: Lightbulb },
+    { label: 'Agenda',    href: '/agenda',    icon: Calendar },
+    { label: 'Esportivo', href: '/esportivo', icon: Trophy },
+  ]
+
+  if (role === 'coordenador_esportivo') return [
+    home,
+    { label: 'Placar',    href: '/placar',           icon: Radio },
+    { label: 'Escala',    href: '/esportivo/escala', icon: ClipboardList },
+    { label: 'Atléticas', href: '/atleticas',        icon: Users },
+    { label: 'Hub',       href: '/esportivo',        icon: Trophy },
+  ]
+
+  if (role === 'operador_esportivo') return [
+    home,
+    { label: 'Placar',    href: '/placar',           icon: Radio },
+    { label: 'Escala',    href: '/esportivo/escala', icon: ClipboardList },
+    { label: 'Atléticas', href: '/atleticas',        icon: Users },
+    { label: 'Hub',       href: '/esportivo',        icon: Trophy },
+  ]
+
+  // lider_area / operador / fallback (mídia)
+  return [
+    home,
+    { label: 'Conteúdos', href: '/conteudos',    icon: LayoutList },
+    { label: 'Agenda',    href: '/agenda',       icon: Calendar },
+    { label: 'Escala',    href: '/minha-escala', icon: UserCircle },
+    { label: 'Captar',    href: '/captura',      icon: Camera },
+  ]
+}
+
+// ── MobileBottomNav ────────────────────────────────────────────────────────────
+function MobileBottomNav({ role, pathname }: { role: string | null | undefined; pathname: string }) {
+  const items = getBottomNavItems(role)
+  return (
+    <nav
+      aria-label="Navegação rápida"
+      className="md:hidden fixed inset-x-0 bottom-0 z-30"
+      style={{
+        // Safe area inset para iOS PWA (home indicator)
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        background: 'rgba(12,20,16,0.92)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        borderTop: '1px solid rgba(250,247,240,0.08)',
+      }}
+    >
+      <div className="flex items-stretch justify-around h-14">
+        {items.map(({ label, href, icon: Icon }) => {
+          // Lógica de active: match exato pra "/", prefix pra outros
+          const active = href === '/'
+            ? pathname === '/'
+            : pathname === href || pathname.startsWith(href + '/')
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-label={label}
+              aria-current={active ? 'page' : undefined}
+              className="flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors relative"
+              style={{
+                // 44px+ touch target garantido (h-14 = 56px)
+                minHeight: 44,
+                color: active ? '#F0D04A' : 'rgba(250,247,240,0.45)',
+                textDecoration: 'none',
+              }}
+            >
+              {/* Active indicator pill no topo */}
+              {active && (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-0 h-0.5 w-8 rounded-b-full"
+                  style={{
+                    background: '#F0D04A',
+                    boxShadow: '0 0 8px rgba(240,208,74,0.5)',
+                  }}
+                />
+              )}
+              <Icon style={{
+                width: 18, height: 18,
+                color: active ? '#F0D04A' : 'rgba(250,247,240,0.45)',
+              }} aria-hidden="true" />
+              <span style={{
+                fontSize: 10,
+                fontWeight: active ? 700 : 500,
+                letterSpacing: '0.02em',
+                lineHeight: 1,
+              }}>
+                {label}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+  )
 }
 
 // ── NavDropdown ────────────────────────────────────────────────────────────────
@@ -509,12 +624,15 @@ export function AppShellLayout({
         style={{ background: 'var(--background)' }}
       >
         {fullWidth ? (
-          <div className="relative z-10 h-full">{children}</div>
+          <div className="relative z-10 h-full pb-16 md:pb-0">{children}</div>
         ) : (
-          <div className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6">{children}</div>
+          <div className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6 pb-20 md:pb-6">{children}</div>
         )}
         <QuickCapture />
       </main>
+
+      {/* Mobile bottom nav — só aparece em telas md menores */}
+      <MobileBottomNav role={profile?.role} pathname={pathname} />
     </div>
   )
 }

@@ -2,12 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Ferramenta interna — admin/coord adicionam URLs de logos/avatares/fotos
+    // de domínios variados (sites de patrocinadores, universidades, Google
+    // OAuth avatars, etc). Permitimos qualquer host https; o trade-off é não
+    // otimizar pra externos, o que é aceitável pra este uso interno.
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'qnbbhxlsxajzhrgvccxw.supabase.co',
-        pathname: '/storage/v1/object/public/**',
-      },
+      { protocol: 'https', hostname: '**' },
     ],
   },
 

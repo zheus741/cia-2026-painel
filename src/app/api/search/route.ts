@@ -35,8 +35,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ results: [] satisfies SearchResult[] }, { status: 401 })
   }
 
-  // Busca em paralelo: ilike (case-insensitive). Limite low pra performance.
-  const pattern = `%${q}%`
+  // Sanitiza o termo: vírgulas, parênteses e aspas quebram o parser do .or() do
+  // PostgREST. Removemos esses chars (busca segue funcional).
+  const sanitized = q.replace(/[(),"'%]/g, ' ').trim()
+  if (!sanitized) {
+    return NextResponse.json({ results: [] satisfies SearchResult[] })
+  }
+  const pattern = `%${sanitized}%`
 
   const [atleticasRes, jogosRes, conteudosRes, usuariosRes, setoresRes] = await Promise.all([
     // Atléticas: por nome ou universidade

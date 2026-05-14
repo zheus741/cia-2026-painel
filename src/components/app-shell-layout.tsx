@@ -8,12 +8,13 @@ import { signOut } from '@/app/actions'
 import { LogOut, Menu, Tv2, X, ChevronDown } from 'lucide-react'
 import { NotifBell } from '@/components/NotifBell'
 import { QuickCapture } from '@/components/QuickCapture'
+import { CommandPalette } from '@/components/command-palette'
 import { cn } from '@/lib/utils'
 import {
   Camera, Radio, CheckSquare, Lightbulb, LayoutList, BookOpen,
   UserCircle, ClipboardList, Aperture, Swords, MapPin, Music, PartyPopper,
   Heart, Settings, Calendar, Map, Trophy, Users, GitBranch, Tag, UserCog,
-  FileSpreadsheet, Users2, Home,
+  FileSpreadsheet, Users2, Home, Search,
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -549,6 +550,27 @@ export function AppShellLayout({
 
         {/* Right actions */}
         <div className="flex items-center gap-2">
+          {/* Search trigger — dispara o CommandPalette via window event */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('cmd-palette-open'))}
+            aria-label="Buscar (Cmd+K)"
+            title="Buscar (⌘K)"
+            className="flex items-center gap-2 rounded-lg transition-colors hover:bg-[rgba(10,15,11,0.06)]"
+            style={{
+              minHeight: 36,
+              padding: '0 10px',
+              color: 'rgba(10,15,11,0.55)',
+              border: '1px solid rgba(10,15,11,0.10)',
+              background: 'rgba(10,15,11,0.03)',
+            }}
+          >
+            <Search className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden lg:inline text-xs font-medium">Buscar</span>
+            <kbd className="hidden lg:inline-flex items-center text-[9.5px] font-mono font-semibold rounded border border-[rgba(10,15,11,0.10)] bg-white px-1 py-0.5 text-[rgba(10,15,11,0.45)]">
+              ⌘K
+            </kbd>
+          </button>
+
           {userId && <NotifBell userId={userId} />}
 
           {/* TV pill */}
@@ -633,6 +655,9 @@ export function AppShellLayout({
 
       {/* Mobile bottom nav — só aparece em telas md menores */}
       <MobileBottomNav role={profile?.role} pathname={pathname} />
+
+      {/* Command Palette — Cmd+K busca global */}
+      <CommandPalette />
     </div>
   )
 }

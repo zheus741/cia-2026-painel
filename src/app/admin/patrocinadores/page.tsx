@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { CrudClient, type ColumnDef, type FieldDef } from '@/components/admin/crud-client'
+import { type ColumnDef, type FieldDef } from '@/components/admin/crud-client'
 import { createPatrocinador, updatePatrocinador, deletePatrocinador } from './actions'
-import { PatrocinadorCard } from './PatrocinadorCard'
+import { PatrocinadoresClient } from './PatrocinadoresClient'
 
 interface Patrocinador {
   id: string
@@ -48,17 +48,13 @@ export default async function PatrocinadoresPage() {
   })) as Patrocinador[]
 
   return (
-    <CrudClient<Patrocinador>
-      entityLabel="Patrocinador" entityLabelPlural="Patrocinadores"
-      eyebrow="Gestão"
-      description="Cadastre cada patrocinador. Escopo de entregas (X stories, Y reels) será gerenciado dentro de cada um."
-      columns={columns} fields={fields} data={processed}
-      onCreate={createPatrocinador} onUpdate={updatePatrocinador} onDelete={deletePatrocinador}
-      searchKeys={['nome', 'cota', 'contato_nome', 'contato_email']}
-      cardOnly
-      cardRender={(p, { onEdit, onDelete }) => (
-        <PatrocinadorCard p={p} onEdit={onEdit} onDelete={onDelete} />
-      )}
+    <PatrocinadoresClient
+      data={processed}
+      fields={fields}
+      columns={columns}
+      onCreate={createPatrocinador}
+      onUpdate={updatePatrocinador}
+      onDelete={deletePatrocinador}
     />
   )
 }

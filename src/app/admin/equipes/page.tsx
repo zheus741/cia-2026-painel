@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { CrudClient, type ColumnDef, type FieldDef } from '@/components/admin/crud-client'
+import { type ColumnDef, type FieldDef } from '@/components/admin/crud-client'
 import { createEquipe, updateEquipe, deleteEquipe } from './actions'
-import { EquipeCard } from './EquipeCard'
+import { EquipesClient } from './EquipesClient'
 
 interface Equipe {
   id: string
@@ -52,17 +52,13 @@ export default async function EquipesPage() {
   })) as Equipe[]
 
   return (
-    <CrudClient<Equipe>
-      entityLabel="Equipe" entityLabelPlural="Equipes"
-      eyebrow="Gestão"
-      description="Atléticas, baterias e times de cheer participantes. Já carregamos 89 equipes no seed."
-      columns={columns} fields={fields} data={processed}
-      onCreate={createEquipe} onUpdate={updateEquipe} onDelete={deleteEquipe}
-      searchKeys={['nome', 'tipo_label', 'divisao', 'universidade']}
-      cardOnly
-      cardRender={(e, { onEdit, onDelete }) => (
-        <EquipeCard e={e} onEdit={onEdit} onDelete={onDelete} />
-      )}
+    <EquipesClient
+      data={processed}
+      fields={fields}
+      columns={columns}
+      onCreate={createEquipe}
+      onUpdate={updateEquipe}
+      onDelete={deleteEquipe}
     />
   )
 }

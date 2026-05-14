@@ -1,7 +1,6 @@
 'use client'
 
 import { Pencil, Trash2, Mail, Phone, Crown, PowerOff } from 'lucide-react'
-import Image from 'next/image'
 
 interface Patrocinador {
   id: string
@@ -54,13 +53,17 @@ export function PatrocinadorCard({
           style={{ borderColor: 'var(--border)' }}
         >
           {p.logo_url ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={p.logo_url}
               alt={p.nome}
               width={48}
               height={48}
               className="h-full w-full object-contain p-1"
-              unoptimized
+              onError={(e) => {
+                // Fallback silencioso: esconde a imagem se a URL falhar
+                ;(e.target as HTMLImageElement).style.display = 'none'
+              }}
             />
           ) : (
             <span

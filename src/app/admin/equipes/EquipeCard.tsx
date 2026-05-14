@@ -1,7 +1,6 @@
 'use client'
 
 import { Pencil, Trash2, Users, Music, Sparkles, Building2 } from 'lucide-react'
-import Image from 'next/image'
 
 interface Equipe {
   id: string
@@ -50,13 +49,16 @@ export function EquipeCard({
           style={{ borderColor: 'var(--border)' }}
         >
           {e.logo_url ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={e.logo_url}
               alt={e.nome}
               width={48}
               height={48}
               className="h-full w-full object-contain p-1"
-              unoptimized
+              onError={(ev) => {
+                ;(ev.target as HTMLImageElement).style.display = 'none'
+              }}
             />
           ) : (
             <span

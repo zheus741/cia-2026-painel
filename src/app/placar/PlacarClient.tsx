@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2, X } from 'lucide-react'
 import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento } from './actions'
@@ -269,19 +269,22 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   const confMeta = jogo.equipe_a?.conferencia ? getConferencia(jogo.equipe_a.conferencia) : null
 
   return (
-    <div className={`relative overflow-hidden rounded-xl border p-4 transition-all ${
-      hasWO
-        ? 'border-red-500/40 bg-red-500/5 opacity-90'
-        : isTeste
-        ? 'border-amber-600/40 bg-amber-500/5'
-        : isAoVivo
-        ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/10 shadow-[0_0_20px_rgba(74,138,92,0.08)]'
-        : isEncerrado
-        ? 'border-[var(--border)]/50 bg-[var(--card)]/40 opacity-70'
-        : isCancelado
-        ? 'border-red-800/30 bg-red-900/10 opacity-50'
-        : 'border-[var(--border)] bg-[var(--card)]/60'
-    }`}>
+    <div
+      id={`jogo-${jogo.id}`}
+      className={`relative overflow-hidden rounded-xl border p-4 transition-all scroll-mt-20 ${
+        hasWO
+          ? 'border-red-500/40 bg-red-500/5 opacity-90'
+          : isTeste
+          ? 'border-amber-600/40 bg-amber-500/5'
+          : isAoVivo
+          ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/10 shadow-[0_0_20px_rgba(74,138,92,0.08)]'
+          : isEncerrado
+          ? 'border-[var(--border)]/50 bg-[var(--card)]/40 opacity-70'
+          : isCancelado
+          ? 'border-red-800/30 bg-red-900/10 opacity-50'
+          : 'border-[var(--border)] bg-[var(--card)]/60'
+      }`}
+    >
       {/* TESTE badge */}
       {isTeste && (
         <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5">
@@ -755,8 +758,15 @@ const REALTIME_MERGEABLE: (keyof Jogo)[] = [
 
 export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, canEdit }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // Honra ?dia=<uuid> da URL (deep-link de outras seções) — fallback para diaAtivo do servidor
+  const diaFromUrl = searchParams.get('dia')
+  const initialDia = diaFromUrl && dias.some(d => d.id === diaFromUrl) ? diaFromUrl : diaAtivo
+  // Jogo destacado via hash #jogo-<uuid>
+  const [highlightedJogoId, setHighlightedJogoId] = useState<string | null>(null)
+
   const [jogosPorDia, setJogosPorDia] = useState(initialJogosPorDia)
-  const [diaId, setDiaId] = useState(diaAtivo)
+  const [diaId, setDiaId] = useState(initialDia)
   const [recentIds, setRecentIds] = useState<Set<string>>(new Set())
   const [conectado, setConectado] = useState(false)
   const [filterDiv, setFilterDiv] = useState('')
@@ -765,6 +775,24 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
   const [isPendingTeste, startTransitionTeste] = useTransition()
 
   const lastLocalChangeRef = useRef<Map<string, number>>(new Map())
+
+  // ── Deep-link: ao montar, se houver #jogo-<id> no hash, faz scroll e highlight
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const hash = window.location.hash
+    const match = /^#jogo-([0-9a-f-]+)$/i.exec(hash)
+    if (!match) return
+    const jogoId = match[1]
+    setHighlightedJogoId(jogoId)
+    // Espera o DOM renderizar antes de scrollar
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`jogo-${jogoId}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Remove o highlight após 3s
+      setTimeout(() => setHighlightedJogoId(null), 3000)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Quando server re-renderiza (router.refresh), sincroniza state local
   useEffect(() => {
@@ -1131,7 +1159,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
               key={jogo.id}
               jogo={jogo}
               onLocalUpdate={handleLocalUpdate}
-              recentlyChanged={recentIds.has(jogo.id)}
+              recentlyChanged={recentIds.has(jogo.id) || highlightedJogoId === jogo.id}
               canEdit={canEdit}
             />
           ))}

@@ -495,7 +495,7 @@ export function AgendaClient({
                     time={fmt(j.inicio)} timeFim={fmt(j.fim_previsto)}
                     dur={dur} isActive={isActive} isPast={isPast}
                     coverage={cov} isYt={isYt}
-                    href={`/esportivo#${j.id}`}
+                    href={`/placar?dia=${j.dia_id}#jogo-${j.id}`}
                   />
                 )
               }

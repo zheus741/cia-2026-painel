@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Users, MapPin, FileText } from 'lucide-react'
+import { AlertTriangle, Users, MapPin, FileText, Camera, Video } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -767,17 +767,15 @@ export function TimelineVertical({
                       {ev.cat}
                     </span>
                     {ev.setorId && (
-                      <div className="flex items-center gap-0.5" title="Cobertura foto / vídeo">
-                        <span style={{
-                          fontSize: 11,
-                          opacity: coberturaPorSetor[ev.setorId]?.foto ? 1 : 0.20,
-                          filter: coberturaPorSetor[ev.setorId]?.foto ? 'none' : 'grayscale(1)',
-                        }}>📸</span>
-                        <span style={{
-                          fontSize: 11,
-                          opacity: coberturaPorSetor[ev.setorId]?.video ? 1 : 0.20,
-                          filter: coberturaPorSetor[ev.setorId]?.video ? 'none' : 'grayscale(1)',
-                        }}>🎬</span>
+                      <div className="flex items-center gap-1" title="Cobertura foto / vídeo">
+                        <Camera style={{
+                          width: 11, height: 11,
+                          color: coberturaPorSetor[ev.setorId]?.foto ? '#2e6b42' : 'rgba(10,15,11,0.20)',
+                        }} aria-label="Cobertura foto" />
+                        <Video style={{
+                          width: 11, height: 11,
+                          color: coberturaPorSetor[ev.setorId]?.video ? '#3D49E0' : 'rgba(10,15,11,0.20)',
+                        }} aria-label="Cobertura vídeo" />
                       </div>
                     )}
                   </div>

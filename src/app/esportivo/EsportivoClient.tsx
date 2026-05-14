@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Trophy, Calendar, Radio } from 'lucide-react'
+import { Trophy, Calendar, Radio, Zap } from 'lucide-react'
 import { CONFERENCIAS } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 
@@ -333,7 +333,7 @@ function Super08Tab({ groups }: { groups: ConferenciaGroup[] }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <span style={{ fontSize: 18 }}>⚡</span>
+        <Zap style={{ width: 18, height: 18, color: '#D8845F' }} aria-hidden />
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#D8845F', fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif' }}>
           Conferências
         </h2>

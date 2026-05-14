@@ -122,10 +122,11 @@ const COORD_ESPORTIVO_GROUPS: NavGroup[] = [
   {
     label: 'Esportivo',
     items: [
-      { label: 'Hub Esportivo',  href: '/esportivo',          icon: Trophy },
-      { label: 'Atléticas',      href: '/atleticas',          icon: Users },
-      { label: 'Placar Ao Vivo', href: '/placar',             icon: Radio },
-      { label: 'Liga Super 8',   href: '/esportivo/super-8',  icon: Trophy },
+      { label: 'Hub Esportivo',  href: '/esportivo',              icon: Trophy },
+      { label: 'Atléticas',      href: '/atleticas',              icon: Users },
+      { label: 'Placar Ao Vivo', href: '/placar',                 icon: Radio },
+      { label: 'Liga Super 8',   href: '/esportivo/super-8',      icon: Trophy },
+      { label: 'Escala',         href: '/esportivo/escala',       icon: ClipboardList },
     ],
   },
   {
@@ -145,6 +146,7 @@ const OP_ESPORTIVO_GROUPS: NavGroup[] = [
       { label: 'Atléticas',      href: '/atleticas',         icon: Users },
       { label: 'Placar Ao Vivo', href: '/placar',            icon: Radio },
       { label: 'Liga Super 8',   href: '/esportivo/super-8', icon: Trophy },
+      { label: 'Minha Escala',   href: '/esportivo/escala',  icon: ClipboardList },
     ],
   },
 ]

@@ -31,17 +31,14 @@ const ROLE_META: Record<Role, { label: string; cor: string; icon: typeof Shield 
 }
 
 const FUNCOES = [
-  { value: '',            label: '— sem função —' },
-  { value: 'foto',        label: '📷 Foto' },
-  { value: 'video',       label: '🎬 Vídeo' },
-  { value: 'social',      label: '📱 Social Media' },
-  { value: 'reporter',    label: '🎤 Repórter' },
-  { value: 'editor',      label: '✂️ Editor' },
-  { value: 'drone',       label: '🚁 Drone' },
-  { value: 'roaming',     label: '🏃 Roaming' },
-  { value: 'coordenacao', label: '📋 Coordenação' },
-  { value: 'producao',    label: '⚙️ Produção' },
-  { value: 'design',      label: '🎨 Design' },
+  { value: '',                label: '— sem função —' },
+  { value: 'foto',            label: '📷 Foto' },
+  { value: 'video',           label: '🎬 Vídeo' },
+  { value: 'editor',          label: '✂️ Editor' },
+  { value: 'design',          label: '🎨 Design' },
+  { value: 'coordenacao',     label: '📋 Coordenação' },
+  { value: 'storymaker',      label: '📱 Storymaker' },
+  { value: 'lider_cobertura', label: '⭐ Líder de Cobertura' },
 ]
 
 function Avatar({ nome, foto_url }: { nome: string; foto_url: string | null }) {

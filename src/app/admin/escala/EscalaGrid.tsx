@@ -32,17 +32,15 @@ export interface Turno {
   user?: { nome: string }
 }
 
+// Lista oficial de funções de cobertura — alinhada à organização CIA 2026
 const FUNCOES = [
-  { value: 'foto', label: 'Foto' },
-  { value: 'video', label: 'Vídeo' },
-  { value: 'social', label: 'Social Media' },
-  { value: 'reporter', label: 'Repórter' },
-  { value: 'editor', label: 'Editor' },
-  { value: 'drone', label: 'Drone' },
-  { value: 'roaming', label: 'Roaming' },
-  { value: 'coordenacao', label: 'Coordenação' },
-  { value: 'producao', label: 'Produção' },
-  { value: 'design', label: 'Design' },
+  { value: 'foto',              label: 'Foto' },
+  { value: 'video',             label: 'Vídeo' },
+  { value: 'editor',            label: 'Editor' },
+  { value: 'design',            label: 'Design' },
+  { value: 'coordenacao',       label: 'Coordenação' },
+  { value: 'storymaker',        label: 'Storymaker' },
+  { value: 'lider_cobertura',   label: 'Líder de Cobertura' },
 ]
 
 // Shift templates
@@ -311,6 +309,8 @@ interface EscalaGridProps {
 export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps) {
   const router = useRouter()
   const [activeDia, setActiveDia] = React.useState(0)
+  const [filterSetorId, setFilterSetorId] = React.useState<string>('all')
+  const [filterFuncao, setFilterFuncao] = React.useState<string>('all')
   const [dialog, setDialog] = React.useState<{
     open: boolean
     dia?: Dia
@@ -375,6 +375,14 @@ export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps)
     ...setores,
     { id: '__sem_setor__', nome: 'Sem setor' },
   ]
+
+  // Setores e funções visíveis após filtros
+  const visibleSetores = filterSetorId === 'all'
+    ? allSetores
+    : allSetores.filter(s => s.id === filterSetorId)
+  const visibleFuncoes = filterFuncao === 'all'
+    ? FUNCOES
+    : FUNCOES.filter(f => f.value === filterFuncao)
 
   if (!dia) {
     return (
@@ -442,6 +450,108 @@ export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps)
         </div>
       </div>
 
+      {/* ── Filtros: praça (setor) + função ─────────────────────────────── */}
+      <div className="mx-6 mt-4 space-y-2">
+        {/* Filtro de praças */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60 w-16">
+            Praça
+          </span>
+          <button
+            onClick={() => setFilterSetorId('all')}
+            className={cn(
+              'rounded-full border px-3 py-1 text-[11px] font-semibold transition-all',
+              filterSetorId === 'all'
+                ? 'border-[var(--foreground)] bg-[var(--foreground)] text-white'
+                : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)]/40',
+            )}
+          >
+            Todas
+          </button>
+          {allSetores.map(s => {
+            const count = turnosByDia.filter(t => {
+              if (s.id === '__roaming__') return t.is_roaming
+              if (s.id === '__sem_setor__') return !t.setor_id && !t.is_roaming
+              return t.setor_id === s.id && !t.is_roaming
+            }).length
+            const active = filterSetorId === s.id
+            return (
+              <button
+                key={s.id}
+                onClick={() => setFilterSetorId(prev => prev === s.id ? 'all' : s.id)}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all',
+                  active
+                    ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)]'
+                    : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]/50',
+                )}
+              >
+                {s.nome}
+                {count > 0 && (
+                  <span className={cn(
+                    'rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums',
+                    active ? 'bg-[var(--green-bright)]/20' : 'bg-[var(--border)]/40 text-[var(--muted-foreground)]',
+                  )}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        {/* Filtro de funções */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60 w-16">
+            Função
+          </span>
+          <button
+            onClick={() => setFilterFuncao('all')}
+            className={cn(
+              'rounded-full border px-3 py-1 text-[11px] font-semibold transition-all',
+              filterFuncao === 'all'
+                ? 'border-[var(--foreground)] bg-[var(--foreground)] text-white'
+                : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)]/40',
+            )}
+          >
+            Todas
+          </button>
+          {FUNCOES.map(f => {
+            const count = turnosByDia.filter(t => t.funcao === f.value).length
+            const active = filterFuncao === f.value
+            return (
+              <button
+                key={f.value}
+                onClick={() => setFilterFuncao(prev => prev === f.value ? 'all' : f.value)}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all',
+                  active
+                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-700'
+                    : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-amber-500/50',
+                )}
+              >
+                {f.label}
+                {count > 0 && (
+                  <span className={cn(
+                    'rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums',
+                    active ? 'bg-amber-500/20' : 'bg-[var(--border)]/40 text-[var(--muted-foreground)]',
+                  )}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        {(filterSetorId !== 'all' || filterFuncao !== 'all') && (
+          <button
+            onClick={() => { setFilterSetorId('all'); setFilterFuncao('all') }}
+            className="text-[10px] font-semibold text-[var(--muted-foreground)] underline hover:text-[var(--foreground)]"
+          >
+            Limpar filtros
+          </button>
+        )}
+      </div>
+
       {/* Grid: funções × setores */}
       <div className="overflow-x-auto px-6 mt-4 pb-8">
         <table className="w-full border-collapse">
@@ -450,7 +560,7 @@ export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps)
               <th className="w-28 border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
                 Função
               </th>
-              {allSetores.map((s) => (
+              {visibleSetores.map((s) => (
                 <th
                   key={s.id}
                   className="min-w-36 border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-left text-xs font-semibold"
@@ -461,7 +571,7 @@ export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps)
             </tr>
           </thead>
           <tbody>
-            {FUNCOES.map((f) => {
+            {visibleFuncoes.map((f) => {
               const rowTurnos = turnosByDia.filter((t) => t.funcao === f.value)
               if (rowTurnos.length === 0 && turnosByDia.length > 0) {
                 // still show row but empty
@@ -471,7 +581,7 @@ export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps)
                   <td className="border border-[var(--border)] bg-[var(--card)] px-3 py-2 align-top">
                     <span className="text-xs font-medium">{f.label}</span>
                   </td>
-                  {allSetores.map((s) => {
+                  {visibleSetores.map((s) => {
                     const sId = s.id === '__roaming__' ? null : s.id === '__sem_setor__' ? null : s.id
                     const isRoamingCol = s.id === '__roaming__'
                     const isSemSetor = s.id === '__sem_setor__'

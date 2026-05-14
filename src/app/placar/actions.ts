@@ -157,7 +157,7 @@ export async function registrarEvento(
 ): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()
-    const TIPOS_VALIDOS = ['gol', 'cartao_amarelo', 'cartao_vermelho', 'falta', 'timeout']
+    const TIPOS_VALIDOS = ['gol', 'cartao_amarelo', 'cartao_vermelho', 'exclusao', 'falta', 'timeout']
     if (!TIPOS_VALIDOS.includes(tipo)) throw new Error(`Tipo inválido: ${tipo}`)
 
     const supabase = await createClient()

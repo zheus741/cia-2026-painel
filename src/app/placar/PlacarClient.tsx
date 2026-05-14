@@ -50,17 +50,19 @@ interface EventoJogo {
 }
 
 const EVENTOS_CONFIG: Record<string, { label: string; icon: string; cor: string }> = {
-  gol:             { label: 'Gol',      icon: '⚽', cor: '#4ab87a' },
-  cartao_amarelo:  { label: 'Amarelo',  icon: '🟨', cor: '#d97706' },
-  cartao_vermelho: { label: 'Vermelho', icon: '🟥', cor: '#ef4444' },
-  falta:           { label: 'Falta',    icon: '✋', cor: '#ef4444' },
-  timeout:         { label: 'Timeout',  icon: '⏱️', cor: '#3b82f6' },
+  gol:             { label: 'Gol',       icon: '⚽', cor: '#4ab87a' },
+  cartao_amarelo:  { label: 'Amarelo',   icon: '🟨', cor: '#d97706' },
+  cartao_vermelho: { label: 'Vermelho',  icon: '🟥', cor: '#ef4444' },
+  exclusao:        { label: '2 min',     icon: '⏳', cor: '#f59e0b' },
+  falta:           { label: 'Falta',     icon: '✋', cor: '#ef4444' },
+  timeout:         { label: 'Timeout',   icon: '⏱️', cor: '#3b82f6' },
 }
 
 function getEventosTipos(modalidadeNome: string | null): string[] {
   if (!modalidadeNome) return []
   const n = modalidadeNome.toLowerCase()
   if (n.includes('futsal'))                                              return ['gol', 'cartao_amarelo', 'cartao_vermelho']
+  if (n.includes('hand'))                                                return ['gol', 'cartao_amarelo', 'cartao_vermelho', 'exclusao']
   if (n.includes('basquete') || n.includes('basket'))                   return ['falta']
   if (n.includes('vôlei') || n.includes('volei') || n.includes('vole')) return ['timeout']
   return []

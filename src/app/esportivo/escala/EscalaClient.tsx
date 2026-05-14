@@ -4,7 +4,7 @@ import { useState, useTransition, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   CheckCircle2, MapPin, Clock, Plus, X, UserCheck,
-  Loader2, AlertTriangle, Users, ChevronDown, Search,
+  Loader2, AlertTriangle, Users, Search,
 } from 'lucide-react'
 import { atribuirDelegado, removerDelegado, confirmarChegada } from './actions'
 
@@ -34,63 +34,38 @@ interface Props {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtConfirmado(ts: string) {
+function fmtHora(ts: string) {
   return new Date(ts).toLocaleTimeString('pt-BR', {
     hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
   })
 }
 
-function Initials({ nome, size = 'md' }: { nome: string; size?: 'sm' | 'md' }) {
+function getInitials(nome: string) {
   const parts = nome.trim().split(/\s+/)
-  const letters = (parts.length >= 2
-    ? parts[0][0] + parts[parts.length - 1][0]
-    : nome.slice(0, 2)
-  ).toUpperCase()
-  return (
-    <span className={`inline-flex items-center justify-center rounded-full bg-[var(--green-dim)]/50 font-bold text-[var(--green-bright)] shrink-0 ${
-      size === 'sm' ? 'h-5 w-5 text-[8px]' : 'h-7 w-7 text-[10px]'
-    }`}>
-      {letters}
-    </span>
-  )
+  return (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : nome.slice(0, 2)).toUpperCase()
 }
 
-// ── Dialogo de confirmação de remoção ─────────────────────────────────────────
+// ── Remove dialog ─────────────────────────────────────────────────────────────
 
 function RemoveDialog({ nome, onConfirm, onCancel }: {
-  nome: string
-  onConfirm: () => void
-  onCancel: () => void
+  nome: string; onConfirm: () => void; onCancel: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      onClick={onCancel}
-    >
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" onClick={onCancel}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl"
-        onClick={e => e.stopPropagation()}
-        style={{ animation: 'scaleIn 150ms ease-out' }}
-      >
+      <div className="relative w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl" onClick={e => e.stopPropagation()} style={{ animation: 'popIn 150ms ease-out' }}>
         <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 border border-red-500/20">
           <AlertTriangle className="h-5 w-5 text-red-400" />
         </div>
         <h3 className="text-base font-semibold text-[var(--foreground)]">Remover delegado?</h3>
         <p className="mt-1 text-sm text-[var(--muted-foreground)]">
           <span className="font-medium text-[var(--foreground)]">{nome}</span> será removido desta praça.
-          Ele não receberá notificação.
         </p>
         <div className="mt-5 flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-2.5 text-sm font-medium text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
-          >
+          <button onClick={onCancel} className="flex-1 rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-medium text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]">
             Cancelar
           </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20"
-          >
+          <button onClick={onConfirm} className="flex-1 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20">
             Remover
           </button>
         </div>
@@ -99,12 +74,10 @@ function RemoveDialog({ nome, onConfirm, onCancel }: {
   )
 }
 
-// ── Dropdown de usuário (substitui <select> nativo) ───────────────────────────
+// ── User picker dropdown ──────────────────────────────────────────────────────
 
 function UserPicker({ perfis, onSelect, onClose }: {
-  perfis: Perfil[]
-  onSelect: (id: string) => void
-  onClose: () => void
+  perfis: Perfil[]; onSelect: (id: string) => void; onClose: () => void
 }) {
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -112,58 +85,42 @@ function UserPicker({ perfis, onSelect, onClose }: {
 
   useEffect(() => {
     inputRef.current?.focus()
-    function handler(e: MouseEvent) {
+    const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose()
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
 
-  const filtered = perfis.filter(p =>
-    !query || p.nome.toLowerCase().includes(query.toLowerCase())
-  )
+  const filtered = perfis.filter(p => !query || p.nome.toLowerCase().includes(query.toLowerCase()))
 
   return (
-    <div
-      ref={ref}
-      className="absolute z-30 left-0 top-full mt-1 w-56 rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-2xl overflow-hidden"
-      style={{ animation: 'scaleIn 120ms ease-out' }}
-    >
-      <div className="border-b border-[var(--border)] px-3 py-2 flex items-center gap-2">
+    <div ref={ref} className="absolute z-30 left-0 top-full mt-1 w-52 rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-2xl overflow-hidden" style={{ animation: 'popIn 120ms ease-out' }}>
+      <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2">
         <Search className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]/40" />
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Buscar..."
-          className="flex-1 bg-transparent text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/40 outline-none"
-        />
+        <input ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar..." className="flex-1 bg-transparent text-xs text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/40 outline-none" />
       </div>
-      <div className="max-h-48 overflow-y-auto py-1">
-        {filtered.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-[var(--muted-foreground)]/50 text-center">Nenhum resultado</p>
-        ) : filtered.map(p => (
-          <button
-            key={p.id}
-            onMouseDown={() => onSelect(p.id)}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--foreground)] transition-colors hover:bg-[var(--green-dim)]/10 hover:text-[var(--green-bright)]"
-          >
-            <Initials nome={p.nome} size="sm" />
-            <span className="truncate">{p.nome}</span>
-          </button>
-        ))}
+      <div className="max-h-44 overflow-y-auto py-1">
+        {filtered.length === 0
+          ? <p className="px-3 py-2 text-center text-xs text-[var(--muted-foreground)]/40">Nenhum resultado</p>
+          : filtered.map(p => (
+            <button key={p.id} onMouseDown={() => onSelect(p.id)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--foreground)] transition-colors hover:bg-[var(--green-dim)]/10 hover:text-[var(--green-bright)]">
+              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--green-dim)]/40 text-[8px] font-bold text-[var(--green-bright)]">
+                {getInitials(p.nome)}
+              </span>
+              <span className="truncate">{p.nome}</span>
+            </button>
+          ))
+        }
       </div>
     </div>
   )
 }
 
-// ── Cell de atribuição ────────────────────────────────────────────────────────
+// ── Setor Card ────────────────────────────────────────────────────────────────
 
-function EscalaCell({
-  setorId, diaId, escalasCell, perfis, isCoord, userId,
-  onAdd, onRemove,
-}: {
-  setorId: string
+function SetorCard({ setor, diaId, escalasCell, perfis, isCoord, userId, onAdd, onRemove }: {
+  setor: Setor
   diaId: string
   escalasCell: Escala[]
   perfis: Perfil[]
@@ -175,69 +132,90 @@ function EscalaCell({
   const [picking, setPicking] = useState(false)
   const assignedIds = new Set(escalasCell.map(e => e.user_id))
   const available = perfis.filter(p => !assignedIds.has(p.id))
-
-  function handleSelect(uid: string) {
-    onAdd(setorId, diaId, uid)
-    setPicking(false)
-  }
+  const confirmed = escalasCell.filter(e => e.confirmado_em).length
+  const isEmpty = escalasCell.length === 0
+  const allConfirmed = escalasCell.length > 0 && confirmed === escalasCell.length
 
   return (
-    <div className="relative flex flex-col gap-1.5 min-h-[44px]">
-      {escalasCell.map(e => {
-        const nome = e.perfil?.nome ?? '—'
-        const isMe = e.user_id === userId
-        return (
-          <div
-            key={e.id}
-            className={`group flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-all ${
-              isMe
-                ? e.confirmado_em
-                  ? 'border-[var(--green-bright)]/30 bg-[var(--green-dim)]/15 text-[var(--green-bright)]'
-                  : 'border-amber-500/30 bg-amber-500/5 text-amber-400'
-                : 'border-[var(--border)] bg-[var(--card)]/50 text-[var(--foreground)]'
-            }`}
-          >
-            <Initials nome={nome} size="sm" />
-            <span className="truncate font-medium flex-1">{nome.split(' ')[0]}</span>
-            {e.confirmado_em
-              ? <CheckCircle2 className="h-3 w-3 shrink-0 text-[var(--green-bright)]" />
-              : <span className="h-1.5 w-1.5 rounded-full bg-amber-400/50 shrink-0" />
-            }
-            {isCoord && (
-              <button
-                onClick={() => onRemove(e.id, nome)}
-                title={`Remover ${nome}`}
-                className="ml-0.5 flex h-5 w-5 items-center justify-center rounded shrink-0 text-[var(--muted-foreground)]/20 transition-colors hover:text-red-400 focus:outline-none focus:ring-1 focus:ring-red-400/30"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-        )
-      })}
+    <div className={`relative flex flex-col gap-3 rounded-2xl border p-4 transition-all ${
+      allConfirmed
+        ? 'border-[var(--green-bright)]/20 bg-[var(--green-dim)]/6'
+        : isEmpty
+        ? 'border-[var(--border)]/60 bg-[var(--card)]/30'
+        : 'border-[var(--border)] bg-[var(--card)]/50'
+    }`}>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-[11px] font-semibold leading-tight text-[var(--foreground)]">
+          <MapPin className="h-3 w-3 shrink-0 text-[var(--green-bright)]/60" />
+          {setor.nome}
+        </p>
+        {/* Status badge */}
+        {allConfirmed ? (
+          <span className="shrink-0 flex items-center gap-1 rounded-full border border-[var(--green-bright)]/25 bg-[var(--green-dim)]/15 px-2 py-0.5 text-[9px] font-bold text-[var(--green-bright)]">
+            <CheckCircle2 className="h-2.5 w-2.5" /> {confirmed}/{escalasCell.length}
+          </span>
+        ) : escalasCell.length > 0 ? (
+          <span className="shrink-0 text-[9px] font-semibold tabular-nums text-[var(--muted-foreground)]/50">
+            {confirmed}/{escalasCell.length}
+          </span>
+        ) : null}
+      </div>
 
-      {isCoord && (
-        <div className="relative">
-          {picking && (
-            <UserPicker
-              perfis={available}
-              onSelect={handleSelect}
-              onClose={() => setPicking(false)}
-            />
-          )}
-          {available.length > 0 && (
+      {/* Delegate chips */}
+      <div className="flex flex-wrap gap-1.5">
+        {escalasCell.map(e => {
+          const nome = e.perfil?.nome ?? '—'
+          const firstName = nome.split(' ')[0]
+          const isMe = e.user_id === userId
+          return (
+            <div key={e.id} className={`group flex items-center gap-1.5 rounded-full border pl-1.5 pr-1 py-0.5 text-[11px] font-medium transition-all ${
+              e.confirmado_em
+                ? 'border-[var(--green-bright)]/25 bg-[var(--green-dim)]/15 text-[var(--green-bright)]'
+                : isMe
+                ? 'border-amber-400/30 bg-amber-400/8 text-amber-400'
+                : 'border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]'
+            }`}>
+              <span className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[7px] font-bold ${
+                e.confirmado_em ? 'bg-[var(--green-dim)]/40 text-[var(--green-bright)]' : 'bg-[var(--border)]/60 text-[var(--muted-foreground)]'
+              }`}>
+                {getInitials(nome)}
+              </span>
+              {firstName}
+              {e.confirmado_em && <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />}
+              {isCoord && (
+                <button
+                  onClick={() => onRemove(e.id, nome)}
+                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[var(--muted-foreground)]/30 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                  title={`Remover ${nome}`}
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              )}
+            </div>
+          )
+        })}
+
+        {/* Add button — inline, chip-sized */}
+        {isCoord && available.length > 0 && (
+          <div className="relative">
+            {picking && (
+              <UserPicker perfis={available} onSelect={uid => { onAdd(setor.id, diaId, uid); setPicking(false) }} onClose={() => setPicking(false)} />
+            )}
             <button
               onClick={() => setPicking(v => !v)}
-              className="flex min-h-[36px] w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-[var(--border)] px-2 py-1.5 text-[11px] font-medium text-[var(--muted-foreground)]/50 transition-all hover:border-[var(--green)]/50 hover:bg-[var(--green-dim)]/8 hover:text-[var(--green-bright)]"
+              className="flex items-center gap-1 rounded-full border border-dashed border-[var(--border)] px-2 py-0.5 text-[11px] font-medium text-[var(--muted-foreground)]/40 transition-all hover:border-[var(--green)]/50 hover:bg-[var(--green-dim)]/10 hover:text-[var(--green-bright)]"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-2.5 w-2.5" />
               Atribuir
             </button>
-          )}
-          {available.length === 0 && escalasCell.length > 0 && (
-            <p className="text-center text-[9px] text-[var(--muted-foreground)]/30 py-0.5">Todos atribuídos</p>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
+
+      {/* Empty state */}
+      {isEmpty && !isCoord && (
+        <p className="text-[10px] text-[var(--muted-foreground)]/30">Sem delegado</p>
       )}
     </div>
   )
@@ -252,6 +230,7 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [confirmedId, setConfirmedId] = useState<string | null>(null)
   const [removeDialog, setRemoveDialog] = useState<{ id: string; nome: string } | null>(null)
+  const [busca, setBusca] = useState('')
 
   const hoje = new Date().toISOString().slice(0, 10)
   const defaultDia = dias.find(d => d.data >= hoje)?.id ?? dias[0]?.id ?? ''
@@ -265,17 +244,21 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
     .filter(e => e.user_id === userId)
     .sort((a, b) => dias.findIndex(d => d.id === a.dia_id) - dias.findIndex(d => d.id === b.dia_id))
 
-  // Cobertura da grade (dia ativo)
+  // Setores filtrados pela busca
+  const setoresFiltrados = busca
+    ? setores.filter(s => s.nome.toLowerCase().includes(busca.toLowerCase()))
+    : setores
+
+  // Stats do dia ativo
   const setoresComDelegado = setores.filter(s => getCell(s.id, diaAtivo).length > 0).length
-  const setoresConfirmados = setores.filter(s => getCell(s.id, diaAtivo).some(e => e.confirmado_em)).length
+  const setoresConfirmados = setores.filter(s => getCell(s.id, diaAtivo).every(e => e.confirmado_em) && getCell(s.id, diaAtivo).length > 0).length
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
   function handleAdd(setorId: string, diaId: string, uid: string) {
     const perfil = perfis.find(p => p.id === uid) ?? null
     const temp: Escala = {
-      id: `temp-${Date.now()}`,
-      setor_id: setorId, dia_id: diaId, user_id: uid,
+      id: `temp-${Date.now()}`, setor_id: setorId, dia_id: diaId, user_id: uid,
       confirmado_em: null, criado_em: new Date().toISOString(),
       perfil: perfil ? { id: perfil.id, nome: perfil.nome } : null,
     }
@@ -285,10 +268,6 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
       if (!res.ok) setEscalas(prev => prev.filter(e => e.id !== temp.id))
       else router.refresh()
     })
-  }
-
-  function handleRemoveRequest(id: string, nome: string) {
-    setRemoveDialog({ id, nome })
   }
 
   function handleRemoveConfirm() {
@@ -309,19 +288,14 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
       setConfirmingId(null)
       if (res.ok) {
         setConfirmedId(escalaId)
-        setEscalas(prev => prev.map(e =>
-          e.id === escalaId ? { ...e, confirmado_em: new Date().toISOString() } : e
-        ))
+        setEscalas(prev => prev.map(e => e.id === escalaId ? { ...e, confirmado_em: new Date().toISOString() } : e))
         setTimeout(() => setConfirmedId(null), 2000)
       }
     })
   }
 
-  const diaAtivoData = dias.find(d => d.id === diaAtivo)
-
   return (
     <>
-      {/* Dialogo de remoção */}
       {removeDialog && (
         <RemoveDialog
           nome={removeDialog.nome}
@@ -331,27 +305,26 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
       )}
 
       <style>{`
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+        @keyframes popIn {
+          from { opacity: 0; transform: scale(0.96) translateY(-4px); }
           to   { opacity: 1; transform: scale(1) translateY(0); }
         }
-        @keyframes confirmPop {
-          0%   { transform: scale(1); }
-          40%  { transform: scale(1.04); }
-          100% { transform: scale(1); }
+        @keyframes confirmPulse {
+          0%,100% { box-shadow: 0 0 0 0 rgba(74,184,122,0); }
+          50%     { box-shadow: 0 0 0 6px rgba(74,184,122,0.15); }
         }
-        .confirm-pop { animation: confirmPop 350ms ease-out; }
+        .confirm-anim { animation: confirmPulse 600ms ease-out; }
       `}</style>
 
       <div className="space-y-8">
 
-        {/* ── Header ────────────────────────────────────────────────────── */}
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="cia-page-header">
           <p className="cia-page-header__eyebrow">Esportivo</p>
           <h1 className="cia-page-header__title">Escala de Delegados</h1>
           <p className="cia-page-header__subtitle">
             {isCoord
-              ? 'Atribua delegados a cada praça por dia. O delegado recebe notificação e confirma a chegada pelo app.'
+              ? 'Atribua delegados a cada praça por dia — o delegado recebe notificação e confirma chegada pelo app.'
               : 'Sua escala para o evento. Confirme a chegada quando chegar à praça.'}
           </p>
         </div>
@@ -359,59 +332,51 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
         {/* ── Minha Escala ───────────────────────────────────────────────── */}
         {minhasEscalas.length > 0 && (
           <section className="space-y-3">
-            <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60">
-              <UserCheck className="h-3.5 w-3.5" />
-              Minha Escala
+            <h2 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60">
+              <UserCheck className="h-3.5 w-3.5" /> Minha Escala
             </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {minhasEscalas.map(e => {
                 const dia   = dias.find(d => d.id === e.dia_id)
                 const setor = setores.find(s => s.id === e.setor_id)
                 const isConfirming = confirmingId === e.id
-                const justConfirmed = confirmedId === e.id
                 return (
                   <div
                     key={e.id}
-                    className={`relative overflow-hidden rounded-2xl border p-5 transition-all duration-300 ${
-                      justConfirmed ? 'confirm-pop' : ''
+                    className={`relative overflow-hidden rounded-2xl border p-5 transition-all ${
+                      confirmedId === e.id ? 'confirm-anim' : ''
                     } ${
                       e.confirmado_em
                         ? 'border-[var(--green-bright)]/25 bg-[var(--green-dim)]/8'
                         : 'border-amber-500/25 bg-amber-500/4'
                     }`}
                   >
-                    {/* Top accent bar */}
                     <div className={`absolute inset-x-0 top-0 h-0.5 ${
-                      e.confirmado_em ? 'bg-gradient-to-r from-transparent via-[var(--green-bright)]/60 to-transparent' : 'bg-gradient-to-r from-transparent via-amber-400/50 to-transparent'
+                      e.confirmado_em
+                        ? 'bg-gradient-to-r from-transparent via-[var(--green-bright)]/50 to-transparent'
+                        : 'bg-gradient-to-r from-transparent via-amber-400/40 to-transparent'
                     }`} />
 
-                    <div className="mb-4">
-                      {/* Dia */}
-                      <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/50">
-                        {dia?.nome_dia ?? '—'}
-                      </p>
-                      {/* Setor — hierarquia principal */}
-                      <p className="flex items-center gap-2 text-base font-bold text-[var(--foreground)] leading-tight">
-                        <MapPin className="h-4 w-4 shrink-0 text-[var(--green-bright)]" />
-                        {setor?.nome ?? '—'}
-                      </p>
-                    </div>
+                    <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/50">
+                      {dia?.nome_dia ?? '—'}
+                    </p>
+                    <p className="mb-4 flex items-center gap-1.5 text-base font-bold text-[var(--foreground)]">
+                      <MapPin className="h-4 w-4 shrink-0 text-[var(--green-bright)]" />
+                      {setor?.nome ?? '—'}
+                    </p>
 
                     {e.confirmado_em ? (
                       <div className="flex items-center gap-2 text-xs font-semibold text-[var(--green-bright)]">
-                        <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        <span>Confirmado às {fmtConfirmado(e.confirmado_em)}</span>
+                        <CheckCircle2 className="h-4 w-4" />
+                        Confirmado às {fmtHora(e.confirmado_em)}
                       </div>
                     ) : (
                       <button
                         onClick={() => handleConfirmar(e.id)}
                         disabled={isPending || !!isConfirming}
-                        className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-2.5 text-sm font-semibold text-amber-400 transition-all hover:bg-amber-500/15 hover:border-amber-400/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 text-sm font-semibold text-amber-400 transition-all hover:bg-amber-500/15 active:scale-95 disabled:opacity-50"
                       >
-                        {isConfirming
-                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : <UserCheck className="h-4 w-4" />
-                        }
+                        {isConfirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
                         {isConfirming ? 'Confirmando…' : 'Confirmar chegada'}
                       </button>
                     )}
@@ -424,31 +389,42 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
 
         {/* ── Grade (coord/admin) ────────────────────────────────────────── */}
         {isCoord && (
-          <section className="space-y-4">
+          <section className="space-y-5">
 
-            {/* Título + stats */}
+            {/* Topo: título + stats + busca */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60">
-                <Users className="h-3.5 w-3.5" />
-                Grade de Delegados
-                {isPending && <Loader2 className="h-3 w-3 animate-spin" />}
-              </h2>
-              {/* Cobertura do dia ativo */}
-              <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)]/60">
-                <span>
-                  <span className={`font-bold tabular-nums ${
-                    setoresComDelegado === setores.length ? 'text-[var(--green-bright)]' : 'text-[var(--foreground)]'
-                  }`}>{setoresComDelegado}</span>
-                  /{setores.length} com delegado
-                </span>
-                {setoresComDelegado > 0 && (
-                  <>
-                    <span className="text-[var(--border)]">·</span>
-                    <span>
-                      <span className="font-bold tabular-nums text-[var(--green-bright)]">{setoresConfirmados}</span>
-                      /{setoresComDelegado} confirmados
-                    </span>
-                  </>
+              <div className="flex items-center gap-3">
+                <h2 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60">
+                  <Users className="h-3.5 w-3.5" />
+                  Grade de Delegados
+                  {isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+                </h2>
+                {/* Stats do dia ativo */}
+                <div className="flex items-center gap-2 text-[10px] text-[var(--muted-foreground)]/50">
+                  <span className={`font-bold tabular-nums ${setoresComDelegado === setores.length ? 'text-[var(--green-bright)]' : 'text-[var(--foreground)]'}`}>
+                    {setoresComDelegado}
+                  </span>/{setores.length} preenchidas
+                  {setoresComDelegado > 0 && (
+                    <>
+                      <span>·</span>
+                      <span className="font-bold tabular-nums text-[var(--green-bright)]">{setoresConfirmados}</span> confirmadas
+                    </>
+                  )}
+                </div>
+              </div>
+              {/* Busca */}
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)]/60 px-3 py-2 text-xs">
+                <Search className="h-3.5 w-3.5 text-[var(--muted-foreground)]/40" />
+                <input
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  placeholder="Filtrar praças…"
+                  className="w-36 bg-transparent text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/40 outline-none"
+                />
+                {busca && (
+                  <button onClick={() => setBusca('')} className="text-[var(--muted-foreground)]/40 hover:text-[var(--foreground)]">
+                    <X className="h-3 w-3" />
+                  </button>
                 )}
               </div>
             </div>
@@ -462,7 +438,7 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
                   <button
                     key={dia.id}
                     onClick={() => setDiaAtivo(dia.id)}
-                    className={`relative flex min-h-[40px] items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+                    className={`flex min-h-[40px] items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
                       isAtivo
                         ? 'border-[var(--green-bright)]/35 bg-[var(--green-dim)]/15 text-[var(--green-bright)]'
                         : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]/50 hover:text-[var(--foreground)]'
@@ -472,108 +448,48 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, i
                     {count > 0 && (
                       <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${
                         isAtivo ? 'bg-[var(--green-bright)]/20 text-[var(--green-bright)]' : 'bg-[var(--border)]/60 text-[var(--muted-foreground)]'
-                      }`}>
-                        {count}
-                      </span>
+                      }`}>{count}</span>
                     )}
                   </button>
                 )
               })}
             </div>
 
-            {/* Tabela */}
-            {diaAtivoData && setores.length > 0 && (
-              <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--card)]/30">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--border)]">
-                      <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/50 w-48">
-                        Praça esportiva
-                      </th>
-                      <th className="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/50">
-                        Delegados — {diaAtivoData.nome_dia}
-                      </th>
-                      <th className="px-5 py-3.5 text-right text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/50 w-36">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {setores.map((setor, i) => {
-                      const cell = getCell(setor.id, diaAtivo)
-                      const confirmed = cell.filter(e => e.confirmado_em).length
-                      const isEmpty = cell.length === 0
-                      return (
-                        <tr
-                          key={setor.id}
-                          className={`border-b border-[var(--border)]/30 last:border-0 transition-colors ${
-                            i % 2 === 1 ? 'bg-[var(--card)]/15' : ''
-                          } hover:bg-[var(--green-dim)]/4`}
-                        >
-                          <td className="px-5 py-3">
-                            <span className="flex items-center gap-2 font-semibold text-[var(--foreground)]">
-                              <MapPin className="h-3.5 w-3.5 shrink-0 text-[var(--green-bright)]/50" />
-                              {setor.nome}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3">
-                            <EscalaCell
-                              setorId={setor.id}
-                              diaId={diaAtivo}
-                              escalasCell={cell}
-                              perfis={perfis}
-                              isCoord={isCoord}
-                              userId={userId}
-                              onAdd={handleAdd}
-                              onRemove={handleRemoveRequest}
-                            />
-                          </td>
-                          <td className="px-5 py-3 text-right">
-                            {isEmpty ? (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/5 px-2.5 py-0.5 text-[10px] font-semibold text-amber-500/60">
-                                Vazio
-                              </span>
-                            ) : confirmed === cell.length ? (
-                              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--green-bright)]/25 bg-[var(--green-dim)]/15 px-2.5 py-0.5 text-[10px] font-semibold text-[var(--green-bright)]">
-                                <CheckCircle2 className="h-2.5 w-2.5" />
-                                {confirmed}/{cell.length}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-semibold text-[var(--muted-foreground)]/60 tabular-nums">
-                                {confirmed}/{cell.length}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+            {/* Cards grid */}
+            {setoresFiltrados.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {setoresFiltrados.map(setor => (
+                  <SetorCard
+                    key={setor.id}
+                    setor={setor}
+                    diaId={diaAtivo}
+                    escalasCell={getCell(setor.id, diaAtivo)}
+                    perfis={perfis}
+                    isCoord={isCoord}
+                    userId={userId}
+                    onAdd={handleAdd}
+                    onRemove={(id, nome) => setRemoveDialog({ id, nome })}
+                  />
+                ))}
               </div>
-            )}
-
-            {setores.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-[var(--border)] p-12 text-center">
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[var(--border)] p-10 text-center">
                 <p className="text-sm text-[var(--muted-foreground)]">
-                  Nenhum setor cadastrado. Adicione em <span className="font-mono text-xs">/admin/competicao</span>.
+                  Nenhuma praça encontrada para "<span className="font-medium">{busca}</span>"
                 </p>
               </div>
             )}
           </section>
         )}
 
-        {/* Empty state operador sem escala */}
+        {/* Empty state operador */}
         {!isCoord && minhasEscalas.length === 0 && (
           <div className="rounded-2xl border border-dashed border-[var(--border)] p-16 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)]/60">
               <MapPin className="h-6 w-6 text-[var(--muted-foreground)]/20" />
             </div>
-            <p className="text-sm font-medium text-[var(--muted-foreground)]">
-              Você ainda não foi escalado.
-            </p>
-            <p className="mt-1 text-xs text-[var(--muted-foreground)]/50">
-              O coordenador esportivo vai te atribuir em breve.
-            </p>
+            <p className="text-sm font-medium text-[var(--muted-foreground)]">Você ainda não foi escalado.</p>
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]/50">O coordenador esportivo vai te atribuir em breve.</p>
           </div>
         )}
       </div>

@@ -115,15 +115,23 @@ export function PatrocinadorCard({
               <span className="truncate">{p.contato_email}</span>
             </a>
           )}
-          {p.contato_telefone && (
-            <a
-              href={`tel:${p.contato_telefone.replace(/\D/g, '')}`}
-              className="flex items-center gap-1.5 transition-colors hover:text-[var(--green-bright)]"
-            >
-              <Phone className="h-3 w-3 shrink-0" />
-              <span>{p.contato_telefone}</span>
-            </a>
-          )}
+          {p.contato_telefone && (() => {
+            const tel = p.contato_telefone.replace(/\D/g, '')
+            // Se sobrou só lixo (sem dígitos), mostra como span sem link
+            const Wrapper = tel.length >= 8 ? 'a' : 'span'
+            const wrapperProps = tel.length >= 8
+              ? { href: `tel:${tel}` }
+              : {}
+            return (
+              <Wrapper
+                {...wrapperProps}
+                className="flex items-center gap-1.5 transition-colors hover:text-[var(--green-bright)]"
+              >
+                <Phone className="h-3 w-3 shrink-0" />
+                <span>{p.contato_telefone}</span>
+              </Wrapper>
+            )
+          })()}
         </div>
       )}
 

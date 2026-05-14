@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   CheckCircle2, MapPin, Clock, Plus, X, UserCheck,
@@ -141,7 +141,7 @@ function UserPicker({ perfis, onSelect, onClose }: {
 
 // ── Setor Card ────────────────────────────────────────────────────────────────
 
-function SetorCard({ setor, diaId, escalasCell, jogosCell, perfis, isCoord, userId, onAdd, onRemove }: {
+function SetorCard({ setor, diaId, escalasCell, jogosCell, perfis, isCoord, userId, highlighted, onAdd, onRemove }: {
   setor: Setor
   diaId: string
   escalasCell: Escala[]
@@ -149,11 +149,12 @@ function SetorCard({ setor, diaId, escalasCell, jogosCell, perfis, isCoord, user
   perfis: Perfil[]
   isCoord: boolean
   userId: string
+  highlighted: boolean
   onAdd: (setorId: string, diaId: string, userId: string) => void
   onRemove: (escalaId: string, nome: string) => void
 }) {
   const [picking, setPicking] = useState(false)
-  const [expandJogos, setExpandJogos] = useState(false)
+  const [expandJogos, setExpandJogos] = useState(highlighted) // já expande se vier por deep-link
   const assignedIds = new Set(escalasCell.map(e => e.user_id))
   const available = perfis.filter(p => !assignedIds.has(p.id))
   const confirmed = escalasCell.filter(e => e.confirmado_em).length
@@ -163,13 +164,18 @@ function SetorCard({ setor, diaId, escalasCell, jogosCell, perfis, isCoord, user
   const aoVivoCount = jogosCell.filter(j => j.status === 'ao_vivo').length
 
   return (
-    <div className={`relative flex flex-col gap-3 rounded-2xl border p-4 transition-all ${
-      allConfirmed
-        ? 'border-[var(--green-bright)]/20 bg-[var(--green-dim)]/6'
-        : isEmpty
-        ? 'border-[var(--border)]/60 bg-[var(--card)]/30'
-        : 'border-[var(--border)] bg-[var(--card)]/50'
-    }`}>
+    <div
+      id={`setor-${setor.id}`}
+      className={`relative flex flex-col gap-3 rounded-2xl border p-4 transition-all scroll-mt-24 ${
+        highlighted
+          ? 'border-[var(--green-bright)]/60 bg-[var(--green-dim)]/15 shadow-[0_0_24px_rgba(74,138,92,0.18)] ring-2 ring-[var(--green-bright)]/40'
+          : allConfirmed
+          ? 'border-[var(--green-bright)]/20 bg-[var(--green-dim)]/6'
+          : isEmpty
+          ? 'border-[var(--border)]/60 bg-[var(--card)]/30'
+          : 'border-[var(--border)] bg-[var(--card)]/50'
+      }`}
+    >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <p className="flex items-center gap-1.5 text-[11px] font-semibold leading-tight text-[var(--foreground)]">
@@ -321,16 +327,41 @@ function SetorCard({ setor, diaId, escalasCell, jogosCell, perfis, isCoord, user
 
 export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, jogos, isCoord, userId }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [escalas, setEscalas] = useState<Escala[]>(initialEscalas)
   const [isPending, startTransition] = useTransition()
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [confirmedId, setConfirmedId] = useState<string | null>(null)
   const [removeDialog, setRemoveDialog] = useState<{ id: string; nome: string } | null>(null)
   const [busca, setBusca] = useState('')
+  const [highlightedSetorId, setHighlightedSetorId] = useState<string | null>(null)
 
+  // Honra ?dia=<uuid> da URL (deep-link de outras seções)
+  const diaFromUrl = searchParams.get('dia')
   const hoje = new Date().toISOString().slice(0, 10)
-  const defaultDia = dias.find(d => d.data >= hoje)?.id ?? dias[0]?.id ?? ''
+  const defaultDia = (diaFromUrl && dias.some(d => d.id === diaFromUrl))
+    ? diaFromUrl
+    : (dias.find(d => d.data >= hoje)?.id ?? dias[0]?.id ?? '')
   const [diaAtivo, setDiaAtivo] = useState(defaultDia)
+
+  // Deep-link: #setor-<id> → scroll + highlight + filtra busca pra encontrar
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const hash = window.location.hash
+    const match = /^#setor-([0-9a-f-]+)$/i.exec(hash)
+    if (!match) return
+    const setorId = match[1]
+    // Limpa busca pra garantir que o setor seja renderizado
+    setBusca('')
+    setHighlightedSetorId(setorId)
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`setor-${setorId}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Remove highlight após 4s (mais lento que jogo pra dar tempo de ler)
+      setTimeout(() => setHighlightedSetorId(null), 4000)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [])
 
   function getCell(setorId: string, diaId: string) {
     return escalas.filter(e => e.setor_id === setorId && e.dia_id === diaId)
@@ -588,6 +619,7 @@ export function EscalaClient({ setores, dias, escalas: initialEscalas, perfis, j
                     perfis={perfis}
                     isCoord={isCoord}
                     userId={userId}
+                    highlighted={highlightedSetorId === setor.id}
                     onAdd={handleAdd}
                     onRemove={(id, nome) => setRemoveDialog({ id, nome })}
                   />

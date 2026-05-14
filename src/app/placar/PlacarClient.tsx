@@ -28,6 +28,8 @@ interface Jogo {
   /** W.O. — Art. 58-65. 'a'=A não compareceu, 'b'=B, 'duplo'=ambas. */
   wo: 'a' | 'b' | 'duplo' | null
   inicio: string | null
+  dia_id?: string
+  setor_id?: string | null
   divisao: string | null
   fase: string | null
   categoria: string | null
@@ -339,7 +341,17 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
         {jogo.setor && (
           <>
             <span>·</span>
-            <span>{jogo.setor.nome}</span>
+            {jogo.setor_id ? (
+              <Link
+                href={`/esportivo/escala?dia=${jogo.dia_id ?? ''}#setor-${jogo.setor_id}`}
+                className="inline-flex items-center gap-0.5 underline decoration-dotted decoration-[var(--muted-foreground)]/30 underline-offset-2 transition-colors hover:text-[var(--green-bright)] hover:decoration-[var(--green-bright)]/60"
+                title="Ver delegado e jogos desta praça"
+              >
+                {jogo.setor.nome}
+              </Link>
+            ) : (
+              <span>{jogo.setor.nome}</span>
+            )}
           </>
         )}
 

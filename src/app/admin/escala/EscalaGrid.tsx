@@ -43,11 +43,13 @@ const FUNCOES = [
   { value: 'lider_cobertura',   label: 'Líder de Cobertura' },
 ]
 
-// Shift templates
+// Shift templates — todos blocos de 12h (1 dia completo de cobertura = 2 turnos)
+// Defasados a cada 4h pra cobrir diferentes janelas operacionais.
 const SHIFTS = [
-  { label: 'Diurno', inicio: '08:00', fim: '20:00', color: 'bg-[var(--gold)]/20 border-[var(--gold)]/40 text-[var(--gold-dark)]' },
-  { label: 'Tarde', inicio: '12:00', fim: '20:00', color: 'bg-blue-50 border-blue-200 text-blue-700' },
-  { label: 'Noturno', inicio: '20:00', fim: '08:00+1', color: 'bg-purple-50 border-purple-200 text-purple-700' },
+  { label: 'Diurno',      inicio: '08:00', fim: '20:00',   color: 'bg-amber-50 border-amber-200 text-amber-700' },
+  { label: 'Tarde-Noite', inicio: '12:00', fim: '00:00+1', color: 'bg-blue-50 border-blue-200 text-blue-700' },
+  { label: 'Noite',       inicio: '14:00', fim: '02:00+1', color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+  { label: 'Noturno',     inicio: '20:00', fim: '08:00+1', color: 'bg-purple-50 border-purple-200 text-purple-700' },
 ]
 
 function shiftLabel(inicio: string, fim: string): string {
@@ -124,7 +126,9 @@ function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, def
 
   const [funcao, setFuncao] = React.useState(editing?.funcao ?? defaultFuncao ?? 'foto')
   const [setorId, setSetorId] = React.useState(editing?.setor_id ?? defaultSetorId ?? '')
-  const [shift, setShift] = React.useState(0) // index into SHIFTS
+  const [shift, setShift] = React.useState<number | 'custom'>(0) // index into SHIFTS ou 'custom'
+  const [customInicio, setCustomInicio] = React.useState('08:00')
+  const [customFim, setCustomFim] = React.useState('20:00')
   const [userId, setUserId] = React.useState(editing?.user_id ?? '')
   const [nomePessoa, setNomePessoa] = React.useState(editing?.nome_pessoa ?? '')
   const [isRoaming, setIsRoaming] = React.useState(editing?.is_roaming ?? false)
@@ -141,6 +145,30 @@ function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, def
       setNomePessoa(editing?.nome_pessoa ?? '')
       setIsRoaming(editing?.is_roaming ?? false)
       setObs(editing?.observacoes ?? '')
+
+      // Detect shift: se editando, tenta casar com preset; senão fallback pra custom
+      if (editing) {
+        const iniHHMM = new Date(editing.inicio).toLocaleTimeString('pt-BR', {
+          hour: '2-digit', minute: '2-digit', hour12: false,
+        })
+        const fimHHMM = new Date(editing.fim).toLocaleTimeString('pt-BR', {
+          hour: '2-digit', minute: '2-digit', hour12: false,
+        })
+        const matchIdx = SHIFTS.findIndex(s =>
+          s.inicio === iniHHMM && s.fim.replace('+1', '') === fimHHMM
+        )
+        if (matchIdx >= 0) {
+          setShift(matchIdx)
+        } else {
+          setShift('custom')
+          setCustomInicio(iniHHMM)
+          setCustomFim(fimHHMM)
+        }
+      } else {
+        setShift(0)
+        setCustomInicio('08:00')
+        setCustomFim('20:00')
+      }
     }
   }, [open, editing, defaultFuncao, defaultSetorId])
 
@@ -148,11 +176,31 @@ function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, def
     setLoading(true)
     setError(null)
     try {
-      const s = SHIFTS[shift]
-      const isNight = s.fim.includes('+1')
-      const finHHMM = s.fim.replace('+1', '')
-      const inicio = buildTimestamp(dia.data, s.inicio)
-      const fim = buildTimestamp(dia.data, finHHMM, isNight)
+      // Resolve inicio/fim: preset ou custom
+      let inicioHHMM: string
+      let fimHHMM: string
+      let nextDay: boolean
+
+      if (shift === 'custom') {
+        if (!customInicio || !customFim) {
+          setError('Horários inválidos.')
+          return
+        }
+        inicioHHMM = customInicio
+        fimHHMM = customFim
+        // Se fim ≤ inicio (em horas), considera virada de dia
+        const [ih, im] = customInicio.split(':').map(Number)
+        const [fh, fm] = customFim.split(':').map(Number)
+        nextDay = fh * 60 + fm <= ih * 60 + im
+      } else {
+        const s = SHIFTS[shift]
+        nextDay = s.fim.includes('+1')
+        inicioHHMM = s.inicio
+        fimHHMM = s.fim.replace('+1', '')
+      }
+
+      const inicio = buildTimestamp(dia.data, inicioHHMM)
+      const fim    = buildTimestamp(dia.data, fimHHMM, nextDay)
 
       const payload: TurnoPayload = {
         dia_id: dia.id,
@@ -191,22 +239,77 @@ function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, def
           {/* Shift */}
           <div>
             <Label className="mb-1.5 block text-xs">Turno</Label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {SHIFTS.map((s, i) => (
                 <button
                   key={s.label}
                   type="button"
                   onClick={() => setShift(i)}
                   className={cn(
-                    'flex-1 rounded-md border px-3 py-2 text-xs font-medium transition-colors',
+                    'rounded-md border px-2.5 py-2 text-[11px] font-medium transition-colors text-left',
                     shift === i ? s.color : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]',
                   )}
                 >
-                  <div>{s.label}</div>
-                  <div className="opacity-70">{s.inicio}–{s.fim.replace('+1', '')}</div>
+                  <div className="font-semibold">{s.label}</div>
+                  <div className="opacity-70 text-[10px] tabular-nums">{s.inicio}–{s.fim.replace('+1', '')}</div>
                 </button>
               ))}
+              {/* Custom — modo "personalizado" */}
+              <button
+                type="button"
+                onClick={() => setShift('custom')}
+                className={cn(
+                  'rounded-md border border-dashed px-2.5 py-2 text-[11px] font-medium transition-colors text-left',
+                  shift === 'custom'
+                    ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/10 text-[var(--green-bright)]'
+                    : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]',
+                )}
+              >
+                <div className="font-semibold">Personalizado</div>
+                <div className="opacity-70 text-[10px]">defina horário</div>
+              </button>
             </div>
+            {/* Inputs custom — só quando "Personalizado" está selecionado */}
+            {shift === 'custom' && (
+              <div className="mt-3 flex items-center gap-2">
+                <div className="flex-1">
+                  <Label htmlFor="custom-inicio" className="mb-1 block text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">Início</Label>
+                  <input
+                    id="custom-inicio"
+                    type="time"
+                    value={customInicio}
+                    onChange={e => setCustomInicio(e.target.value)}
+                    className="w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-sm tabular-nums focus:border-[var(--green-bright)] focus:outline-none"
+                  />
+                </div>
+                <span className="mt-5 text-[var(--muted-foreground)]">–</span>
+                <div className="flex-1">
+                  <Label htmlFor="custom-fim" className="mb-1 block text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">Fim</Label>
+                  <input
+                    id="custom-fim"
+                    type="time"
+                    value={customFim}
+                    onChange={e => setCustomFim(e.target.value)}
+                    className="w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1.5 text-sm tabular-nums focus:border-[var(--green-bright)] focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+            {shift === 'custom' && (() => {
+              const [ih, im] = customInicio.split(':').map(Number)
+              const [fh, fm] = customFim.split(':').map(Number)
+              const startMin = ih * 60 + im
+              const endMin = fh * 60 + fm
+              const totalMin = endMin <= startMin ? (endMin + 24 * 60 - startMin) : (endMin - startMin)
+              const h = Math.floor(totalMin / 60)
+              const m = totalMin % 60
+              return (
+                <p className="mt-1.5 text-[10px] text-[var(--muted-foreground)]">
+                  Duração: <span className="font-semibold tabular-nums">{h}h{m > 0 ? `${m}m` : ''}</span>
+                  {endMin <= startMin && <span className="ml-1.5 text-amber-600">· vira o dia</span>}
+                </p>
+              )
+            })()}
           </div>
 
           {/* Funcao + Setor */}
@@ -421,21 +524,21 @@ export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps)
         </div>
       )}
 
-      {/* Summary: total people per shift */}
-      <div className="mx-6 mt-4 flex gap-4">
+      {/* Summary: total people per shift — match por hora de início aproximada */}
+      <div className="mx-6 mt-4 flex flex-wrap gap-2 items-center">
         {SHIFTS.map((s) => {
+          const startH = parseInt(s.inicio.split(':')[0], 10)
+          // Window de match: turnos cujo início cai numa janela de ±2h do preset
           const count = turnosByDia.filter((t) => {
             const h = new Date(t.inicio).getHours()
-            if (s.label === 'Diurno') return h >= 8 && h < 12
-            if (s.label === 'Tarde') return h >= 12 && h < 20
-            return h >= 20 || h < 8
+            const diff = Math.min(Math.abs(h - startH), 24 - Math.abs(h - startH))
+            return diff <= 1
           }).length
           return (
-            <div key={s.label} className={cn('rounded-md border px-4 py-2 text-xs', s.color)}>
+            <div key={s.label} className={cn('rounded-md border px-3 py-1.5 text-[11px]', s.color)}>
               <span className="font-semibold">{s.label}</span>
-              <span className="ml-2 opacity-70">{s.inicio}–{s.fim.replace('+1', '')}</span>
-              <span className="ml-3 font-bold">{count}</span>
-              <span className="ml-1 opacity-70">pessoas</span>
+              <span className="ml-1.5 opacity-70 tabular-nums">{s.inicio}–{s.fim.replace('+1', '')}</span>
+              <span className="ml-2 font-bold tabular-nums">{count}</span>
             </div>
           )
         })}

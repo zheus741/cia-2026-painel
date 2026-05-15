@@ -50,7 +50,12 @@ export interface CurrentProfile {
   funcao_principal:  string | null
   telefone:          string | null
   bio:               string | null
+  /** Gate de aprovação: false = aguardando admin/coord liberar acesso */
+  aprovado:          boolean
 }
+
+/** Roles que podem aprovar novos usuários */
+export const ROLES_APROVADORES = ['admin', 'coordenacao', 'coordenador_esportivo'] as const
 
 // Fetcher cacheado cross-request: persiste por 30s, key = user id.
 // Usa service client para não depender do cookie de sessão neste contexto.
@@ -60,7 +65,7 @@ function makeCachedProfileFetch(userId: string) {
       const supabase = createServiceClient()
       const { data } = await supabase
         .from('profiles')
-        .select('id, nome, email, foto_url, role, funcao_principal, telefone, bio')
+        .select('id, nome, email, foto_url, role, funcao_principal, telefone, bio, aprovado')
         .eq('id', userId)
         .maybeSingle()
       return (data ?? null) as CurrentProfile | null

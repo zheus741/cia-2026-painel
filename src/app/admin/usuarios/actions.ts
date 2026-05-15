@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireCoordOrAdmin } from '@/lib/admin/actions-helper'
+import { requireProfile, ROLES_APROVADORES } from '@/lib/auth/current-user'
+import { enviarNotif } from '@/lib/notif'
 
 const VALID_ROLES    = ['admin', 'coordenacao', 'lider_area', 'operador', 'coordenador_esportivo', 'operador_esportivo'] as const
 const VALID_FUNCOES  = ['foto', 'video', 'editor', 'design', 'coordenacao', 'storymaker', 'lider_cobertura', null] as const
@@ -54,4 +56,86 @@ export async function updateUsuario() {
 }
 export async function deleteUsuario() {
   return { ok: false as const, error: 'Desative o usuário em vez de excluir.' }
+}
+
+// ── Aprovação de novos usuários ──────────────────────────────────────────────
+
+interface AprovacaoPayload {
+  role:    string
+  funcao:  string | null
+}
+
+/**
+ * Aprova um usuário pendente, atribuindo role e função.
+ * Só admin, coordenação ou coord. esportivo podem aprovar.
+ */
+export async function aprovarUsuario(
+  userId: string,
+  payload: AprovacaoPayload,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const approver = await requireProfile()
+    if (!ROLES_APROVADORES.includes(approver.role as 'admin' | 'coordenacao' | 'coordenador_esportivo')) {
+      return { ok: false, error: 'Sem permissão pra aprovar.' }
+    }
+
+    if (!VALID_ROLES.includes(payload.role as ValidRole)) {
+      return { ok: false, error: 'Role inválido.' }
+    }
+    if (payload.funcao !== null && !VALID_FUNCOES.includes(payload.funcao as ValidFuncao)) {
+      return { ok: false, error: 'Função inválida.' }
+    }
+
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        aprovado:         true,
+        aprovado_em:      new Date().toISOString(),
+        aprovado_por:     approver.id,
+        role:             payload.role,
+        funcao_principal: payload.funcao,
+      })
+      .eq('id', userId)
+    if (error) return { ok: false, error: error.message }
+
+    // Notifica o usuário aprovado
+    await enviarNotif({
+      userId,
+      titulo: '✅ Seu acesso foi liberado!',
+      corpo:  `Você foi aprovado como ${payload.role}. Já pode acessar o painel.`,
+      tipo:   'sistema',
+      link:   '/',
+    }).catch(() => { /* best-effort */ })
+
+    revalidatePath('/admin/usuarios')
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Erro ao aprovar' }
+  }
+}
+
+/**
+ * Recusa um usuário pendente (desativa). Mantém o registro pra histórico.
+ */
+export async function recusarUsuario(userId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const approver = await requireProfile()
+    if (!ROLES_APROVADORES.includes(approver.role as 'admin' | 'coordenacao' | 'coordenador_esportivo')) {
+      return { ok: false, error: 'Sem permissão pra recusar.' }
+    }
+
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('profiles')
+      .update({ ativo: false })
+      .eq('id', userId)
+      .eq('aprovado', false)  // só desativa quem ainda não foi aprovado
+    if (error) return { ok: false, error: error.message }
+
+    revalidatePath('/admin/usuarios')
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Erro ao recusar' }
+  }
 }

@@ -5,7 +5,9 @@ export default async function UsuariosPage() {
   const supabase = await createClient()
   const { data } = await supabase
     .from('profiles')
-    .select('id, nome, email, telefone, role, funcao_principal, foto_url, ativo, criado_em')
+    .select('id, nome, email, telefone, role, funcao_principal, foto_url, ativo, criado_em, aprovado')
+    // Pendentes primeiro (aprovado=false), depois ordem alfabética
+    .order('aprovado', { ascending: true })
     .order('nome')
 
   return (

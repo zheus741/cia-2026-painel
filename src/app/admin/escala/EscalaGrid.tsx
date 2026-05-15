@@ -11,11 +11,12 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { createTurno, updateTurno, deleteTurno, type TurnoPayload } from './actions'
+import { FiltrosEscala } from './FiltrosEscala'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface Dia { id: string; nome_dia: string; data: string }
-export interface Setor { id: string; nome: string }
+export interface Setor { id: string; nome: string; tipo?: string | null }
 export interface Profile { id: string; nome: string; funcao_principal: string | null }
 export interface Turno {
   id: string
@@ -205,10 +206,10 @@ function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, def
       const payload: TurnoPayload = {
         dia_id: dia.id,
         funcao,
-        setor_id: setorId || null,
+        setor_id: (setorId && setorId !== '__none__') ? setorId : null,
         inicio,
         fim,
-        user_id: userId || null,
+        user_id: (userId && userId !== '__none__') ? userId : null,
         nome_pessoa: nomePessoa || null,
         is_roaming: isRoaming,
         observacoes: obs || null,
@@ -412,8 +413,28 @@ interface EscalaGridProps {
 export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps) {
   const router = useRouter()
   const [activeDia, setActiveDia] = React.useState(0)
-  const [filterSetorId, setFilterSetorId] = React.useState<string>('all')
-  const [filterFuncao, setFilterFuncao] = React.useState<string>('all')
+  // Multi-select: vazio = todos. Set contém ids de setores selecionados.
+  const [filterSetorIds, setFilterSetorIds] = React.useState<Set<string>>(new Set())
+  const [filterFuncoes, setFilterFuncoes]   = React.useState<Set<string>>(new Set())
+
+  function toggleSetor(id: string) {
+    setFilterSetorIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+  function toggleFuncao(value: string) {
+    setFilterFuncoes(prev => {
+      const next = new Set(prev)
+      if (next.has(value)) next.delete(value); else next.add(value)
+      return next
+    })
+  }
+  function clearAllFilters() {
+    setFilterSetorIds(new Set())
+    setFilterFuncoes(new Set())
+  }
   const [dialog, setDialog] = React.useState<{
     open: boolean
     dia?: Dia
@@ -473,19 +494,29 @@ export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps)
     )
   }
 
+  // Separa setores em 2 núcleos:
+  //  - Praças Esportivas: vêm da planilha de jogos (tipo = 'esportivo')
+  //  - Festivos: cadastrados separadamente (festa, palco, apoio, outros)
+  const setoresEsportivos = setores.filter(s => s.tipo === 'esportivo')
+  const setoresFestivos   = setores.filter(s => s.tipo !== 'esportivo')
+
+  // Lista completa pra renderizar colunas da grid (inclui Roaming e Sem setor)
   const allSetores = [
-    { id: '__roaming__', nome: 'Roaming' },
+    { id: '__roaming__',   nome: 'Roaming',   tipo: null },
     ...setores,
-    { id: '__sem_setor__', nome: 'Sem setor' },
+    { id: '__sem_setor__', nome: 'Sem setor', tipo: null },
   ]
 
-  // Setores e funções visíveis após filtros
-  const visibleSetores = filterSetorId === 'all'
-    ? allSetores
-    : allSetores.filter(s => s.id === filterSetorId)
-  const visibleFuncoes = filterFuncao === 'all'
-    ? FUNCOES
-    : FUNCOES.filter(f => f.value === filterFuncao)
+  // Setores e funções visíveis após filtros (multi-select).
+  // Sem nenhum selecionado = mostra TODOS.
+  const hasSetorFilter  = filterSetorIds.size > 0
+  const hasFuncaoFilter = filterFuncoes.size > 0
+  const visibleSetores  = hasSetorFilter
+    ? allSetores.filter(s => filterSetorIds.has(s.id))
+    : allSetores
+  const visibleFuncoes  = hasFuncaoFilter
+    ? FUNCOES.filter(f => filterFuncoes.has(f.value))
+    : FUNCOES
 
   if (!dia) {
     return (
@@ -553,107 +584,19 @@ export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps)
         </div>
       </div>
 
-      {/* ── Filtros: praça (setor) + função ─────────────────────────────── */}
-      <div className="mx-6 mt-4 space-y-2">
-        {/* Filtro de praças */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60 w-16">
-            Praça
-          </span>
-          <button
-            onClick={() => setFilterSetorId('all')}
-            className={cn(
-              'rounded-full border px-3 py-1 text-[11px] font-semibold transition-all',
-              filterSetorId === 'all'
-                ? 'border-[var(--foreground)] bg-[var(--foreground)] text-white'
-                : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)]/40',
-            )}
-          >
-            Todas
-          </button>
-          {allSetores.map(s => {
-            const count = turnosByDia.filter(t => {
-              if (s.id === '__roaming__') return t.is_roaming
-              if (s.id === '__sem_setor__') return !t.setor_id && !t.is_roaming
-              return t.setor_id === s.id && !t.is_roaming
-            }).length
-            const active = filterSetorId === s.id
-            return (
-              <button
-                key={s.id}
-                onClick={() => setFilterSetorId(prev => prev === s.id ? 'all' : s.id)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all',
-                  active
-                    ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)]'
-                    : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]/50',
-                )}
-              >
-                {s.nome}
-                {count > 0 && (
-                  <span className={cn(
-                    'rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums',
-                    active ? 'bg-[var(--green-bright)]/20' : 'bg-[var(--border)]/40 text-[var(--muted-foreground)]',
-                  )}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-        {/* Filtro de funções */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60 w-16">
-            Função
-          </span>
-          <button
-            onClick={() => setFilterFuncao('all')}
-            className={cn(
-              'rounded-full border px-3 py-1 text-[11px] font-semibold transition-all',
-              filterFuncao === 'all'
-                ? 'border-[var(--foreground)] bg-[var(--foreground)] text-white'
-                : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--foreground)]/40',
-            )}
-          >
-            Todas
-          </button>
-          {FUNCOES.map(f => {
-            const count = turnosByDia.filter(t => t.funcao === f.value).length
-            const active = filterFuncao === f.value
-            return (
-              <button
-                key={f.value}
-                onClick={() => setFilterFuncao(prev => prev === f.value ? 'all' : f.value)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all',
-                  active
-                    ? 'border-amber-500/40 bg-amber-500/10 text-amber-700'
-                    : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-amber-500/50',
-                )}
-              >
-                {f.label}
-                {count > 0 && (
-                  <span className={cn(
-                    'rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums',
-                    active ? 'bg-amber-500/20' : 'bg-[var(--border)]/40 text-[var(--muted-foreground)]',
-                  )}>
-                    {count}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-        {(filterSetorId !== 'all' || filterFuncao !== 'all') && (
-          <button
-            onClick={() => { setFilterSetorId('all'); setFilterFuncao('all') }}
-            className="text-[10px] font-semibold text-[var(--muted-foreground)] underline hover:text-[var(--foreground)]"
-          >
-            Limpar filtros
-          </button>
-        )}
-      </div>
+      {/* ── Filtros: 2 núcleos (Praças Esportivas + Festivo) + Função ─────── */}
+      <FiltrosEscala
+        setoresEsportivos={setoresEsportivos}
+        setoresFestivos={setoresFestivos}
+        funcoes={FUNCOES}
+        turnosByDia={turnosByDia}
+        selectedSetorIds={filterSetorIds}
+        selectedFuncoes={filterFuncoes}
+        onToggleSetor={toggleSetor}
+        onToggleFuncao={toggleFuncao}
+        onClearAll={clearAllFilters}
+        hasAnyFilter={hasSetorFilter || hasFuncaoFilter}
+      />
 
       {/* Grid: funções × setores */}
       <div className="overflow-x-auto px-6 mt-4 pb-8">

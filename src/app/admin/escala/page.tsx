@@ -42,7 +42,7 @@ export default async function EscalaPage() {
 
       <EscalaGrid
         dias={dias as { id: string; nome_dia: string; data: string }[]}
-        setores={setores as { id: string; nome: string }[]}
+        setores={setores as { id: string; nome: string; tipo: string | null }[]}
         profiles={(profiles ?? []) as { id: string; nome: string; funcao_principal: string | null }[]}
         turnos={(turnos ?? []) as unknown as import('./EscalaGrid').Turno[]}
       />

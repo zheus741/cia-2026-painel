@@ -48,12 +48,12 @@ export const getCachedSetores = unstable_cache(
   async () => {
     const { data, error } = await admin()
       .from('setores')
-      .select('id, nome')
+      .select('id, nome, tipo')
       .order('nome')
     if (error) console.error('[cache/lookups] setores:', error.message)
-    return (data ?? []) as { id: string; nome: string }[]
+    return (data ?? []) as { id: string; nome: string; tipo: string | null }[]
   },
-  ['lookup-setores'],
+  ['lookup-setores-v2'],
   { tags: ['lookup-setores'], revalidate: 300 },
 )
 

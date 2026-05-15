@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/server'
 
@@ -306,6 +307,15 @@ export async function POST(req: NextRequest) {
       if (error) erros.push(error.message)
       else jogos_novos += batch.length
     }
+
+    // Invalida caches lookup pra que novos setores/modalidades apareçam
+    // imediatamente nos filtros (Escala, Esportivo Hub, etc.) sem esperar
+    // os 5min do TTL do unstable_cache.
+    // Next.js 16: revalidateTag exige 2 args (tag, profile). 'max' = invalida tudo.
+    if (setores_criados > 0)     revalidateTag('lookup-setores', 'max')
+    if (modalidades_criadas > 0) revalidateTag('lookup-modalidades', 'max')
+    // Cache de dias só revalida se algo mudou de fato (sempre seguro)
+    revalidateTag('lookup-dias', 'max')
 
     return NextResponse.json({
       ok: true,

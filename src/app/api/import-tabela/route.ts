@@ -283,12 +283,25 @@ export async function POST(req: NextRequest) {
       const key = `${inicio}|${g.equipe_a}|${g.equipe_b}`
       if (existingSet.has(key)) { jogos_existentes++; continue }
 
+      // Deriva categoria do código da modalidade (FF/HF/VF/VPF/BF/F7F = Feminino, resto = Masculino)
+      // Códigos terminados em 'F' ou contendo 'F' representam feminino, exceto 'FC' (Futebol de Campo)
+      const codeUpper = g.mod_code.toUpperCase()
+      let categoria: 'Masculino' | 'Feminino'
+      if (codeUpper === 'FC' || codeUpper === 'F7M') {
+        categoria = 'Masculino'
+      } else if (codeUpper.endsWith('F')) {
+        categoria = 'Feminino'
+      } else {
+        categoria = 'Masculino'
+      }
+
       toInsert.push({
         edicao_id,
         modalidade_id: modId,
         dia_id,
         setor_id:      setorId,
         divisao:       g.divisao || null,
+        categoria,
         equipe_a_nome: g.equipe_a,
         equipe_b_nome: g.equipe_b,
         inicio,

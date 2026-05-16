@@ -51,22 +51,41 @@ interface EventoJogo {
   criado_em: string
 }
 
-const EVENTOS_CONFIG: Record<string, { label: string; icon: string; cor: string }> = {
-  gol:             { label: 'Gol',       icon: '⚽', cor: '#4ab87a' },
-  cartao_amarelo:  { label: 'Amarelo',   icon: '🟨', cor: '#d97706' },
-  cartao_vermelho: { label: 'Vermelho',  icon: '🟥', cor: '#ef4444' },
-  exclusao:        { label: '2 min',     icon: '⏳', cor: '#f59e0b' },
-  falta:           { label: 'Falta',     icon: '✋', cor: '#ef4444' },
-  timeout:         { label: 'Timeout',   icon: '⏱️', cor: '#3b82f6' },
+interface EventoCfg {
+  label: string
+  icon:  string
+  cor:   string
+  /** Quando definido, adiciona N pontos ao placar otimisticamente. */
+  pts?:  number
+}
+
+const EVENTOS_CONFIG: Record<string, EventoCfg> = {
+  // Pontos / gols
+  gol:             { label: 'Gol',         icon: '⚽',  cor: '#4ab87a', pts: 1 },
+  cesta_2:         { label: '+2 pts',      icon: '🏀',  cor: '#4ab87a', pts: 2 },
+  cesta_3:         { label: '+3 pts',      icon: '🎯',  cor: '#22c55e', pts: 3 },
+  lance_livre:     { label: 'Lance livre', icon: '🏆',  cor: '#60a5fa', pts: 1 },
+  ace:             { label: 'Ace',         icon: '⚡',  cor: '#a78bfa', pts: 1 },
+  bloqueio:        { label: 'Bloqueio',    icon: '🛡️',  cor: '#06b6d4', pts: 1 },
+  // Disciplinares
+  cartao_amarelo:  { label: 'Amarelo',     icon: '🟨',  cor: '#d97706' },
+  cartao_vermelho: { label: 'Vermelho',    icon: '🟥',  cor: '#ef4444' },
+  falta:           { label: 'Falta',       icon: '✋',  cor: '#ef4444' },
+  falta_tecnica:   { label: 'Téc.',        icon: '⚠️',  cor: '#dc2626' },
+  exclusao:        { label: '2 min',       icon: '⏳',  cor: '#f59e0b' },
+  penalti:         { label: 'Pênalti',     icon: '🥅',  cor: '#f59e0b' },
+  // Estratégicos
+  timeout:         { label: 'Timeout',     icon: '⏱️',  cor: '#3b82f6' },
+  set_ganho:       { label: 'Set',         icon: '🏆',  cor: '#e8b94f' },
 }
 
 function getEventosTipos(modalidadeNome: string | null): string[] {
   if (!modalidadeNome) return []
   const n = modalidadeNome.toLowerCase()
-  if (n.includes('futsal'))                                              return ['gol', 'cartao_amarelo', 'cartao_vermelho']
-  if (n.includes('hand'))                                                return ['gol', 'cartao_amarelo', 'cartao_vermelho', 'exclusao']
-  if (n.includes('basquete') || n.includes('basket'))                   return ['falta']
-  if (n.includes('vôlei') || n.includes('volei') || n.includes('vole')) return ['timeout']
+  if (n.includes('futsal') || n.includes('futebol'))   return ['gol', 'cartao_amarelo', 'cartao_vermelho', 'falta']
+  if (n.includes('hand'))                              return ['gol', 'cartao_amarelo', 'cartao_vermelho', 'exclusao']
+  if (n.includes('basquete') || n.includes('basket'))  return ['cesta_2', 'cesta_3', 'lance_livre', 'falta']
+  if (n.includes('vôlei') || n.includes('volei') || n.includes('vole')) return ['ace', 'bloqueio', 'timeout']
   return []
 }
 
@@ -185,15 +204,22 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
     }
     setEventos(prev => [...prev, temp])
 
-    // Gol: também atualiza placar otimisticamente
-    if (tipo === 'gol') {
-      const na = equipe === 'a' ? placarA + 1 : placarA
-      const nb = equipe === 'b' ? placarB + 1 : placarB
-      onLocalUpdate(jogo.id, { placar_a: na, placar_b: nb })
+    // Atualiza placar otimisticamente conforme `pts` do evento
+    const pts = EVENTOS_CONFIG[tipo]?.pts ?? 0
+    let novoPlacarA = placarA
+    let novoPlacarB = placarB
+    if (pts > 0) {
+      novoPlacarA = equipe === 'a' ? placarA + pts : placarA
+      novoPlacarB = equipe === 'b' ? placarB + pts : placarB
+      onLocalUpdate(jogo.id, { placar_a: novoPlacarA, placar_b: novoPlacarB })
     }
 
     startTransition(async () => {
       await registrarEvento(jogo.id, tipo, equipe)
+      // Persiste mudança de placar se houver
+      if (pts > 0) {
+        await atualizarPlacar(jogo.id, novoPlacarA, novoPlacarB)
+      }
       // Recarrega lista confirmada do servidor
       const supabase = createClient()
       const { data } = await supabase
@@ -273,15 +299,17 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   return (
     <div
       id={`jogo-${jogo.id}`}
-      className={`relative overflow-hidden rounded-xl border p-4 transition-all scroll-mt-20 ${
+      className={`relative overflow-hidden rounded-2xl border transition-all scroll-mt-20 ${
+        isAoVivo ? 'p-5 md:p-6' : 'p-4'
+      } ${
         hasWO
           ? 'border-red-500/40 bg-red-500/5 opacity-90'
           : isTeste
           ? 'border-amber-600/40 bg-amber-500/5'
           : isAoVivo
-          ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/10 shadow-[0_0_20px_rgba(74,138,92,0.08)]'
+          ? 'border-[var(--green-bright)]/45 bg-gradient-to-br from-[var(--green-dim)]/15 via-[var(--card)] to-[var(--card)] shadow-[0_4px_24px_rgba(46,107,66,0.10)]'
           : isEncerrado
-          ? 'border-[var(--border)]/50 bg-[var(--card)]/40 opacity-70'
+          ? 'border-[var(--border)]/50 bg-[var(--card)]/40 opacity-75'
           : isCancelado
           ? 'border-red-800/30 bg-red-900/10 opacity-50'
           : 'border-[var(--border)] bg-[var(--card)]/60'
@@ -323,187 +351,213 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
         </div>
       )}
 
-      {/* Meta + identity badges */}
-      <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--muted-foreground)]">
-        {jogo.inicio && <span className="tabular-nums">{fmtTime(jogo.inicio)}</span>}
-        {jogo.modalidade && (
-          <>
-            <span>·</span>
-            <span>{jogo.modalidade.icone} {jogo.modalidade.nome}</span>
-          </>
-        )}
-        {jogo.categoria && (
-          <>
-            <span>·</span>
-            <span>{jogo.categoria}</span>
-          </>
-        )}
-        {jogo.setor && (
-          <>
-            <span>·</span>
-            {jogo.setor_id ? (
-              <Link
-                href={`/esportivo/escala?dia=${jogo.dia_id ?? ''}#setor-${jogo.setor_id}`}
-                className="inline-flex items-center gap-0.5 underline decoration-dotted decoration-[var(--muted-foreground)]/30 underline-offset-2 transition-colors hover:text-[var(--green-bright)] hover:decoration-[var(--green-bright)]/60"
-                title="Ver delegado e jogos desta praça"
-              >
-                {jogo.setor.nome}
-              </Link>
-            ) : (
-              <span>{jogo.setor.nome}</span>
-            )}
-          </>
-        )}
+      {/* Meta header — split: o que (esq) | categoria badges (dir) */}
+      <div className={`flex flex-wrap items-start justify-between gap-2 ${isAoVivo ? 'mb-5' : 'mb-3'}`}>
+        {/* Esquerda: hora + modalidade + setor */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--muted-foreground)]">
+          {jogo.inicio && (
+            <span className="font-bold tabular-nums text-[var(--foreground)]">
+              {fmtTime(jogo.inicio)}
+            </span>
+          )}
+          {jogo.modalidade && (
+            <span className="inline-flex items-center gap-1 font-semibold">
+              <span aria-hidden>{jogo.modalidade.icone}</span>
+              {jogo.modalidade.nome}
+            </span>
+          )}
+          {jogo.categoria && (
+            <>
+              <span className="text-[var(--border)]">·</span>
+              <span className="text-[var(--muted-foreground)]/70">{jogo.categoria}</span>
+            </>
+          )}
+          {jogo.setor && (
+            <>
+              <span className="text-[var(--border)]">·</span>
+              {jogo.setor_id ? (
+                <Link
+                  href={`/esportivo/escala?dia=${jogo.dia_id ?? ''}#setor-${jogo.setor_id}`}
+                  className="underline decoration-dotted decoration-[var(--muted-foreground)]/30 underline-offset-2 transition-colors hover:text-[var(--green-bright)] hover:decoration-[var(--green-bright)]/60"
+                  title="Ver delegado e jogos desta praça"
+                >
+                  {jogo.setor.nome}
+                </Link>
+              ) : (
+                <span className="text-[var(--muted-foreground)]/70">{jogo.setor.nome}</span>
+              )}
+            </>
+          )}
+          {isEncerrado && !hasWO && (
+            <>
+              <span className="text-[var(--border)]">·</span>
+              <span className="text-[var(--muted-foreground)]/60">Encerrado</span>
+            </>
+          )}
+          {isCancelado && (
+            <>
+              <span className="text-[var(--border)]">·</span>
+              <span className="text-red-500/80 font-semibold">Cancelado</span>
+            </>
+          )}
+        </div>
 
-        {/* Divisão badge */}
-        {divisaoLabel && divisaoColor && (
-          <span
-            className="ml-1 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-            style={{
-              background: `${divisaoColor}22`,
-              color: divisaoColor,
-              border: `1px solid ${divisaoColor}44`,
-            }}
-          >
-            {divisaoLabel}
-          </span>
-        )}
-
-        {/* Conferência badge (Super 08) */}
-        {confMeta && (
-          <span
-            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-            style={{
-              background: `${confMeta.cor}22`,
-              color: confMeta.cor,
-              border: `1px solid ${confMeta.cor}44`,
-            }}
-          >
-            <span>{confMeta.icone}</span>
-            {confMeta.nome}
-          </span>
-        )}
-
-        {/* Fase */}
-        {faseLabel && (
-          <span className="inline-flex items-center rounded-full bg-[var(--card)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] border border-[var(--border)]">
-            {faseLabel}
-          </span>
-        )}
-
-        {isEncerrado && !hasWO && (
-          <>
-            <span>·</span>
-            <span className="text-[var(--muted-foreground)]/60">Encerrado</span>
-          </>
-        )}
-        {isCancelado && (
-          <>
-            <span>·</span>
-            <span className="text-red-400">Cancelado</span>
-          </>
-        )}
-        {/* W.O. badge no header — substitui "Encerrado" quando aplicável */}
-        {hasWO && (
-          <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-400">
-            <UserX className="h-2.5 w-2.5" />
-            {jogo.wo === 'duplo' ? 'W.O. duplo' : 'W.O.'}
-          </span>
-        )}
+        {/* Direita: badges de categoria */}
+        <div className="flex flex-wrap items-center gap-1">
+          {divisaoLabel && divisaoColor && (
+            <span
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]"
+              style={{
+                background: `${divisaoColor}18`,
+                color: divisaoColor,
+                border: `1px solid ${divisaoColor}40`,
+              }}
+            >
+              {divisaoLabel}
+            </span>
+          )}
+          {faseLabel && (
+            <span className="inline-flex items-center rounded-full bg-[var(--card)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-[var(--muted-foreground)] border border-[var(--border)]">
+              {faseLabel}
+            </span>
+          )}
+          {confMeta && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]"
+              style={{
+                background: `${confMeta.cor}18`,
+                color: confMeta.cor,
+                border: `1px solid ${confMeta.cor}40`,
+              }}
+            >
+              <span aria-hidden>{confMeta.icone}</span>
+              {confMeta.nome}
+            </span>
+          )}
+          {hasWO && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-red-500">
+              <UserX className="h-2.5 w-2.5" />
+              {jogo.wo === 'duplo' ? 'W.O. duplo' : 'W.O.'}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Placar */}
-      <div className="relative flex items-stretch gap-3">
+      {/* Placar — dramaticamente maior pra ao vivo */}
+      <div className={`relative grid items-stretch gap-2 ${isAoVivo ? 'grid-cols-[1fr_auto_1fr]' : 'grid-cols-[1fr_auto_1fr]'}`}>
 
         {/* Equipe A */}
-        <div className="relative flex flex-1 flex-col items-center gap-2 pl-3">
-          {/* color stripe */}
-          <span
-            aria-hidden
-            className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full"
-            style={{ background: accentA }}
-          />
+        <div className="relative flex flex-col items-center gap-3 pl-3">
+          <span aria-hidden className="absolute left-0 top-0 bottom-0 w-[4px] rounded-full" style={{ background: accentA }} />
           <TeamName eq={jogo.equipe_a} fallback={jogo.equipe_a_nome} accent={accentA} loserByWO={aPerdeuWO} />
           {(isAoVivo || isEncerrado) && (
-            <div className="flex items-center gap-1">
-              {/* W.O.: substitui o número pelo selo */}
+            <>
               {aPerdeuWO ? (
-                <span className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red-400">
+                <span className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-500">
                   W.O.
                 </span>
               ) : (
-                <>
+                <div className="flex items-center gap-2">
                   {canEdit && isAoVivo && !hasWO && (
                     <button
                       onClick={() => adjustScore('a', -1)}
                       disabled={isPending || placarA === 0}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--border)] text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/20 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                      aria-label="Diminuir placar"
                     >
-                      <Minus className="h-3 w-3" />
+                      <Minus className="h-5 w-5" />
                     </button>
                   )}
-                  <span className={`tabular-nums font-bold ${isAoVivo ? 'text-3xl' : 'text-2xl text-[var(--muted-foreground)]'}`}>
+                  <span
+                    className="tabular-nums font-extrabold leading-none"
+                    style={{
+                      fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                      fontSize: isAoVivo ? 'clamp(48px, 6vw, 68px)' : '32px',
+                      color: isAoVivo ? 'var(--foreground)' : 'var(--muted-foreground)',
+                      letterSpacing: '-0.04em',
+                      minWidth: '1ch',
+                      textAlign: 'center',
+                    }}
+                  >
                     {placarA}
                   </span>
                   {canEdit && isAoVivo && !hasWO && (
                     <button
                       onClick={() => adjustScore('a', 1)}
                       disabled={isPending}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/30 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                      aria-label="Aumentar placar"
                     >
-                      <Plus className="h-3 w-3" />
+                      <Plus className="h-5 w-5" />
                     </button>
                   )}
-                </>
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
 
-        {/* VS / X */}
-        <div className="shrink-0 self-center text-lg font-bold text-[var(--muted-foreground)]/40">×</div>
+        {/* VS / × — centralizado entre as equipes */}
+        <div
+          className="flex shrink-0 items-center justify-center font-extrabold text-[var(--muted-foreground)]/30"
+          style={{
+            fontSize: isAoVivo ? 28 : 18,
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            letterSpacing: '-0.05em',
+            paddingTop: isAoVivo && (isAoVivo || isEncerrado) ? 28 : 0,
+          }}
+        >
+          ×
+        </div>
 
         {/* Equipe B */}
-        <div className="relative flex flex-1 flex-col items-center gap-2 pr-3">
-          {/* color stripe */}
-          <span
-            aria-hidden
-            className="absolute right-0 top-0 bottom-0 w-[3px] rounded-full"
-            style={{ background: accentB }}
-          />
+        <div className="relative flex flex-col items-center gap-3 pr-3">
+          <span aria-hidden className="absolute right-0 top-0 bottom-0 w-[4px] rounded-full" style={{ background: accentB }} />
           <TeamName eq={jogo.equipe_b} fallback={jogo.equipe_b_nome} accent={accentB} loserByWO={bPerdeuWO} />
           {(isAoVivo || isEncerrado) && (
-            <div className="flex items-center gap-1">
+            <>
               {bPerdeuWO ? (
-                <span className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red-400">
+                <span className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-500">
                   W.O.
                 </span>
               ) : (
-                <>
+                <div className="flex items-center gap-2">
                   {canEdit && isAoVivo && !hasWO && (
                     <button
                       onClick={() => adjustScore('b', -1)}
                       disabled={isPending || placarB === 0}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--border)] text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/20 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                      aria-label="Diminuir placar"
                     >
-                      <Minus className="h-3 w-3" />
+                      <Minus className="h-5 w-5" />
                     </button>
                   )}
-                  <span className={`tabular-nums font-bold ${isAoVivo ? 'text-3xl' : 'text-2xl text-[var(--muted-foreground)]'}`}>
+                  <span
+                    className="tabular-nums font-extrabold leading-none"
+                    style={{
+                      fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                      fontSize: isAoVivo ? 'clamp(48px, 6vw, 68px)' : '32px',
+                      color: isAoVivo ? 'var(--foreground)' : 'var(--muted-foreground)',
+                      letterSpacing: '-0.04em',
+                      minWidth: '1ch',
+                      textAlign: 'center',
+                    }}
+                  >
                     {placarB}
                   </span>
                   {canEdit && isAoVivo && !hasWO && (
                     <button
                       onClick={() => adjustScore('b', 1)}
                       disabled={isPending}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted-foreground)] transition-colors hover:border-[var(--green)] hover:text-[var(--green-bright)] disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/30 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                      aria-label="Aumentar placar"
                     >
-                      <Plus className="h-3 w-3" />
+                      <Plus className="h-5 w-5" />
                     </button>
                   )}
-                </>
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -532,17 +586,25 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
 
       {/* ── Painel de eventos por modalidade ─────────────────────────── */}
       {canEdit && isAoVivo && eventoTipos.length > 0 && (
-        <div className="mt-3 rounded-lg border border-[var(--border)]/60 bg-[var(--card)]/40 p-3">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/40">
-            Registrar evento
-          </p>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+        <div className="mt-5 rounded-xl border border-[var(--border)]/60 bg-[var(--muted)]/20 p-3 md:p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted-foreground)]/65">
+              Registrar evento
+            </p>
+            <p className="text-[9px] uppercase tracking-widest text-[var(--muted-foreground)]/40">
+              {eventoTipos.length} {eventoTipos.length === 1 ? 'tipo' : 'tipos'}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             {/* Coluna A */}
-            <div className="space-y-1">
-              <p className="truncate text-[9px] font-semibold uppercase tracking-wider" style={{ color: accentA }}>
+            <div>
+              <p
+                className="mb-2 truncate text-[10px] font-bold uppercase tracking-[0.14em]"
+                style={{ color: accentA }}
+              >
                 {jogo.equipe_a_nome ?? 'Equipe A'}
               </p>
-              <div className="flex flex-wrap gap-1">
+              <div className="grid grid-cols-2 gap-1.5">
                 {eventoTipos.map(tipo => {
                   const cfg = EVENTOS_CONFIG[tipo]
                   return (
@@ -551,21 +613,34 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
                       onClick={() => handleRegistrarEvento(tipo, 'a')}
                       disabled={isPending}
                       title={`${cfg.label} — ${jogo.equipe_a_nome ?? 'A'}`}
-                      className="flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[10px] font-semibold transition-all hover:scale-105 hover:border-current disabled:opacity-40"
-                      style={{ color: cfg.cor }}
+                      className="group/evt flex flex-col items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-2 transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                      style={{
+                        borderColor: 'var(--border)',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = `${cfg.cor}66`; e.currentTarget.style.background = `${cfg.cor}10` }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--card)' }}
                     >
-                      {cfg.icon} {cfg.label}
+                      <span className="text-base leading-none" aria-hidden>{cfg.icon}</span>
+                      <span
+                        className="text-[10px] font-bold leading-none tracking-tight"
+                        style={{ color: cfg.cor }}
+                      >
+                        {cfg.label}
+                      </span>
                     </button>
                   )
                 })}
               </div>
             </div>
             {/* Coluna B */}
-            <div className="space-y-1">
-              <p className="truncate text-[9px] font-semibold uppercase tracking-wider" style={{ color: accentB }}>
+            <div>
+              <p
+                className="mb-2 truncate text-[10px] font-bold uppercase tracking-[0.14em]"
+                style={{ color: accentB }}
+              >
                 {jogo.equipe_b_nome ?? 'Equipe B'}
               </p>
-              <div className="flex flex-wrap gap-1">
+              <div className="grid grid-cols-2 gap-1.5">
                 {eventoTipos.map(tipo => {
                   const cfg = EVENTOS_CONFIG[tipo]
                   return (
@@ -574,10 +649,17 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
                       onClick={() => handleRegistrarEvento(tipo, 'b')}
                       disabled={isPending}
                       title={`${cfg.label} — ${jogo.equipe_b_nome ?? 'B'}`}
-                      className="flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[10px] font-semibold transition-all hover:scale-105 hover:border-current disabled:opacity-40"
-                      style={{ color: cfg.cor }}
+                      className="flex flex-col items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-2 transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = `${cfg.cor}66`; e.currentTarget.style.background = `${cfg.cor}10` }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--card)' }}
                     >
-                      {cfg.icon} {cfg.label}
+                      <span className="text-base leading-none" aria-hidden>{cfg.icon}</span>
+                      <span
+                        className="text-[10px] font-bold leading-none tracking-tight"
+                        style={{ color: cfg.cor }}
+                      >
+                        {cfg.label}
+                      </span>
                     </button>
                   )
                 })}
@@ -990,7 +1072,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
               <p
                 className="font-extrabold tabular-nums tracking-tight"
                 style={{
-                  fontFamily: 'var(--font-display, system-ui)',
+                  fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
                   fontSize: 'clamp(48px, 7vw, 86px)',
                   lineHeight: 0.85,
                   letterSpacing: '-0.04em',
@@ -1021,7 +1103,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
             <div className="leading-tight">
               <p
                 className="font-extrabold tabular-nums tracking-tight text-[var(--foreground)]"
-                style={{ fontFamily: 'var(--font-display, system-ui)', fontSize: 'clamp(22px, 2.6vw, 32px)' }}
+                style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif', fontSize: 'clamp(22px, 2.6vw, 32px)' }}
               >
                 {agendados}
               </p>
@@ -1032,7 +1114,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
             <div className="leading-tight">
               <p
                 className="font-extrabold tabular-nums tracking-tight text-[var(--foreground)]"
-                style={{ fontFamily: 'var(--font-display, system-ui)', fontSize: 'clamp(22px, 2.6vw, 32px)' }}
+                style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif', fontSize: 'clamp(22px, 2.6vw, 32px)' }}
               >
                 {encerrados}
               </p>
@@ -1113,7 +1195,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
                     className={`font-extrabold leading-none tracking-tight ${
                       isActive ? 'text-[var(--green-bright)]' : 'text-[var(--foreground)]'
                     }`}
-                    style={{ fontFamily: 'var(--font-display, system-ui)', fontSize: 18 }}
+                    style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif', fontSize: 18 }}
                   >
                     {dia.nome_dia}
                   </p>
@@ -1358,7 +1440,7 @@ function SectionHeader({ label, count, accent, icon, sublabel, highlight, expand
           className="font-extrabold tracking-tight"
           style={{
             color: accent,
-            fontFamily: 'var(--font-display, system-ui)',
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
             fontSize: highlight ? 'clamp(20px, 2.4vw, 28px)' : 'clamp(16px, 2vw, 22px)',
             letterSpacing: '-0.02em',
             lineHeight: 1,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useCallback, useRef } from 'react'
+import { useState, useTransition, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2, X, ChevronDown, Crown } from 'lucide-react'
@@ -177,6 +177,25 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
 
   const placarA = jogo.placar_a ?? 0
   const placarB = jogo.placar_b ?? 0
+
+  // ── Contagem por tipo × equipe (sets, cartões, faltas, etc) ───────────────
+  const eventCounts = useMemo(() => {
+    const m: Record<string, { a: number; b: number }> = {}
+    for (const ev of eventos) {
+      if (!m[ev.tipo]) m[ev.tipo] = { a: 0, b: 0 }
+      if (ev.equipe === 'a') m[ev.tipo].a++
+      else if (ev.equipe === 'b') m[ev.tipo].b++
+    }
+    return m
+  }, [eventos])
+
+  function getCount(tipo: string, equipe: 'a' | 'b'): number {
+    return eventCounts[tipo]?.[equipe] ?? 0
+  }
+
+  // Sets (vôlei) — placar fica "pontos (sets)"
+  const setsA = getCount('set_ganho', 'a')
+  const setsB = getCount('set_ganho', 'b')
 
   // Carrega eventos quando o jogo está ao vivo ou encerrado
   const isLoadable = jogo.status === 'ao_vivo' || jogo.status === 'encerrado'
@@ -435,7 +454,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
       <div className={`relative grid items-stretch gap-2 ${isAoVivo ? 'grid-cols-[1fr_auto_1fr]' : 'grid-cols-[1fr_auto_1fr]'}`}>
 
         {/* Equipe A */}
-        <div className="relative flex flex-col items-center gap-3 pl-3">
+        <div className="relative flex flex-col items-center gap-2 pl-3">
           <span aria-hidden className="absolute left-0 top-0 bottom-0 w-[4px] rounded-full" style={{ background: accentA }} />
           <TeamName eq={jogo.equipe_a} fallback={jogo.equipe_a_nome} accent={accentA} loserByWO={aPerdeuWO} />
           {(isAoVivo || isEncerrado) && (
@@ -445,39 +464,47 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
                   W.O.
                 </span>
               ) : (
-                <div className="flex items-center gap-2">
-                  {canEdit && isAoVivo && !hasWO && (
-                    <button
-                      onClick={() => adjustScore('a', -1)}
-                      disabled={isPending || placarA === 0}
-                      className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--border)] text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/20 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
-                      aria-label="Diminuir placar"
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="flex items-center gap-2">
+                    {canEdit && isAoVivo && !hasWO && (
+                      <button
+                        onClick={() => adjustScore('a', -1)}
+                        disabled={isPending || placarA === 0}
+                        className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--border)] text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/20 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                        aria-label="Diminuir placar"
+                      >
+                        <Minus className="h-5 w-5" />
+                      </button>
+                    )}
+                    <span
+                      className="tabular-nums font-extrabold leading-none"
+                      style={{
+                        fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                        fontSize: isAoVivo ? 'clamp(48px, 6vw, 68px)' : '32px',
+                        color: isAoVivo ? 'var(--foreground)' : 'var(--muted-foreground)',
+                        letterSpacing: '-0.04em',
+                        minWidth: '1ch',
+                        textAlign: 'center',
+                      }}
                     >
-                      <Minus className="h-5 w-5" />
-                    </button>
-                  )}
-                  <span
-                    className="tabular-nums font-extrabold leading-none"
-                    style={{
-                      fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                      fontSize: isAoVivo ? 'clamp(48px, 6vw, 68px)' : '32px',
-                      color: isAoVivo ? 'var(--foreground)' : 'var(--muted-foreground)',
-                      letterSpacing: '-0.04em',
-                      minWidth: '1ch',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {placarA}
-                  </span>
-                  {canEdit && isAoVivo && !hasWO && (
-                    <button
-                      onClick={() => adjustScore('a', 1)}
-                      disabled={isPending}
-                      className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/30 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
-                      aria-label="Aumentar placar"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </button>
+                      {placarA}
+                    </span>
+                    {canEdit && isAoVivo && !hasWO && (
+                      <button
+                        onClick={() => adjustScore('a', 1)}
+                        disabled={isPending}
+                        className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/30 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                        aria-label="Aumentar placar"
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                  {/* Sets ganhos (quando modalidade usa set_ganho) */}
+                  {eventoTipos.includes('set_ganho') && (
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-[var(--muted)]/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] border border-[var(--border)]">
+                      Sets <span className="tabular-nums text-[var(--foreground)] font-extrabold text-[12px]">{setsA}</span>
+                    </span>
                   )}
                 </div>
               )}
@@ -499,7 +526,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
         </div>
 
         {/* Equipe B */}
-        <div className="relative flex flex-col items-center gap-3 pr-3">
+        <div className="relative flex flex-col items-center gap-2 pr-3">
           <span aria-hidden className="absolute right-0 top-0 bottom-0 w-[4px] rounded-full" style={{ background: accentB }} />
           <TeamName eq={jogo.equipe_b} fallback={jogo.equipe_b_nome} accent={accentB} loserByWO={bPerdeuWO} />
           {(isAoVivo || isEncerrado) && (
@@ -509,39 +536,47 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
                   W.O.
                 </span>
               ) : (
-                <div className="flex items-center gap-2">
-                  {canEdit && isAoVivo && !hasWO && (
-                    <button
-                      onClick={() => adjustScore('b', -1)}
-                      disabled={isPending || placarB === 0}
-                      className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--border)] text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/20 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
-                      aria-label="Diminuir placar"
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="flex items-center gap-2">
+                    {canEdit && isAoVivo && !hasWO && (
+                      <button
+                        onClick={() => adjustScore('b', -1)}
+                        disabled={isPending || placarB === 0}
+                        className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--border)] text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/20 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                        aria-label="Diminuir placar"
+                      >
+                        <Minus className="h-5 w-5" />
+                      </button>
+                    )}
+                    <span
+                      className="tabular-nums font-extrabold leading-none"
+                      style={{
+                        fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                        fontSize: isAoVivo ? 'clamp(48px, 6vw, 68px)' : '32px',
+                        color: isAoVivo ? 'var(--foreground)' : 'var(--muted-foreground)',
+                        letterSpacing: '-0.04em',
+                        minWidth: '1ch',
+                        textAlign: 'center',
+                      }}
                     >
-                      <Minus className="h-5 w-5" />
-                    </button>
-                  )}
-                  <span
-                    className="tabular-nums font-extrabold leading-none"
-                    style={{
-                      fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                      fontSize: isAoVivo ? 'clamp(48px, 6vw, 68px)' : '32px',
-                      color: isAoVivo ? 'var(--foreground)' : 'var(--muted-foreground)',
-                      letterSpacing: '-0.04em',
-                      minWidth: '1ch',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {placarB}
-                  </span>
-                  {canEdit && isAoVivo && !hasWO && (
-                    <button
-                      onClick={() => adjustScore('b', 1)}
-                      disabled={isPending}
-                      className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/30 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
-                      aria-label="Aumentar placar"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </button>
+                      {placarB}
+                    </span>
+                    {canEdit && isAoVivo && !hasWO && (
+                      <button
+                        onClick={() => adjustScore('b', 1)}
+                        disabled={isPending}
+                        className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/30 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+                        aria-label="Aumentar placar"
+                      >
+                        <Plus className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+                  {/* Sets ganhos (quando modalidade usa set_ganho) */}
+                  {eventoTipos.includes('set_ganho') && (
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-[var(--muted)]/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] border border-[var(--border)]">
+                      Sets <span className="tabular-nums text-[var(--foreground)] font-extrabold text-[12px]">{setsB}</span>
+                    </span>
                   )}
                 </div>
               )}
@@ -595,19 +630,26 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
               <div className="grid grid-cols-2 gap-1.5">
                 {eventoTipos.map(tipo => {
                   const cfg = EVENTOS_CONFIG[tipo]
+                  const count = getCount(tipo, 'a')
                   return (
                     <button
                       key={tipo}
                       onClick={() => handleRegistrarEvento(tipo, 'a')}
                       disabled={isPending}
-                      title={`${cfg.label} — ${jogo.equipe_a_nome ?? 'A'}`}
-                      className="group/evt flex flex-col items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-2 transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
-                      style={{
-                        borderColor: 'var(--border)',
-                      }}
+                      title={`${cfg.label} — ${jogo.equipe_a_nome ?? 'A'}${count > 0 ? ` (${count} registrado${count > 1 ? 's' : ''})` : ''}`}
+                      className="group/evt relative flex flex-col items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-2 transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                       onMouseEnter={e => { e.currentTarget.style.borderColor = `${cfg.cor}66`; e.currentTarget.style.background = `${cfg.cor}10` }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--card)' }}
                     >
+                      {count > 0 && (
+                        <span
+                          className="absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-extrabold tabular-nums text-white"
+                          style={{ background: cfg.cor, boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }}
+                          aria-label={`${count} ${cfg.label.toLowerCase()} registrado${count > 1 ? 's' : ''}`}
+                        >
+                          {count}
+                        </span>
+                      )}
                       <span className="text-base leading-none" aria-hidden>{cfg.icon}</span>
                       <span
                         className="text-[10px] font-bold leading-none tracking-tight"
@@ -631,16 +673,26 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
               <div className="grid grid-cols-2 gap-1.5">
                 {eventoTipos.map(tipo => {
                   const cfg = EVENTOS_CONFIG[tipo]
+                  const count = getCount(tipo, 'b')
                   return (
                     <button
                       key={tipo}
                       onClick={() => handleRegistrarEvento(tipo, 'b')}
                       disabled={isPending}
-                      title={`${cfg.label} — ${jogo.equipe_b_nome ?? 'B'}`}
-                      className="flex flex-col items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-2 transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                      title={`${cfg.label} — ${jogo.equipe_b_nome ?? 'B'}${count > 0 ? ` (${count} registrado${count > 1 ? 's' : ''})` : ''}`}
+                      className="relative flex flex-col items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 py-2 transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none"
                       onMouseEnter={e => { e.currentTarget.style.borderColor = `${cfg.cor}66`; e.currentTarget.style.background = `${cfg.cor}10` }}
                       onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--card)' }}
                     >
+                      {count > 0 && (
+                        <span
+                          className="absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-extrabold tabular-nums text-white"
+                          style={{ background: cfg.cor, boxShadow: '0 1px 4px rgba(0,0,0,0.18)' }}
+                          aria-label={`${count} ${cfg.label.toLowerCase()} registrado${count > 1 ? 's' : ''}`}
+                        >
+                          {count}
+                        </span>
+                      )}
                       <span className="text-base leading-none" aria-hidden>{cfg.icon}</span>
                       <span
                         className="text-[10px] font-bold leading-none tracking-tight"

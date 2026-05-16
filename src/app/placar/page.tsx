@@ -78,25 +78,26 @@ export default async function PlacarPage() {
   const totalAoVivo = jogos.filter((j) => j.status === 'ao_vivo').length
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[1640px] space-y-6 px-4 py-6 sm:px-6 md:py-8 lg:px-10 xl:px-12">
       <PageHeader
-        eyebrow="Guerra"
+        eyebrow="Esportivo · Sala de Comando"
         title="Placar Ao Vivo"
         subtitle={
           totalAoVivo > 0
-            ? `Gerencie o status e placar dos jogos em tempo real · ${totalAoVivo} jogo${totalAoVivo > 1 ? 's' : ''} acontecendo agora`
-            : 'Gerencie o status e placar dos jogos em tempo real durante o evento.'
+            ? `${totalAoVivo} jogo${totalAoVivo > 1 ? 's acontecendo' : ' acontecendo'} agora — atualização em tempo real`
+            : 'Controle o status e placar dos jogos durante a Copa Inter Atléticas 2026.'
         }
         action={
           <a
             href="/tv/placar"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)]/60 px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-all hover:border-[var(--green-bright)]/40 hover:bg-[var(--green-dim)]/10 hover:text-[var(--green-bright)]"
+            className="group inline-flex items-center gap-2 rounded-full border border-[var(--gold-bright)]/40 bg-gradient-to-r from-[var(--gold-bright)]/15 to-[var(--gold-bright)]/5 px-4 py-2 text-sm font-bold uppercase tracking-wider text-[var(--gold-bright)] transition-all hover:border-[var(--gold-bright)]/60 hover:from-[var(--gold-bright)]/25 hover:to-[var(--gold-bright)]/10"
             title="Abre placar em modo TV (transmissão/projeção)"
           >
             <Tv2 className="h-3.5 w-3.5" />
             Modo TV
+            <span className="text-[9px] opacity-50 transition-transform group-hover:translate-x-0.5">↗</span>
           </a>
         }
       />

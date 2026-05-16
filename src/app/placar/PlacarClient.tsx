@@ -960,223 +960,471 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
   const agendados = jogos.filter((j) => j.status === 'agendado').length
   const encerrados = jogos.filter((j) => j.status === 'encerrado').length
 
+  // Buckets pra renderização por estado (após filtros)
+  const liveGames     = jogosFiltrados.filter(j => j.status === 'ao_vivo')
+  const scheduledGames = jogosFiltrados.filter(j => j.status === 'agendado')
+  const endedGames    = jogosFiltrados.filter(j => j.status === 'encerrado' || j.status === 'cancelado')
+
+  // Próximo jogo agendado (pra countdown no header)
+  const proximoJogo = scheduledGames
+    .filter(j => j.inicio)
+    .sort((a, b) => new Date(a.inicio!).getTime() - new Date(b.inicio!).getTime())[0] ?? null
+
   return (
     <div className="space-y-6">
-      {/* Tabs de dias */}
-      <div className="flex flex-wrap gap-2">
+
+      {/* ─── HERO STATS — números editoriais grandes ─── */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)]/90 to-[var(--green-dim)]/15 p-4 md:p-5">
+        {/* Glow live (quando há ao vivo) */}
+        {aoVivo > 0 && (
+          <div
+            className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full opacity-50 blur-3xl animate-pulse"
+            style={{ background: 'radial-gradient(circle, rgba(46,107,66,0.35), transparent 70%)' }}
+          />
+        )}
+
+        <div className="relative flex flex-wrap items-end gap-x-8 gap-y-4">
+          {/* AO VIVO — número gigante editorial */}
+          <div className="flex items-baseline gap-3">
+            <div className="leading-none">
+              <p
+                className="font-extrabold tabular-nums tracking-tight"
+                style={{
+                  fontFamily: 'var(--font-display, system-ui)',
+                  fontSize: 'clamp(48px, 7vw, 86px)',
+                  lineHeight: 0.85,
+                  letterSpacing: '-0.04em',
+                  color: aoVivo > 0 ? 'var(--green-bright)' : 'var(--muted-foreground)',
+                }}
+              >
+                {aoVivo}
+              </p>
+              <p
+                className="mt-1 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.2em]"
+                style={{ color: aoVivo > 0 ? 'var(--green-bright)' : 'var(--muted-foreground)' }}
+              >
+                {aoVivo > 0 && (
+                  <span className="relative inline-flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--green-bright)] opacity-70" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--green-bright)]" />
+                  </span>
+                )}
+                {aoVivo === 1 ? 'jogo ao vivo agora' : 'jogos ao vivo agora'}
+              </p>
+            </div>
+          </div>
+
+          <span className="hidden md:inline-block h-12 w-px bg-[var(--border)]" />
+
+          {/* Stats secundárias */}
+          <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
+            <div className="leading-tight">
+              <p
+                className="font-extrabold tabular-nums tracking-tight text-[var(--foreground)]"
+                style={{ fontFamily: 'var(--font-display, system-ui)', fontSize: 'clamp(22px, 2.6vw, 32px)' }}
+              >
+                {agendados}
+              </p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--muted-foreground)]/60">
+                Agendados
+              </p>
+            </div>
+            <div className="leading-tight">
+              <p
+                className="font-extrabold tabular-nums tracking-tight text-[var(--foreground)]"
+                style={{ fontFamily: 'var(--font-display, system-ui)', fontSize: 'clamp(22px, 2.6vw, 32px)' }}
+              >
+                {encerrados}
+              </p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--muted-foreground)]/60">
+                Encerrados
+              </p>
+            </div>
+          </div>
+
+          {/* Próximo jogo / Realtime indicator — alinhado à direita */}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {proximoJogo && proximoJogo.inicio && aoVivo === 0 && (
+              <NextGameTicker target={new Date(proximoJogo.inicio)} />
+            )}
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+                conectado
+                  ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
+                  : 'border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)]'
+              }`}
+              title={conectado ? 'Sincronizado em tempo real' : 'Conectando...'}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  conectado ? 'bg-[var(--green-bright)] animate-pulse' : 'bg-[var(--muted-foreground)]/50'
+                }`}
+                style={conectado ? { boxShadow: '0 0 6px var(--green-bright)' } : {}}
+              />
+              {conectado ? 'Tempo real' : 'Conectando'}
+            </span>
+            {canEdit && (
+              <button
+                onClick={() => startTransitionTeste(async () => { await criarJogoTeste(diaId) })}
+                disabled={isPendingTeste}
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-600/30 bg-amber-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-600 transition-all hover:border-amber-500/50 hover:bg-amber-500/15 disabled:opacity-40"
+                title="Cria um jogo fictício pra testar o placar e o Modo TV"
+              >
+                <FlaskConical className="h-3 w-3" />
+                {isPendingTeste ? 'Criando…' : 'Jogo teste'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── TABS DE DIA editoriais ─── */}
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         {dias.map((dia) => {
           const jogsDia = jogosPorDia[dia.id] ?? []
-          const vivo = jogsDia.some((j) => j.status === 'ao_vivo')
+          const liveCount = jogsDia.filter(j => j.status === 'ao_vivo').length
+          const isActive = diaId === dia.id
+          // Format date (Quinta · 04 jun)
+          const dateLabel = (() => {
+            try {
+              const d = new Date(dia.data + 'T12:00:00')
+              return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' })
+            } catch { return dia.data }
+          })()
           return (
             <button
               key={dia.id}
               onClick={() => { setDiaId(dia.id); setFilterDiv(''); setFilterMod(''); setFilterConf('') }}
-              className={`relative flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all ${
-                diaId === dia.id
-                  ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
-                  : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)] hover:text-[var(--foreground)]'
+              className={`group relative overflow-hidden rounded-xl border p-3.5 text-left transition-all ${
+                isActive
+                  ? 'border-[var(--green-bright)]/55 bg-gradient-to-br from-[var(--green-dim)]/30 via-[var(--card)] to-[var(--card)] shadow-[0_4px_20px_rgba(46,107,66,0.10)]'
+                  : 'border-[var(--border)] bg-[var(--card)]/40 hover:-translate-y-0.5 hover:border-[var(--green-dim)] hover:shadow-sm'
               }`}
             >
-              {vivo && (
-                <span className="h-2 w-2 rounded-full bg-[var(--green-bright)] shadow-[0_0_6px_rgba(106,184,126,0.8)] animate-pulse" />
+              {isActive && (
+                <div
+                  className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-40 blur-2xl"
+                  style={{ background: 'radial-gradient(circle, var(--green-bright), transparent 70%)' }}
+                />
               )}
-              {dia.nome_dia}
-              <span className="text-[10px] text-[var(--muted-foreground)]">{jogsDia.length}</span>
+              <div className="relative flex items-start justify-between gap-2">
+                <div>
+                  <p
+                    className={`font-extrabold leading-none tracking-tight ${
+                      isActive ? 'text-[var(--green-bright)]' : 'text-[var(--foreground)]'
+                    }`}
+                    style={{ fontFamily: 'var(--font-display, system-ui)', fontSize: 18 }}
+                  >
+                    {dia.nome_dia}
+                  </p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted-foreground)]/65">
+                    {dateLabel} · <span className="tabular-nums">{jogsDia.length} jogos</span>
+                  </p>
+                </div>
+                {liveCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-500">
+                    <span className="h-1 w-1 rounded-full bg-red-500 animate-pulse" />
+                    {liveCount}
+                  </span>
+                )}
+              </div>
             </button>
           )
         })}
       </div>
 
-      {/* Stats rápidas + status realtime */}
-      <div className="flex flex-wrap items-center gap-4 text-sm">
-        {aoVivo > 0 && (
-          <span className="flex items-center gap-1.5 font-semibold text-[var(--green-bright)]">
-            <Radio className="h-3.5 w-3.5 animate-pulse" />
-            {aoVivo} ao vivo
-          </span>
-        )}
-        <span className="text-[var(--muted-foreground)]">{agendados} agendados</span>
-        <span className="text-[var(--muted-foreground)]">{encerrados} encerrados</span>
-
-        {/* Criar jogo teste */}
-        <button
-          onClick={() => startTransitionTeste(async () => {
-            await criarJogoTeste(diaId)
-          })}
-          disabled={isPendingTeste}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-amber-600/30 bg-amber-500/8 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-500 transition-all hover:border-amber-500/50 hover:bg-amber-500/15 disabled:opacity-40"
-          title="Cria um jogo fictício para testar o placar ao vivo e o Modo TV"
-        >
-          <FlaskConical className="h-3 w-3" />
-          {isPendingTeste ? 'Criando...' : 'Jogo teste'}
-        </button>
-
-        {/* Indicador de realtime */}
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-            conectado
-              ? 'border-[var(--green-bright)]/30 bg-[var(--green-dim)]/10 text-[var(--green-bright)]'
-              : 'border-[var(--border)] bg-[var(--card)]/40 text-[var(--muted-foreground)]'
-          }`}
-          title={conectado ? 'Sincronizado em tempo real' : 'Conectando...'}
-        >
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              conectado ? 'bg-[var(--green-bright)] animate-pulse' : 'bg-[var(--muted-foreground)]/50'
-            }`}
-          />
-          {conectado ? 'Tempo real' : 'Conectando'}
-        </span>
-      </div>
-
-      {/* Sub-filtros: divisão / modalidade / conferência */}
+      {/* ─── FILTROS — colapsáveis ─── */}
       {hasAnyFilterOptions && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]/40 px-4 py-3 space-y-2.5">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60">
+        <details className="group rounded-xl border border-[var(--border)] bg-[var(--card)]/30 transition-all open:bg-[var(--card)]/50">
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-2.5 list-none">
+            <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
               <Filter className="h-3 w-3" />
               Filtros
+              {hasFilters && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--green-dim)]/30 px-2 py-0.5 text-[9px] font-bold text-[var(--green-bright)]">
+                  {[filterDiv, filterMod, filterConf].filter(Boolean).length} ativos
+                </span>
+              )}
             </span>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] tabular-nums text-[var(--muted-foreground)]/65">
+                {hasFilters ? `${jogosFiltrados.length} de ${jogos.length}` : `${jogos.length} jogos`}
+              </span>
+              <span className="text-[var(--muted-foreground)]/50 transition-transform group-open:rotate-180">▾</span>
+            </div>
+          </summary>
+          <div className="space-y-2.5 border-t border-[var(--border)] px-4 py-3">
+            {/* Divisão */}
+            {divOptions.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="w-20 shrink-0 text-[9px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/55">
+                  Divisão
+                </span>
+                {divOptions.map(div => {
+                  const cor = DIV_COLORS[div]
+                  const active = filterDiv === div
+                  return (
+                    <button
+                      key={div}
+                      onClick={() => setFilterDiv(prev => prev === div ? '' : div)}
+                      className="rounded-full border px-3 py-1 text-[11px] font-semibold transition-all"
+                      style={active && cor ? { borderColor: `${cor}60`, background: `${cor}20`, color: cor }
+                        : active ? { borderColor: 'var(--green-bright)', background: 'var(--green-dim)', color: 'var(--green-bright)' }
+                        : { borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
+                    >
+                      {div}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {/* Modalidade */}
+            {modOptions.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="w-20 shrink-0 text-[9px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/55">
+                  Modalidade
+                </span>
+                {modOptions.map(m => {
+                  const active = filterMod === m.nome
+                  return (
+                    <button
+                      key={m.nome}
+                      onClick={() => setFilterMod(prev => prev === m.nome ? '' : m.nome)}
+                      className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
+                        active
+                          ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
+                          : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
+                      }`}
+                    >
+                      {m.icone} {m.nome}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {/* Conferência */}
+            {confOptions.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="w-20 shrink-0 text-[9px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/55">
+                  Conferência
+                </span>
+                {confOptions.map(nome => {
+                  const meta = getConferencia(nome)
+                  const active = filterConf === nome
+                  return (
+                    <button
+                      key={nome}
+                      onClick={() => setFilterConf(prev => prev === nome ? '' : nome)}
+                      className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all"
+                      style={active && meta
+                        ? { borderColor: `${meta.cor}50`, background: `${meta.cor}18`, color: meta.cor }
+                        : { borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
+                    >
+                      {meta?.icone} {nome}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
             {hasFilters && (
-              <button
-                onClick={() => { setFilterDiv(''); setFilterMod(''); setFilterConf('') }}
-                className="text-[10px] font-semibold text-[var(--muted-foreground)]/60 hover:text-[var(--muted-foreground)] underline underline-offset-2"
-              >
-                Limpar tudo
-              </button>
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  onClick={() => { setFilterDiv(''); setFilterMod(''); setFilterConf('') }}
+                  className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/65 hover:text-[var(--green-bright)] transition-colors"
+                >
+                  Limpar tudo
+                </button>
+              </div>
             )}
           </div>
+        </details>
+      )}
 
-          {/* Divisão */}
-          {divOptions.length > 1 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]/50 w-20 shrink-0">
-                Divisão
-              </span>
-              {divOptions.map(div => {
-                const cor = DIV_COLORS[div]
-                const active = filterDiv === div
-                return (
-                  <button
-                    key={div}
-                    onClick={() => setFilterDiv(prev => prev === div ? '' : div)}
-                    className="rounded-full border px-3 py-1 text-[11px] font-semibold transition-all"
-                    style={active && cor ? {
-                      borderColor: `${cor}60`,
-                      background: `${cor}20`,
-                      color: cor,
-                    } : active ? {
-                      borderColor: 'var(--green-bright)',
-                      background: 'var(--green-dim)',
-                      color: 'var(--green-bright)',
-                    } : {
-                      borderColor: 'var(--border)',
-                      color: 'var(--muted-foreground)',
-                    }}
-                  >
-                    {div}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Modalidade */}
-          {modOptions.length > 1 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]/50 w-20 shrink-0">
-                Modalidade
-              </span>
-              {modOptions.map(m => {
-                const active = filterMod === m.nome
-                return (
-                  <button
-                    key={m.nome}
-                    onClick={() => setFilterMod(prev => prev === m.nome ? '' : m.nome)}
-                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-all ${
-                      active
-                        ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/20 text-[var(--green-bright)]'
-                        : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]'
-                    }`}
-                  >
-                    {m.icone} {m.nome}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Conferência */}
-          {confOptions.length > 1 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]/50 w-20 shrink-0">
-                Conferência
-              </span>
-              {confOptions.map(nome => {
-                const meta = getConferencia(nome)
-                const active = filterConf === nome
-                return (
-                  <button
-                    key={nome}
-                    onClick={() => setFilterConf(prev => prev === nome ? '' : nome)}
-                    className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition-all"
-                    style={active && meta ? {
-                      borderColor: `${meta.cor}50`,
-                      background: `${meta.cor}18`,
-                      color: meta.cor,
-                    } : {
-                      borderColor: 'var(--border)',
-                      color: 'var(--muted-foreground)',
-                    }}
-                  >
-                    {meta?.icone} {nome}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Resumo do filtro ativo */}
-          {hasFilters && (
-            <p className="text-[10px] text-[var(--muted-foreground)]/50">
-              Mostrando <strong className="text-[var(--foreground)]">{jogosFiltrados.length}</strong> de {jogos.length} jogos
-              {filterDiv && <> · <span style={{ color: DIV_COLORS[filterDiv] ?? 'inherit' }}>{filterDiv}</span></>}
-              {filterMod && <> · {modOptions.find(m => m.nome === filterMod)?.icone} {filterMod}</>}
-              {filterConf && (() => { const m = getConferencia(filterConf); return <> · <span style={{ color: m?.cor }}>{m?.icone} {filterConf}</span></> })()}
-            </p>
-          )}
+      {/* ─── ESTADO VAZIO ─── */}
+      {jogos.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-[var(--border)] p-16 text-center">
+          <Radio className="mx-auto mb-3 h-8 w-8 text-[var(--muted-foreground)]/20" />
+          <p className="text-sm font-semibold text-[var(--foreground)]">Nenhum jogo neste dia</p>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]/60">
+            Selecione outro dia ou aguarde a importação da tabela.
+          </p>
         </div>
       )}
 
-      {/* Grid de jogos */}
-      {jogos.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--border)] p-12 text-center">
-          <p className="text-sm text-[var(--muted-foreground)]">Nenhum jogo neste dia.</p>
-        </div>
-      ) : jogosFiltrados.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--border)] p-10 text-center">
+      {jogos.length > 0 && jogosFiltrados.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-[var(--border)] p-10 text-center">
           <p className="text-sm text-[var(--muted-foreground)]">Nenhum jogo com esse filtro.</p>
           <button
             onClick={() => { setFilterDiv(''); setFilterMod(''); setFilterConf('') }}
-            className="mt-2 text-xs font-semibold text-[var(--green-bright)] hover:underline"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 px-4 py-1.5 text-xs font-bold text-[var(--green-bright)]"
           >
             Limpar filtros
           </button>
         </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {jogosFiltrados.map((jogo) => (
-            <PlacarCard
-              key={jogo.id}
-              jogo={jogo}
-              onLocalUpdate={handleLocalUpdate}
-              recentlyChanged={recentIds.has(jogo.id) || highlightedJogoId === jogo.id}
-              canEdit={canEdit}
+      )}
+
+      {/* ─── SEÇÃO 1 — AO VIVO ─── */}
+      {liveGames.length > 0 && (
+        <section className="space-y-3">
+          <SectionHeader
+            label="Ao Vivo Agora"
+            count={liveGames.length}
+            accent="var(--green-bright)"
+            icon={<Radio className="h-4 w-4 animate-pulse" />}
+            highlight
+          />
+          <div className="grid gap-4 lg:grid-cols-2">
+            {liveGames.map(jogo => (
+              <PlacarCard
+                key={jogo.id}
+                jogo={jogo}
+                onLocalUpdate={handleLocalUpdate}
+                recentlyChanged={recentIds.has(jogo.id) || highlightedJogoId === jogo.id}
+                canEdit={canEdit}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ─── SEÇÃO 2 — AGENDADOS ─── */}
+      {scheduledGames.length > 0 && (
+        <section className="space-y-3">
+          <SectionHeader
+            label="Agendados"
+            count={scheduledGames.length}
+            accent="var(--gold-bright)"
+            sublabel={proximoJogo?.inicio ? `próximo: ${fmtTime(proximoJogo.inicio)}` : undefined}
+          />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {scheduledGames.map(jogo => (
+              <PlacarCard
+                key={jogo.id}
+                jogo={jogo}
+                onLocalUpdate={handleLocalUpdate}
+                recentlyChanged={recentIds.has(jogo.id) || highlightedJogoId === jogo.id}
+                canEdit={canEdit}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ─── SEÇÃO 3 — ENCERRADOS ─── */}
+      {endedGames.length > 0 && (
+        <details className="group space-y-3 mt-2" open={liveGames.length === 0 && scheduledGames.length === 0}>
+          <summary className="cursor-pointer list-none">
+            <SectionHeader
+              label="Encerrados"
+              count={endedGames.length}
+              accent="var(--muted-foreground)"
+              expandable
             />
-          ))}
-        </div>
+          </summary>
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-3">
+            {endedGames.map(jogo => (
+              <PlacarCard
+                key={jogo.id}
+                jogo={jogo}
+                onLocalUpdate={handleLocalUpdate}
+                recentlyChanged={recentIds.has(jogo.id) || highlightedJogoId === jogo.id}
+                canEdit={canEdit}
+              />
+            ))}
+          </div>
+        </details>
       )}
     </div>
+  )
+}
+
+// ─── SectionHeader ──────────────────────────────────────────────────────────
+
+function SectionHeader({ label, count, accent, icon, sublabel, highlight, expandable }: {
+  label:      string
+  count:      number
+  accent:     string
+  icon?:      React.ReactNode
+  sublabel?:  string
+  highlight?: boolean
+  expandable?: boolean
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3 border-b pb-2"
+         style={{ borderColor: highlight ? `${accent}40` : 'var(--border)' }}>
+      <div className="flex items-center gap-3">
+        {icon && <span style={{ color: accent }}>{icon}</span>}
+        <h2
+          className="font-extrabold tracking-tight"
+          style={{
+            color: accent,
+            fontFamily: 'var(--font-display, system-ui)',
+            fontSize: highlight ? 'clamp(20px, 2.4vw, 28px)' : 'clamp(16px, 2vw, 22px)',
+            letterSpacing: '-0.02em',
+            lineHeight: 1,
+          }}
+        >
+          {label}
+        </h2>
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums uppercase tracking-wider"
+          style={{
+            background: `${accent}18`,
+            color: accent,
+          }}
+        >
+          {count}
+        </span>
+        {sublabel && (
+          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]/65">
+            {sublabel}
+          </span>
+        )}
+      </div>
+      {expandable && (
+        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/45 group-open:hidden">
+          mostrar ▾
+        </span>
+      )}
+      {expandable && (
+        <span className="hidden text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/45 group-open:inline">
+          ocultar ▴
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ─── NextGameTicker — countdown pro próximo jogo ─────────────────────────────
+
+function NextGameTicker({ target }: { target: Date }) {
+  const [now, setNow] = useState<Date | null>(null)
+  useEffect(() => {
+    setNow(new Date())
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  if (!now) return null
+  const diffMs = target.getTime() - now.getTime()
+  if (diffMs <= 0 || diffMs > 86_400_000) return null  // só mostra se faltam <24h
+
+  const h   = Math.floor(diffMs / 3_600_000)
+  const min = Math.floor((diffMs % 3_600_000) / 60_000)
+  const sec = Math.floor((diffMs % 60_000) / 1000)
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold-bright)]/40 bg-[var(--gold-bright)]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--gold-bright)]">
+      <span
+        className="h-1.5 w-1.5 rounded-full bg-[var(--gold-bright)] animate-pulse"
+        style={{ boxShadow: '0 0 6px var(--gold-bright)' }}
+      />
+      Próximo em
+      <span className="tabular-nums normal-case font-extrabold">
+        {h > 0 && `${h}h `}
+        {String(min).padStart(2, '0')}min{' '}
+        <span className="opacity-70">{String(sec).padStart(2, '0')}s</span>
+      </span>
+    </span>
   )
 }

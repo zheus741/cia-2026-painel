@@ -50,7 +50,7 @@ export default async function ChaveamentoPage() {
   }))
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[1640px] space-y-6 px-4 py-6 sm:px-6 md:py-8 lg:px-10 xl:px-12">
       <PageHeader
         eyebrow="Esportivo"
         title="Chaveamento"

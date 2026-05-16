@@ -91,21 +91,24 @@ export function ChaveamentoClient({ jogos, modalidades }: Props) {
   }, [jogos])
 
   // ── Derived: lista de chaves (combos modalidade+cat+div com >=1 jogo) ───────
+  // Robusto: aceita categoria null (agrupa como "—") pra não esconder jogos importados sem categoria preenchida.
   const chaves: ChaveInfo[] = useMemo(() => {
     const map = new Map<string, ChaveInfo>()
     for (const j of jogos) {
-      if (!j.modalidade || !j.categoria || !j.divisao) continue
+      // Modalidade e divisão são obrigatórios. Categoria pode faltar (vira "—").
+      if (!j.modalidade || !j.divisao) continue
       if (j.divisao !== divisaoAtiva) continue
       if (modalidadeFiltro && j.modalidade.slug !== modalidadeFiltro) continue
-      if (categoriaFiltro && j.categoria !== categoriaFiltro) continue
+      const cat = j.categoria ?? '—'
+      if (categoriaFiltro && cat !== categoriaFiltro) continue
 
-      const key = `${j.modalidade.slug}::${j.categoria}::${j.divisao}`
+      const key = `${j.modalidade.slug}::${cat}::${j.divisao}`
       if (!map.has(key)) {
         map.set(key, {
           modalidade: j.modalidade.nome,
           modalidadeIcone: j.modalidade.icone,
           modalidadeSlug: j.modalidade.slug,
-          categoria: j.categoria,
+          categoria: cat,
           divisao: j.divisao,
           totalJogos: 0,
           jogosEncerrados: 0,
@@ -131,6 +134,17 @@ export function ChaveamentoClient({ jogos, modalidades }: Props) {
       a.modalidade.localeCompare(b.modalidade) || a.categoria.localeCompare(b.categoria)
     )
   }, [jogos, divisaoAtiva, modalidadeFiltro, categoriaFiltro, busca])
+
+  // ── Diagnóstico: quantos jogos estão sem campos essenciais na divisão atual? ─
+  const diagnostico = useMemo(() => {
+    const jogosDivisao = jogos.filter(j => j.divisao === divisaoAtiva)
+    return {
+      total:          jogosDivisao.length,
+      semModalidade:  jogosDivisao.filter(j => !j.modalidade).length,
+      semCategoria:   jogosDivisao.filter(j => !j.categoria).length,
+      semFase:        jogosDivisao.filter(j => !j.fase).length,
+    }
+  }, [jogos, divisaoAtiva])
 
   // ── Modalidades disponíveis filtradas por divisão ativa ─────────────────────
   const modalidadesDisponiveis = useMemo(() => {
@@ -195,31 +209,59 @@ export function ChaveamentoClient({ jogos, modalidades }: Props) {
   return (
     <div className="space-y-5">
 
-      {/* Tabs de divisão */}
-      <div className="flex flex-wrap gap-2">
-        {(divisoesDisponiveis.length > 0 ? divisoesDisponiveis : ['1ª Divisão']).map(div => {
+      {/* Tabs de divisão — divididas em 2 grupos: Divisões principais + Conferências */}
+      {(() => {
+        const divisoesAll = divisoesDisponiveis.length > 0 ? divisoesDisponiveis : ['1ª Divisão']
+        const principais   = divisoesAll.filter(d => d.toLowerCase().includes('divis') || d.toLowerCase().includes('super'))
+        const conferencias = divisoesAll.filter(d => !principais.includes(d))
+
+        function renderTab(div: string) {
           const count = jogos.filter(j => j.divisao === div).length
           const isAtiva = divisaoAtiva === div
           return (
             <button
               key={div}
               onClick={() => { setDivisaoAtiva(div); setModalidadeFiltro(''); setCategoriaFiltro('') }}
-              className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
+              title={div}
+              className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
                 isAtiva
                   ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)]'
                   : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]/50 hover:text-[var(--foreground)]'
               }`}
             >
-              {div}
+              <span className="truncate max-w-[160px]">{div}</span>
               {count > 0 && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${
                   isAtiva ? 'bg-[var(--green-bright)]/20' : 'bg-[var(--border)]/60'
                 }`}>{count}</span>
               )}
             </button>
           )
-        })}
-      </div>
+        }
+
+        return (
+          <div className="space-y-3">
+            {principais.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/50">Divisões</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {principais.map(renderTab)}
+                </div>
+              </div>
+            )}
+            {conferencias.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/50">
+                  Conferências Super 08
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {conferencias.map(renderTab)}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Filtros: modalidade + categoria + busca */}
       <div className="flex flex-wrap items-center gap-3">
@@ -263,14 +305,43 @@ export function ChaveamentoClient({ jogos, modalidades }: Props) {
 
       {/* Lista de chaves */}
       {chaves.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[var(--border)] p-16 text-center">
+        <div className="rounded-2xl border border-dashed border-[var(--border)] p-10 text-center">
           <Inbox className="mx-auto mb-3 h-8 w-8 text-[var(--muted-foreground)]/20" />
-          <p className="text-sm text-[var(--muted-foreground)]">
+          <p className="text-sm font-medium text-[var(--muted-foreground)]">
             Nenhuma chave para os filtros selecionados.
           </p>
-          <p className="mt-1 text-xs text-[var(--muted-foreground)]/60">
-            As chaves aparecem aqui quando a planilha é importada em Esportivo → Importar.
-          </p>
+
+          {/* Diagnóstico — se há jogos na divisão mas sem chaves, mostra o motivo */}
+          {diagnostico.total > 0 && (
+            <div className="mx-auto mt-4 max-w-md rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-left">
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-700">
+                ⚠ Jogos importados mas incompletos
+              </p>
+              <p className="text-[11px] text-amber-700/80 mb-3">
+                Esta divisão tem <strong className="tabular-nums">{diagnostico.total}</strong> jogos, mas estão sem campos obrigatórios pra formar uma chave:
+              </p>
+              <ul className="space-y-1 text-[11px] text-[var(--muted-foreground)]">
+                {diagnostico.semModalidade > 0 && (
+                  <li><strong className="text-red-500 tabular-nums">{diagnostico.semModalidade}</strong> sem <strong>modalidade</strong></li>
+                )}
+                {diagnostico.semCategoria > 0 && (
+                  <li><strong className="text-amber-600 tabular-nums">{diagnostico.semCategoria}</strong> sem <strong>categoria</strong> (Masculino/Feminino)</li>
+                )}
+                {diagnostico.semFase > 0 && (
+                  <li><strong className="text-amber-600 tabular-nums">{diagnostico.semFase}</strong> sem <strong>fase</strong> (oitavas/quartas/etc)</li>
+                )}
+              </ul>
+              <p className="mt-3 text-[11px] text-[var(--muted-foreground)]/70">
+                Edite os jogos em <strong>/admin/jogos</strong> ou ajuste a planilha e re-importe.
+              </p>
+            </div>
+          )}
+
+          {diagnostico.total === 0 && (
+            <p className="mt-2 text-xs text-[var(--muted-foreground)]/60">
+              As chaves aparecem aqui quando a planilha é importada em <strong>Esportivo → Importar</strong>.
+            </p>
+          )}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

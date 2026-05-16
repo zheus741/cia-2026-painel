@@ -37,6 +37,15 @@ export interface Modalidade {
   divisoes: string[] | null
 }
 
+export interface ChaveConfig {
+  id: string
+  modalidade_id: string
+  categoria: string
+  divisao: string
+  num_teams: number
+  seeds: string[]  // array de nomes de atléticas em P1..PN
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Divisões disponíveis — extraídas dos jogos + ordem canônica */
@@ -74,9 +83,10 @@ interface ChaveInfo extends ChaveKey {
 interface Props {
   jogos: JogoChave[]
   modalidades: Modalidade[]
+  chaveConfigs: ChaveConfig[]
 }
 
-export function ChaveamentoClient({ jogos, modalidades }: Props) {
+export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
   const [divisaoAtiva, setDivisaoAtiva] = useState<string>('1ª Divisão')
   const [modalidadeFiltro, setModalidadeFiltro] = useState<string>('')
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('')
@@ -179,6 +189,13 @@ export function ChaveamentoClient({ jogos, modalidades }: Props) {
       c.categoria === chaveAberta.categoria &&
       c.divisao === chaveAberta.divisao
     )
+    // Acha a config da chave (numTeams + seeds)
+    const modalidadeAtual = modalidades.find(m => m.slug === chaveAberta.modalidade)
+    const config = modalidadeAtual ? chaveConfigs.find(cc =>
+      cc.modalidade_id === modalidadeAtual.id &&
+      cc.categoria === chaveAberta.categoria &&
+      cc.divisao === chaveAberta.divisao
+    ) : null
 
     return (
       <div className="space-y-5">
@@ -200,7 +217,7 @@ export function ChaveamentoClient({ jogos, modalidades }: Props) {
           <span className="text-[var(--muted-foreground)]">{chaveAberta.divisao}</span>
         </div>
 
-        <BracketView jogos={jogosChave} />
+        <BracketView jogos={jogosChave} config={config ?? null} />
       </div>
     )
   }

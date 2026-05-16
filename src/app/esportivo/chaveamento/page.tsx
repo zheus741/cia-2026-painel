@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth/current-user'
 import { PageHeader } from '@/components/page-header'
-import { ChaveamentoClient, type JogoChave, type Modalidade } from './ChaveamentoClient'
+import { ChaveamentoClient, type JogoChave, type Modalidade, type ChaveConfig } from './ChaveamentoClient'
 
 /**
  * /esportivo/chaveamento
@@ -19,7 +19,7 @@ export default async function ChaveamentoPage() {
 
   const supabase = await createClient()
 
-  const [{ data: jogosDB }, { data: modalidadesDB }] = await Promise.all([
+  const [{ data: jogosDB }, { data: modalidadesDB }, { data: chaveConfigsDB }] = await Promise.all([
     supabase
       .from('jogos')
       .select(`
@@ -34,6 +34,7 @@ export default async function ChaveamentoPage() {
       .neq('status', 'cancelado')
       .order('inicio', { ascending: true, nullsFirst: false }),
     supabase.from('modalidades').select('id, nome, slug, icone, categorias, divisoes').order('nome'),
+    supabase.from('chave_config').select('id, modalidade_id, categoria, divisao, num_teams, seeds'),
   ])
 
   // Normaliza: Supabase pode devolver join como array
@@ -59,6 +60,7 @@ export default async function ChaveamentoPage() {
       <ChaveamentoClient
         jogos={jogos}
         modalidades={(modalidadesDB ?? []) as Modalidade[]}
+        chaveConfigs={(chaveConfigsDB ?? []) as ChaveConfig[]}
       />
     </div>
   )

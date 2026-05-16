@@ -153,14 +153,16 @@ export default async function EsportivoPage() {
     }))
 
   return (
-    <EsportivoClient
-      div1={div1}
-      div2={div2}
-      super08={super08}
-      upcoming={upcoming}
-      totalJogos={encerrados.length}
-      totalAtleticas={atleticas.length}
-      aoVivoCount={aoVivoCount ?? 0}
-    />
+    <div className="mx-auto w-full max-w-[1640px] px-4 py-6 sm:px-6 md:py-8 lg:px-10 xl:px-12">
+      <EsportivoClient
+        div1={div1}
+        div2={div2}
+        super08={super08}
+        upcoming={upcoming}
+        totalJogos={encerrados.length}
+        totalAtleticas={atleticas.length}
+        aoVivoCount={aoVivoCount ?? 0}
+      />
+    </div>
   )
 }

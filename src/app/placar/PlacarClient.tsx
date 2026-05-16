@@ -861,6 +861,8 @@ function JogoListItem({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   const divisaoLabel = jogo.divisao ?? jogo.equipe_a?.divisao ?? jogo.equipe_b?.divisao ?? null
   const divisaoColor = divisaoLabel ? DIV_COLORS[divisaoLabel] : null
   const faseLabel = jogo.fase ? (FASE_LABEL[jogo.fase] ?? jogo.fase) : null
+  const confNome = jogo.equipe_a?.conferencia ?? jogo.equipe_b?.conferencia ?? null
+  const confMeta = confNome ? getConferencia(confNome) : null
 
   // Handlers
   function handleAoVivo() {
@@ -978,7 +980,7 @@ function JogoListItem({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
           </div>
         </div>
 
-        {/* Badges (divisão + fase) */}
+        {/* Badges (divisão + conferência + fase) */}
         <div className="hidden lg:flex items-center gap-1 shrink-0">
           {divisaoLabel && divisaoColor && (
             <span
@@ -986,6 +988,15 @@ function JogoListItem({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
               style={{ background: `${divisaoColor}14`, color: divisaoColor, border: `1px solid ${divisaoColor}33` }}
             >
               {divisaoLabel}
+            </span>
+          )}
+          {confMeta && (
+            <span
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.10em]"
+              style={{ background: `${confMeta.cor}14`, color: confMeta.cor, border: `1px solid ${confMeta.cor}33` }}
+            >
+              <span aria-hidden>{confMeta.icone}</span>
+              {confMeta.nome}
             </span>
           )}
           {faseLabel && (
@@ -1033,6 +1044,12 @@ function JogoListItem({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
               <span className="lg:hidden">
                 <strong className="text-[var(--foreground)]">Divisão:</strong>{' '}
                 <span style={{ color: divisaoColor ?? 'inherit' }}>{divisaoLabel}</span>
+              </span>
+            )}
+            {confMeta && (
+              <span className="lg:hidden">
+                <strong className="text-[var(--foreground)]">Conferência:</strong>{' '}
+                <span style={{ color: confMeta.cor }}>{confMeta.icone} {confMeta.nome}</span>
               </span>
             )}
             {faseLabel && (

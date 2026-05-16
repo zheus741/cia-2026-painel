@@ -52,6 +52,7 @@ const ADMIN_GROUPS: NavGroup[] = [
     items: [
       { label: 'Hub Esportivo',  href: '/esportivo',          icon: Trophy },
       { label: 'Atléticas',      href: '/atleticas',          icon: Users },
+      { label: 'Chaveamento',    href: '/esportivo/chaveamento', icon: GitBranch },
       { label: 'Jogos',          href: '/admin/jogos',        icon: Swords },
       { label: 'Placar Ao Vivo', href: '/placar',             icon: Radio },
       { label: 'Placar TV',      href: '/tv/placar',          icon: Tv2 },
@@ -126,6 +127,7 @@ const COORD_ESPORTIVO_GROUPS: NavGroup[] = [
     items: [
       { label: 'Hub Esportivo',  href: '/esportivo',              icon: Trophy },
       { label: 'Atléticas',      href: '/atleticas',              icon: Users },
+      { label: 'Chaveamento',    href: '/esportivo/chaveamento',  icon: GitBranch },
       { label: 'Placar Ao Vivo', href: '/placar',                 icon: Radio },
       { label: 'Liga Super 8',   href: '/esportivo/super-8',      icon: Trophy },
       { label: 'Escala',         href: '/esportivo/escala',       icon: ClipboardList },
@@ -146,6 +148,7 @@ const OP_ESPORTIVO_GROUPS: NavGroup[] = [
     items: [
       { label: 'Hub Esportivo',  href: '/esportivo',         icon: Trophy },
       { label: 'Atléticas',      href: '/atleticas',         icon: Users },
+      { label: 'Chaveamento',    href: '/esportivo/chaveamento', icon: GitBranch },
       { label: 'Placar Ao Vivo', href: '/placar',            icon: Radio },
       { label: 'Liga Super 8',   href: '/esportivo/super-8', icon: Trophy },
       { label: 'Minha Escala',   href: '/esportivo/escala',  icon: ClipboardList },

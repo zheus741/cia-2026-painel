@@ -1,487 +1,841 @@
 'use client'
 
 /**
- * <BracketView /> — Bracket COMPLETO no formato oficial CIA (Anexo III).
+ * BracketView — Chaveamento single-elimination CIA 2026
  *
- * Recebe:
- *   - jogos: lista de jogos do banco (oitavas + quartas/semi/final se houver)
- *   - config: configuração da chave (numTeams + seeds com P1..PN)
- *
- * Renderiza:
- *   - Estrutura completa do bracket (todos os JOGOs do regulamento)
- *   - Cards com equipes reais quando match com DB existe
- *   - Cards "A definir" quando o jogo ainda não tem confronto definido
- *   - Posições P1..PN nos slots de oitavas/quartas (seeds do sorteio)
- *   - Quadrantes labels acima dos quadrantes
- *   - Layout 7 colunas: Oit L → Qua L → Semi L → Final → Semi R → Qua R → Oit R
+ * Posicionamento absoluto por rodada + SVG overlay para conectores.
+ * Desktop: cabe na tela sem scroll. Mobile: overflow-x auto.
  */
 
 import Link from 'next/link'
 import { Trophy, Crown, Radio, UserX } from 'lucide-react'
 import type { JogoChave, ChaveConfig } from './ChaveamentoClient'
-import { buildGames, canonTeamName, type BracketGame, type BracketSlot } from '@/lib/chaveamento/bracket-builder'
+import {
+  buildGames,
+  canonTeamName,
+  type BracketGame,
+  type BracketSlot,
+} from '@/lib/chaveamento/bracket-builder'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Layout constants ─────────────────────────────────────────────────────────
+const CARD_H  = 68   // card height px
+const COL_W   = 132  // column width px
+const GAP     = 14   // gap between columns px
+const ROW_H   = 140  // distance top→top between consecutive leaf rows px
+const HDR_H   = 28   // column header height px
+const QL_H    = 18   // quadrant label height px
+
+// For 16 teams:
+//   width  = 7 × 132 + 6 × 14 = 924 + 84 = 1008 px
+//   height = 3 × 140 + 68 = 488 px (+ HDR_H + QL_H)
+
+// ─── Palette ──────────────────────────────────────────────────────────────────
+const ACCENT: Record<string, { color: string; subtle: string }> = {
+  Q1: { color: '#22c55e', subtle: 'rgba(34,197,94,0.07)'    },
+  Q2: { color: '#60a5fa', subtle: 'rgba(96,165,250,0.07)'   },
+  Q3: { color: '#f59e0b', subtle: 'rgba(245,158,11,0.07)'   },
+  Q4: { color: '#a78bfa', subtle: 'rgba(167,139,250,0.07)'  },
+  gold:  { color: '#e8b94f', subtle: 'rgba(232,185,79,0.06)'  },
+  green: { color: '#6ab87e', subtle: 'rgba(106,184,126,0.06)' },
+  live:  { color: '#ef4444', subtle: 'rgba(239,68,68,0.05)'   },
+}
+
+const CONN_STROKE = 'rgba(74,138,92,0.32)'
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtHora(ts: string | null): string {
   if (!ts) return ''
-  return new Date(ts).toLocaleTimeString('pt-BR', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
-  })
+  try {
+    return new Date(ts).toLocaleTimeString('pt-BR', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+    })
+  } catch { return '' }
 }
 function fmtData(ts: string | null): string {
   if (!ts) return ''
-  return new Date(ts).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  try {
+    return new Date(ts).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  } catch { return '' }
+}
+function getWinner(j: JogoChave): 'a' | 'b' | null {
+  if (j.status !== 'encerrado') return null
+  if (j.wo === 'a') return 'b'
+  if (j.wo === 'b') return 'a'
+  if (j.placar_a != null && j.placar_b != null) {
+    if (j.placar_a > j.placar_b) return 'a'
+    if (j.placar_b > j.placar_a) return 'b'
+  }
+  return null
 }
 
-interface VencedorInfo {
-  lado: 'a' | 'b' | 'empate' | null
-  porWO: boolean
+// ─── Position computation ─────────────────────────────────────────────────────
+
+// Canonical leaf ordering top→bottom per side
+const LEAF_L = ['o_Q1_sup','o_Q1_inf','o_Q4_sup','o_Q4_inf','q_Q1','q_Q4','semL']
+const LEAF_R = ['o_Q2_sup','o_Q2_inf','o_Q3_sup','o_Q3_inf','q_Q2','q_Q3','semR']
+
+interface BPos { x: number; y: number }
+
+function computeLayout(games: BracketGame[]) {
+  const gm = new Map(games.map(g => [g.id, g]))
+  const allDirect = (id: string) =>
+    gm.get(id)?.slots.every(s => s.type === 'direct') ?? false
+
+  // 1. Identify leaves in visual order
+  const lLeaves = LEAF_L.filter(allDirect)
+  const rLeaves = LEAF_R.filter(allDirect)
+  const nLeaves = Math.max(lLeaves.length, rLeaves.length, 1)
+
+  // 2. Assign row units to leaves
+  const ru = new Map<string, number>()
+  lLeaves.forEach((id, i) => ru.set(id, i))
+  rLeaves.forEach((id, i) => ru.set(id, i))
+
+  // 3. Recurse to parent positions
+  function row(id: string): number {
+    if (ru.has(id)) return ru.get(id)!
+    const g = gm.get(id)
+    if (!g) return (nLeaves - 1) / 2
+    const feeders = g.slots
+      .filter(s => s.type === 'feeder' && s.gameId)
+      .map(s => s.gameId!)
+    if (!feeders.length) {
+      const r = (nLeaves - 1) / 2
+      ru.set(id, r)
+      return r
+    }
+    const v = feeders.reduce((s, f) => s + row(f), 0) / feeders.length
+    ru.set(id, v)
+    return v
+  }
+  games.forEach(g => row(g.id))
+
+  // 4. Determine which round-columns are present
+  const rounds = new Set(games.map(g => g.round))
+  const colDefs: Array<{ key: string; label: string }> = []
+  if (rounds.has('oitava')) colDefs.push({ key: 'oitava-L', label: 'Oitavas' })
+  if (rounds.has('quarta')) colDefs.push({ key: 'quarta-L', label: 'Quartas' })
+  if (rounds.has('semi'))   colDefs.push({ key: 'semi-L',   label: 'Semifinal' })
+  colDefs.push({ key: 'final', label: 'Final' })
+  if (rounds.has('semi'))   colDefs.push({ key: 'semi-R',   label: 'Semifinal' })
+  if (rounds.has('quarta')) colDefs.push({ key: 'quarta-R', label: 'Quartas' })
+  if (rounds.has('oitava')) colDefs.push({ key: 'oitava-R', label: 'Oitavas' })
+
+  const cols = colDefs.map((c, i) => ({ ...c, x: i * (COL_W + GAP) }))
+  const cxk  = new Map(cols.map(c => [c.key, c.x]))
+
+  function gx(g: BracketGame): number {
+    const key = g.round === 'final' ? 'final' : `${g.round}-${g.side}`
+    return cxk.get(key) ?? 0
+  }
+
+  const pos = new Map<string, BPos>()
+  games.forEach(g => pos.set(g.id, { x: gx(g), y: row(g.id) * ROW_H }))
+
+  return {
+    pos,
+    cols,
+    totalW: cols.length * COL_W + (cols.length - 1) * GAP,
+    totalH: (nLeaves - 1) * ROW_H + CARD_H,
+    nLeaves,
+  }
 }
 
-function determinarVencedor(jogo: JogoChave): VencedorInfo {
-  if (jogo.status !== 'encerrado') return { lado: null, porWO: false }
-  if (jogo.wo === 'a') return { lado: 'b', porWO: true }
-  if (jogo.wo === 'b') return { lado: 'a', porWO: true }
-  if (jogo.wo === 'duplo') return { lado: null, porWO: true }
-  if (jogo.placar_a == null || jogo.placar_b == null) return { lado: null, porWO: false }
-  if (jogo.placar_a > jogo.placar_b) return { lado: 'a', porWO: false }
-  if (jogo.placar_b > jogo.placar_a) return { lado: 'b', porWO: false }
-  return { lado: 'empate', porWO: false }
-}
+// ─── SVG connector builder ────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Resolver: dado um slot do bracket e os seeds + jogos, retorna o nome a exibir
-// e se há um DB jogo associado.
-// ─────────────────────────────────────────────────────────────────────────────
+function buildPaths(games: BracketGame[], pos: Map<string, BPos>): string[] {
+  const paths: string[] = []
 
-interface ResolvedSlot {
-  /** Nome de display: "EDUCA UNIUBE" | "Vencedor JOGO 1" | "A definir" */
-  display: string
-  /** Posição P1..PN, se direct slot */
-  pos?: number
-  /** Nome canonical (pra matching de jogos) */
-  canonName?: string
-  /** É um placeholder feeder (esperando vencedor)? */
-  isFeeder: boolean
-}
+  for (const game of games) {
+    const feeders = game.slots
+      .filter(s => s.type === 'feeder' && s.gameId)
+      .map(s => s.gameId!)
+    if (!feeders.length) continue
 
-function resolveSlot(slot: BracketSlot, seeds: string[]): ResolvedSlot {
-  if (slot.type === 'direct') {
-    const pos = slot.pos
-    if (!pos) return { display: '?', isFeeder: false }
-    const name = seeds[pos - 1] || ''
-    return {
-      display: name || `P${pos}`,
-      pos,
-      canonName: canonTeamName(name),
-      isFeeder: false,
+    const pp = pos.get(game.id)
+    if (!pp) continue
+    const pCY = pp.y + CARD_H / 2
+
+    if (game.round === 'final') {
+      // slot[0] = left feeder (semiL), slot[1] = right feeder (semiR)
+      const lId = game.slots[0].type === 'feeder' ? (game.slots[0].gameId ?? null) : null
+      const rId = game.slots[1].type === 'feeder' ? (game.slots[1].gameId ?? null) : null
+
+      if (lId) {
+        const fp = pos.get(lId)
+        if (fp) {
+          const fCY = fp.y + CARD_H / 2
+          const mx  = fp.x + COL_W + GAP / 2
+          paths.push(
+            Math.abs(fCY - pCY) < 1
+              ? `M ${fp.x + COL_W} ${fCY} H ${pp.x}`
+              : `M ${fp.x + COL_W} ${fCY} H ${mx} V ${pCY} H ${pp.x}`,
+          )
+        }
+      }
+      if (rId) {
+        const fp = pos.get(rId)
+        if (fp) {
+          const fCY = fp.y + CARD_H / 2
+          const mx  = pp.x + COL_W + GAP / 2
+          paths.push(
+            Math.abs(fCY - pCY) < 1
+              ? `M ${fp.x} ${fCY} H ${pp.x + COL_W}`
+              : `M ${fp.x} ${fCY} H ${mx} V ${pCY} H ${pp.x + COL_W}`,
+          )
+        }
+      }
+    } else if (game.side === 'R') {
+      // Feeders are to the RIGHT → connector from feeder.left to parent.right
+      const f0p = pos.get(feeders[0])
+      const f1p = feeders[1] ? pos.get(feeders[1]) : null
+      if (f0p) {
+        const mx = pp.x + COL_W + GAP / 2
+        if (f1p && feeders.length === 2) {
+          const c0 = f0p.y + CARD_H / 2
+          const c1 = f1p.y + CARD_H / 2
+          paths.push(
+            `M ${f0p.x} ${c0} H ${mx}` +
+            ` M ${mx} ${c0} V ${c1}` +
+            ` M ${f1p.x} ${c1} H ${mx}` +
+            ` M ${mx} ${pCY} H ${pp.x + COL_W}`,
+          )
+        } else {
+          const fc = f0p.y + CARD_H / 2
+          paths.push(
+            Math.abs(fc - pCY) < 1
+              ? `M ${f0p.x} ${fc} H ${pp.x + COL_W}`
+              : `M ${f0p.x} ${fc} H ${mx} V ${pCY} H ${pp.x + COL_W}`,
+          )
+        }
+      }
+    } else {
+      // L side: feeders to the LEFT → connector from feeder.right to parent.left
+      const f0p = pos.get(feeders[0])
+      const f1p = feeders[1] ? pos.get(feeders[1]) : null
+      if (f0p) {
+        const mx = f0p.x + COL_W + GAP / 2
+        if (f1p && feeders.length === 2) {
+          const c0 = f0p.y + CARD_H / 2
+          const c1 = f1p.y + CARD_H / 2
+          paths.push(
+            `M ${f0p.x + COL_W} ${c0} H ${mx}` +
+            ` M ${mx} ${c0} V ${c1}` +
+            ` M ${f1p.x + COL_W} ${c1} H ${mx}` +
+            ` M ${mx} ${pCY} H ${pp.x}`,
+          )
+        } else {
+          const fc = f0p.y + CARD_H / 2
+          paths.push(
+            Math.abs(fc - pCY) < 1
+              ? `M ${f0p.x + COL_W} ${fc} H ${pp.x}`
+              : `M ${f0p.x + COL_W} ${fc} H ${mx} V ${pCY} H ${pp.x}`,
+          )
+        }
+      }
     }
   }
-  // Feeder
-  return { display: 'A definir', isFeeder: true }
+
+  return paths
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Resolve um BracketGame: anexa nomes nos slots + procura DB jogo correspondente
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Enriched game ────────────────────────────────────────────────────────────
 
-interface EnrichedGame {
-  bracket: BracketGame
-  slotA: ResolvedSlot
-  slotB: ResolvedSlot
-  jogo: JogoChave | null  // DB row matchada (se existir)
+interface RSlot {
+  display:  string
+  pos?:     number
+  canon?:   string
+  isFeeder: boolean
+}
+interface EGame {
+  bg:   BracketGame
+  sA:   RSlot
+  sB:   RSlot
+  jogo: JogoChave | null
 }
 
-function enrichGames(games: BracketGame[], seeds: string[], jogos: JogoChave[]): EnrichedGame[] {
+function rslot(slot: BracketSlot, seeds: string[]): RSlot {
+  if (slot.type === 'feeder') return { display: 'A definir', isFeeder: true }
+  if (!slot.pos) return { display: '?', isFeeder: false }
+  const name = seeds[slot.pos - 1] ?? ''
+  return {
+    display:  name || `P${slot.pos}`,
+    pos:      slot.pos,
+    canon:    canonTeamName(name),
+    isFeeder: false,
+  }
+}
+
+function enrich(
+  games: BracketGame[],
+  seeds: string[],
+  jogos: JogoChave[],
+): EGame[] {
   return games.map(g => {
-    const slotA = resolveSlot(g.slots[0], seeds)
-    const slotB = resolveSlot(g.slots[1], seeds)
-
-    // Tenta achar DB jogo: match canonical name (qualquer ordem)
-    let dbGame: JogoChave | null = null
-    if (slotA.canonName && slotB.canonName) {
-      dbGame = jogos.find(j => {
+    const sA = rslot(g.slots[0], seeds)
+    const sB = rslot(g.slots[1], seeds)
+    let jogo: JogoChave | null = null
+    if (sA.canon && sB.canon) {
+      jogo = jogos.find(j => {
         const ja = canonTeamName(j.equipe_a_nome)
         const jb = canonTeamName(j.equipe_b_nome)
-        return (ja === slotA.canonName && jb === slotB.canonName) ||
-               (ja === slotB.canonName && jb === slotA.canonName)
+        return (
+          (ja === sA.canon && jb === sB.canon) ||
+          (ja === sB.canon && jb === sA.canon)
+        )
       }) ?? null
-    } else if (slotA.canonName) {
-      // Apenas slot A é direct (caso de chaves com bye)
-      dbGame = jogos.find(j => {
+    } else if (sA.canon) {
+      jogo = jogos.find(j => {
         const ja = canonTeamName(j.equipe_a_nome)
         const jb = canonTeamName(j.equipe_b_nome)
-        return ja === slotA.canonName || jb === slotA.canonName
+        return ja === sA.canon || jb === sA.canon
       }) ?? null
     }
-    return { bracket: g, slotA, slotB, jogo: dbGame }
+    return { bg: g, sA, sB, jogo }
   })
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MatchCard — renderiza um jogo do bracket (real ou placeholder)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Card components ──────────────────────────────────────────────────────────
 
-function MatchCard({ ent, isFinal, isSemi }: {
-  ent: EnrichedGame
-  isFinal?: boolean
-  isSemi?: boolean
-}) {
-  const { bracket: bg, slotA, slotB, jogo } = ent
-
-  // Estado: se tem jogo real, usa dados; senão é placeholder estrutural
-  const isReal = jogo !== null
-  const vencedor = jogo ? determinarVencedor(jogo) : { lado: null, porWO: false }
-  const isEncerrado = jogo?.status === 'encerrado'
-  const isAoVivo    = jogo?.status === 'ao_vivo'
-
-  // Cores das equipes (vindas do DB jogo)
-  const corA = jogo?.equipe_a?.cor_primaria ?? 'var(--muted-foreground)'
-  const corB = jogo?.equipe_b?.cor_primaria ?? 'var(--muted-foreground)'
-
-  const content = (
-    <>
-      {/* Header: JOGO N */}
-      <div className="flex items-center gap-1.5 border-b border-[var(--border)]/60 bg-[var(--muted)]/40 px-2 py-0.5">
-        <span className={`text-[9px] font-bold tabular-nums tracking-wider ${
-          isFinal ? 'text-amber-500' : isSemi ? 'text-[var(--green-bright)]' : 'text-[var(--muted-foreground)]/70'
-        }`}>
-          JOGO {bg.num}
-        </span>
-        {jogo?.inicio && (
-          <span className="ml-auto text-[8px] tabular-nums text-[var(--muted-foreground)]/60">
-            {fmtData(jogo.inicio)} · {fmtHora(jogo.inicio)}
-          </span>
-        )}
-        {isAoVivo && <Radio className="ml-1 h-2 w-2 text-red-400 animate-pulse" />}
-        {vencedor.porWO && !isAoVivo && <UserX className="ml-1 h-2 w-2 text-red-400" />}
-      </div>
-
-      {/* Slot A */}
-      <SlotRow
-        slot={slotA}
-        nomeReal={jogo?.equipe_a_nome ?? null}
-        cor={corA}
-        placar={jogo?.placar_a ?? null}
-        isVencedor={vencedor.lado === 'a'}
-        isPerdedorWO={jogo?.wo === 'a' || jogo?.wo === 'duplo'}
-        showPlacar={isAoVivo || isEncerrado}
-      />
-      <div className="h-px bg-[var(--border)]/40" />
-      {/* Slot B */}
-      <SlotRow
-        slot={slotB}
-        nomeReal={jogo?.equipe_b_nome ?? null}
-        cor={corB}
-        placar={jogo?.placar_b ?? null}
-        isVencedor={vencedor.lado === 'b'}
-        isPerdedorWO={jogo?.wo === 'b' || jogo?.wo === 'duplo'}
-        showPlacar={isAoVivo || isEncerrado}
-      />
-    </>
-  )
-
-  // Card wrapper styling
-  const cardClass = `block w-full overflow-hidden rounded-lg border text-[10px] transition-all ${
-    isFinal
-      ? 'border-amber-400/40 bg-gradient-to-br from-amber-400/10 to-transparent'
-      : isAoVivo
-      ? 'border-red-500/40 bg-red-500/5 shadow-[0_0_12px_rgba(239,68,68,0.10)]'
-      : isReal
-      ? 'border-[var(--border)] bg-[var(--card)]'
-      : 'border-dashed border-[var(--border)]/50 bg-[var(--muted)]/20'
-  } ${isReal ? 'hover:scale-[1.02] hover:shadow-lg' : ''}`
-
-  // Se tem jogo real, link pro /placar
-  if (jogo) {
-    return (
-      <Link
-        href={`/placar?dia=${jogo.dia_id}#jogo-${jogo.id}`}
-        className={cardClass}
-        style={{ textDecoration: 'none' }}
-      >
-        {content}
-      </Link>
-    )
-  }
-
-  return <div className={cardClass}>{content}</div>
-}
-
-function SlotRow({
-  slot, nomeReal, cor, placar, isVencedor, isPerdedorWO, showPlacar,
+function TeamRow({
+  slot, realName, cor, placar, isWin, isWO, showPlacar,
 }: {
-  slot: ResolvedSlot
-  nomeReal: string | null
-  cor: string
-  placar: number | null
-  isVencedor: boolean
-  isPerdedorWO: boolean
+  slot:       RSlot
+  realName:   string | null
+  cor:        string | null
+  placar:     number | null
+  isWin:      boolean
+  isWO:       boolean
   showPlacar: boolean
 }) {
-  // Display name: usa o nome do DB se disponível, senão o seed name
-  const displayName = nomeReal ?? slot.display
-  const hasTeam = !slot.isFeeder && !!slot.canonName
-
+  const displayName = realName ?? slot.display
+  const hasTeam = !slot.isFeeder && !!slot.canon
   return (
-    <div className={`flex items-center gap-1.5 px-2 py-1 ${isVencedor ? 'bg-[var(--green-dim)]/15' : ''}`}>
-      {/* Color stripe */}
+    <div
+      className={isWin ? 'bg-[var(--green-dim)]/10' : ''}
+      style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        paddingLeft: 7,
+        paddingRight: 6,
+        overflow: 'hidden',
+        minHeight: 0,
+      }}
+    >
+      {/* Team color stripe */}
       <span
-        className="h-3.5 w-0.5 shrink-0 rounded-full"
-        style={{ background: hasTeam ? cor : 'var(--border)' }}
+        style={{
+          width: 2,
+          height: 14,
+          borderRadius: 2,
+          background: hasTeam ? (cor ?? 'var(--muted-foreground)') : 'var(--border)',
+          flexShrink: 0,
+        }}
       />
-      {/* Pos label (P1, P9, etc) */}
-      {slot.pos && (
-        <span className="shrink-0 inline-flex h-3.5 items-center justify-center rounded bg-[var(--muted)] px-1 text-[8px] font-bold tabular-nums text-[var(--muted-foreground)]">
+
+      {/* Seed badge */}
+      {slot.pos !== undefined && (
+        <span
+          style={{
+            flexShrink: 0,
+            display: 'inline-flex',
+            height: 14,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 3,
+            background: 'var(--muted)',
+            padding: '0 3px',
+            fontSize: 8,
+            fontWeight: 700,
+            color: 'var(--muted-foreground)',
+          }}
+        >
           P{slot.pos}
         </span>
       )}
-      {/* Nome */}
-      <span className={`flex-1 truncate text-[10px] font-semibold ${
-        slot.isFeeder
-          ? 'text-[var(--muted-foreground)]/40 italic'
-          : isPerdedorWO
-          ? 'text-[var(--muted-foreground)]/50 line-through'
-          : isVencedor
-          ? 'text-[var(--green-bright)]'
-          : !hasTeam
-          ? 'text-[var(--muted-foreground)]/40 italic'
-          : 'text-[var(--foreground)]'
-      }`}>
+
+      {/* Name */}
+      <span
+        style={{
+          flex: 1,
+          fontSize: 10,
+          fontWeight: 600,
+          lineHeight: 1.2,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          color: slot.isFeeder
+            ? 'var(--muted-foreground)'
+            : isWO
+            ? 'var(--muted-foreground)'
+            : isWin
+            ? 'var(--green-bright)'
+            : !hasTeam
+            ? 'var(--muted-foreground)'
+            : 'var(--foreground)',
+          opacity: (slot.isFeeder || !hasTeam) ? 0.45 : 1,
+          fontStyle: slot.isFeeder ? 'italic' : 'normal',
+          textDecoration: isWO ? 'line-through' : 'none',
+        }}
+      >
         {displayName}
       </span>
-      {/* Crown */}
-      {isVencedor && <Crown className="h-2.5 w-2.5 shrink-0 text-[var(--green-bright)]" />}
-      {/* Placar */}
+
+      {/* Score */}
       {showPlacar && (
-        <span className={`shrink-0 tabular-nums text-xs font-bold ${
-          isVencedor ? 'text-[var(--green-bright)]' : isPerdedorWO ? 'text-[var(--muted-foreground)]/40' : 'text-[var(--muted-foreground)]'
-        }`}>
-          {isPerdedorWO ? '—' : (placar ?? 0)}
+        <span
+          style={{
+            flexShrink: 0,
+            fontSize: 11,
+            fontWeight: 700,
+            fontVariantNumeric: 'tabular-nums',
+            color: isWin
+              ? 'var(--green-bright)'
+              : isWO
+              ? 'var(--muted-foreground)'
+              : 'var(--muted-foreground)',
+            opacity: isWO ? 0.4 : 1,
+          }}
+        >
+          {isWO ? '—' : (placar ?? 0)}
         </span>
       )}
+
+      {/* Winner crown */}
+      {isWin && <Crown style={{ width: 10, height: 10, color: '#e8b94f', flexShrink: 0 }} />}
     </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Distribui jogos por quadrante (Q1, Q4, Q2, Q3)
-// ─────────────────────────────────────────────────────────────────────────────
+type GameAccent = 'gold' | 'green' | 'normal' | string  // string = quad key
 
-interface BracketLayout {
-  q1Oit: EnrichedGame[]
-  q4Oit: EnrichedGame[]
-  q2Oit: EnrichedGame[]
-  q3Oit: EnrichedGame[]
-  q1Qua: EnrichedGame | null
-  q4Qua: EnrichedGame | null
-  q2Qua: EnrichedGame | null
-  q3Qua: EnrichedGame | null
-  semiL: EnrichedGame | null
-  semiR: EnrichedGame | null
-  final: EnrichedGame | null
-}
+function MatchCard({ ent, accent }: { ent: EGame; accent: GameAccent }) {
+  const { bg, sA, sB, jogo } = ent
+  const isReal = jogo !== null
+  const isLive = jogo?.status === 'ao_vivo'
+  const isEnd  = jogo?.status === 'encerrado'
+  const win    = jogo ? getWinner(jogo) : null
 
-function layoutGames(games: EnrichedGame[]): BracketLayout {
-  const oit = games.filter(g => g.bracket.round === 'oitava')
-  const qua = games.filter(g => g.bracket.round === 'quarta')
-  const sem = games.filter(g => g.bracket.round === 'semi')
-  const fin = games.find(g => g.bracket.round === 'final') ?? null
+  const isDef = sA.isFeeder && sB.isFeeder
 
-  const byQuad = (arr: EnrichedGame[], q: 'Q1'|'Q2'|'Q3'|'Q4') =>
-    arr.filter(g => g.bracket.quad === q)
+  // Resolve accent
+  const pal =
+    accent === 'gold'  ? ACCENT.gold :
+    accent === 'green' ? ACCENT.green :
+    isLive             ? ACCENT.live :
+    ACCENT[accent]     ?? null
 
-  return {
-    q1Oit: byQuad(oit, 'Q1'),
-    q4Oit: byQuad(oit, 'Q4'),
-    q2Oit: byQuad(oit, 'Q2'),
-    q3Oit: byQuad(oit, 'Q3'),
-    q1Qua: byQuad(qua, 'Q1')[0] ?? null,
-    q4Qua: byQuad(qua, 'Q4')[0] ?? null,
-    q2Qua: byQuad(qua, 'Q2')[0] ?? null,
-    q3Qua: byQuad(qua, 'Q3')[0] ?? null,
-    semiL: sem.find(g => g.bracket.side === 'L') ?? null,
-    semiR: sem.find(g => g.bracket.side === 'R') ?? null,
-    final: fin,
+  const accentColor  = pal?.color  ?? 'var(--border)'
+  const accentSubtle = pal?.subtle ?? 'transparent'
+
+  // Card border / bg
+  const cardBorder = isDef
+    ? 'none'
+    : pal
+    ? `1px solid ${accentColor}44`
+    : `1px solid var(--border)`
+
+  const cardBg = isDef
+    ? 'transparent'
+    : isReal && pal
+    ? accentSubtle
+    : 'var(--card)'
+
+  const content = (
+    <div
+      style={{
+        width: COL_W,
+        height: CARD_H,
+        display: 'flex',
+        flexDirection: 'column',
+        borderRadius: 8,
+        border: isDef ? '1.5px dashed rgba(74,138,92,0.22)' : cardBorder,
+        background: cardBg,
+        overflow: 'hidden',
+        opacity: isDef ? 0.55 : 1,
+        transition: 'box-shadow 0.15s, opacity 0.15s',
+        ...(accent === 'gold' && isReal
+          ? { boxShadow: '0 0 18px rgba(232,185,79,0.12), inset 0 0 0 1px rgba(232,185,79,0.20)' }
+          : {}),
+        ...(isLive
+          ? { boxShadow: '0 0 12px rgba(239,68,68,0.15)' }
+          : {}),
+      }}
+    >
+      {/* Left accent bar + header row */}
+      <div style={{ display: 'flex', flexShrink: 0 }}>
+        {/* Accent bar */}
+        {!isDef && (
+          <div
+            style={{
+              width: 3,
+              alignSelf: 'stretch',
+              background: accentColor,
+              borderRadius: '8px 0 0 0',
+              flexShrink: 0,
+            }}
+          />
+        )}
+
+        {/* Header */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            paddingLeft: isDef ? 8 : 5,
+            paddingRight: 8,
+            height: 16,
+            borderBottom: `1px solid ${isDef ? 'rgba(74,138,92,0.15)' : 'var(--border)'}`,
+            background: isDef ? 'transparent' : 'var(--muted)/20',
+            opacity: isDef ? 0.7 : 1,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 8,
+              fontWeight: 700,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: isDef
+                ? 'var(--muted-foreground)'
+                : accent === 'gold'
+                ? '#e8b94f'
+                : accent === 'green'
+                ? 'var(--green-bright)'
+                : 'var(--muted-foreground)',
+              opacity: isDef ? 0.5 : 0.8,
+            }}
+          >
+            JOGO {bg.num}
+          </span>
+
+          {jogo?.inicio && (
+            <span
+              style={{
+                marginLeft: 'auto',
+                fontSize: 7,
+                color: 'var(--muted-foreground)',
+                opacity: 0.5,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {fmtData(jogo.inicio)} · {fmtHora(jogo.inicio)}
+            </span>
+          )}
+
+          {isLive && (
+            <Radio
+              style={{ width: 8, height: 8, color: '#ef4444', flexShrink: 0 }}
+              className="animate-pulse"
+            />
+          )}
+          {jogo?.wo && !isLive && (
+            <UserX style={{ width: 8, height: 8, color: '#ef4444', flexShrink: 0 }} />
+          )}
+        </div>
+      </div>
+
+      {/* Team A */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        {!isDef && (
+          <div style={{ width: 3, background: accentColor, flexShrink: 0 }} />
+        )}
+        <TeamRow
+          slot={sA}
+          realName={jogo?.equipe_a_nome ?? null}
+          cor={jogo?.equipe_a?.cor_primaria ?? null}
+          placar={jogo?.placar_a ?? null}
+          isWin={win === 'a'}
+          isWO={jogo?.wo === 'a' || jogo?.wo === 'duplo'}
+          showPlacar={isLive || isEnd}
+        />
+      </div>
+
+      {/* Divider */}
+      <div
+        style={{
+          height: 1,
+          background: isDef ? 'rgba(74,138,92,0.12)' : 'var(--border)',
+          opacity: isDef ? 0.5 : 0.6,
+          marginLeft: isDef ? 0 : 3,
+        }}
+      />
+
+      {/* Team B */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        {!isDef && (
+          <div
+            style={{
+              width: 3,
+              background: accentColor,
+              flexShrink: 0,
+              borderRadius: '0 0 0 8px',
+            }}
+          />
+        )}
+        <TeamRow
+          slot={sB}
+          realName={jogo?.equipe_b_nome ?? null}
+          cor={jogo?.equipe_b?.cor_primaria ?? null}
+          placar={jogo?.placar_b ?? null}
+          isWin={win === 'b'}
+          isWO={jogo?.wo === 'b' || jogo?.wo === 'duplo'}
+          showPlacar={isLive || isEnd}
+        />
+      </div>
+    </div>
+  )
+
+  if (isReal) {
+    return (
+      <Link
+        href={`/placar?dia=${jogo!.dia_id}#jogo-${jogo!.id}`}
+        style={{ display: 'block', textDecoration: 'none' }}
+        className="group"
+      >
+        <div
+          style={{
+            transition: 'transform 0.12s, opacity 0.12s',
+          }}
+          className="group-hover:scale-[1.015]"
+        >
+          {content}
+        </div>
+      </Link>
+    )
   }
+  return content
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Coluna do bracket
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Col({ label, jogos, accent, slotCount }: {
-  label: string
-  jogos: (EnrichedGame | null)[]
-  accent?: 'gold' | 'green'
-  slotCount?: number
-}) {
-  const accentColor =
-    accent === 'gold' ? 'text-amber-500' :
-    accent === 'green' ? 'text-[var(--green-bright)]' :
-    'text-[var(--muted-foreground)]/60'
-  const slots = slotCount ? [...jogos, ...Array(Math.max(0, slotCount - jogos.length)).fill(null)] : jogos
-
-  return (
-    <div className="flex flex-col min-w-[180px]">
-      <div className={`mb-2 text-center text-[9px] font-bold uppercase tracking-widest ${accentColor}`}>
-        {label}
-      </div>
-      <div className="flex flex-1 flex-col justify-around gap-2">
-        {slots.map((g, i) => (
-          <div key={g?.bracket.id ?? `empty-${i}`} className="min-h-[46px]">
-            {g ? (
-              <MatchCard
-                ent={g}
-                isFinal={g.bracket.round === 'final'}
-                isSemi={g.bracket.round === 'semi'}
-              />
-            ) : (
-              <div className="h-full opacity-0" aria-hidden />
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Componente principal
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
-  jogos: JogoChave[]
-  config: ChaveConfig | null
+  jogos:   JogoChave[]
+  config:  ChaveConfig | null
 }
 
 export function BracketView({ jogos, config }: Props) {
-  // Sem config: chave não cadastrada no bracket-site. Renderiza fallback simples.
   if (!config) {
     return (
       <div className="rounded-2xl border border-dashed border-[var(--border)] p-12 text-center">
         <Trophy className="mx-auto mb-3 h-8 w-8 text-[var(--muted-foreground)]/20" />
         <p className="text-sm text-[var(--muted-foreground)]">
-          Chave sem configuração cadastrada (importe do bracket-site primeiro).
+          Chave sem configuração cadastrada.
         </p>
       </div>
     )
   }
 
   const bracketGames = buildGames(config.num_teams)
-  const enriched = enrichGames(bracketGames, config.seeds, jogos)
-  const L = layoutGames(enriched)
+  const enriched     = enrich(bracketGames, config.seeds, jogos)
+  const { pos, cols, totalW, totalH } = computeLayout(bracketGames)
+  const connPaths = buildPaths(bracketGames, pos)
 
-  // Padding visual pra alinhar quadrantes (cada lado tem max 4 slots de oitavas)
-  // Q1 e Q4 ficam na esquerda (top, bottom). Q2 e Q3 ficam na direita.
+  // Quadrant region labels: appear above the first oitava of each quadrant
+  const QUAD_LABELS: Array<{ gameId: string; quadKey: string; label: string }> = [
+    { gameId: 'o_Q1_sup', quadKey: 'Q1', label: 'Quadrante 1' },
+    { gameId: 'o_Q4_sup', quadKey: 'Q4', label: 'Quadrante 4' },
+    { gameId: 'o_Q2_sup', quadKey: 'Q2', label: 'Quadrante 2' },
+    { gameId: 'o_Q3_sup', quadKey: 'Q3', label: 'Quadrante 3' },
+  ]
+  const quadLabels = QUAD_LABELS.flatMap(({ gameId, quadKey, label }) => {
+    const p = pos.get(gameId)
+    if (!p) return []
+    return [{ x: p.x, y: p.y, color: ACCENT[quadKey].color, label, quadKey }]
+  })
+
+  // Extra space above cards: header row + optional quadrant labels
+  const hasQuadLabels = quadLabels.length > 0
+  const extraTop = HDR_H + (hasQuadLabels ? QL_H + 6 : 0)
+  const fullH    = totalH + extraTop
+
+  // Champion
+  const finalGame = enriched.find(e => e.bg.round === 'final')
+  const champ = (() => {
+    if (!finalGame?.jogo || finalGame.jogo.status !== 'encerrado') return null
+    const w    = getWinner(finalGame.jogo)
+    const nome = w === 'a' ? finalGame.jogo.equipe_a_nome
+                : w === 'b' ? finalGame.jogo.equipe_b_nome
+                : null
+    const cor  = w === 'a' ? finalGame.jogo.equipe_a?.cor_primaria
+                : w === 'b' ? finalGame.jogo.equipe_b?.cor_primaria
+                : null
+    return nome ? { nome, cor: cor ?? null } : null
+  })()
 
   return (
-    <div className="space-y-4">
-      {/* Header com info da chave */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)]/40 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Trophy className="h-4 w-4 text-amber-500" />
-          <span className="text-sm font-bold text-[var(--foreground)]">Chave A</span>
-          <span className="inline-flex items-center rounded-full bg-[var(--green-dim)]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--green-bright)]">
-            {config.num_teams} equipes
-          </span>
+    <div className="space-y-3">
+      {/* Bracket wrapper */}
+      <div
+        className="rounded-xl border border-[var(--border)] bg-[var(--card)]/20 p-3 md:p-4"
+        style={{ overflowX: 'auto' }}
+      >
+        {/* Fixed-size bracket container */}
+        <div
+          style={{
+            position: 'relative',
+            width:  totalW,
+            height: fullH,
+            minWidth: totalW,
+          }}
+        >
+
+          {/* ── Column headers ── */}
+          {cols.map(col => {
+            const isFinal = col.key === 'final'
+            const isSemi  = col.key === 'semi-L' || col.key === 'semi-R'
+            return (
+              <div
+                key={col.key}
+                style={{
+                  position:      'absolute',
+                  left:          col.x,
+                  top:           0,
+                  width:         COL_W,
+                  height:        HDR_H,
+                  display:       'flex',
+                  alignItems:    'center',
+                  justifyContent:'center',
+                  borderBottom:  '1px solid var(--border)',
+                  marginBottom:  4,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize:      9,
+                    fontWeight:    700,
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    color: isFinal ? '#e8b94f'
+                         : isSemi  ? 'var(--green-bright)'
+                         : 'var(--muted-foreground)',
+                    opacity: isFinal ? 1 : isSemi ? 0.85 : 0.5,
+                  }}
+                >
+                  {col.label}
+                </span>
+              </div>
+            )
+          })}
+
+          {/* ── Quadrant labels ── */}
+          {quadLabels.map(ql => (
+            <div
+              key={ql.quadKey}
+              style={{
+                position:   'absolute',
+                left:       ql.x,
+                top:        HDR_H + 4,
+                width:      COL_W,
+                height:     QL_H,
+                display:    'flex',
+                alignItems: 'center',
+                gap:        5,
+              }}
+            >
+              <div
+                style={{
+                  width:        5,
+                  height:       5,
+                  borderRadius: '50%',
+                  background:   ql.color,
+                  flexShrink:   0,
+                }}
+              />
+              <span
+                style={{
+                  fontSize:      8,
+                  fontWeight:    700,
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  color:         ql.color,
+                  opacity:       0.8,
+                }}
+              >
+                {ql.label}
+              </span>
+            </div>
+          ))}
+
+          {/* ── SVG connector overlay ── */}
+          <svg
+            style={{
+              position:      'absolute',
+              left:          0,
+              top:           extraTop,
+              width:         totalW,
+              height:        totalH,
+              pointerEvents: 'none',
+              overflow:      'visible',
+            }}
+            fill="none"
+          >
+            {connPaths.map((d, i) => (
+              <path
+                key={i}
+                d={d}
+                stroke={CONN_STROKE}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+          </svg>
+
+          {/* ── Game cards ── */}
+          {enriched.map(ent => {
+            const p = pos.get(ent.bg.id)
+            if (!p) return null
+
+            const q      = ent.bg.quad  // 'Q1'|'Q2'|'Q3'|'Q4'|undefined
+            const accent: GameAccent =
+              ent.bg.round === 'final' ? 'gold'
+            : ent.bg.round === 'semi'  ? 'green'
+            : q                        ? q
+            :                            'normal'
+
+            return (
+              <div
+                key={ent.bg.id}
+                style={{
+                  position: 'absolute',
+                  left:     p.x,
+                  top:      p.y + extraTop,
+                }}
+              >
+                <MatchCard ent={ent} accent={accent} />
+              </div>
+            )
+          })}
+
         </div>
-        <div className="flex items-center gap-3 text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]/60">
-          {enriched.filter(g => g.bracket.round === 'oitava').length > 0 && (
-            <span>{enriched.filter(g => g.bracket.round === 'oitava').length} oitavas</span>
-          )}
-          {enriched.filter(g => g.bracket.round === 'quarta').length > 0 && (
-            <span>{enriched.filter(g => g.bracket.round === 'quarta').length} quartas</span>
-          )}
-          {enriched.filter(g => g.bracket.round === 'semi').length > 0 && (
-            <span>{enriched.filter(g => g.bracket.round === 'semi').length} semi</span>
-          )}
-          {L.final && <span className="text-amber-500">final</span>}
-        </div>
+
+        {/* Mobile hint */}
+        <p className="mt-2 text-center text-[9px] text-[var(--muted-foreground)]/35 md:hidden">
+          ← deslize para ver toda a chave →
+        </p>
       </div>
 
-      {/* Bracket grid */}
-      <div className="overflow-x-auto pb-4">
-        {/* Labels Quadrantes */}
-        <div className="flex gap-3 min-w-max px-2 mb-2">
-          <div className="flex flex-col gap-2 min-w-[372px]">
-            <div className="rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-center text-[9px] font-bold uppercase tracking-widest text-blue-400">
-              QUADRANTE 1
-            </div>
-          </div>
-          <div className="min-w-[180px]" />  {/* semi L spacer */}
-          <div className="min-w-[180px]" />  {/* final spacer */}
-          <div className="min-w-[180px]" />  {/* semi R spacer */}
-          <div className="flex flex-col gap-2 min-w-[372px]">
-            <div className="rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-center text-[9px] font-bold uppercase tracking-widest text-blue-400">
-              QUADRANTE 2
-            </div>
-          </div>
+      {/* Champion banner */}
+      {champ && (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-400/8 via-amber-300/4 to-transparent p-8">
+          <Crown className="h-10 w-10 text-amber-400" />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500">
+            Campeão
+          </p>
+          <p
+            className="text-2xl font-extrabold tracking-tight"
+            style={{ color: champ.cor ?? 'var(--foreground)' }}
+          >
+            {champ.nome}
+          </p>
         </div>
-
-        {/* Top half */}
-        <div className="flex gap-3 min-w-max px-2" style={{ minHeight: 240 }}>
-          <Col label="OITAVAS" jogos={L.q1Oit} slotCount={2} />
-          <Col label="QUARTAS" jogos={[L.q1Qua]} slotCount={1} />
-          <Col label="SEMIFINAL" jogos={[L.semiL]} slotCount={1} accent="green" />
-          <Col label="FINAL" jogos={[L.final]} slotCount={1} accent="gold" />
-          <Col label="SEMIFINAL" jogos={[L.semiR]} slotCount={1} accent="green" />
-          <Col label="QUARTAS" jogos={[L.q2Qua]} slotCount={1} />
-          <Col label="OITAVAS" jogos={L.q2Oit} slotCount={2} />
-        </div>
-
-        {/* Quadrantes labels middle */}
-        <div className="flex gap-3 min-w-max px-2 my-2">
-          <div className="flex flex-col gap-2 min-w-[372px]">
-            <div className="rounded-md border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-center text-[9px] font-bold uppercase tracking-widest text-purple-400">
-              QUADRANTE 4
-            </div>
-          </div>
-          <div className="min-w-[180px]" />
-          <div className="min-w-[180px]" />
-          <div className="min-w-[180px]" />
-          <div className="flex flex-col gap-2 min-w-[372px]">
-            <div className="rounded-md border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-center text-[9px] font-bold uppercase tracking-widest text-purple-400">
-              QUADRANTE 3
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom half */}
-        <div className="flex gap-3 min-w-max px-2" style={{ minHeight: 240 }}>
-          <Col label="OITAVAS" jogos={L.q4Oit} slotCount={2} />
-          <Col label="QUARTAS" jogos={[L.q4Qua]} slotCount={1} />
-          <div className="min-w-[180px]" />  {/* semi L spacer (semi tá no top half) */}
-          <div className="min-w-[180px]" />  {/* final spacer */}
-          <div className="min-w-[180px]" />  {/* semi R spacer */}
-          <Col label="QUARTAS" jogos={[L.q3Qua]} slotCount={1} />
-          <Col label="OITAVAS" jogos={L.q3Oit} slotCount={2} />
-        </div>
-      </div>
-
-      {/* Hint mobile */}
-      <p className="text-center text-[10px] text-[var(--muted-foreground)]/40 md:hidden">
-        ← deslize horizontalmente pra ver toda a chave →
-      </p>
-
-      {/* Campeão */}
-      {L.final && L.final.jogo?.status === 'encerrado' && (() => {
-        const j = L.final.jogo
-        const v = determinarVencedor(j)
-        const champNome = v.lado === 'a' ? j.equipe_a_nome : v.lado === 'b' ? j.equipe_b_nome : null
-        const champCor  = v.lado === 'a' ? j.equipe_a?.cor_primaria : v.lado === 'b' ? j.equipe_b?.cor_primaria : null
-        if (!champNome) return null
-        return (
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-400/10 via-amber-300/5 to-transparent p-6">
-            <Crown className="h-8 w-8 text-amber-400" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500">CAMPEÃO</p>
-            <p className="text-2xl font-extrabold tracking-tight" style={{ color: champCor ?? 'var(--foreground)' }}>
-              {champNome}
-            </p>
-          </div>
-        )
-      })()}
+      )}
     </div>
   )
 }

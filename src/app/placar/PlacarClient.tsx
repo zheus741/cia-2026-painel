@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2, X } from 'lucide-react'
+import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2, X, ChevronDown, Crown } from 'lucide-react'
 import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
@@ -55,18 +55,19 @@ interface EventoCfg {
   label: string
   icon:  string
   cor:   string
-  /** Quando definido, adiciona N pontos ao placar otimisticamente. */
-  pts?:  number
 }
 
+// Eventos NÃO somam placar — são só registro histórico (timeline do jogo).
+// O placar é controlado 100% pelos botões +/- manuais.
 const EVENTOS_CONFIG: Record<string, EventoCfg> = {
-  // Pontos / gols
-  gol:             { label: 'Gol',         icon: '⚽',  cor: '#4ab87a', pts: 1 },
-  cesta_2:         { label: '+2 pts',      icon: '🏀',  cor: '#4ab87a', pts: 2 },
-  cesta_3:         { label: '+3 pts',      icon: '🎯',  cor: '#22c55e', pts: 3 },
-  lance_livre:     { label: 'Lance livre', icon: '🏆',  cor: '#60a5fa', pts: 1 },
-  ace:             { label: 'Ace',         icon: '⚡',  cor: '#a78bfa', pts: 1 },
-  bloqueio:        { label: 'Bloqueio',    icon: '🛡️',  cor: '#06b6d4', pts: 1 },
+  // Pontos / gols (histórico, não soma placar)
+  gol:             { label: 'Gol',         icon: '⚽',  cor: '#4ab87a' },
+  cesta_2:         { label: 'Cesta 2',     icon: '🏀',  cor: '#4ab87a' },
+  cesta_3:         { label: 'Cesta 3',     icon: '🎯',  cor: '#22c55e' },
+  lance_livre:     { label: 'Lance livre', icon: '⚡',  cor: '#60a5fa' },
+  ace:             { label: 'Ace',         icon: '🎯',  cor: '#a78bfa' },
+  bloqueio:        { label: 'Bloqueio',    icon: '🛡️',  cor: '#06b6d4' },
+  set_ganho:       { label: 'Set ganho',   icon: '🏆',  cor: '#e8b94f' },
   // Disciplinares
   cartao_amarelo:  { label: 'Amarelo',     icon: '🟨',  cor: '#d97706' },
   cartao_vermelho: { label: 'Vermelho',    icon: '🟥',  cor: '#ef4444' },
@@ -76,7 +77,6 @@ const EVENTOS_CONFIG: Record<string, EventoCfg> = {
   penalti:         { label: 'Pênalti',     icon: '🥅',  cor: '#f59e0b' },
   // Estratégicos
   timeout:         { label: 'Timeout',     icon: '⏱️',  cor: '#3b82f6' },
-  set_ganho:       { label: 'Set',         icon: '🏆',  cor: '#e8b94f' },
 }
 
 function getEventosTipos(modalidadeNome: string | null): string[] {
@@ -85,7 +85,7 @@ function getEventosTipos(modalidadeNome: string | null): string[] {
   if (n.includes('futsal') || n.includes('futebol'))   return ['gol', 'cartao_amarelo', 'cartao_vermelho', 'falta']
   if (n.includes('hand'))                              return ['gol', 'cartao_amarelo', 'cartao_vermelho', 'exclusao']
   if (n.includes('basquete') || n.includes('basket'))  return ['cesta_2', 'cesta_3', 'lance_livre', 'falta']
-  if (n.includes('vôlei') || n.includes('volei') || n.includes('vole')) return ['ace', 'bloqueio', 'timeout']
+  if (n.includes('vôlei') || n.includes('volei') || n.includes('vole')) return ['ace', 'bloqueio', 'set_ganho', 'timeout']
   return []
 }
 
@@ -204,22 +204,10 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
     }
     setEventos(prev => [...prev, temp])
 
-    // Atualiza placar otimisticamente conforme `pts` do evento
-    const pts = EVENTOS_CONFIG[tipo]?.pts ?? 0
-    let novoPlacarA = placarA
-    let novoPlacarB = placarB
-    if (pts > 0) {
-      novoPlacarA = equipe === 'a' ? placarA + pts : placarA
-      novoPlacarB = equipe === 'b' ? placarB + pts : placarB
-      onLocalUpdate(jogo.id, { placar_a: novoPlacarA, placar_b: novoPlacarB })
-    }
-
+    // Eventos NÃO somam placar — só registro histórico.
+    // Placar é controlado manualmente pelos botões +/-.
     startTransition(async () => {
       await registrarEvento(jogo.id, tipo, equipe)
-      // Persiste mudança de placar se houver
-      if (pts > 0) {
-        await atualizarPlacar(jogo.id, novoPlacarA, novoPlacarB)
-      }
       // Recarrega lista confirmada do servidor
       const supabase = createClient()
       const { data } = await supabase
@@ -836,6 +824,395 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   )
 }
 
+// ─── JogoListItem — versão timeline compacta (linha clicável) ──────────────
+
+function JogoListItem({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
+  jogo: Jogo
+  onLocalUpdate: (id: string, patch: Partial<Jogo>) => void
+  recentlyChanged: boolean
+  canEdit?: boolean
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [woMode, setWoMode] = useState(false)
+
+  const isAoVivo    = jogo.status === 'ao_vivo'
+  const isEncerrado = jogo.status === 'encerrado'
+  const isCancelado = jogo.status === 'cancelado'
+  const isAgendado  = jogo.status === 'agendado'
+  const hasWO       = !!jogo.wo
+  const aPerdeuWO   = jogo.wo === 'a' || jogo.wo === 'duplo'
+  const bPerdeuWO   = jogo.wo === 'b' || jogo.wo === 'duplo'
+
+  // Vencedor (pra destacar nome em encerrado)
+  let winner: 'a' | 'b' | null = null
+  if (isEncerrado && !hasWO && jogo.placar_a != null && jogo.placar_b != null) {
+    if (jogo.placar_a > jogo.placar_b) winner = 'a'
+    else if (jogo.placar_b > jogo.placar_a) winner = 'b'
+  }
+  if (hasWO) {
+    if (jogo.wo === 'a') winner = 'b'
+    else if (jogo.wo === 'b') winner = 'a'
+  }
+
+  // Identity
+  const accentA = teamAccent(jogo.equipe_a, jogo.divisao)
+  const accentB = teamAccent(jogo.equipe_b, jogo.divisao)
+  const divisaoLabel = jogo.divisao ?? jogo.equipe_a?.divisao ?? jogo.equipe_b?.divisao ?? null
+  const divisaoColor = divisaoLabel ? DIV_COLORS[divisaoLabel] : null
+  const faseLabel = jogo.fase ? (FASE_LABEL[jogo.fase] ?? jogo.fase) : null
+
+  // Handlers
+  function handleAoVivo() {
+    onLocalUpdate(jogo.id, { status: 'ao_vivo', placar_a: 0, placar_b: 0 })
+    startTransition(async () => { await setJogoAoVivo(jogo.id) })
+  }
+  function handleCancelar() {
+    onLocalUpdate(jogo.id, { status: 'cancelado' })
+    startTransition(async () => { await cancelarJogo(jogo.id) })
+  }
+  function handleReativar() {
+    onLocalUpdate(jogo.id, { status: 'agendado', placar_a: 0, placar_b: 0, wo: null })
+    startTransition(async () => { await reativarJogo(jogo.id) })
+  }
+  function handleDeclararWO(lado: 'a' | 'b' | 'duplo') {
+    onLocalUpdate(jogo.id, { wo: lado, status: 'encerrado' })
+    setWoMode(false)
+    startTransition(async () => { await declararWO(jogo.id, lado) })
+  }
+  function handleRemoverWO() {
+    onLocalUpdate(jogo.id, { wo: null })
+    startTransition(async () => { await removerWO(jogo.id) })
+  }
+
+  const placarA = jogo.placar_a ?? 0
+  const placarB = jogo.placar_b ?? 0
+
+  return (
+    <div
+      id={`jogo-${jogo.id}`}
+      className={`group relative overflow-hidden rounded-lg border transition-all scroll-mt-20 ${
+        recentlyChanged
+          ? 'border-[var(--green-bright)]/50 bg-[var(--green-dim)]/15 shadow-[0_0_12px_rgba(46,107,66,0.15)]'
+          : hasWO
+          ? 'border-red-500/30 bg-red-500/5'
+          : isCancelado
+          ? 'border-[var(--border)] bg-[var(--card)]/30 opacity-50'
+          : isEncerrado
+          ? 'border-[var(--border)] bg-[var(--card)]/55'
+          : 'border-[var(--border)] bg-[var(--card)]'
+      } hover:border-[var(--green-dim)]/60`}
+    >
+      {/* Linha principal — botão clicável */}
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+      >
+        {/* Hora */}
+        <span className="w-12 shrink-0 font-bold tabular-nums text-sm text-[var(--foreground)]">
+          {jogo.inicio ? fmtTime(jogo.inicio) : '—'}
+        </span>
+
+        {/* Modalidade icon + nome + setor */}
+        <div className="hidden md:flex items-center gap-1.5 w-44 shrink-0 min-w-0">
+          {jogo.modalidade && <span className="text-sm leading-none shrink-0" aria-hidden>{jogo.modalidade.icone}</span>}
+          <span className="truncate text-[11px] font-semibold text-[var(--muted-foreground)]">
+            {jogo.modalidade?.nome ?? '—'}
+            {jogo.setor && <span className="text-[var(--muted-foreground)]/55"> · {jogo.setor.nome}</span>}
+          </span>
+        </div>
+
+        {/* Mobile: icon-only */}
+        <span className="md:hidden text-sm shrink-0" aria-hidden>{jogo.modalidade?.icone ?? ''}</span>
+
+        {/* Equipes + placar */}
+        <div className="flex flex-1 min-w-0 items-center justify-center gap-2 sm:gap-3">
+          {/* Equipe A */}
+          <div className="flex flex-1 min-w-0 items-center justify-end gap-1.5">
+            <span className={`truncate text-[12px] font-bold leading-tight ${
+              winner === 'a' ? 'text-[var(--green-bright)]' :
+              winner === 'b' ? 'text-[var(--muted-foreground)]/55' :
+              aPerdeuWO ? 'line-through text-[var(--muted-foreground)]/50' :
+              'text-[var(--foreground)]'
+            }`}>
+              {jogo.equipe_a_nome ?? '—'}
+            </span>
+            <span aria-hidden className="h-4 w-1 shrink-0 rounded-full" style={{ background: accentA }} />
+          </div>
+
+          {/* Centro: placar (live/encerrado) ou × (agendado) */}
+          {(isAoVivo || isEncerrado) && !hasWO ? (
+            <div
+              className="shrink-0 inline-flex items-center gap-1.5 tabular-nums font-extrabold leading-none px-1.5"
+              style={{
+                fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                fontSize: 18,
+                letterSpacing: '-0.02em',
+              }}
+            >
+              <span className={winner === 'a' ? 'text-[var(--green-bright)]' : 'text-[var(--foreground)]'}>{placarA}</span>
+              <span className="text-[var(--muted-foreground)]/40 font-bold text-[13px]">×</span>
+              <span className={winner === 'b' ? 'text-[var(--green-bright)]' : 'text-[var(--foreground)]'}>{placarB}</span>
+            </div>
+          ) : hasWO ? (
+            <span className="shrink-0 inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-500">
+              W.O.
+            </span>
+          ) : (
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]/40 px-1.5">
+              vs
+            </span>
+          )}
+
+          {/* Equipe B */}
+          <div className="flex flex-1 min-w-0 items-center gap-1.5">
+            <span aria-hidden className="h-4 w-1 shrink-0 rounded-full" style={{ background: accentB }} />
+            <span className={`truncate text-[12px] font-bold leading-tight ${
+              winner === 'b' ? 'text-[var(--green-bright)]' :
+              winner === 'a' ? 'text-[var(--muted-foreground)]/55' :
+              bPerdeuWO ? 'line-through text-[var(--muted-foreground)]/50' :
+              'text-[var(--foreground)]'
+            }`}>
+              {jogo.equipe_b_nome ?? '—'}
+            </span>
+          </div>
+        </div>
+
+        {/* Badges (divisão + fase) */}
+        <div className="hidden lg:flex items-center gap-1 shrink-0">
+          {divisaoLabel && divisaoColor && (
+            <span
+              className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.10em]"
+              style={{ background: `${divisaoColor}14`, color: divisaoColor, border: `1px solid ${divisaoColor}33` }}
+            >
+              {divisaoLabel}
+            </span>
+          )}
+          {faseLabel && (
+            <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.10em] text-[var(--muted-foreground)] border border-[var(--border)]">
+              {faseLabel}
+            </span>
+          )}
+        </div>
+
+        {/* Status indicator + chevron */}
+        <div className="flex shrink-0 items-center gap-2">
+          {isAoVivo && (
+            <Radio className="h-3.5 w-3.5 text-[var(--green-bright)] animate-pulse" aria-label="Ao vivo" />
+          )}
+          {winner && isEncerrado && !hasWO && (
+            <Crown className="h-3.5 w-3.5 text-[#e8b94f]" aria-label="Encerrado" />
+          )}
+          <ChevronDown
+            className={`h-3.5 w-3.5 text-[var(--muted-foreground)]/40 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            aria-hidden
+          />
+        </div>
+      </button>
+
+      {/* Painel expandido — ações + WO */}
+      {expanded && (
+        <div className="border-t border-[var(--border)] bg-[var(--muted)]/15 px-3 py-2.5 space-y-2">
+          {/* Categoria + setor (info adicional em mobile/menores) */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[var(--muted-foreground)]">
+            {jogo.categoria && <span><strong className="text-[var(--foreground)]">Categoria:</strong> {jogo.categoria}</span>}
+            {jogo.setor && (
+              <span>
+                <strong className="text-[var(--foreground)]">Setor:</strong>{' '}
+                {jogo.setor_id ? (
+                  <Link
+                    href={`/esportivo/escala?dia=${jogo.dia_id ?? ''}#setor-${jogo.setor_id}`}
+                    className="underline decoration-dotted hover:text-[var(--green-bright)]"
+                  >
+                    {jogo.setor.nome}
+                  </Link>
+                ) : jogo.setor.nome}
+              </span>
+            )}
+            {divisaoLabel && (
+              <span className="lg:hidden">
+                <strong className="text-[var(--foreground)]">Divisão:</strong>{' '}
+                <span style={{ color: divisaoColor ?? 'inherit' }}>{divisaoLabel}</span>
+              </span>
+            )}
+            {faseLabel && (
+              <span className="lg:hidden"><strong className="text-[var(--foreground)]">Fase:</strong> {faseLabel}</span>
+            )}
+          </div>
+
+          {/* W.O. mode panel */}
+          {woMode && !hasWO && !isCancelado ? (
+            <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2 space-y-1.5">
+              <p className="flex items-center gap-1.5 text-[10px] font-bold text-red-500">
+                <AlertCircle className="h-3 w-3" /> Qual equipe não compareceu?
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  onClick={() => handleDeclararWO('a')}
+                  disabled={isPending}
+                  className="rounded border border-red-500/30 px-2 py-1.5 text-[10px] font-semibold text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-40"
+                >
+                  {jogo.equipe_a_nome ?? 'A'}
+                </button>
+                <button
+                  onClick={() => handleDeclararWO('b')}
+                  disabled={isPending}
+                  className="rounded border border-red-500/30 px-2 py-1.5 text-[10px] font-semibold text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-40"
+                >
+                  {jogo.equipe_b_nome ?? 'B'}
+                </button>
+                <button
+                  onClick={() => handleDeclararWO('duplo')}
+                  disabled={isPending}
+                  className="rounded border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-[10px] font-bold uppercase text-red-500 hover:bg-red-500/15 disabled:opacity-40"
+                >
+                  Duplo
+                </button>
+              </div>
+              <button onClick={() => setWoMode(false)} className="w-full text-[9px] text-[var(--muted-foreground)]/60 hover:text-[var(--foreground)]">
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            /* Action buttons */
+            <div className="flex flex-wrap items-center gap-1.5">
+              {canEdit && isAgendado && (
+                <button
+                  onClick={handleAoVivo}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 rounded-md bg-[var(--green-dim)]/40 px-3 py-1.5 text-[11px] font-bold text-[var(--green-bright)] transition-colors hover:bg-[var(--green-dim)]/60 disabled:opacity-40"
+                >
+                  <Radio className="h-3 w-3" />
+                  Iniciar
+                </button>
+              )}
+
+              {canEdit && (isAgendado || isAoVivo) && !hasWO && !isCancelado && (
+                <button
+                  onClick={() => setWoMode(true)}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/5 px-2.5 py-1.5 text-[10px] font-semibold text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-30"
+                >
+                  <UserX className="h-3 w-3" /> W.O.
+                </button>
+              )}
+
+              {canEdit && isAgendado && (
+                <button
+                  onClick={handleCancelar}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--muted-foreground)] transition-colors hover:border-red-600/40 hover:text-red-500 disabled:opacity-30"
+                  title="Cancelar jogo"
+                >
+                  <XCircle className="h-3 w-3" /> Cancelar
+                </button>
+              )}
+
+              {hasWO && canEdit && (
+                <button
+                  onClick={handleRemoverWO}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[10px] font-semibold text-[var(--muted-foreground)] transition-all hover:border-amber-500/40 hover:text-amber-500 disabled:opacity-40"
+                >
+                  <Undo2 className="h-3 w-3" /> Reverter W.O.
+                </button>
+              )}
+
+              {canEdit && (isCancelado || isEncerrado || isAoVivo) && (
+                <button
+                  onClick={handleReativar}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 rounded-md border border-amber-600/30 bg-amber-500/8 px-2.5 py-1.5 text-[10px] font-semibold text-amber-600 transition-all hover:border-amber-500/50 hover:bg-amber-500/15 disabled:opacity-40"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  {isCancelado ? 'Reativar' : 'Resetar'}
+                </button>
+              )}
+
+              {isEncerrado && (
+                <a
+                  href={`/api/og/resultado/${jogo.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-[10px] font-semibold text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)]/40 hover:text-[var(--green-bright)]"
+                  title="Imagem do resultado pra compartilhar"
+                >
+                  <Share2 className="h-3 w-3" /> Compartilhar
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Agrupa jogos por hora pra timeline ──────────────────────────────────────
+
+function groupByHour(jogos: Jogo[]): Array<{ hour: string; games: Jogo[] }> {
+  const map = new Map<string, Jogo[]>()
+  for (const j of jogos) {
+    if (!j.inicio) {
+      const k = '—'
+      if (!map.has(k)) map.set(k, [])
+      map.get(k)!.push(j)
+      continue
+    }
+    const k = fmtTime(j.inicio)
+    if (!map.has(k)) map.set(k, [])
+    map.get(k)!.push(j)
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([hour, games]) => ({ hour, games }))
+}
+
+// ─── Timeline section — group of JogoListItem agrupado por hora ──────────────
+
+function TimelineSection({ jogos, onLocalUpdate, recentIds, highlightedJogoId, canEdit }: {
+  jogos: Jogo[]
+  onLocalUpdate: (id: string, patch: Partial<Jogo>) => void
+  recentIds: Set<string>
+  highlightedJogoId: string | null
+  canEdit?: boolean
+}) {
+  const groups = groupByHour(jogos)
+  return (
+    <div className="space-y-4">
+      {groups.map(({ hour, games }) => (
+        <div key={hour}>
+          {/* Hour separator */}
+          <div className="mb-2 flex items-center gap-3">
+            <span
+              className="inline-flex items-center justify-center rounded-md bg-[var(--muted)]/40 px-2 py-1 text-xs font-bold tabular-nums text-[var(--foreground)]"
+              style={{ minWidth: 52 }}
+            >
+              {hour}
+            </span>
+            <span className="flex-1 h-px bg-[var(--border)]" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/45">
+              {games.length} {games.length === 1 ? 'jogo' : 'jogos'}
+            </span>
+          </div>
+          {/* Games list */}
+          <div className="space-y-1.5">
+            {games.map(jogo => (
+              <JogoListItem
+                key={jogo.id}
+                jogo={jogo}
+                onLocalUpdate={onLocalUpdate}
+                recentlyChanged={recentIds.has(jogo.id) || highlightedJogoId === jogo.id}
+                canEdit={canEdit}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 interface Props {
   dias: { id: string; nome_dia: string; data: string }[]
   jogosPorDia: Record<string, Jogo[]>
@@ -1369,7 +1746,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
         </section>
       )}
 
-      {/* ─── SEÇÃO 2 — AGENDADOS ─── */}
+      {/* ─── SEÇÃO 2 — AGENDADOS (timeline) ─── */}
       {scheduledGames.length > 0 && (
         <section className="space-y-3">
           <SectionHeader
@@ -1378,21 +1755,20 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
             accent="var(--gold-bright)"
             sublabel={proximoJogo?.inicio ? `próximo: ${fmtTime(proximoJogo.inicio)}` : undefined}
           />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {scheduledGames.map(jogo => (
-              <PlacarCard
-                key={jogo.id}
-                jogo={jogo}
-                onLocalUpdate={handleLocalUpdate}
-                recentlyChanged={recentIds.has(jogo.id) || highlightedJogoId === jogo.id}
-                canEdit={canEdit}
-              />
-            ))}
-          </div>
+          <TimelineSection
+            jogos={scheduledGames}
+            onLocalUpdate={handleLocalUpdate}
+            recentIds={recentIds}
+            highlightedJogoId={highlightedJogoId}
+            canEdit={canEdit}
+          />
+          <p className="px-1 text-[10px] text-[var(--muted-foreground)]/45">
+            Clique numa linha pra ver detalhes e ações.
+          </p>
         </section>
       )}
 
-      {/* ─── SEÇÃO 3 — ENCERRADOS ─── */}
+      {/* ─── SEÇÃO 3 — ENCERRADOS (timeline colapsável) ─── */}
       {endedGames.length > 0 && (
         <details className="group space-y-3 mt-2" open={liveGames.length === 0 && scheduledGames.length === 0}>
           <summary className="cursor-pointer list-none">
@@ -1403,16 +1779,14 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
               expandable
             />
           </summary>
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-3">
-            {endedGames.map(jogo => (
-              <PlacarCard
-                key={jogo.id}
-                jogo={jogo}
-                onLocalUpdate={handleLocalUpdate}
-                recentlyChanged={recentIds.has(jogo.id) || highlightedJogoId === jogo.id}
-                canEdit={canEdit}
-              />
-            ))}
+          <div className="mt-3">
+            <TimelineSection
+              jogos={endedGames}
+              onLocalUpdate={handleLocalUpdate}
+              recentIds={recentIds}
+              highlightedJogoId={highlightedJogoId}
+              canEdit={canEdit}
+            />
           </div>
         </details>
       )}

@@ -1,7 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Trophy, ChevronRight, ChevronLeft, Search, Inbox, ArrowLeft, Radio, Clock, CheckCircle2 } from 'lucide-react'
+import {
+  Trophy, ChevronRight, ChevronLeft, Search, Inbox, ArrowLeft,
+  Radio, Clock, CheckCircle2, Users, Calendar, Crown, X, Swords,
+  Layers, Sparkles,
+} from 'lucide-react'
 import { BracketView } from './BracketView'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -173,6 +177,96 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
       a.modalidade.localeCompare(b.modalidade) || a.categoria.localeCompare(b.categoria)
     )
   }, [jogos, divisaoAtiva, modalidadeFiltro, categoriaFiltro, busca])
+
+  // ── Stats globais do evento (todas divisões/filtros) ────────────────────────
+  const overviewStats = useMemo(() => {
+    const total = jogos.length
+    const aoVivo = jogos.filter(j => j.status === 'ao_vivo').length
+
+    // Jogos hoje (timezone São Paulo)
+    const now = new Date()
+    const tStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const tEnd   = tStart + 86_400_000
+    const hoje = jogos.filter(j => {
+      if (!j.inicio) return false
+      const t = new Date(j.inicio).getTime()
+      return t >= tStart && t < tEnd && j.status !== 'encerrado'
+    }).length
+
+    // Atléticas únicas (por nome)
+    const atleticas = new Set<string>()
+    for (const j of jogos) {
+      if (j.equipe_a_nome) atleticas.add(j.equipe_a_nome.trim().toUpperCase())
+      if (j.equipe_b_nome) atleticas.add(j.equipe_b_nome.trim().toUpperCase())
+    }
+
+    // Chaves únicas
+    const chavesSet = new Set<string>()
+    for (const j of jogos) {
+      if (!j.modalidade || !j.divisao) continue
+      chavesSet.add(`${j.modalidade.slug}::${j.categoria ?? '—'}::${j.divisao}`)
+    }
+
+    return {
+      totalJogos: total,
+      aoVivo,
+      hoje,
+      atleticas: atleticas.size,
+      chaves: chavesSet.size,
+    }
+  }, [jogos])
+
+  // ── Stats por divisão (pra mostrar nos cards das tabs) ─────────────────────
+  const statsPorDivisao = useMemo(() => {
+    const map = new Map<string, { total: number; aoVivo: number; chaves: number }>()
+    const chavesByDiv = new Map<string, Set<string>>()
+
+    for (const j of jogos) {
+      if (!j.divisao) continue
+      if (!map.has(j.divisao)) {
+        map.set(j.divisao, { total: 0, aoVivo: 0, chaves: 0 })
+        chavesByDiv.set(j.divisao, new Set())
+      }
+      const s = map.get(j.divisao)!
+      s.total++
+      if (j.status === 'ao_vivo') s.aoVivo++
+      if (j.modalidade) {
+        chavesByDiv.get(j.divisao)!.add(`${j.modalidade.slug}::${j.categoria ?? '—'}::${j.divisao}`)
+      }
+    }
+    for (const [div, set] of chavesByDiv) {
+      map.get(div)!.chaves = set.size
+    }
+    return map
+  }, [jogos])
+
+  // ── Mapa numTeams por chave (modalidade+cat+div) ───────────────────────────
+  const numTeamsPorChave = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const cc of chaveConfigs) {
+      const md = modalidades.find(mo => mo.id === cc.modalidade_id)
+      if (!md) continue
+      m.set(`${md.slug}::${cc.categoria}::${cc.divisao}`, cc.num_teams)
+    }
+    return m
+  }, [chaveConfigs, modalidades])
+
+  // ── Próximo jogo POR chave (pra preview no card) ───────────────────────────
+  const proximoJogoPorChave = useMemo(() => {
+    const now = Date.now()
+    const m = new Map<string, JogoChave>()
+    for (const j of jogos) {
+      if (!j.modalidade || !j.divisao || !j.inicio) continue
+      if (new Date(j.inicio).getTime() <= now) continue
+      if (j.status === 'encerrado') continue
+      const key = `${j.modalidade.slug}::${j.categoria ?? '—'}::${j.divisao}`
+      const current = m.get(key)
+      if (!current || new Date(j.inicio).getTime() < new Date(current.inicio!).getTime()) {
+        m.set(key, j)
+      }
+    }
+    return m
+  }, [jogos])
 
   // ── Diagnóstico: quantos jogos estão sem campos essenciais na divisão atual? ─
   const diagnostico = useMemo(() => {
@@ -427,115 +521,270 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
     )
   }
 
-  // ── Render principal: tabs + filtros + lista de chaves ──────────────────────
+  // ── Render principal: overview + tabs + filtros + lista de chaves ─────────
+  const divisoesAll  = divisoesDisponiveis.length > 0 ? divisoesDisponiveis : ['1ª Divisão']
+  const principais   = divisoesAll.filter(d => d.toLowerCase().includes('divis') || d.toLowerCase().includes('super'))
+  const conferencias = divisoesAll.filter(d => !principais.includes(d))
+  const hasActiveFilters = !!(modalidadeFiltro || categoriaFiltro || busca)
+  const modalidadeAtiva = modalidades.find(m => m.slug === modalidadeFiltro)
+
+  function fmtData(ts: string | null): string {
+    if (!ts) return ''
+    try { return new Date(ts).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) }
+    catch { return '' }
+  }
+  function fmtHora(ts: string | null): string {
+    if (!ts) return ''
+    try { return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) }
+    catch { return '' }
+  }
+
   return (
     <div className="space-y-5">
 
-      {/* Tabs de divisão — divididas em 2 grupos: Divisões principais + Conferências */}
-      {(() => {
-        const divisoesAll = divisoesDisponiveis.length > 0 ? divisoesDisponiveis : ['1ª Divisão']
-        const principais   = divisoesAll.filter(d => d.toLowerCase().includes('divis') || d.toLowerCase().includes('super'))
-        const conferencias = divisoesAll.filter(d => !principais.includes(d))
+      {/* ─── Stats overview strip ─── */}
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-r from-[var(--card)]/70 via-[var(--card)]/40 to-transparent">
+        {/* Glow decorativo */}
+        <div
+          className="pointer-events-none absolute -left-12 -top-12 h-40 w-40 rounded-full opacity-40 blur-3xl"
+          style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.18), transparent 70%)' }}
+        />
+        <div className="relative flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4">
+          <OverviewStat icon={<Trophy className="h-3.5 w-3.5 text-[var(--green-bright)]" />}
+                        value={overviewStats.chaves} label="Chaves" />
+          <span className="hidden sm:inline-block h-7 w-px bg-[var(--border)]" />
+          <OverviewStat icon={<Swords className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />}
+                        value={overviewStats.totalJogos} label="Jogos" />
+          <span className="hidden sm:inline-block h-7 w-px bg-[var(--border)]" />
+          <OverviewStat icon={<Users className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />}
+                        value={overviewStats.atleticas} label="Atléticas" />
 
-        function renderTab(div: string) {
-          const count = jogos.filter(j => j.divisao === div).length
-          const isAtiva = divisaoAtiva === div
-          return (
-            <button
-              key={div}
-              onClick={() => { setDivisaoAtiva(div); setModalidadeFiltro(''); setCategoriaFiltro('') }}
-              title={div}
-              className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
-                isAtiva
-                  ? 'border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)]'
-                  : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]/50 hover:text-[var(--foreground)]'
-              }`}
-            >
-              <span className="truncate max-w-[160px]">{div}</span>
-              {count > 0 && (
-                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums ${
-                  isAtiva ? 'bg-[var(--green-bright)]/20' : 'bg-[var(--border)]/60'
-                }`}>{count}</span>
-              )}
-            </button>
-          )
-        }
-
-        return (
-          <div className="space-y-3">
-            {principais.length > 0 && (
-              <div>
-                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/50">Divisões</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {principais.map(renderTab)}
-                </div>
-              </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {overviewStats.hoje > 0 && (
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/8 px-3 py-1 text-[11px] font-bold text-amber-500">
+                <Calendar className="h-3 w-3" />
+                <span className="tabular-nums">{overviewStats.hoje}</span> hoje
+              </span>
             )}
-            {conferencias.length > 0 && (
-              <div>
-                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/50">
-                  Conferências Super 08
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {conferencias.map(renderTab)}
-                </div>
-              </div>
+            {overviewStats.aoVivo > 0 && (
+              <span className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/8 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-red-500">
+                <span className="relative inline-flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-70" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+                </span>
+                <span className="tabular-nums">{overviewStats.aoVivo}</span> ao vivo
+              </span>
             )}
           </div>
-        )
-      })()}
-
-      {/* Filtros: modalidade + categoria + busca */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Modalidade */}
-        <select
-          value={modalidadeFiltro}
-          onChange={e => { setModalidadeFiltro(e.target.value); setCategoriaFiltro('') }}
-          className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--green-bright)] focus:outline-none"
-        >
-          <option value="">Todas as modalidades</option>
-          {modalidadesDisponiveis.map(m => (
-            <option key={m.slug} value={m.slug}>{m.icone ?? '·'} {m.nome}</option>
-          ))}
-        </select>
-
-        {/* Categoria */}
-        {categoriasDisponiveis.length > 1 && (
-          <select
-            value={categoriaFiltro}
-            onChange={e => setCategoriaFiltro(e.target.value)}
-            className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] focus:border-[var(--green-bright)] focus:outline-none"
-          >
-            <option value="">Todas as categorias</option>
-            {categoriasDisponiveis.map(c => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        )}
-
-        {/* Busca */}
-        <div className="flex flex-1 min-w-[200px] items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2">
-          <Search className="h-3.5 w-3.5 text-[var(--muted-foreground)]/50" />
-          <input
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar chave..."
-            className="flex-1 bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/40 outline-none"
-          />
         </div>
       </div>
 
-      {/* Lista de chaves */}
+      {/* ─── Divisões principais (cards) ─── */}
+      {principais.length > 0 && (
+        <div>
+          <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--muted-foreground)]/60">
+            <Sparkles className="h-3 w-3" />
+            Divisões
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            {principais.map(div => {
+              const stats = statsPorDivisao.get(div) ?? { total: 0, aoVivo: 0, chaves: 0 }
+              const isAtiva = divisaoAtiva === div
+              return (
+                <button
+                  key={div}
+                  onClick={() => { setDivisaoAtiva(div); setModalidadeFiltro(''); setCategoriaFiltro('') }}
+                  className={`group relative overflow-hidden rounded-xl border p-3.5 text-left transition-all ${
+                    isAtiva
+                      ? 'border-[var(--green-bright)]/45 bg-gradient-to-br from-[var(--green-dim)]/20 via-[var(--card)] to-[var(--card)] shadow-[0_0_24px_rgba(34,197,94,0.12)]'
+                      : 'border-[var(--border)] bg-[var(--card)]/50 hover:border-[var(--green-dim)]/40 hover:bg-[var(--card)]/80'
+                  }`}
+                >
+                  {isAtiva && (
+                    <div
+                      className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-50 blur-2xl"
+                      style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.25), transparent 70%)' }}
+                    />
+                  )}
+                  <div className="relative flex items-center justify-between gap-2">
+                    <p className={`text-sm font-extrabold tracking-tight ${
+                      isAtiva ? 'text-[var(--green-bright)]' : 'text-[var(--foreground)]'
+                    }`}>
+                      {div}
+                    </p>
+                    {stats.aoVivo > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-red-500">
+                        <span className="h-1 w-1 rounded-full bg-red-500 animate-pulse" />
+                        {stats.aoVivo}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative mt-1.5 flex items-center gap-3 text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]/65 font-semibold">
+                    <span>
+                      <strong className="tabular-nums text-[var(--foreground)] font-extrabold">{stats.chaves}</strong> chaves
+                    </span>
+                    <span className="text-[var(--border)]">·</span>
+                    <span>
+                      <strong className="tabular-nums text-[var(--foreground)] font-extrabold">{stats.total}</strong> jogos
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Conferências (chips compactos) ─── */}
+      {conferencias.length > 0 && (
+        <div>
+          <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--muted-foreground)]/55">
+            <Layers className="h-3 w-3" />
+            Conferências Super 08
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {conferencias.map(div => {
+              const stats = statsPorDivisao.get(div) ?? { total: 0, aoVivo: 0, chaves: 0 }
+              const isAtiva = divisaoAtiva === div
+              return (
+                <button
+                  key={div}
+                  onClick={() => { setDivisaoAtiva(div); setModalidadeFiltro(''); setCategoriaFiltro('') }}
+                  title={`${stats.chaves} chaves · ${stats.total} jogos`}
+                  className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all ${
+                    isAtiva
+                      ? 'border-[var(--green-bright)]/45 bg-[var(--green-dim)]/15 text-[var(--green-bright)] shadow-[0_0_12px_rgba(34,197,94,0.10)]'
+                      : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)]/50 hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  <span>{div}</span>
+                  {stats.chaves > 0 && (
+                    <span className={`tabular-nums text-[9px] ${
+                      isAtiva ? 'text-[var(--green-bright)]/75' : 'text-[var(--muted-foreground)]/55'
+                    }`}>
+                      {stats.chaves}
+                    </span>
+                  )}
+                  {stats.aoVivo > 0 && (
+                    <span className="h-1 w-1 rounded-full bg-red-500 animate-pulse" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Filtros ─── */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Modalidade */}
+          <div className="relative">
+            <select
+              value={modalidadeFiltro}
+              onChange={e => { setModalidadeFiltro(e.target.value); setCategoriaFiltro('') }}
+              className="appearance-none rounded-xl border border-[var(--border)] bg-[var(--card)] pl-3 pr-8 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--green-dim)]/50 focus:border-[var(--green-bright)] focus:outline-none cursor-pointer"
+            >
+              <option value="">Todas as modalidades</option>
+              {modalidadesDisponiveis.map(m => (
+                <option key={m.slug} value={m.slug}>{m.icone ?? '·'} {m.nome}</option>
+              ))}
+            </select>
+            <ChevronRight className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rotate-90 text-[var(--muted-foreground)]/60" />
+          </div>
+
+          {/* Categoria */}
+          {categoriasDisponiveis.length > 1 && (
+            <div className="relative">
+              <select
+                value={categoriaFiltro}
+                onChange={e => setCategoriaFiltro(e.target.value)}
+                className="appearance-none rounded-xl border border-[var(--border)] bg-[var(--card)] pl-3 pr-8 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[var(--green-dim)]/50 focus:border-[var(--green-bright)] focus:outline-none cursor-pointer"
+              >
+                <option value="">Todas as categorias</option>
+                {categoriasDisponiveis.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <ChevronRight className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 rotate-90 text-[var(--muted-foreground)]/60" />
+            </div>
+          )}
+
+          {/* Busca */}
+          <div className="flex flex-1 min-w-[220px] items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 transition-colors focus-within:border-[var(--green-bright)]/50">
+            <Search className="h-3.5 w-3.5 text-[var(--muted-foreground)]/55" />
+            <input
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              placeholder="Buscar modalidade ou categoria..."
+              className="flex-1 bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/40 outline-none"
+            />
+            {busca && (
+              <button onClick={() => setBusca('')} className="text-[var(--muted-foreground)]/50 hover:text-[var(--foreground)]">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Result count */}
+          <div className="text-[10px] uppercase tracking-widest font-bold text-[var(--muted-foreground)]/55">
+            <span className="tabular-nums text-[var(--foreground)] text-sm font-extrabold">{chaves.length}</span>{' '}
+            {chaves.length === 1 ? 'chave' : 'chaves'}
+          </div>
+        </div>
+
+        {/* Active filter tags */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[9px] uppercase tracking-widest font-bold text-[var(--muted-foreground)]/55">
+              Filtros ativos:
+            </span>
+            {modalidadeAtiva && (
+              <FilterTag
+                label={modalidadeAtiva.nome}
+                onRemove={() => { setModalidadeFiltro(''); setCategoriaFiltro('') }}
+              />
+            )}
+            {categoriaFiltro && (
+              <FilterTag label={categoriaFiltro} onRemove={() => setCategoriaFiltro('')} />
+            )}
+            {busca && (
+              <FilterTag label={`"${busca}"`} onRemove={() => setBusca('')} />
+            )}
+            <button
+              onClick={() => { setModalidadeFiltro(''); setCategoriaFiltro(''); setBusca('') }}
+              className="ml-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/60 hover:text-[var(--green-bright)] transition-colors"
+            >
+              Limpar tudo
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Lista de chaves ─── */}
       {chaves.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[var(--border)] p-10 text-center">
-          <Inbox className="mx-auto mb-3 h-8 w-8 text-[var(--muted-foreground)]/20" />
-          <p className="text-sm font-medium text-[var(--muted-foreground)]">
-            Nenhuma chave para os filtros selecionados.
+        <div className="rounded-2xl border border-dashed border-[var(--border)] p-12 text-center">
+          <Inbox className="mx-auto mb-3 h-10 w-10 text-[var(--muted-foreground)]/20" />
+          <p className="text-base font-bold text-[var(--foreground)]">
+            Nenhuma chave para os filtros selecionados
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]/60">
+            Tente trocar de divisão ou limpar os filtros
           </p>
 
+          {hasActiveFilters && (
+            <button
+              onClick={() => { setModalidadeFiltro(''); setCategoriaFiltro(''); setBusca('') }}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 px-4 py-1.5 text-xs font-bold text-[var(--green-bright)] transition-all hover:bg-[var(--green-dim)]/25"
+            >
+              <X className="h-3 w-3" />
+              Limpar filtros
+            </button>
+          )}
+
           {/* Diagnóstico — se há jogos na divisão mas sem chaves, mostra o motivo */}
-          {diagnostico.total > 0 && (
-            <div className="mx-auto mt-4 max-w-md rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-left">
+          {diagnostico.total > 0 && !hasActiveFilters && (
+            <div className="mx-auto mt-5 max-w-md rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-left">
               <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-700">
                 ⚠ Jogos importados mas incompletos
               </p>
@@ -560,7 +809,7 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
           )}
 
           {diagnostico.total === 0 && (
-            <p className="mt-2 text-xs text-[var(--muted-foreground)]/60">
+            <p className="mt-3 text-xs text-[var(--muted-foreground)]/60">
               As chaves aparecem aqui quando a planilha é importada em <strong>Esportivo → Importar</strong>.
             </p>
           )}
@@ -569,6 +818,9 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {chaves.map(c => {
             const completude = c.totalJogos > 0 ? Math.round((c.jogosEncerrados / c.totalJogos) * 100) : 0
+            const numTeams   = numTeamsPorChave.get(`${c.modalidadeSlug}::${c.categoria}::${c.divisao}`)
+            const proximoJ   = proximoJogoPorChave.get(`${c.modalidadeSlug}::${c.categoria}::${c.divisao}`)
+            const isLive     = c.jogosAoVivo > 0
             return (
               <button
                 key={`${c.modalidadeSlug}-${c.categoria}-${c.divisao}`}
@@ -577,58 +829,97 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                   categoria: c.categoria,
                   divisao: c.divisao,
                 })}
-                className="group flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left transition-all hover:border-[var(--green-bright)]/40 hover:bg-[var(--green-dim)]/5 hover:shadow-lg"
+                className={`group relative overflow-hidden rounded-2xl border bg-[var(--card)] text-left transition-all hover:-translate-y-0.5 hover:shadow-xl ${
+                  isLive
+                    ? 'border-red-500/35 hover:border-red-500/55 shadow-[0_0_20px_rgba(239,68,68,0.08)]'
+                    : 'border-[var(--border)] hover:border-[var(--green-bright)]/45'
+                }`}
               >
-                {/* Header */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xl shrink-0">{c.modalidadeIcone}</span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-[var(--foreground)] leading-tight">
-                        {c.modalidade}
-                      </p>
-                      <p className="text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]/60">
-                        {c.categoria}
-                      </p>
-                    </div>
+                {/* Live strip on top */}
+                {isLive && (
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse" />
+                )}
+
+                {/* Header section */}
+                <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-gradient-to-br from-[var(--green-dim)]/12 to-transparent text-[26px] leading-none">
+                    {c.modalidadeIcone}
                   </div>
-                  {c.jogosAoVivo > 0 && (
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[15px] font-extrabold leading-tight text-[var(--foreground)] tracking-tight">
+                      {c.modalidade}
+                    </p>
+                    <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/75">
+                      {c.categoria}
+                    </p>
+                  </div>
+                  {isLive && (
                     <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-500">
-                      <span className="h-1 w-1 rounded-full bg-red-500 animate-pulse" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
                       ao vivo
                     </span>
                   )}
                 </div>
 
-                {/* Stats */}
-                <div className="flex items-center gap-3 text-[11px] text-[var(--muted-foreground)]">
-                  <span className="flex items-center gap-1">
-                    <Trophy className="h-3 w-3" />
-                    <span className="font-semibold tabular-nums text-[var(--foreground)]">{c.totalJogos}</span> jogos
+                {/* Divider with subtle gradient */}
+                <div className="mx-4 h-px bg-gradient-to-r from-transparent via-[var(--border)] to-transparent" />
+
+                {/* Body section */}
+                <div className="px-4 py-3 space-y-3">
+                  {/* Stats grid */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="leading-tight">
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/55">Equipes</p>
+                      <p className="mt-0.5 text-[15px] font-extrabold tabular-nums text-[var(--foreground)]">{numTeams ?? '—'}</p>
+                    </div>
+                    <div className="leading-tight">
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/55">Jogos</p>
+                      <p className="mt-0.5 text-[15px] font-extrabold tabular-nums text-[var(--foreground)]">{c.totalJogos}</p>
+                    </div>
+                    <div className="leading-tight">
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/55">Done</p>
+                      <p className="mt-0.5 text-[15px] font-extrabold tabular-nums text-[var(--green-bright)]">{c.jogosEncerrados}</p>
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-widest">
+                      <span className="text-[var(--muted-foreground)]/55">Completude</span>
+                      <span className="tabular-nums text-[var(--foreground)]">{completude}%</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--muted)]/40">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[var(--green-dim)] via-[var(--green-bright)] to-[#e8b94f] transition-all duration-500"
+                        style={{ width: `${completude}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer with próximo jogo + CTA */}
+                <div className="flex items-center justify-between border-t border-[var(--border)]/60 bg-[var(--muted)]/15 px-4 py-2.5">
+                  <div className="min-w-0 text-[10px]">
+                    {proximoJ ? (
+                      <span className="flex items-center gap-1 text-[var(--muted-foreground)]">
+                        <Clock className="h-3 w-3 text-amber-400 shrink-0" />
+                        <span className="font-bold tabular-nums text-[var(--foreground)]">
+                          {fmtData(proximoJ.inicio)} · {fmtHora(proximoJ.inicio)}
+                        </span>
+                      </span>
+                    ) : c.hasFinal ? (
+                      <span className="flex items-center gap-1 text-amber-500 font-bold">
+                        <Crown className="h-3 w-3" />
+                        tem final
+                      </span>
+                    ) : (
+                      <span className="text-[var(--muted-foreground)]/40">—</span>
+                    )}
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-[var(--green-bright)] transition-all group-hover:gap-1.5">
+                    Ver chave
+                    <ChevronRight className="h-3 w-3" />
                   </span>
-                  {c.hasFinal && (
-                    <span className="text-[var(--green-bright)] font-semibold">tem final</span>
-                  )}
-                </div>
-
-                {/* Progress bar */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-[var(--muted-foreground)]/60">Completude</span>
-                    <span className="font-semibold tabular-nums text-[var(--foreground)]">{completude}%</span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--muted)]">
-                    <div
-                      className="h-full bg-[var(--green-bright)] transition-all"
-                      style={{ width: `${completude}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* CTA */}
-                <div className="mt-1 flex items-center justify-end gap-1 text-[11px] font-semibold text-[var(--green-bright)] opacity-0 transition-opacity group-hover:opacity-100">
-                  Ver chave
-                  <ChevronRight className="h-3 w-3" />
                 </div>
               </button>
             )
@@ -636,5 +927,34 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
         </div>
       )}
     </div>
+  )
+}
+
+// ── OverviewStat (usado no strip de stats no topo da home) ───────────────────
+function OverviewStat({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="opacity-90">{icon}</span>
+      <div className="leading-tight">
+        <p className="text-xl font-extrabold tabular-nums text-[var(--foreground)] tracking-tight">{value}</p>
+        <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--muted-foreground)]/65">{label}</p>
+      </div>
+    </div>
+  )
+}
+
+// ── FilterTag (chip de filtro ativo com X) ──────────────────────────────────
+function FilterTag({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-[var(--green-dim)]/40 bg-[var(--green-dim)]/12 pl-2.5 pr-1 py-0.5 text-[11px] font-bold text-[var(--green-bright)]">
+      {label}
+      <button
+        onClick={onRemove}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-[var(--green-dim)]/30 transition-colors"
+        aria-label={`Remover filtro ${label}`}
+      >
+        <X className="h-2.5 w-2.5" />
+      </button>
+    </span>
   )
 }

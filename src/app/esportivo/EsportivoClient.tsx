@@ -1,23 +1,20 @@
 'use client'
 
 /**
- * EsportivoClient — Hub da seção esportiva (classificação + previsão)
+ * EsportivoClient — Hub do Núcleo Esportivo
  *
- * Aesthetic: editorial esportivo CIA — paleta creme/verde/ouro do design system,
- * tipografia display em Orbitron, hierarquia clara hero → stats → tabs → tabela.
+ * Estilo: editorial maximalista (mesmo idioma da home) — hero bold,
+ * cards .cia-edit-card coloridos com personalidade, sem tabelas.
+ * Função: hub de navegação para todas as ferramentas esportivas.
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import {
-  Trophy, Calendar, Radio, Zap, Crown, TrendingUp, Users, Swords,
-  Sparkles, ChevronRight, Clock,
-} from 'lucide-react'
-import { CONFERENCIAS } from '@/lib/conferencias'
+import { ArrowUpRight, Trophy, Crown, Radio } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Types (mantém shape esperado pela page.tsx) ──────────────────────────────
 
 interface AtleticaWithStats {
   id: string; nome: string; slug: string
@@ -39,10 +36,7 @@ interface UpcomingJogo {
   modalidade_nome: string | null; modalidade_icone: string | null
 }
 
-interface ConferenciaGroup {
-  conferencia: string
-  equipes: AtleticaWithStats[]
-}
+interface ConferenciaGroup { conferencia: string; equipes: AtleticaWithStats[] }
 
 interface Props {
   div1: AtleticaWithStats[]
@@ -54,556 +48,484 @@ interface Props {
   aoVivoCount: number
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Date helpers ─────────────────────────────────────────────────────────────
 
 function fmtDateShort(iso: string | null): string {
   if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' })
-  } catch { return '—' }
+  try { return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' }) }
+  catch { return '—' }
 }
 function fmtTime(iso: string | null): string {
   if (!iso) return ''
-  try {
-    return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
-  } catch { return '' }
+  try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) }
+  catch { return '' }
 }
 
-// Countdown pro CIA 2026 — 04 a 07 de junho de 2026
-function useCountdown(): { days: number; phase: 'pre' | 'during' | 'after' } {
-  const [now, setNow] = useState(() => Date.now())
+// ── CountUp (animação) ──────────────────────────────────────────────────────
+
+function CountUp({ to, duration = 1400 }: { to: number; duration?: number }) {
+  const [val, setVal] = useState(0)
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60_000)
-    return () => clearInterval(t)
-  }, [])
-  const start = new Date(2026, 5, 4, 0, 0, 0).getTime()  // jun = 5
-  const end   = new Date(2026, 5, 7, 23, 59, 59).getTime()
-  if (now < start) return { days: Math.ceil((start - now) / 86_400_000), phase: 'pre' }
-  if (now <= end)  return { days: Math.ceil((end - now) / 86_400_000), phase: 'during' }
-  return { days: 0, phase: 'after' }
+    if (to === 0) { setVal(0); return }
+    const start = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / duration, 1)
+      const ease = 1 - Math.pow(1 - p, 4)
+      setVal(Math.round(ease * to))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [to, duration])
+  return <>{val}</>
 }
 
-// ─── Avatar da atlética (mini quadrado com inicial + cor primária) ──────────
-function AtleticaAvatar({ nome, cor, size = 24 }: { nome: string; cor: string | null; size?: number }) {
-  const initial = (nome ?? '?').trim().charAt(0).toUpperCase()
+// ── CircleArrow (signature) ──────────────────────────────────────────────────
+
+function CircleArrow({ size = 40, dark = true }: { size?: number; dark?: boolean }) {
   return (
     <span
+      className="cia-circle-arrow"
       style={{
-        width: size, height: size, flexShrink: 0,
-        background: cor ?? 'var(--muted)',
-        color: cor ? 'white' : 'var(--muted-foreground)',
-        borderRadius: 6,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: size * 0.5, fontWeight: 800,
-        letterSpacing: '-0.02em',
-        boxShadow: cor ? `0 1px 3px ${cor}33` : 'none',
-        fontFamily: 'var(--font-display, system-ui)',
+        width: size, height: size,
+        borderRadius: '50%',
+        background: dark ? '#0A0F0B' : '#FFFFFF',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        boxShadow: '0 2px 8px rgba(10,15,11,0.18)',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
-      aria-hidden
     >
-      {initial}
+      <ArrowUpRight
+        style={{
+          width: size * 0.42, height: size * 0.42,
+          color: dark ? '#FFFFFF' : '#0A0F0B',
+          strokeWidth: 2,
+        }}
+      />
     </span>
   )
 }
 
-// ─── PrevisaoBar — Atual → Máximo ─────────────────────────────────────────────
-function PrevisaoBar({ atual, max, globalMax, accent }: {
-  atual: number; max: number; globalMax: number; accent: string
+function Pill({ children, bg = 'rgba(10,15,11,0.08)', color = '#0A0F0B' }: {
+  children: React.ReactNode; bg?: string; color?: string
 }) {
-  const safeMax  = Math.max(globalMax, 1)
-  const pctAtual = Math.max(0, Math.min(100, (atual / safeMax) * 100))
-  const pctMax   = Math.max(0, Math.min(100, (max   / safeMax) * 100))
-  const decidido = atual === max
-
   return (
-    <div style={{
-      position: 'relative', width: '100%', minWidth: 90, maxWidth: 180,
-      height: 8, background: 'var(--muted)', borderRadius: 99, overflow: 'hidden',
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '4px 11px', borderRadius: 999,
+      background: bg, color,
+      fontSize: 11.5, fontWeight: 600,
+      letterSpacing: '-0.01em', whiteSpace: 'nowrap',
     }}>
-      {!decidido && (
-        <div style={{
-          position: 'absolute', inset: 0, width: `${pctMax}%`,
-          background: `${accent}22`, borderRadius: 99,
-        }} />
-      )}
-      <div style={{
-        position: 'absolute', inset: 0, width: `${pctAtual}%`,
-        background: accent, borderRadius: 99,
-        transition: 'width 0.4s ease',
-        boxShadow: `0 0 8px ${accent}55`,
-      }} />
-    </div>
-  )
-}
-
-// ─── StandingsTable — tabela de classificação ────────────────────────────────
-
-interface StandingsTableProps {
-  equipes: AtleticaWithStats[]
-  accent: string
-  promoteSpots?: number
-  relegateSpots?: number
-  compact?: boolean
-}
-
-function StandingsTable({ equipes, accent, promoteSpots, relegateSpots, compact }: StandingsTableProps) {
-  const globalMax = Math.max(13, ...equipes.map(e => e.pontos_cia_max))
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr style={{ borderBottom: `2px solid ${accent}33` }}>
-            <Th width={compact ? 36 : 44} center>#</Th>
-            <Th left>Atlética</Th>
-            <Th center accent={accent} tip="Pontos garantidos (Art. 44/46)">Atual</Th>
-            <Th center tip="Máximo possível se vencer tudo daqui">Máx</Th>
-            <Th left tip="Espaço de manobra restante (atual → máx)">Faixa</Th>
-            <Th center tip="Modalidades vivas / total inscritas">Mod</Th>
-            {!compact && (
-              <>
-                <Th center>J</Th>
-                <Th center>V</Th>
-                <Th center>D</Th>
-                <Th center>SG</Th>
-              </>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {equipes.map((eq, idx) => {
-            const pos = idx + 1
-            const isPromote  = promoteSpots != null && pos <= promoteSpots
-            const isRelegate = relegateSpots != null && pos > equipes.length - relegateSpots
-            const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : null
-            const decisivo = eq.pontos_cia === eq.pontos_cia_max
-            const isLeader = pos === 1
-
-            return (
-              <tr
-                key={eq.id}
-                className="group transition-colors hover:bg-[var(--green-dim)]/30"
-                style={{
-                  borderBottom: '1px solid var(--border)',
-                  background: isLeader
-                    ? `linear-gradient(90deg, ${accent}10, transparent 50%)`
-                    : idx % 2 === 0 ? 'var(--card)' : 'var(--muted)/30',
-                  borderLeft: isPromote
-                    ? `3px solid ${accent}`
-                    : isRelegate
-                    ? '3px solid var(--destructive)'
-                    : '3px solid transparent',
-                }}
-              >
-                {/* Position */}
-                <td className={compact ? 'py-1.5 px-2' : 'py-2.5 px-3'} style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                  {medal ? (
-                    <span style={{ fontSize: compact ? 14 : 17 }}>{medal}</span>
-                  ) : (
-                    <span style={{
-                      fontSize: compact ? 11 : 13, fontWeight: 700,
-                      color: 'var(--muted-foreground)',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}>
-                      {pos}
-                    </span>
-                  )}
-                </td>
-
-                {/* Atlética name + avatar */}
-                <td className={compact ? 'py-1.5 px-2' : 'py-2.5 px-3'}>
-                  <Link
-                    href={`/atleticas/${eq.slug}`}
-                    className="flex items-center gap-2 group/link transition-colors"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <AtleticaAvatar nome={eq.nome} cor={eq.cor_primaria} size={compact ? 20 : 26} />
-                    <span
-                      className="truncate"
-                      style={{
-                        fontSize: compact ? 12 : 14,
-                        fontWeight: 700,
-                        color: 'var(--foreground)',
-                        letterSpacing: '-0.005em',
-                      }}
-                    >
-                      {eq.nome}
-                    </span>
-                  </Link>
-                </td>
-
-                {/* Atual */}
-                <td className={compact ? 'py-1.5 px-2' : 'py-2.5 px-3'} style={{ textAlign: 'center' }}>
-                  <span style={{
-                    fontSize: compact ? 14 : 18,
-                    fontWeight: 800,
-                    color: accent,
-                    fontVariantNumeric: 'tabular-nums',
-                    fontFamily: 'var(--font-display, system-ui)',
-                    letterSpacing: '-0.02em',
-                  }}>
-                    {eq.pontos_cia}
-                  </span>
-                </td>
-
-                {/* Max */}
-                <td className={compact ? 'py-1.5 px-2' : 'py-2.5 px-3'} style={{ textAlign: 'center' }}>
-                  <span style={{
-                    fontSize: compact ? 11 : 13,
-                    fontWeight: 600,
-                    color: decisivo ? 'var(--muted-foreground)' : 'var(--foreground)',
-                    fontVariantNumeric: 'tabular-nums',
-                    opacity: decisivo ? 0.4 : 0.85,
-                  }}>
-                    {decisivo ? '✓' : eq.pontos_cia_max}
-                  </span>
-                </td>
-
-                {/* Faixa bar */}
-                <td className={compact ? 'py-1.5 px-2' : 'py-2.5 px-3'}>
-                  <PrevisaoBar
-                    atual={eq.pontos_cia}
-                    max={eq.pontos_cia_max}
-                    globalMax={globalMax}
-                    accent={accent}
-                  />
-                </td>
-
-                {/* Modalidades vivas */}
-                <td className={compact ? 'py-1.5 px-2' : 'py-2.5 px-3'} style={{ textAlign: 'center' }}>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'baseline', gap: 1,
-                    fontSize: 11, fontVariantNumeric: 'tabular-nums',
-                  }}>
-                    <span style={{
-                      fontWeight: 800,
-                      color: eq.vivas > 0 ? 'var(--foreground)' : 'var(--muted-foreground)',
-                      fontSize: 13,
-                    }}>
-                      {eq.vivas}
-                    </span>
-                    <span style={{ opacity: 0.35, fontWeight: 600 }}>/{eq.total_inscricoes}</span>
-                  </span>
-                </td>
-
-                {!compact && (
-                  <>
-                    <td className="py-2.5 px-3" style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted-foreground)', fontVariantNumeric: 'tabular-nums' }}>
-                      {eq.jogados}
-                    </td>
-                    <td className="py-2.5 px-3" style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted-foreground)', fontVariantNumeric: 'tabular-nums' }}>
-                      {eq.vitorias}
-                    </td>
-                    <td className="py-2.5 px-3" style={{ textAlign: 'center', fontSize: 12, color: 'var(--muted-foreground)', fontVariantNumeric: 'tabular-nums' }}>
-                      {eq.derrotas}
-                    </td>
-                    <td className="py-2.5 px-3" style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                      <SaldoCell saldo={eq.saldo} />
-                    </td>
-                  </>
-                )}
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function Th({ children, center, left, accent, tip, width }: {
-  children: React.ReactNode
-  center?: boolean; left?: boolean
-  accent?: string; tip?: string
-  width?: number
-}) {
-  return (
-    <th
-      title={tip}
-      style={{
-        padding: '10px 12px',
-        textAlign: center ? 'center' : left ? 'left' : 'center',
-        fontSize: 9,
-        fontWeight: 800,
-        letterSpacing: '0.18em',
-        textTransform: 'uppercase',
-        color: accent ?? 'var(--muted-foreground)',
-        whiteSpace: 'nowrap',
-        width: width ?? 'auto',
-      }}
-    >
       {children}
-    </th>
+    </span>
   )
 }
 
-function SaldoCell({ saldo }: { saldo: number }) {
-  if (saldo > 0) return <span style={{ color: 'var(--green-bright)' }}>+{saldo}</span>
-  if (saldo < 0) return <span style={{ color: 'var(--destructive)' }}>{saldo}</span>
-  return <span style={{ color: 'var(--muted-foreground)', opacity: 0.5 }}>0</span>
-}
+// ─── EstadoCompeticaoCard (gold — como o pipeline da home) ───────────────────
 
-// ─── Division panels ──────────────────────────────────────────────────────────
-
-function DivisionPanel({
-  equipes, accent, title, subtitle, promoteSpots, relegateSpots, allZeroMsg,
+function EstadoCompeticaoCard({
+  totalJogos, totalAtleticas, aoVivoCount, totalAgendados,
 }: {
-  equipes: AtleticaWithStats[]
-  accent: string
-  title: string; subtitle: string
-  promoteSpots?: number
-  relegateSpots?: number
-  allZeroMsg?: string
+  totalJogos: number; totalAtleticas: number; aoVivoCount: number; totalAgendados: number
 }) {
-  const allZero = equipes.every(e => e.pontos_cia === 0 && e.pontos_cia_max === 0)
-  const leader  = equipes[0]
+  const totalGeral = totalJogos + totalAgendados + aoVivoCount
+  const pct = totalGeral > 0 ? Math.round((totalJogos / totalGeral) * 100) : 0
+  const status =
+    totalGeral === 0 ? 'aguardando' :
+    pct >= 60         ? 'em ritmo'   :
+    pct >= 25         ? 'em curso'   :
+                        'inicial'
+  const statusEmoji =
+    totalGeral === 0 ? '○' :
+    pct >= 60         ? '●' :
+    pct >= 25         ? '◑' :
+                        '◐'
 
   return (
-    <div className="space-y-4">
-      {/* Section header */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-xl"
-            style={{
-              background: `${accent}15`,
-              border: `1px solid ${accent}33`,
-              boxShadow: `0 0 16px ${accent}15`,
-            }}
-          >
-            <Trophy style={{ width: 18, height: 18, color: accent }} />
-          </div>
-          <div>
-            <h2 className="text-xl font-extrabold tracking-tight md:text-2xl"
-                style={{ color: accent, fontFamily: 'var(--font-display, system-ui)' }}>
-              {title}
-            </h2>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted-foreground)]/65">
-              {equipes.length} equipes · {subtitle}
-            </p>
-          </div>
-        </div>
-
-        {!allZero && leader && (
-          <div className="hidden md:flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2">
-            <Crown style={{ width: 14, height: 14, color: accent }} />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/65">Líder atual</span>
-            <span className="text-sm font-extrabold text-[var(--foreground)]">{leader.nome}</span>
-            <span className="text-[11px] font-bold tabular-nums" style={{ color: accent }}>
-              {leader.pontos_cia} pts
-            </span>
-          </div>
-        )}
+    <Link href="/esportivo/chaveamento" className="cia-edit-card cia-edit-card--gold group">
+      {/* eyebrow + status */}
+      <div className="flex items-center justify-between">
+        <span style={{
+          fontSize: 11.5, fontWeight: 600,
+          color: 'rgba(70, 50, 5, 0.65)',
+          letterSpacing: '-0.01em',
+        }}>
+          estado da competição
+        </span>
+        <Pill bg="rgba(70,50,5,0.12)" color="#46320C">
+          {statusEmoji} {status}
+        </Pill>
       </div>
 
-      {allZero && allZeroMsg && (
-        <div
-          className="rounded-xl px-4 py-3 text-xs font-semibold"
-          style={{
-            background: `${accent}10`,
-            border: `1px solid ${accent}30`,
-            color: accent,
-          }}
-        >
-          <Clock className="inline h-3 w-3 mr-1.5 -mt-0.5" />
-          {allZeroMsg}
+      {/* big % */}
+      <div className="flex-1 flex flex-col justify-center" style={{ marginTop: 18 }}>
+        <div className="flex items-baseline gap-2">
+          <span style={{
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 'clamp(72px, 8.5vw, 124px)',
+            fontWeight: 800,
+            lineHeight: 0.85,
+            letterSpacing: '-0.05em',
+            color: '#0A0F0B',
+          }}>
+            <CountUp to={pct} />
+          </span>
+          <span style={{
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 28, fontWeight: 700,
+            color: 'rgba(10,15,11,0.40)',
+            letterSpacing: '-0.02em',
+          }}>
+            %
+          </span>
         </div>
-      )}
+        <span style={{
+          fontSize: 14, fontWeight: 500,
+          color: 'rgba(10,15,11,0.62)',
+          letterSpacing: '-0.01em',
+          marginTop: 6,
+        }}>
+          {totalJogos} de {totalGeral} jogos encerrados
+        </span>
 
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-sm">
-        <StandingsTable
-          equipes={equipes}
-          accent={accent}
-          promoteSpots={promoteSpots}
-          relegateSpots={relegateSpots}
-        />
+        {/* Progress bar (segmented like home pipeline) */}
+        <div style={{
+          marginTop: 18, display: 'flex', alignItems: 'center', gap: 0,
+          height: 24, borderRadius: 6, overflow: 'hidden',
+          background: 'rgba(70,50,5,0.10)',
+        }}>
+          {pct > 0 && (
+            <div style={{
+              height: '100%', width: `${pct}%`,
+              background: '#0A0F0B',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 800, color: '#F5DC6A',
+              letterSpacing: '0.04em',
+            }}>
+              {pct}%
+            </div>
+          )}
+          {aoVivoCount > 0 && (
+            <div
+              title={`${aoVivoCount} ao vivo`}
+              style={{
+                height: '100%',
+                width: `${Math.max(8, (aoVivoCount / Math.max(totalGeral, 1)) * 100)}%`,
+                background: 'repeating-linear-gradient(45deg, #C0392B, #C0392B 4px, #A02E20 4px, #A02E20 8px)',
+              }}
+            />
+          )}
+          {totalAgendados > 0 && (
+            <div style={{
+              flex: 1, height: '100%',
+              background: 'rgba(70,50,5,0.20)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 800, color: '#46320C',
+              letterSpacing: '0.04em',
+            }}>
+              {Math.round((totalAgendados / Math.max(totalGeral, 1)) * 100)}%
+            </div>
+          )}
+        </div>
+
+        {/* Mini-legenda da barra */}
+        <div className="flex items-center gap-4" style={{
+          marginTop: 8, fontSize: 10, fontWeight: 700,
+          color: 'rgba(70,50,5,0.55)', letterSpacing: '0.06em', textTransform: 'uppercase',
+        }}>
+          <span>Encerrados · {totalJogos}</span>
+          {aoVivoCount > 0 && <span style={{ color: '#A02E20' }}>● Ao vivo · {aoVivoCount}</span>}
+          <span>Agendados · {totalAgendados}</span>
+        </div>
       </div>
 
-      {/* Footer hint */}
-      {(promoteSpots || relegateSpots) && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[10px] font-semibold text-[var(--muted-foreground)]/70">
-          {promoteSpots && (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm" style={{ background: accent }} />
-              Posições 1–{promoteSpots} {relegateSpots ? 'sobem' : 'classificam para a fase final'}
-            </span>
-          )}
-          {relegateSpots && (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm bg-[var(--destructive)]" />
-              Últimas {relegateSpots} posições descem
-            </span>
-          )}
-        </div>
-      )}
-    </div>
+      {/* CTA */}
+      <div className="flex items-center justify-between" style={{ marginTop: 18 }}>
+        <span style={{ fontSize: 13, color: 'rgba(70,50,5,0.62)', fontWeight: 600 }}>
+          Abrir chaveamento
+        </span>
+        <CircleArrow size={40} />
+      </div>
+    </Link>
   )
 }
 
-// ─── Conferências ────────────────────────────────────────────────────────────
+// ─── LideresCard (lavender — destaca os 3 líderes) ───────────────────────────
 
-function Super08Panel({ groups }: { groups: ConferenciaGroup[] }) {
+interface Lider {
+  nome: string; pontos: number; pontos_max: number
+  cor_primaria: string | null; slug: string
+}
+
+function LideresCard({
+  liderDiv1, liderDiv2, liderSuper08,
+}: {
+  liderDiv1: Lider | null
+  liderDiv2: Lider | null
+  liderSuper08: { lider: Lider; conferencia: string } | null
+}) {
+  const hasAny = !!(liderDiv1 || liderDiv2 || liderSuper08)
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl"
-               style={{
-                 background: 'rgba(232,184,47,0.12)',
-                 border: '1px solid rgba(232,184,47,0.35)',
-                 boxShadow: '0 0 16px rgba(232,184,47,0.18)',
-               }}>
-            <Zap style={{ width: 18, height: 18, color: 'var(--gold-vivid)' }} />
-          </div>
-          <div>
-            <h2 className="text-xl font-extrabold tracking-tight md:text-2xl"
-                style={{ color: 'var(--gold-vivid)', fontFamily: 'var(--font-display, system-ui)' }}>
-              Super 08 · Conferências
-            </h2>
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted-foreground)]/65">
-              8 grupos · disputa eliminatória entre campeões
-            </p>
-          </div>
-        </div>
+    <div className="cia-edit-card cia-edit-card--lavender" style={{ textDecoration: 'none' }}>
+      {/* eyebrow + count pill */}
+      <div className="flex items-center justify-between">
+        <span style={{
+          fontSize: 11.5, fontWeight: 600,
+          color: 'rgba(45,27,92,0.65)',
+          letterSpacing: '-0.01em',
+        }}>
+          líderes atuais
+        </span>
+        <Pill bg="rgba(45,27,92,0.12)" color="#2D1B5C">
+          <Crown size={11} /> AO VIVO
+        </Pill>
+      </div>
 
-        <Link
-          href="/esportivo/super-8"
-          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold-vivid)]/40 bg-[var(--gold-vivid)]/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--gold-vivid)] transition-all hover:bg-[var(--gold-vivid)]/20"
-        >
-          <Trophy className="h-3 w-3" />
-          Liga Super 8 (playoff)
-          <ChevronRight className="h-3 w-3" />
+      {/* Big editorial label */}
+      <div style={{ marginTop: 14, marginBottom: 4 }}>
+        <h2 style={{
+          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+          fontSize: 'clamp(34px, 4.5vw, 52px)',
+          fontWeight: 800,
+          lineHeight: 0.92,
+          letterSpacing: '-0.045em',
+          color: '#0A0F0B',
+        }}>
+          Quem<br />lidera
+        </h2>
+      </div>
+
+      {/* 3 leaders compact list */}
+      <div className="flex-1 flex flex-col gap-2" style={{ marginTop: 12, minHeight: 0 }}>
+        <LiderRow medal="🥇" label="1ª DIVISÃO"      lider={liderDiv1}                        accent="#8a5f06" />
+        <LiderRow medal="🥈" label="2ª DIVISÃO"      lider={liderDiv2}                        accent="#2e6b42" />
+        <LiderRow medal="🥉" label={liderSuper08 ? `SUPER 08 · ${liderSuper08.conferencia.toUpperCase()}` : 'SUPER 08'} lider={liderSuper08?.lider ?? null} accent="#B07A0A" />
+      </div>
+
+      {/* Empty state if nothing yet */}
+      {!hasAny && (
+        <p style={{
+          fontSize: 13, color: 'rgba(45,27,92,0.55)',
+          fontWeight: 500, fontStyle: 'italic',
+          marginTop: 6,
+        }}>
+          A liderança aparece quando os jogos começarem.
+        </p>
+      )}
+
+      <div className="flex items-center justify-between" style={{ marginTop: 14 }}>
+        <span style={{ fontSize: 13, color: 'rgba(45,27,92,0.62)', fontWeight: 600 }}>
+          Ver classificação completa
+        </span>
+        <Link href="/esportivo/chaveamento" style={{ textDecoration: 'none' }}>
+          <CircleArrow size={40} />
         </Link>
       </div>
-
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {groups.map(group => {
-          const meta = CONFERENCIAS.find(c => c.nome === group.conferencia)
-          const cor   = meta?.cor   ?? 'var(--gold-vivid)'
-          const icone = meta?.icone ?? '◆'
-          const vibe  = meta?.vibe  ?? ''
-          const leader = group.equipes[0]
-
-          return (
-            <div
-              key={group.conferencia}
-              className="overflow-hidden rounded-2xl bg-[var(--card)] shadow-sm transition-shadow hover:shadow-md"
-              style={{ border: `1px solid ${cor}33` }}
-            >
-              {/* Header */}
-              <div
-                className="flex items-center gap-2 px-3.5 pt-3 pb-2"
-                style={{ borderBottom: `1px solid ${cor}25` }}
-              >
-                <span className="text-lg leading-none" aria-hidden>{icone}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-extrabold tracking-tight" style={{ color: cor }}>
-                    {group.conferencia}
-                  </p>
-                  {vibe && (
-                    <p className="truncate text-[10px] italic text-[var(--muted-foreground)]/65">
-                      {vibe}
-                    </p>
-                  )}
-                </div>
-                <span
-                  className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold tabular-nums"
-                  style={{ background: `${cor}18`, color: cor }}
-                >
-                  {group.equipes.length}/8
-                </span>
-              </div>
-
-              {/* Leader badge if has games */}
-              {leader && leader.pontos_cia > 0 && (
-                <div className="flex items-center gap-2 border-b border-[var(--border)] bg-[var(--muted)]/20 px-3.5 py-1.5">
-                  <Crown style={{ width: 10, height: 10, color: cor }} />
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/65">
-                    Líder
-                  </span>
-                  <span className="flex-1 truncate text-[11px] font-bold text-[var(--foreground)]">
-                    {leader.nome}
-                  </span>
-                  <span className="text-[11px] font-extrabold tabular-nums" style={{ color: cor }}>
-                    {leader.pontos_cia}
-                  </span>
-                </div>
-              )}
-
-              {/* Content */}
-              {group.equipes.length === 0 ? (
-                <div className="px-4 py-6 text-center">
-                  <p className="text-xs italic text-[var(--muted-foreground)]/60">
-                    Aguardando confirmações
-                  </p>
-                </div>
-              ) : (
-                <div className="pb-1">
-                  <StandingsTable equipes={group.equipes} accent={cor} compact />
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
     </div>
   )
 }
 
-// ─── Upcoming games rail ─────────────────────────────────────────────────────
+function LiderRow({ medal, label, lider, accent }: {
+  medal: string
+  label: string
+  lider: Lider | null
+  accent: string
+}) {
+  return (
+    <Link
+      href={lider ? `/atleticas/${lider.slug}` : '/esportivo/chaveamento'}
+      className="group/lider"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '8px 10px',
+        borderRadius: 12,
+        background: 'rgba(255,255,255,0.45)',
+        border: '1px solid rgba(45,27,92,0.10)',
+        textDecoration: 'none',
+        transition: 'background 0.18s ease, border-color 0.18s ease',
+      }}
+    >
+      <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1 }} aria-hidden>{medal}</span>
 
-function UpcomingRail({ upcoming }: { upcoming: UpcomingJogo[] }) {
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <p style={{
+          fontSize: 9.5, fontWeight: 800,
+          letterSpacing: '0.14em', textTransform: 'uppercase',
+          color: 'rgba(45,27,92,0.55)',
+          lineHeight: 1, marginBottom: 3,
+        }}>
+          {label}
+        </p>
+        <p style={{
+          fontSize: 14.5, fontWeight: 800,
+          letterSpacing: '-0.015em',
+          color: '#0A0F0B',
+          lineHeight: 1.1,
+          textOverflow: 'ellipsis',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+        }}>
+          {lider ? lider.nome : 'A definir'}
+        </p>
+      </div>
+
+      {lider && (
+        <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 44 }}>
+          <p style={{
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 22, fontWeight: 800,
+            color: accent,
+            letterSpacing: '-0.02em',
+            lineHeight: 1,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {lider.pontos}
+          </p>
+          <p style={{
+            fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+            color: 'rgba(45,27,92,0.45)',
+            textTransform: 'uppercase',
+            marginTop: 2,
+          }}>
+            pts
+          </p>
+        </div>
+      )}
+
+      {!lider && (
+        <span style={{
+          fontSize: 11, color: 'rgba(45,27,92,0.40)',
+          fontStyle: 'italic',
+        }}>
+          —
+        </span>
+      )}
+    </Link>
+  )
+}
+
+// ─── ProximosJogos — strip horizontal ────────────────────────────────────────
+
+function ProximosJogos({ upcoming }: { upcoming: UpcomingJogo[] }) {
   if (upcoming.length === 0) return null
 
   return (
-    <div className="space-y-2.5">
-      <div className="flex items-center gap-2">
-        <Calendar className="h-4 w-4 text-[var(--green-bright)]" />
-        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
-          Próximos Jogos
+    <section>
+      <div className="flex items-baseline justify-between" style={{ marginBottom: 14 }}>
+        <h3 style={{
+          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+          fontSize: 'clamp(22px, 2.6vw, 32px)',
+          fontWeight: 800,
+          lineHeight: 1,
+          letterSpacing: '-0.025em',
+          color: '#0A0F0B',
+        }}>
+          Próximos jogos
         </h3>
-        <span className="text-[10px] tabular-nums text-[var(--muted-foreground)]/50">
-          ({upcoming.length} agendados)
+        <span style={{
+          fontSize: 11, fontWeight: 700,
+          color: 'rgba(10,15,11,0.40)',
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+        }}>
+          {upcoming.length} agendados
         </span>
       </div>
 
-      <div className="flex gap-2.5 overflow-x-auto pb-2">
+      <div
+        className="flex gap-3 overflow-x-auto"
+        style={{ paddingBottom: 6, scrollSnapType: 'x mandatory' }}
+      >
         {upcoming.map(jogo => (
           <div
             key={jogo.id}
-            className="group flex-shrink-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] transition-all hover:border-[var(--green-bright)]/40 hover:-translate-y-0.5 hover:shadow-md"
-            style={{ width: 240 }}
+            style={{
+              flexShrink: 0,
+              width: 264,
+              padding: 16,
+              background: '#FAF7F0',
+              borderRadius: 18,
+              border: '1px solid rgba(10,15,11,0.08)',
+              transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+              scrollSnapAlign: 'start',
+            }}
+            className="hover:-translate-y-0.5 hover:shadow-md hover:border-[rgba(10,15,11,0.18)]"
           >
-            <div className="flex items-center gap-1.5 border-b border-[var(--border)] bg-[var(--muted)]/30 px-3 py-1.5">
+            {/* Modalidade + fase */}
+            <div className="flex items-center gap-1.5" style={{ marginBottom: 12 }}>
               {jogo.modalidade_icone && (
-                <span className="text-sm leading-none" aria-hidden>{jogo.modalidade_icone}</span>
+                <span style={{ fontSize: 15, lineHeight: 1 }} aria-hidden>{jogo.modalidade_icone}</span>
               )}
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+              <span style={{
+                fontSize: 10.5, fontWeight: 700,
+                color: 'rgba(10,15,11,0.55)',
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+              }}>
                 {jogo.modalidade_nome ?? '—'}
               </span>
               {jogo.fase && (
-                <span className="ml-auto text-[9px] font-bold uppercase tracking-wider text-[var(--green-bright)]/70">
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: 9.5, fontWeight: 800,
+                  color: '#2e6b42',
+                  letterSpacing: '0.10em', textTransform: 'uppercase',
+                  background: 'rgba(46,107,66,0.10)',
+                  padding: '2px 6px', borderRadius: 4,
+                }}>
                   {jogo.fase}
                 </span>
               )}
             </div>
-            <div className="px-3 pt-2.5 pb-3 space-y-1.5">
-              <div className="text-[12px] font-bold leading-tight text-[var(--foreground)]">
-                <span className="truncate inline-block max-w-full">{jogo.equipe_a_nome ?? '?'}</span>
-                <span className="mx-1.5 text-[var(--muted-foreground)] font-normal text-[10px] uppercase tracking-widest">vs</span>
-                <span className="truncate inline-block max-w-full">{jogo.equipe_b_nome ?? '?'}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[var(--muted-foreground)]">
-                <Clock className="h-2.5 w-2.5 text-amber-500" />
-                <span className="tabular-nums text-[var(--foreground)]">
-                  {fmtDateShort(jogo.inicio)} · {fmtTime(jogo.inicio)}
+
+            {/* Equipes */}
+            <p style={{
+              fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+              fontSize: 15, fontWeight: 800,
+              lineHeight: 1.18,
+              letterSpacing: '-0.02em',
+              color: '#0A0F0B',
+              marginBottom: 10,
+            }}>
+              {jogo.equipe_a_nome ?? '?'}
+              <span style={{
+                margin: '0 7px', fontSize: 10,
+                color: 'rgba(10,15,11,0.35)',
+                fontWeight: 600, letterSpacing: '0.10em',
+                textTransform: 'uppercase',
+              }}>vs</span>
+              {jogo.equipe_b_nome ?? '?'}
+            </p>
+
+            {/* Data */}
+            <div className="flex items-center justify-between">
+              <span style={{
+                fontSize: 12, fontWeight: 700,
+                color: '#0A0F0B',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {fmtDateShort(jogo.inicio)} · {fmtTime(jogo.inicio)}
+              </span>
+              {jogo.divisao && (
+                <span style={{
+                  fontSize: 9.5, fontWeight: 700,
+                  color: 'rgba(10,15,11,0.45)',
+                  letterSpacing: '0.06em', textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                  maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {jogo.divisao}
                 </span>
-              </div>
+              )}
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -614,13 +536,10 @@ export function EsportivoClient({
   totalJogos, totalAtleticas, aoVivoCount,
 }: Props) {
   const router = useRouter()
-  const [tab, setTab] = useState<'div1' | 'div2' | 'super08'>('div1')
   const [liveSync, setLiveSync] = useState(false)
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const countdown = useCountdown()
-
-  // Realtime: quando jogos mudam, recomputa classificação no servidor
+  // Realtime
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
@@ -636,241 +555,254 @@ export function EsportivoClient({
     }
   }, [router])
 
-  const tabsConfig: Array<{
-    key: 'div1' | 'div2' | 'super08'
-    title: string
-    sub: string
-    accent: string
-    count: number
-    icon: React.ReactNode
-  }> = [
-    { key: 'div1',    title: '1ª Divisão',  sub: 'Elite',    accent: 'var(--gold-bright)',  count: div1.length,                                    icon: <Trophy className="h-3.5 w-3.5" /> },
-    { key: 'div2',    title: '2ª Divisão',  sub: 'Acesso',   accent: 'var(--green-bright)', count: div2.length,                                    icon: <TrendingUp className="h-3.5 w-3.5" /> },
-    { key: 'super08', title: 'Conferências', sub: 'Super 08', accent: 'var(--gold-vivid)',   count: super08.reduce((acc, g) => acc + g.equipes.length, 0), icon: <Zap className="h-3.5 w-3.5" /> },
+  // ── Líderes computados ──
+  const liderDiv1: Lider | null = div1[0]
+    ? { nome: div1[0].nome, pontos: div1[0].pontos_cia, pontos_max: div1[0].pontos_cia_max, cor_primaria: div1[0].cor_primaria, slug: div1[0].slug }
+    : null
+  const liderDiv2: Lider | null = div2[0]
+    ? { nome: div2[0].nome, pontos: div2[0].pontos_cia, pontos_max: div2[0].pontos_cia_max, cor_primaria: div2[0].cor_primaria, slug: div2[0].slug }
+    : null
+
+  // Super 08 — pegamos o líder geral (maior pontuação atual entre os campeões de conferência)
+  let liderSuper08: { lider: Lider; conferencia: string } | null = null
+  let maiorPontos = -1
+  for (const grupo of super08) {
+    const top = grupo.equipes[0]
+    if (top && top.pontos_cia > maiorPontos) {
+      maiorPontos = top.pontos_cia
+      liderSuper08 = {
+        lider: { nome: top.nome, pontos: top.pontos_cia, pontos_max: top.pontos_cia_max, cor_primaria: top.cor_primaria, slug: top.slug },
+        conferencia: grupo.conferencia,
+      }
+    }
+  }
+
+  // Total chaves (sub-stat pro card de estado)
+  const totalAgendados = upcoming.length
+
+  // ── Módulos do hub ────────────────────────────────────────────────────────
+  const modulos = [
+    {
+      href: '/esportivo/chaveamento',
+      label: 'Chaveamento',
+      meta: 'Brackets · classificação',
+      tone: 'gold' as const,
+      icon: Trophy,
+      span: 'md' as const,
+    },
+    {
+      href: '/placar',
+      label: 'Placar',
+      meta: 'Modo TV · placar ao vivo',
+      tone: 'green' as const,
+      icon: Radio,
+      span: 'sm' as const,
+    },
+    {
+      href: '/esportivo/super-8',
+      label: 'Super 8',
+      meta: 'Playoff dos campeões',
+      tone: 'electric' as const,
+      icon: Crown,
+      span: 'sm' as const,
+    },
+    {
+      href: '/atleticas',
+      label: 'Atléticas',
+      meta: `${totalAtleticas} inscritas`,
+      tone: 'lavender' as const,
+      span: 'sm' as const,
+    },
+    {
+      href: '/esportivo/importar',
+      label: 'Importar tabela',
+      meta: 'XLSX da CIA',
+      tone: 'cream' as const,
+      span: 'sm' as const,
+    },
+    {
+      href: '/esportivo/escala',
+      label: 'Escala esportiva',
+      meta: 'Setoristas · coordenadores',
+      tone: 'terracotta' as const,
+      span: 'md' as const,
+    },
   ]
 
-  const countdownLabel = useMemo(() => {
-    if (countdown.phase === 'pre') return countdown.days === 1 ? '1 DIA' : `${countdown.days} DIAS`
-    if (countdown.phase === 'during') return 'AO VIVO'
-    return 'ENCERRADO'
-  }, [countdown])
-
-  const countdownSub = useMemo(() => {
-    if (countdown.phase === 'pre') return 'até o evento começar'
-    if (countdown.phase === 'during') return 'evento em andamento'
-    return 'até a próxima edição'
-  }, [countdown])
-
   return (
-    <div className="space-y-6">
+    <div style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif' }}>
 
-      {/* ─── Page header + overview stats ─── */}
-      <div className="space-y-4">
-        {/* Eyebrow + title */}
-        <header className="cia-page-header flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="cia-page-header__eyebrow">Esportivo</p>
-            <h1 className="cia-page-header__title">Núcleo Esportivo</h1>
-            <p className="cia-page-header__subtitle">
-              Classificação ao vivo, previsão Mín/Máx (Art. 44/46) e próximos jogos da Copa Inter Atléticas 2026.
-            </p>
-          </div>
+      {/* ─── Editorial header ─── */}
+      <header className="cia-page-header flex flex-wrap items-start justify-between gap-4" style={{ marginBottom: 28 }}>
+        <div className="min-w-0 flex-1">
+          <p className="cia-page-header__eyebrow">Esportivo</p>
+          <h1 className="cia-page-header__title">Núcleo Esportivo</h1>
+          <p className="cia-page-header__subtitle">
+            Centro de comando das competições — chaveamento, placar, super 8 e escala da equipe.
+          </p>
+        </div>
 
-          {/* Realtime + countdown stack */}
-          <div className="flex flex-col items-end gap-2">
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
-              style={{
-                background: liveSync ? 'rgba(46,107,66,0.10)' : 'var(--muted)',
-                color:      liveSync ? 'var(--green-bright)'  : 'var(--muted-foreground)',
-                borderColor: liveSync ? 'rgba(46,107,66,0.35)' : 'var(--border)',
-              }}
-            >
-              <span
-                className={liveSync ? 'animate-pulse' : ''}
-                style={{
-                  width: 6, height: 6, borderRadius: '50%',
-                  background: liveSync ? 'var(--green-bright)' : 'var(--muted-foreground)',
-                  display: 'inline-block',
-                  boxShadow: liveSync ? '0 0 8px var(--green-bright)' : 'none',
-                }}
-              />
-              {liveSync ? 'Tempo real' : 'Conectando'}
-            </span>
-          </div>
-        </header>
-
-        {/* Stats overview strip */}
-        <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-r from-[var(--card)] via-[var(--card)]/85 to-[var(--card)]/40">
-          {/* Glow decor */}
-          <div
-            className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 rounded-full opacity-50 blur-3xl"
-            style={{ background: 'radial-gradient(circle, rgba(46,107,66,0.20), transparent 70%)' }}
+        {/* Realtime indicator */}
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+          style={{
+            background:  liveSync ? 'rgba(46,107,66,0.10)' : 'rgba(10,15,11,0.04)',
+            color:       liveSync ? '#2e6b42'              : 'rgba(10,15,11,0.45)',
+            borderColor: liveSync ? 'rgba(46,107,66,0.35)' : 'rgba(10,15,11,0.10)',
+          }}
+        >
+          <span
+            className={liveSync ? 'animate-pulse' : ''}
+            style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: liveSync ? '#2e6b42' : 'rgba(10,15,11,0.30)',
+              display: 'inline-block',
+              boxShadow: liveSync ? '0 0 8px rgba(46,107,66,0.6)' : 'none',
+            }}
           />
-          <div className="relative grid grid-cols-2 gap-y-4 px-5 py-4 sm:flex sm:flex-wrap sm:items-center sm:gap-x-7 sm:gap-y-3">
-            <StatColumn
-              icon={<Users className="h-4 w-4 text-[var(--green-bright)]" />}
-              value={totalAtleticas}
-              label="Atléticas"
-            />
-            <Divider />
-            <StatColumn
-              icon={<Swords className="h-4 w-4 text-[var(--muted-foreground)]" />}
-              value={totalJogos}
-              label="Jogos encerrados"
-            />
-            <Divider />
-            <StatColumn
-              icon={<Sparkles className="h-4 w-4 text-[var(--gold-bright)]" />}
-              value={countdownLabel}
-              label={countdownSub}
-              valueSize="md"
-            />
+          {liveSync ? 'Tempo real' : 'Conectando'}
+        </span>
+      </header>
 
-            <div className="col-span-2 ml-auto flex flex-wrap items-center gap-2 sm:col-span-1">
-              {aoVivoCount > 0 && (
-                <span className="inline-flex items-center gap-2 rounded-full border border-red-500/35 bg-red-500/8 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-red-500">
-                  <span className="relative inline-flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-                  </span>
-                  <span className="tabular-nums">{aoVivoCount}</span> ao vivo
-                </span>
-              )}
-              <Link
-                href="/esportivo/chaveamento"
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--green-bright)]/40 bg-[var(--green-dim)]/40 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--green-bright)] transition-all hover:bg-[var(--green-dim)]/60"
-              >
-                <Trophy className="h-3 w-3" />
-                Ver chaveamento
-                <ChevronRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </div>
+      {/* ─── Hero row: Estado da competição + Líderes ─── */}
+      <div
+        className="grid gap-4"
+        style={{
+          gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
+          marginBottom: 32,
+        }}
+      >
+        <div style={{ gridColumn: 'span 5' }} className="col-span-12 md:col-span-5">
+          <EstadoCompeticaoCard
+            totalJogos={totalJogos}
+            totalAtleticas={totalAtleticas}
+            aoVivoCount={aoVivoCount}
+            totalAgendados={totalAgendados}
+          />
+        </div>
+        <div style={{ gridColumn: 'span 7' }} className="col-span-12 md:col-span-7">
+          <LideresCard
+            liderDiv1={liderDiv1}
+            liderDiv2={liderDiv2}
+            liderSuper08={liderSuper08}
+          />
         </div>
       </div>
 
-      {/* ─── Upcoming games rail ─── */}
-      <UpcomingRail upcoming={upcoming} />
+      {/* ─── Próximos jogos ─── */}
+      <div style={{ marginBottom: 36 }}>
+        <ProximosJogos upcoming={upcoming} />
+      </div>
 
-      {/* ─── Tabs (cards) ─── */}
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-        {tabsConfig.map(t => {
-          const isActive = tab === t.key
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`group relative overflow-hidden rounded-xl border p-3.5 text-left transition-all ${
-                isActive
-                  ? 'shadow-[0_4px_20px_rgba(0,0,0,0.06)]'
-                  : 'hover:-translate-y-0.5 hover:shadow-sm'
-              }`}
-              style={{
-                background: isActive ? 'var(--card)' : 'var(--card)',
-                borderColor: isActive ? t.accent : 'var(--border)',
-                borderWidth: isActive ? 2 : 1,
-                padding: isActive ? '13px' : '14px',  // compensar border width
-              }}
-            >
-              {isActive && (
-                <div
-                  className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-40 blur-2xl"
-                  style={{ background: `radial-gradient(circle, ${t.accent}40, transparent 70%)` }}
-                />
-              )}
+      {/* ─── Acesso rápido (HUB) ─── */}
+      <section>
+        <div className="mb-5 flex items-baseline justify-between">
+          <h2 style={{
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 'clamp(28px, 3vw, 40px)',
+            fontWeight: 800,
+            lineHeight: 1,
+            letterSpacing: '-0.03em',
+            color: '#0A0F0B',
+          }}>
+            Acesso rápido
+          </h2>
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            color: 'rgba(10,15,11,0.45)',
+            letterSpacing: '0.10em', textTransform: 'uppercase',
+          }}>
+            {modulos.length} módulos
+          </span>
+        </div>
 
-              <div className="relative flex items-center gap-2.5">
-                <div
-                  className="flex h-9 w-9 items-center justify-center rounded-lg"
-                  style={{
-                    background: isActive ? `${t.accent}18` : 'var(--muted)',
-                    color: isActive ? t.accent : 'var(--muted-foreground)',
-                  }}
-                >
-                  {t.icon}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p
-                    className="text-base font-extrabold tracking-tight leading-tight"
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: 14 }}>
+          {modulos.map((m, idx) => {
+            const Icon = m.icon
+            const isElectric = m.tone === 'electric'
+            const isTerracotta = m.tone === 'terracotta'
+            const isGreen = m.tone === 'green'
+            const isLight = !(isElectric || isTerracotta || isGreen)
+            const text = isLight ? '#0A0F0B' : '#FFFFFF'
+            const textMuted =
+              m.tone === 'gold'       ? 'rgba(70,50,5,0.65)' :
+              m.tone === 'lavender'   ? 'rgba(45,27,92,0.55)' :
+              m.tone === 'cream'      ? 'rgba(10,15,11,0.55)' :
+              isElectric              ? 'rgba(255,255,255,0.70)' :
+              isTerracotta            ? 'rgba(255,255,255,0.75)' :
+              isGreen                 ? 'rgba(255,255,255,0.75)' :
+                                        'rgba(10,15,11,0.55)'
+            const arrowDark = isLight
+
+            const spanClass: string =
+              m.span === 'md'
+                ? 'col-span-12 sm:col-span-6 lg:col-span-4'
+                : 'col-span-12 sm:col-span-6 lg:col-span-2'
+
+            return (
+              <Link
+                key={m.href}
+                href={m.href}
+                className={`cia-edit-card cia-edit-card--${m.tone} cia-quick-card ${spanClass}`}
+                style={{ animationDelay: `${idx * 35}ms` }}
+              >
+                <div className="flex items-start justify-between">
+                  {Icon && (
+                    <Icon
+                      size={20}
+                      strokeWidth={1.8}
+                      style={{ color: text, opacity: 0.85 }}
+                    />
+                  )}
+                  {!Icon && <span style={{ width: 20, height: 20 }} aria-hidden />}
+                  <span
+                    className="cia-quick-arrow"
                     style={{
-                      color: isActive ? t.accent : 'var(--foreground)',
-                      fontFamily: 'var(--font-display, system-ui)',
+                      width: 32, height: 32,
+                      borderRadius: '50%',
+                      background: arrowDark ? '#0A0F0B' : '#FFFFFF',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                      flexShrink: 0,
                     }}
                   >
-                    {t.title}
-                  </p>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]/65">
-                    {t.count} {t.count === 1 ? 'equipe' : 'equipes'} · {t.sub}
-                  </p>
+                    <ArrowUpRight style={{
+                      width: 14, height: 14,
+                      color: arrowDark ? '#FFFFFF' : '#0A0F0B',
+                      strokeWidth: 2.2,
+                    }} />
+                  </span>
                 </div>
-                <ChevronRight
-                  className={`h-3 w-3 transition-transform ${isActive ? 'rotate-90' : 'group-hover:translate-x-0.5'}`}
-                  style={{ color: isActive ? t.accent : 'var(--muted-foreground)' }}
-                />
-              </div>
-            </button>
-          )
-        })}
-      </div>
 
-      {/* ─── Tab content ─── */}
-      <div>
-        {tab === 'div1' && (
-          <DivisionPanel
-            equipes={div1}
-            accent="var(--gold-bright)"
-            title="1ª Divisão"
-            subtitle="Elite"
-            promoteSpots={3}
-            relegateSpots={2}
-            allZeroMsg="Competição ainda não iniciou — classificação atualiza em tempo real."
-          />
-        )}
-        {tab === 'div2' && (
-          <DivisionPanel
-            equipes={div2}
-            accent="var(--green-bright)"
-            title="2ª Divisão"
-            subtitle="Acesso"
-            promoteSpots={4}
-            allZeroMsg="Competição ainda não iniciou — classificação atualiza em tempo real."
-          />
-        )}
-        {tab === 'super08' && (
-          <Super08Panel groups={super08} />
-        )}
-      </div>
+                <div className="flex-1 flex flex-col justify-end">
+                  <span style={{
+                    fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                    fontSize: 'clamp(22px, 2.4vw, 30px)',
+                    fontWeight: 800,
+                    lineHeight: 0.95,
+                    letterSpacing: '-0.03em',
+                    color: text,
+                  }}>
+                    {m.label}
+                  </span>
+                  {m.meta && (
+                    <span style={{
+                      fontSize: 13, fontWeight: 500,
+                      color: textMuted,
+                      letterSpacing: '-0.01em',
+                      marginTop: 6,
+                    }}>
+                      {m.meta}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </section>
     </div>
   )
-}
-
-function StatColumn({
-  icon, value, label, valueSize = 'lg',
-}: {
-  icon: React.ReactNode; value: number | string; label: string
-  valueSize?: 'md' | 'lg'
-}) {
-  return (
-    <div className="flex items-center gap-3 min-w-0">
-      <span className="opacity-90 flex-shrink-0">{icon}</span>
-      <div className="leading-tight min-w-0">
-        <p
-          className={`font-extrabold tabular-nums tracking-tight text-[var(--foreground)] truncate ${
-            valueSize === 'md' ? 'text-base' : 'text-xl'
-          }`}
-          style={{ fontFamily: 'var(--font-display, system-ui)' }}
-        >
-          {value}
-        </p>
-        <p className="truncate text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]/65">
-          {label}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function Divider() {
-  return <span className="hidden sm:inline-block h-8 w-px bg-[var(--border)]" aria-hidden />
 }

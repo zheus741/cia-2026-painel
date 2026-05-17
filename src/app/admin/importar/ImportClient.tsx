@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { toast } from '@/components/toast'
 
 interface ImportStats {
   date_str:            string
@@ -30,7 +31,7 @@ export function ImportClient() {
   function onFileChange(f: File | null) {
     if (!f) return
     if (!f.name.endsWith('.xlsx') && !f.name.endsWith('.xls')) {
-      alert('Somente arquivos .xlsx ou .xls são aceitos.')
+      toast.error('Formato inválido', { description: 'Somente arquivos .xlsx ou .xls são aceitos.' })
       return
     }
     setFile(f)

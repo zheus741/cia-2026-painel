@@ -17,6 +17,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { CONFERENCIAS } from '@/lib/conferencias'
 import { toast } from '@/components/toast'
+import { confirmDialog } from '@/components/confirm-dialog'
 import {
   salvarColocacoes,
   removerColocacao,
@@ -807,8 +808,14 @@ function AnexosPanel({
     }
   }
 
-  function handleRemover(id: string, nome: string) {
-    if (!confirm(`Remover "${nome}" definitivamente?`)) return
+  async function handleRemover(id: string, nome: string) {
+    const ok = await confirmDialog({
+      title: 'Remover anexo?',
+      description: `"${nome}" será deletado definitivamente do storage. Essa ação não pode ser desfeita.`,
+      confirmLabel: 'Remover',
+      destructive: true,
+    })
+    if (!ok) return
     startTransition(async () => {
       const r = await removerAnexo(id)
       if (r.ok) {

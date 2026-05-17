@@ -22,6 +22,8 @@ import {
 import { updateAtletica, updateInscricao, createAtletica, createInscricao, deleteInscricaoById } from './actions'
 import { CONFERENCIAS, type ConferenciaMeta } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
+import { toast } from '@/components/toast'
+import { confirmDialog } from '@/components/confirm-dialog'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -90,7 +92,10 @@ async function handleLogoUpload(
   onUrl: (url: string) => void,
   setUploading: (v: boolean) => void,
 ) {
-  if (file.size > 524288) { alert('Imagem muito grande. Máximo 512KB.'); return }
+  if (file.size > 524288) {
+    toast.error('Imagem muito grande', { description: 'Máximo 512 KB.' })
+    return
+  }
   setUploading(true)
   try {
     const supabase = createClient()
@@ -100,8 +105,9 @@ async function handleLogoUpload(
     if (upErr) throw upErr
     const { data: urlData } = supabase.storage.from('brasoes').getPublicUrl(path)
     onUrl(urlData.publicUrl)
+    toast.success('Brasão atualizado')
   } catch (e) {
-    alert('Erro ao fazer upload: ' + String(e))
+    toast.error('Erro ao fazer upload', { description: String(e) })
   } finally {
     setUploading(false)
   }
@@ -463,8 +469,14 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
     router.refresh()
   }
 
-  const handleDeleteInscricao = (insc: NormalizedInscricao) => {
-    if (!window.confirm(`Remover inscrição de ${insc.equipe_nome} em ${insc.modalidade_nome} (${insc.categoria})?`)) return
+  const handleDeleteInscricao = async (insc: NormalizedInscricao) => {
+    const ok = await confirmDialog({
+      title: 'Remover inscrição?',
+      description: `${insc.equipe_nome} em ${insc.modalidade_nome} (${insc.categoria}) será removida desta competição.`,
+      confirmLabel: 'Remover',
+      destructive: true,
+    })
+    if (!ok) return
     // Optimistic removal
     setInscOverride(prev => ({ ...prev, deleted: new Set([...prev.deleted, insc.id]) }))
     startTransition(async () => {
@@ -476,8 +488,11 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
           d.delete(insc.id)
           return { ...prev, deleted: d }
         })
-        alert('Erro ao remover inscrição: ' + (result.error ?? 'Tente novamente.'))
+        toast.error('Falha ao remover inscrição', {
+          description: result.error ?? 'Tente novamente em alguns segundos.',
+        })
       } else {
+        toast.success('Inscrição removida')
         router.refresh()
       }
     })

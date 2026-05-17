@@ -3,6 +3,7 @@ import { DM_Sans } from 'next/font/google'
 import { PushNotificationSetup } from '@/components/PushNotificationSetup'
 import { NavigationProgress } from '@/components/NavigationProgress'
 import { Toaster } from '@/components/toast'
+import { ConfirmDialogHost } from '@/components/confirm-dialog'
 import './globals.css'
 
 const dmSans = DM_Sans({
@@ -42,6 +43,7 @@ export default function RootLayout({
         {children}
         <PushNotificationSetup />
         <Toaster />
+        <ConfirmDialogHost />
       </body>
     </html>
   )

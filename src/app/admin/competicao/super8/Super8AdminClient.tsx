@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { Plus, Trash2, Pencil, Shuffle, ExternalLink, AlertCircle, Trophy, X, Save, Radio } from 'lucide-react'
 import { addSuper8Row, updateSuper8Row, deleteSuper8Row, sortearPosicoesSuper8, gerarJogoDoSuper8 } from './actions'
 import type { Super8Row, Super8Participante, Super8Resumo } from '@/lib/competicao/super8'
+import { confirmDialog } from '@/components/confirm-dialog'
 
 interface Atletica {
   id: string; nome: string; slug: string | null
@@ -84,8 +85,14 @@ export function Super8AdminClient({ edicaoNome, atleticas, modalidades, rows: in
     })
   }
 
-  function handleDelete(id: string) {
-    if (!confirm('Remover este confronto da liga?')) return
+  async function handleDelete(id: string) {
+    const ok = await confirmDialog({
+      title: 'Remover este confronto da Liga Super 8?',
+      description: 'O confronto será excluído. Os pontos correspondentes serão recalculados.',
+      confirmLabel: 'Remover',
+      destructive: true,
+    })
+    if (!ok) return
     startTransition(async () => {
       const res = await deleteSuper8Row(id)
       if (!res.ok) { handleError(res.error ?? 'Erro ao remover.'); return }

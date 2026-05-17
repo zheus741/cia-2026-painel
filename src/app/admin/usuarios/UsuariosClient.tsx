@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { updateRole, updateFuncao, toggleAtivo, aprovarUsuario, recusarUsuario } from './actions'
+import { confirmDialog } from '@/components/confirm-dialog'
 import {
   Shield, UserCog, Users, Crown, Power, PowerOff,
   Clock, CheckCircle2, X, Loader2, AlertCircle,
@@ -283,8 +284,14 @@ function PendingUserCard({ u, onUpdate, onApprove }: {
 }) {
   const [isPending, startTransition] = useTransition()
 
-  function handleReject() {
-    if (!confirm(`Recusar acesso de ${u.nome}? A conta será desativada.`)) return
+  async function handleReject() {
+    const ok = await confirmDialog({
+      title: `Recusar acesso de ${u.nome}?`,
+      description: 'A conta será desativada. O usuário não poderá entrar no painel até ser aprovado novamente.',
+      confirmLabel: 'Recusar',
+      destructive: true,
+    })
+    if (!ok) return
     startTransition(async () => {
       await recusarUsuario(u.id)
       onUpdate()

@@ -9,6 +9,7 @@ import {
 import { BracketView } from './BracketView'
 import { recalcularChaveAction } from '@/app/placar/actions'
 import { toast } from '@/components/toast'
+import { confirmDialog } from '@/components/confirm-dialog'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -444,15 +445,14 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                 if (!modalidadeAtualLocal) return null
                 return (
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (isRecalcPending) return
-                      const conf = window.confirm(
-                        'Recalcular avanço da chave?\n\n' +
-                        'Vai reprocessar todos os jogos encerrados em ordem (oitavas → quartas → semi → final) ' +
-                        'e atualizar os jogos seguintes com os vencedores.\n\n' +
-                        'Operação segura e idempotente.'
-                      )
-                      if (!conf) return
+                      const ok = await confirmDialog({
+                        title: 'Recalcular avanço da chave?',
+                        description: 'Vai reprocessar todos os jogos encerrados em ordem (oitavas → quartas → semi → final) e atualizar os jogos seguintes com os vencedores. Operação segura e idempotente.',
+                        confirmLabel: 'Recalcular',
+                      })
+                      if (!ok) return
                       startRecalcTransition(async () => {
                         const result = await recalcularChaveAction(
                           modalidadeAtualLocal.id,

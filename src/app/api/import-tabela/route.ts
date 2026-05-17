@@ -6,19 +6,30 @@ import { createClient } from '@/lib/supabase/server'
 // ── Modalidade map: código Excel → dados completos ────────────────────────────
 
 const MODALIDADE_MAP: Record<string, { nome: string; icone: string; duracao_min: number }> = {
-  FF:  { nome: 'Futsal Feminino',         icone: '⚽', duracao_min: 50 },
-  FM:  { nome: 'Futsal Masculino',        icone: '⚽', duracao_min: 50 },
-  HM:  { nome: 'Handebol Masculino',      icone: '🤾', duracao_min: 60 },
-  HF:  { nome: 'Handebol Feminino',       icone: '🤾', duracao_min: 60 },
-  VM:  { nome: 'Vôlei Masculino',         icone: '🏐', duracao_min: 90 },
-  VF:  { nome: 'Vôlei Feminino',          icone: '🏐', duracao_min: 90 },
-  VPM: { nome: 'Vôlei de Praia Masc.',    icone: '🏖️', duracao_min: 60 },
-  VPF: { nome: 'Vôlei de Praia Fem.',     icone: '🏖️', duracao_min: 60 },
-  BM:  { nome: 'Basquete Masculino',      icone: '🏀', duracao_min: 60 },
-  BF:  { nome: 'Basquete Feminino',       icone: '🏀', duracao_min: 60 },
-  FC:  { nome: 'Futebol de Campo',        icone: '🏟️', duracao_min: 90 },
-  F7M: { nome: 'Futebol 7 Masculino',    icone: '🥅', duracao_min: 60 },
-  F7F: { nome: 'Futebol 7 Feminino',     icone: '🥅', duracao_min: 60 },
+  // Coletivas tradicionais
+  FF:   { nome: 'Futsal Feminino',         icone: '⚽',  duracao_min: 50 },
+  FM:   { nome: 'Futsal Masculino',        icone: '⚽',  duracao_min: 50 },
+  HM:   { nome: 'Handebol Masculino',      icone: '🤾',  duracao_min: 60 },
+  HF:   { nome: 'Handebol Feminino',       icone: '🤾',  duracao_min: 60 },
+  VM:   { nome: 'Vôlei Masculino',         icone: '🏐',  duracao_min: 90 },
+  VF:   { nome: 'Vôlei Feminino',          icone: '🏐',  duracao_min: 90 },
+  VPM:  { nome: 'Vôlei de Praia Masc.',    icone: '🏖️',  duracao_min: 60 },
+  VPF:  { nome: 'Vôlei de Praia Fem.',     icone: '🏖️',  duracao_min: 60 },
+  BM:   { nome: 'Basquete Masculino',      icone: '🏀',  duracao_min: 60 },
+  BF:   { nome: 'Basquete Feminino',       icone: '🏀',  duracao_min: 60 },
+  FC:   { nome: 'Futebol de Campo',        icone: '🏟️',  duracao_min: 90 },
+  F7M:  { nome: 'Futebol 7 Masculino',     icone: '🥅',  duracao_min: 60 },
+  F7F:  { nome: 'Futebol 7 Feminino',      icone: '🥅',  duracao_min: 60 },
+  // Peteca — aceita códigos curto e do XLSX
+  PM:   { nome: 'Peteca Masculino',        icone: '🏸',  duracao_min: 60 },
+  PF:   { nome: 'Peteca Feminino',         icone: '🏸',  duracao_min: 60 },
+  PETM: { nome: 'Peteca Masculino',        icone: '🏸',  duracao_min: 60 },
+  PETF: { nome: 'Peteca Feminino',         icone: '🏸',  duracao_min: 60 },
+  // ── Fase A: Tênis ────────────────────────────────────────────────
+  TCM:  { nome: 'Tênis de Campo Masc.',    icone: '🎾',  duracao_min: 60 },
+  TCF:  { nome: 'Tênis de Campo Fem.',     icone: '🎾',  duracao_min: 60 },
+  TMSM: { nome: 'Tênis de Mesa Masc.',     icone: '🏓',  duracao_min: 45 },
+  TMSF: { nome: 'Tênis de Mesa Fem.',      icone: '🏓',  duracao_min: 45 },
 }
 
 const WEEKDAY_PT: Record<number, string> = {

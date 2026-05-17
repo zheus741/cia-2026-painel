@@ -24,28 +24,53 @@ interface Props {
   modalidades: Modalidade[]
 }
 
+// Códigos compactos das modalidades — aceita formato curto (FF, PM) e
+// formato do XLSX oficial CIA 2026 (PETF, PETM, TCF, TMSF, etc).
 const MOD_LABEL: Record<string, string> = {
+  // Futsal · Futebol · Fut7
   FF: 'Futsal Feminino', FM: 'Futsal Masculino',
-  FC: 'Futebol de Campo Masc', F7: 'Fut7 Masculino',
+  FC: 'Futebol de Campo Masc', F7: 'Fut7 Masculino', F7M: 'Fut7 Masculino',
+  // Vôlei
   VF: 'Vôlei Feminino', VM: 'Vôlei Masculino',
   VPF: 'Vôlei de Praia Fem', VPM: 'Vôlei de Praia Masc',
+  // Peteca
   PF: 'Peteca Feminino', PM: 'Peteca Masculino',
+  PETF: 'Peteca Feminino', PETM: 'Peteca Masculino',
+  // Handebol
   HF: 'Handebol Feminino', HM: 'Handebol Masculino',
+  // Basquete
   BF: 'Basquete Feminino', BM: 'Basquete Masculino',
+  // ── Fase A: Tênis ──────────────────────────────────────────────────
+  TCF: 'Tênis de Campo Fem', TCM: 'Tênis de Campo Masc',
+  TMSF: 'Tênis de Mesa Fem', TMSM: 'Tênis de Mesa Masc',
+  // Aliases curtos (caso a planilha venha com 2 letras)
+  TF: 'Tênis de Campo Fem', TM: 'Tênis de Campo Masc',
 }
 
 const MOD_CATEGORIA: Record<string, string> = {
-  FF: 'Feminino', FM: 'Masculino', FC: 'Masculino', F7: 'Masculino',
+  FF: 'Feminino', FM: 'Masculino', FC: 'Masculino', F7: 'Masculino', F7M: 'Masculino',
   VF: 'Feminino', VM: 'Masculino', VPF: 'Feminino', VPM: 'Masculino',
-  PF: 'Feminino', PM: 'Masculino', HF: 'Feminino', HM: 'Masculino',
+  PF: 'Feminino', PM: 'Masculino', PETF: 'Feminino', PETM: 'Masculino',
+  HF: 'Feminino', HM: 'Masculino',
   BF: 'Feminino', BM: 'Masculino',
+  // Tênis
+  TCF: 'Feminino', TCM: 'Masculino',
+  TMSF: 'Feminino', TMSM: 'Masculino',
+  TF: 'Feminino', TM: 'Masculino',
 }
 
 const MOD_SLUG: Record<string, string> = {
-  FF: 'futsal', FM: 'futsal', FC: 'futebol', F7: 'fut7',
-  VF: 'volei', VM: 'volei', VPF: 'volei-praia', VPM: 'volei-praia',
-  PF: 'peteca', PM: 'peteca', HF: 'handebol', HM: 'handebol',
+  FF: 'futsal', FM: 'futsal',
+  FC: 'futebol', F7: 'fut7', F7M: 'fut7',
+  VF: 'volei', VM: 'volei',
+  VPF: 'volei-praia', VPM: 'volei-praia',
+  PF: 'peteca', PM: 'peteca', PETF: 'peteca', PETM: 'peteca',
+  HF: 'handebol', HM: 'handebol',
   BF: 'basquete', BM: 'basquete',
+  // Tênis
+  TCF: 'tenis-campo', TCM: 'tenis-campo',
+  TMSF: 'tenis-mesa', TMSM: 'tenis-mesa',
+  TF: 'tenis-campo', TM: 'tenis-campo',
 }
 
 type Step = 'upload' | 'mapping' | 'done'

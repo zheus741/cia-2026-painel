@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { CONFERENCIAS } from '@/lib/conferencias'
+import { toast } from '@/components/toast'
 import {
   salvarColocacoes,
   removerColocacao,
@@ -511,7 +512,6 @@ function ColocacoesEditor({
     }))
   )
   const [isPending, startTransition] = useTransition()
-  const [saveMsg, setSaveMsg] = useState<string | null>(null)
 
   // Sincroniza quando o usuário troca de divisão (colocacoes muda)
   React.useEffect(() => {
@@ -544,10 +544,11 @@ function ColocacoesEditor({
   }
 
   function handleSalvar() {
-    const valid = rows
-      .filter(r => r.equipe_id && r.colocacao >= 0)
+    const valid = rows.filter(r => r.equipe_id && r.colocacao >= 0)
     if (valid.length === 0) {
-      setSaveMsg('Nenhuma colocação válida pra salvar.')
+      toast.warning('Nenhuma colocação válida pra salvar', {
+        description: 'Selecione uma atlética e defina a colocação em pelo menos uma linha.',
+      })
       return
     }
     startTransition(async () => {
@@ -559,10 +560,14 @@ function ColocacoesEditor({
       }))
       const result = await salvarColocacoes(modalidade.id, divisao, payload)
       if (result.ok && result.data) {
-        setSaveMsg(`✓ ${result.data.salvos} colocações salvas`)
-        setTimeout(() => setSaveMsg(null), 3000)
+        toast.success(
+          `${result.data.salvos} ${result.data.salvos === 1 ? 'colocação salva' : 'colocações salvas'}`,
+          { description: `${modalidade.nome} · ${divisao}` },
+        )
       } else {
-        setSaveMsg(`✗ ${result.error ?? 'erro ao salvar'}`)
+        toast.error('Falha ao salvar colocações', {
+          description: result.error ?? 'Tente novamente em alguns segundos.',
+        })
       }
     })
   }
@@ -584,11 +589,6 @@ function ColocacoesEditor({
         </div>
         {canEdit && (
           <div className="flex items-center gap-2">
-            {saveMsg && (
-              <span className={`text-[11px] font-semibold ${saveMsg.startsWith('✓') ? 'text-[var(--green-bright)]' : 'text-red-500'}`}>
-                {saveMsg}
-              </span>
-            )}
             <button
               onClick={addRow}
               className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] hover:border-current hover:text-[var(--green-bright)] transition-colors"
@@ -748,19 +748,16 @@ function AnexosPanel({
   canEdit:    boolean
 }) {
   const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   async function handleUpload(file: File) {
-    setError(null)
     if (file.size > 20 * 1024 * 1024) {
-      setError('Arquivo maior que 20 MB.')
+      toast.error('Arquivo muito grande', { description: 'Limite: 20 MB.' })
       return
     }
     setUploading(true)
     try {
       const supabase = createClient()
-      const ext = file.name.split('.').pop() ?? 'bin'
       const ts = new Date().toISOString().replace(/[:.]/g, '-')
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 60)
       const path = `${modalidade.slug}/${divisao.replace(/[^a-zA-Z0-9]/g, '_')}/${ts}_${safeName}`
@@ -770,7 +767,7 @@ function AnexosPanel({
         .upload(path, file, { contentType: file.type, upsert: false })
 
       if (uploadErr) {
-        setError(`Erro no upload: ${uploadErr.message}`)
+        toast.error('Falha no upload', { description: uploadErr.message })
         setUploading(false)
         return
       }
@@ -785,12 +782,16 @@ function AnexosPanel({
           arquivoTipo:    file.type || null,
           arquivoTamanho: file.size,
         })
-        if (!r.ok) setError(`Erro ao registrar: ${r.error}`)
+        if (r.ok) {
+          toast.success('Arquivo anexado', { description: file.name })
+        } else {
+          toast.error('Falha ao registrar anexo', { description: r.error })
+        }
         setUploading(false)
       })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'erro desconhecido'
-      setError(`Erro: ${msg}`)
+      toast.error('Erro inesperado no upload', { description: msg })
       setUploading(false)
     }
   }
@@ -800,14 +801,21 @@ function AnexosPanel({
     if (r.ok && r.data) {
       window.open(r.data.url, '_blank')
     } else {
-      alert(`Erro ao gerar URL: ${r.error}`)
+      toast.error('Falha ao gerar URL de download', {
+        description: r.error ?? 'O arquivo pode estar indisponível.',
+      })
     }
   }
 
-  function handleRemover(id: string) {
-    if (!confirm('Remover este anexo definitivamente?')) return
+  function handleRemover(id: string, nome: string) {
+    if (!confirm(`Remover "${nome}" definitivamente?`)) return
     startTransition(async () => {
-      await removerAnexo(id)
+      const r = await removerAnexo(id)
+      if (r.ok) {
+        toast.success('Anexo removido')
+      } else {
+        toast.error('Falha ao remover anexo', { description: r.error })
+      }
     })
   }
 
@@ -852,9 +860,6 @@ function AnexosPanel({
               }}
             />
           </label>
-          {error && (
-            <p className="mt-2 text-[10px] font-semibold text-red-500">{error}</p>
-          )}
         </div>
       )}
 
@@ -888,7 +893,7 @@ function AnexosPanel({
               </button>
               {canEdit && (
                 <button
-                  onClick={() => handleRemover(a.id)}
+                  onClick={() => handleRemover(a.id, a.arquivo_nome)}
                   disabled={isPending}
                   className="shrink-0 p-1 rounded text-[var(--muted-foreground)]/60 hover:text-red-500"
                   title="Remover"

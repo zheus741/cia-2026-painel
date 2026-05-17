@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { BracketView } from './BracketView'
 import { recalcularChaveAction } from '@/app/placar/actions'
+import { toast } from '@/components/toast'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -459,15 +460,13 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                           chaveAberta.divisao,
                         )
                         if (result.ok && result.data) {
-                          alert(
-                            `Recálculo concluído:\n` +
-                            `• ${result.data.total} jogos encerrados processados\n` +
-                            `• ${result.data.propagados} propagações novas\n` +
-                            `• ${result.data.pulados} já estavam ok\n` +
-                            `• ${result.data.errors} erros (ver console)`
-                          )
+                          const d = result.data
+                          toast.success('Recálculo da chave concluído', {
+                            description: `${d.total} jogos processados · ${d.propagados} avançadas · ${d.pulados} já ok · ${d.errors} erros`,
+                            duration: 8000,
+                          })
                         } else {
-                          alert('Falha no recálculo. Veja o console pra detalhes.')
+                          toast.error('Falha no recálculo', { description: 'Veja o console pra detalhes.' })
                           console.error('[recalcular]', result)
                         }
                       })

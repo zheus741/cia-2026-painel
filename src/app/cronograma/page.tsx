@@ -1,27 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
-import { Music, Swords, PartyPopper } from 'lucide-react'
+import { CronogramaClient, type Evento } from './CronogramaClient'
 
+export const dynamic = 'force-dynamic'
+export const metadata = { title: 'Cronograma · CIA 2026' }
+
+/** Dias do evento. ID conhecido + datas calendar pra cálculo de "hoje". */
 const DIAS = [
-  { id: '00000000-0000-0001-0000-000000000001', label: 'Quinta 04/jun' },
-  { id: '00000000-0000-0001-0000-000000000002', label: 'Sexta 05/jun' },
-  { id: '00000000-0000-0001-0000-000000000003', label: 'Sábado 06/jun' },
-  { id: '00000000-0000-0001-0000-000000000004', label: 'Domingo 07/jun' },
+  { id: '00000000-0000-0001-0000-000000000001', label: 'Quinta',   short: '04/jun', date: '2026-06-04' },
+  { id: '00000000-0000-0001-0000-000000000002', label: 'Sexta',    short: '05/jun', date: '2026-06-05' },
+  { id: '00000000-0000-0001-0000-000000000003', label: 'Sábado',   short: '06/jun', date: '2026-06-06' },
+  { id: '00000000-0000-0001-0000-000000000004', label: 'Domingo',  short: '07/jun', date: '2026-06-07' },
 ]
-
-function fmt(ts: string) {
-  return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
-}
-
-interface Evento {
-  id: string
-  nome: string
-  tipo: 'show' | 'jogo' | 'festa'
-  inicio: string
-  fim: string | null
-  local: string
-  detalhe: string | null
-  badge?: string
-}
 
 export default async function CronogramaPage() {
   const supabase = await createClient()
@@ -33,7 +22,7 @@ export default async function CronogramaPage() {
     `).order('inicio'),
     supabase.from('jogos').select(`
       id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto,
-      categoria, divisao, fase,
+      categoria, divisao, fase, status,
       dia_id,
       modalidade:modalidades(nome, icone),
       setor:setores(nome)
@@ -43,153 +32,71 @@ export default async function CronogramaPage() {
     `).order('inicio'),
   ])
 
-  // Agrupar por dia
-  const byDia: Record<string, Evento[]> = {}
-  DIAS.forEach((d) => { byDia[d.id] = [] })
+  const eventos: Evento[] = []
 
   for (const s of showsRes.data ?? []) {
+    if (!s.inicio || !s.dia_id) continue
     const setor = s.setor as unknown as { nome: string } | null
-    byDia[s.dia_id]?.push({
-      id: s.id, nome: s.nome, tipo: 'show',
-      inicio: s.inicio, fim: s.fim_previsto,
-      local: setor?.nome ?? '—',
-      detalhe: s.tipo === 'dj_set' ? 'DJ Set' : 'Show',
-      badge: s.embaixador ? 'Embaixador' : undefined,
+    eventos.push({
+      id:      s.id,
+      nome:    s.nome,
+      tipo:    'show',
+      subtipo: s.tipo === 'dj_set' ? 'DJ Set' : 'Show',
+      inicio:  s.inicio,
+      fim:     s.fim_previsto,
+      local:   setor?.nome ?? null,
+      dia_id:  s.dia_id,
+      destaque: !!s.embaixador,  // embaixador = visual mais forte
+      badge:   s.embaixador ? 'Embaixador' : null,
     })
   }
 
   for (const j of jogosRes.data ?? []) {
+    if (!j.inicio || !j.dia_id) continue
     const setor = j.setor as unknown as { nome: string } | null
-    const mod = j.modalidade as unknown as { nome: string; icone: string } | null
+    const mod   = j.modalidade as unknown as { nome: string; icone: string } | null
     const titulo = j.equipe_a_nome && j.equipe_b_nome
       ? `${j.equipe_a_nome} × ${j.equipe_b_nome}`
       : (mod?.nome ?? 'Jogo')
-    byDia[j.dia_id]?.push({
-      id: j.id, nome: titulo, tipo: 'jogo',
-      inicio: j.inicio, fim: j.fim_previsto,
-      local: setor?.nome ?? '—',
-      detalhe: [mod?.nome, j.categoria, j.fase].filter(Boolean).join(' · '),
+    eventos.push({
+      id:      j.id,
+      nome:    titulo,
+      tipo:    'jogo',
+      subtipo: mod?.nome ?? null,
+      icone:   mod?.icone ?? null,
+      inicio:  j.inicio,
+      fim:     j.fim_previsto,
+      local:   setor?.nome ?? null,
+      detalhe: [j.categoria, j.fase].filter(Boolean).join(' · ') || null,
+      dia_id:  j.dia_id,
+      destaque: j.status === 'ao_vivo',
+      badge:   j.status === 'ao_vivo' ? 'AO VIVO' : null,
+      href:    `/placar?dia=${j.dia_id}#jogo-${j.id}`,
     })
   }
 
   for (const f of festasRes.data ?? []) {
+    if (!f.inicio || !f.dia_id) continue
     const setor = f.setor as unknown as { nome: string } | null
-    byDia[f.dia_id]?.push({
-      id: f.id, nome: f.nome, tipo: 'festa',
-      inicio: f.inicio, fim: f.fim_previsto,
-      local: setor?.nome ?? '—',
-      detalhe: f.tema ?? null,
+    eventos.push({
+      id:      f.id,
+      nome:    f.nome,
+      tipo:    'festa',
+      subtipo: f.tema ?? null,
+      inicio:  f.inicio,
+      fim:     f.fim_previsto,
+      local:   setor?.nome ?? null,
+      dia_id:  f.dia_id,
     })
   }
 
-  // ordenar por horário dentro de cada dia
-  DIAS.forEach((d) => {
-    byDia[d.id]?.sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime())
-  })
-
-  const tipoStyle: Record<string, { icon: React.ReactNode; bg: string; border: string; text: string }> = {
-    show: {
-      icon: <Music className="h-3.5 w-3.5" />,
-      bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700',
-    },
-    jogo: {
-      icon: <Swords className="h-3.5 w-3.5" />,
-      bg: 'bg-[var(--green-dim)]/20', border: 'border-[var(--green-dim)]/40', text: 'text-[var(--green-bright)]',
-    },
-    festa: {
-      icon: <PartyPopper className="h-3.5 w-3.5" />,
-      bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700',
-    },
-  }
-
-  const totalEventos = Object.values(byDia).reduce((sum, arr) => sum + arr.length, 0)
+  // ordenar por horário globalmente (CronogramaClient agrupa por dia internamente)
+  eventos.sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime())
 
   return (
-    <div className="space-y-8">
-      <div className="cia-page-header">
-        <p className="cia-page-header__eyebrow">Programação</p>
-        <h1 className="cia-page-header__title">Cronograma</h1>
-        <p className="cia-page-header__subtitle">{totalEventos} eventos · 04–07 junho 2026 · Uberaba/MG</p>
-      </div>
-
-      {/* Legenda */}
-      <div className="flex flex-wrap gap-3">
-        {Object.entries(tipoStyle).map(([tipo, style]) => (
-          <span key={tipo} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${style.bg} ${style.border} ${style.text}`}>
-            {style.icon}
-            {tipo === 'show' ? 'Shows & DJs' : tipo === 'jogo' ? 'Jogos' : 'Festas'}
-          </span>
-        ))}
-      </div>
-
-      {/* Grid por dia */}
-      <div className="grid gap-8 lg:grid-cols-2">
-        {DIAS.map((dia) => {
-          const eventos = byDia[dia.id] ?? []
-          return (
-            <div key={dia.id}>
-              <h2 className="mb-4 border-b border-[var(--border)] pb-2 text-base font-bold">
-                {dia.label}
-                <span className="ml-2 text-xs font-normal text-[var(--muted-foreground)]">
-                  {eventos.length} eventos
-                </span>
-              </h2>
-
-              {eventos.length === 0 ? (
-                <p className="text-sm text-[var(--muted-foreground)]">Sem eventos cadastrados.</p>
-              ) : (
-                <div className="space-y-2">
-                  {eventos.map((ev) => {
-                    const style = tipoStyle[ev.tipo]
-                    return (
-                      <div
-                        key={ev.id}
-                        className={`flex gap-3 rounded-lg border p-3 ${style.bg} ${style.border}`}
-                      >
-                        {/* Horário */}
-                        <div className="w-20 shrink-0 text-right">
-                          <p className="text-xs font-semibold tabular-nums text-[var(--foreground)]">
-                            {fmt(ev.inicio)}
-                          </p>
-                          {ev.fim && (
-                            <p className="text-[10px] text-[var(--muted-foreground)]">
-                              até {fmt(ev.fim)}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Divider */}
-                        <div className={`w-px shrink-0 rounded-full ${style.text} opacity-30`}
-                          style={{ background: 'currentColor' }} />
-
-                        {/* Info */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start gap-2">
-                            <span className={`mt-0.5 shrink-0 ${style.text}`}>{style.icon}</span>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold leading-snug">
-                                {ev.nome}
-                                {ev.badge && (
-                                  <span className="ml-2 rounded bg-[var(--gold-dim)]/30 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--gold)] border border-[var(--gold-dim)]/50">
-                                    {ev.badge}
-                                  </span>
-                                )}
-                              </p>
-                              <p className="mt-0.5 text-[10px] text-[var(--muted-foreground)]">
-                                {ev.local}{ev.detalhe ? ` · ${ev.detalhe}` : ''}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
+    <CronogramaClient
+      dias={DIAS}
+      eventos={eventos}
+    />
   )
 }

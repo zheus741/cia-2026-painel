@@ -1,12 +1,13 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import {
   Trophy, ChevronRight, ChevronLeft, Search, Inbox, ArrowLeft,
   Radio, Clock, CheckCircle2, Users, Calendar, Crown, X, Swords,
-  Layers, Sparkles,
+  Layers, Sparkles, RefreshCw,
 } from 'lucide-react'
 import { BracketView } from './BracketView'
+import { recalcularChaveAction } from '@/app/placar/actions'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -125,6 +126,7 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>('')
   const [chaveAberta, setChaveAberta] = useState<ChaveKey | null>(null)
   const [busca, setBusca] = useState('')
+  const [isRecalcPending, startRecalcTransition] = useTransition()
 
   // ── Derived: lista de divisões dos jogos ────────────────────────────────────
   const divisoesDisponiveis = useMemo(() => {
@@ -432,6 +434,53 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
+
+              {/* Botão "Recalcular chave" — reprocessa todos os jogos encerrados pra propagar
+                  vencedores na chave. Útil quando jogos foram encerrados antes do avanço
+                  automático existir, ou quando há suspeita de inconsistência. */}
+              {(() => {
+                const modalidadeAtualLocal = modalidades.find(m => m.slug === chaveAberta.modalidade)
+                if (!modalidadeAtualLocal) return null
+                return (
+                  <button
+                    onClick={() => {
+                      if (isRecalcPending) return
+                      const conf = window.confirm(
+                        'Recalcular avanço da chave?\n\n' +
+                        'Vai reprocessar todos os jogos encerrados em ordem (oitavas → quartas → semi → final) ' +
+                        'e atualizar os jogos seguintes com os vencedores.\n\n' +
+                        'Operação segura e idempotente.'
+                      )
+                      if (!conf) return
+                      startRecalcTransition(async () => {
+                        const result = await recalcularChaveAction(
+                          modalidadeAtualLocal.id,
+                          chaveAberta.categoria,
+                          chaveAberta.divisao,
+                        )
+                        if (result.ok && result.data) {
+                          alert(
+                            `Recálculo concluído:\n` +
+                            `• ${result.data.total} jogos encerrados processados\n` +
+                            `• ${result.data.propagados} propagações novas\n` +
+                            `• ${result.data.pulados} já estavam ok\n` +
+                            `• ${result.data.errors} erros (ver console)`
+                          )
+                        } else {
+                          alert('Falha no recálculo. Veja o console pra detalhes.')
+                          console.error('[recalcular]', result)
+                        }
+                      })
+                    }}
+                    disabled={isRecalcPending}
+                    title="Reprocessa todos os jogos encerrados desta chave e propaga vencedores"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)]/60 px-3 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] transition-all hover:border-[var(--gold-bright)]/40 hover:text-[var(--gold-bright)] disabled:opacity-40"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isRecalcPending ? 'animate-spin' : ''}`} />
+                    {isRecalcPending ? 'Recalculando…' : 'Recalcular'}
+                  </button>
+                )
+              })()}
             </div>
           </div>
 

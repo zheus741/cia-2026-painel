@@ -11,7 +11,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowUpRight, Trophy, Crown, Radio } from 'lucide-react'
+import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 // ── Types (mantém shape esperado pela page.tsx) ──────────────────────────────
@@ -319,14 +319,16 @@ function LideresCard({
         </p>
       )}
 
-      <div className="flex items-center justify-between" style={{ marginTop: 14 }}>
+      <Link
+        href="/esportivo/classificacao"
+        className="flex items-center justify-between"
+        style={{ marginTop: 14, textDecoration: 'none' }}
+      >
         <span style={{ fontSize: 13, color: 'rgba(45,27,92,0.62)', fontWeight: 600 }}>
           Ver classificação completa
         </span>
-        <Link href="/esportivo/chaveamento" style={{ textDecoration: 'none' }}>
-          <CircleArrow size={40} />
-        </Link>
-      </div>
+        <CircleArrow size={40} />
+      </Link>
     </div>
   )
 }
@@ -583,10 +585,18 @@ export function EsportivoClient({
   // ── Módulos do hub ────────────────────────────────────────────────────────
   const modulos = [
     {
+      href: '/esportivo/classificacao',
+      label: 'Classificação',
+      meta: 'Pontos CIA · Mín/Máx · ranking',
+      tone: 'gold' as const,
+      icon: TrendingUp,
+      span: 'md' as const,
+    },
+    {
       href: '/esportivo/chaveamento',
       label: 'Chaveamento',
-      meta: 'Brackets · classificação',
-      tone: 'gold' as const,
+      meta: 'Brackets das modalidades',
+      tone: 'cream' as const,
       icon: Trophy,
       span: 'md' as const,
     },

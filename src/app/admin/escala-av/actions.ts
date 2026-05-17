@@ -145,6 +145,100 @@ export async function updateStatusEscala(
   })
 }
 
+/**
+ * Replica todos os turnos de UM dia para OUTRO dia.
+ * Preserva: setor, função, parceiro, user, horários (mesmo HH:MM), prioridade, briefing.
+ * Não duplica turnos que já existem no dia destino (mesmo setor + função + horário).
+ */
+export async function replicarDiaAV(
+  diaOrigemId: string,
+  diaDestinoId: string,
+): Promise<ActionResult & { data?: { criados: number; pulados: number } }> {
+  return safe(async () => {
+    await requireCoordOrAdmin()
+    const supabase = await createClient()
+    const edicao_id = await requireEdicaoAtivaId()
+
+    if (diaOrigemId === diaDestinoId) {
+      throw new Error('Dia origem e destino são iguais.')
+    }
+
+    // Busca turnos do dia origem
+    const { data: turnosOrigem, error: errOrigem } = await supabase
+      .from('turnos')
+      .select('setor_id, funcao, parceiro_id, user_id, inicio, fim, prioridade, briefing_editorial, conteudos_esperados')
+      .eq('dia_id', diaOrigemId)
+      .in('funcao', ['foto', 'video'])
+    if (errOrigem) throw errOrigem
+    if (!turnosOrigem || turnosOrigem.length === 0) {
+      return { criados: 0, pulados: 0 }
+    }
+
+    // Busca data do dia destino pra recalcular timestamps
+    const { data: diaDestino, error: errDia } = await supabase
+      .from('dias_evento')
+      .select('id, data')
+      .eq('id', diaDestinoId)
+      .single()
+    if (errDia || !diaDestino) throw new Error('Dia destino não encontrado.')
+
+    // Busca turnos existentes no destino pra evitar duplicação
+    const { data: turnosDestino } = await supabase
+      .from('turnos')
+      .select('setor_id, funcao, inicio')
+      .eq('dia_id', diaDestinoId)
+      .in('funcao', ['foto', 'video'])
+
+    const existentes = new Set(
+      (turnosDestino ?? []).map(t => `${t.setor_id}::${t.funcao}::${t.inicio?.slice(11, 16)}`),
+    )
+
+    // Helper pra ajustar timestamp pro novo dia
+    function rebuildTs(originalIso: string, novaData: string): string {
+      const original = new Date(originalIso)
+      const hh = original.getUTCHours().toString().padStart(2, '0')
+      const mm = original.getUTCMinutes().toString().padStart(2, '0')
+      const d = new Date(`${novaData}T00:00:00`)
+      d.setUTCHours(parseInt(hh), parseInt(mm), 0, 0)
+      return d.toISOString()
+    }
+
+    const inserts: Array<Record<string, unknown>> = []
+    let pulados = 0
+
+    for (const t of turnosOrigem) {
+      const hhmmInicio = t.inicio?.slice(11, 16) ?? '08:00'
+      const key = `${t.setor_id}::${t.funcao}::${hhmmInicio}`
+      if (existentes.has(key)) {
+        pulados++
+        continue
+      }
+      inserts.push({
+        edicao_id,
+        dia_id:              diaDestinoId,
+        setor_id:            t.setor_id,
+        funcao:              t.funcao,
+        parceiro_id:         t.parceiro_id,
+        user_id:             t.user_id,
+        inicio:              t.inicio  ? rebuildTs(t.inicio, diaDestino.data) : null,
+        fim:                 t.fim     ? rebuildTs(t.fim,    diaDestino.data) : null,
+        prioridade:          t.prioridade ?? 'media',
+        briefing_editorial:  t.briefing_editorial,
+        conteudos_esperados: t.conteudos_esperados,
+        status_escala:       'rascunho',
+        is_roaming:          false,
+      })
+    }
+
+    if (inserts.length > 0) {
+      const { error: errIns } = await supabase.from('turnos').insert(inserts)
+      if (errIns) throw errIns
+    }
+
+    return { criados: inserts.length, pulados }
+  })
+}
+
 export async function updateSetorVenue(
   setorId: string,
   payload: {

@@ -5,13 +5,25 @@ import { useRouter } from 'next/navigation'
 import {
   Plus, Pencil, Trash2, Loader2, AlertCircle, Wifi,
   UtensilsCrossed, MapPin, Camera, Video, ChevronDown, ChevronRight,
+  Search, AlertTriangle, Sun, Sunset, Moon, Copy, Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { createTurnoAV, updateTurnoAV, deleteTurnoAV, type TurnoAVPayload } from './actions'
+import { createTurnoAV, updateTurnoAV, deleteTurnoAV, replicarDiaAV, type TurnoAVPayload } from './actions'
+import { toast } from '@/components/toast'
+import { confirmDialog } from '@/components/confirm-dialog'
+
+// ─── Brand colors Foto vs Vídeo (mantém o decoupling visual histórico) ──────
+// Foto = roxo · Vídeo = teal. Cores fixas pra distinguir mídia (não muda com tema).
+const FOTO_COLOR  = '#7c3aed'
+const VIDEO_COLOR = '#1a5c5c'
+const FOTO_BG     = 'rgba(124,58,237,0.06)'
+const FOTO_BORDER = 'rgba(124,58,237,0.30)'
+const VIDEO_BG    = 'rgba(26,92,92,0.06)'
+const VIDEO_BORDER = 'rgba(26,92,92,0.30)'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -212,7 +224,7 @@ function TurnoDialog({
           <div>
             <Label className="mb-1.5 block text-xs">Setor</Label>
             <Select value={setorId} onValueChange={setSetorId}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger className="h-10 text-sm">
                 <SelectValue placeholder="— selecione o setor —" />
               </SelectTrigger>
               <SelectContent>
@@ -253,7 +265,7 @@ function TurnoDialog({
             <div>
               <Label className="mb-1.5 block text-xs">Empresa / Parceiro</Label>
               <Select value={parceiro} onValueChange={setParceiro}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder="— empresa —" />
                 </SelectTrigger>
                 <SelectContent>
@@ -277,7 +289,7 @@ function TurnoDialog({
             <div>
               <Label className="mb-1.5 block text-xs">Colaborador</Label>
               <Select value={userId} onValueChange={setUserId}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder="— pessoa —" />
                 </SelectTrigger>
                 <SelectContent>
@@ -290,24 +302,56 @@ function TurnoDialog({
           </div>
 
           {/* Horário */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1.5 block text-xs">Início</Label>
-              <input
-                type="time"
-                value={horaInicio}
-                onChange={e => setHoraInicio(e.target.value)}
-                className="h-8 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 text-xs"
-              />
+          <div>
+            <Label className="mb-1.5 block text-xs">Horário</Label>
+
+            {/* Templates rápidos */}
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {[
+                { label: 'Manhã',    ini: '07:30', fim: '13:00', Icon: Sun     },
+                { label: 'Tarde',    ini: '13:00', fim: '18:30', Icon: Sunset  },
+                { label: 'Noite',    ini: '18:30', fim: '23:30', Icon: Moon    },
+                { label: 'Dia inteiro', ini: '08:00', fim: '21:30', Icon: Sun  },
+              ].map(t => {
+                const active = horaInicio === t.ini && horaFim === t.fim
+                return (
+                  <button
+                    key={t.label}
+                    type="button"
+                    onClick={() => { setHoraInicio(t.ini); setHoraFim(t.fim) }}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-all',
+                      active
+                        ? 'border-[var(--green-bright)] bg-[var(--green-dim)]/30 text-[var(--green-bright)]'
+                        : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green-dim)] hover:text-[var(--foreground)]',
+                    )}
+                  >
+                    <t.Icon className="h-2.5 w-2.5" />
+                    {t.label}
+                  </button>
+                )
+              })}
             </div>
-            <div>
-              <Label className="mb-1.5 block text-xs">Fim</Label>
-              <input
-                type="time"
-                value={horaFim}
-                onChange={e => setHoraFim(e.target.value)}
-                className="h-8 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 text-xs"
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]/70">Início</Label>
+                <input
+                  type="time"
+                  value={horaInicio}
+                  onChange={e => setHoraInicio(e.target.value)}
+                  className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 text-sm tabular-nums focus:border-[var(--green-bright)] focus:outline-none"
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]/70">Fim</Label>
+                <input
+                  type="time"
+                  value={horaFim}
+                  onChange={e => setHoraFim(e.target.value)}
+                  className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-2 text-sm tabular-nums focus:border-[var(--green-bright)] focus:outline-none"
+                />
+              </div>
             </div>
           </div>
 
@@ -446,16 +490,17 @@ function EmpresaCell({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ColaboradorCell({
-  turnos, funcao, temEvento, onAdd, onEdit, onDelete,
+  turnos, funcao, temEvento, conflitos, onAdd, onEdit, onDelete,
 }: {
   turnos: TurnoAV[]
   funcao: 'foto' | 'video'
   temEvento: boolean
+  conflitos?: Set<string>
   onAdd: () => void
   onEdit: (t: TurnoAV) => void
   onDelete: (id: string) => void
 }) {
-  const cor = funcao === 'foto' ? '#7c3aed' : '#1a5c5c'
+  const cor = funcao === 'foto' ? FOTO_COLOR : VIDEO_COLOR
 
   if (turnos.length === 0) {
     return (
@@ -479,34 +524,42 @@ function ColaboradorCell({
       {turnos.map(t => {
         const status = (t.status_escala ?? 'rascunho') as keyof typeof STATUS_CONFIG
         const stCfg  = STATUS_CONFIG[status] ?? STATUS_CONFIG.rascunho
+        const isConflito = conflitos?.has(t.id) ?? false
 
         return (
           <div
             key={t.id}
             className="group relative flex items-center gap-2 rounded-lg border px-2.5 py-1.5"
             style={{
-              background:  'rgba(46,107,66,0.03)',
-              borderColor: 'rgba(46,107,66,0.12)',
+              background:  isConflito ? 'rgba(239,68,68,0.06)' : 'rgba(46,107,66,0.03)',
+              borderColor: isConflito ? 'rgba(239,68,68,0.40)' : 'rgba(46,107,66,0.12)',
               minHeight: 36,
             }}
+            title={isConflito ? `⚠ Conflito: ${t.user?.nome ?? 'colaborador'} está em outro turno sobreposto` : undefined}
           >
-            {/* Status dot */}
-            <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ background: stCfg.text }}
-              title={stCfg.label}
-            />
+            {/* Indicador de conflito (substitui status dot quando há conflito) */}
+            {isConflito ? (
+              <AlertTriangle className="h-3 w-3 shrink-0 text-red-500" />
+            ) : (
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: stCfg.text }}
+                title={stCfg.label}
+              />
+            )}
 
             {/* Nome */}
-            <span className="flex-1 truncate text-[11px] font-semibold text-[var(--foreground)]">
+            <span
+              className={cn(
+                'flex-1 truncate text-[11px] font-semibold',
+                isConflito ? 'text-red-600' : 'text-[var(--foreground)]',
+              )}
+            >
               {t.user?.nome ?? '?'}
             </span>
 
             {/* Horário */}
-            <span
-              className="shrink-0 tabular-nums text-[9px] text-[var(--muted-foreground)]/60"
-              style={{ fontFamily: 'Orbitron, monospace' }}
-            >
+            <span className="shrink-0 tabular-nums text-[9px] text-[var(--muted-foreground)]/60">
               {fmtHora(t.inicio)}–{fmtHora(t.fim)}
             </span>
 
@@ -544,6 +597,7 @@ function EscalaTable({
   setores,
   turnosPorSetor,
   setoresComEvento,
+  conflitos,
   onAdd,
   onEdit,
   onDelete,
@@ -551,6 +605,7 @@ function EscalaTable({
   setores:          Setor[]
   turnosPorSetor:   Map<string, TurnoAV[]>
   setoresComEvento: Set<string>
+  conflitos:        Set<string>
   onAdd:    (funcao: 'foto' | 'video', setorId: string) => void
   onEdit:   (turno: TurnoAV) => void
   onDelete: (id: string) => void
@@ -827,6 +882,7 @@ function EscalaTable({
                           turnos={fotoTs}
                           funcao="foto"
                           temEvento={temEvento}
+                          conflitos={conflitos}
                           onAdd={() => onAdd('foto', setor.id)}
                           onEdit={onEdit}
                           onDelete={onDelete}
@@ -864,6 +920,7 @@ function EscalaTable({
                           turnos={videoTs}
                           funcao="video"
                           temEvento={temEvento}
+                          conflitos={conflitos}
                           onAdd={() => onAdd('video', setor.id)}
                           onEdit={onEdit}
                           onDelete={onDelete}
@@ -901,6 +958,8 @@ export function EscalaAVGrid({
 
   const [activeDiaIdx, setActiveDiaIdx] = React.useState(0)
   const [filterFuncao, setFilterFuncao] = React.useState<'all' | 'foto' | 'video'>('all')
+  const [searchQuery,  setSearchQuery]  = React.useState('')
+  const [replicarOpen, setReplicarOpen] = React.useState(false)
   const [dialog, setDialog] = React.useState<{
     open: boolean
     defaultFuncao: 'foto' | 'video'
@@ -909,6 +968,7 @@ export function EscalaAVGrid({
   }>({ open: false, defaultFuncao: 'foto' })
   const [deleteConfirm, setDeleteConfirm] = React.useState<string | null>(null)
   const [deleting, setDeleting] = React.useState(false)
+  const [replicating, startReplicarTransition] = React.useTransition()
 
   const dia = dias[activeDiaIdx]
 
@@ -928,16 +988,46 @@ export function EscalaAVGrid({
 
   const turnosPorSetor = React.useMemo(() => {
     const map = new Map<string, TurnoAV[]>()
-    const filtered = filterFuncao === 'all'
-      ? turnosDia
-      : turnosDia.filter(t => t.funcao === filterFuncao)
+    const q = searchQuery.trim().toLowerCase()
+    const filtered = turnosDia.filter(t => {
+      if (filterFuncao !== 'all' && t.funcao !== filterFuncao) return false
+      if (q) {
+        const nameMatch = t.user?.nome?.toLowerCase().includes(q) ?? false
+        const partnerMatch = t.parceiro?.nome?.toLowerCase().includes(q) ?? false
+        const setorMatch = t.setor?.nome?.toLowerCase().includes(q) ?? false
+        if (!nameMatch && !partnerMatch && !setorMatch) return false
+      }
+      return true
+    })
     for (const t of filtered) {
       const key = t.setor_id ?? '__sem_setor__'
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(t)
     }
     return map
-  }, [turnosDia, filterFuncao])
+  }, [turnosDia, filterFuncao, searchQuery])
+
+  // Conflitos: mesmo colaborador em 2+ turnos sobrepostos no MESMO dia.
+  const conflitos = React.useMemo(() => {
+    const byUser = new Map<string, TurnoAV[]>()
+    for (const t of turnosDia) {
+      if (!t.user_id) continue
+      if (!byUser.has(t.user_id)) byUser.set(t.user_id, [])
+      byUser.get(t.user_id)!.push(t)
+    }
+    const ids = new Set<string>()
+    for (const [, ts] of byUser) {
+      if (ts.length < 2) continue
+      const sorted = [...ts].sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime())
+      for (let i = 0; i < sorted.length - 1; i++) {
+        const a = sorted[i], b = sorted[i + 1]
+        const aEnd = new Date(a.fim).getTime()
+        const bStart = new Date(b.inicio).getTime()
+        if (bStart < aEnd) { ids.add(a.id); ids.add(b.id) }
+      }
+    }
+    return ids
+  }, [turnosDia])
 
   const buracos = React.useMemo(() => {
     const result: { setor: Setor; faltaFoto: boolean; faltaVideo: boolean }[] = []
@@ -975,115 +1065,185 @@ export function EscalaAVGrid({
   }
 
   return (
-    <div>
-      {/* ── Tabs de dia ── */}
-      <div className="flex gap-1 border-b border-[var(--border)] px-6 pb-0 pt-2">
-        {dias.map((d, i) => (
-          <button
-            key={d.id}
-            onClick={() => setActiveDiaIdx(i)}
-            className={cn(
-              'relative rounded-t-lg px-4 py-2.5 text-sm font-semibold transition-all',
-              i === activeDiaIdx
-                ? 'bg-[var(--card)] text-[var(--foreground)] shadow-sm'
-                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
-            )}
-            style={{
-              borderBottom: i === activeDiaIdx ? '2px solid #2e6b42' : '2px solid transparent',
-            }}
-          >
-            {d.nome_dia}
-            <span className="ml-1.5 text-[10px] opacity-60">{d.data}</span>
-          </button>
-        ))}
+    <div className="space-y-4">
+      {/* ── Tabs de dia como cards visuais ── */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {dias.map((d, i) => {
+          const turnosNoDia = turnos.filter(t => t.dia_id === d.id)
+          const fotoCount  = turnosNoDia.filter(t => t.funcao === 'foto').length
+          const videoCount = turnosNoDia.filter(t => t.funcao === 'video').length
+          const isAtivo = i === activeDiaIdx
+          return (
+            <button
+              key={d.id}
+              onClick={() => setActiveDiaIdx(i)}
+              className={cn(
+                'group relative overflow-hidden rounded-xl border p-3.5 text-left transition-all',
+                isAtivo
+                  ? 'border-[var(--green-bright)]/55 bg-gradient-to-br from-[var(--green-dim)]/30 via-[var(--card)] to-[var(--card)] shadow-[0_4px_20px_rgba(46,107,66,0.10)]'
+                  : 'border-[var(--border)] bg-[var(--card)]/40 hover:-translate-y-0.5 hover:border-[var(--green-dim)] hover:shadow-sm',
+              )}
+            >
+              {isAtivo && (
+                <div
+                  className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-40 blur-2xl"
+                  style={{ background: 'radial-gradient(circle, var(--green-bright), transparent 70%)' }}
+                />
+              )}
+              <div className="relative">
+                <p
+                  className={cn(
+                    'font-extrabold leading-none tracking-tight',
+                    isAtivo ? 'text-[var(--green-bright)]' : 'text-[var(--foreground)]',
+                  )}
+                  style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif', fontSize: 17 }}
+                >
+                  {d.nome_dia}
+                </p>
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]/65">
+                  {d.data}
+                </p>
+                <div className="mt-2 flex items-center gap-2 text-[10px] font-bold">
+                  <span className="inline-flex items-center gap-1" style={{ color: FOTO_COLOR }}>
+                    <Camera className="h-2.5 w-2.5" />
+                    <span className="tabular-nums">{fotoCount}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1" style={{ color: VIDEO_COLOR }}>
+                    <Video className="h-2.5 w-2.5" />
+                    <span className="tabular-nums">{videoCount}</span>
+                  </span>
+                </div>
+              </div>
+            </button>
+          )
+        })}
       </div>
 
-      {/* ── Stats bar + filtros ── */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] px-6 py-3">
-        {/* Filter pills — clica pra filtrar por função */}
-        <button
-          onClick={() => setFilterFuncao('all')}
-          className={cn(
-            'flex items-center gap-2 rounded-full border px-3 py-1 transition-all',
-            filterFuncao === 'all'
-              ? 'border-[var(--foreground)] bg-[var(--foreground)] text-white'
-              : 'border-[var(--border)] hover:border-[var(--foreground)]/40',
-          )}
-        >
-          <span className="text-[11px] font-semibold">Todos</span>
-          <span className="tabular-nums text-xs font-bold">
-            {totalFoto + totalVideo}
-          </span>
-        </button>
-        <button
-          onClick={() => setFilterFuncao('foto')}
-          className={cn(
-            'flex items-center gap-2 rounded-full border px-3 py-1 transition-all',
-            filterFuncao === 'foto'
-              ? 'border-[#7c3aed] bg-[#7c3aed]/10'
-              : 'border-[var(--border)] hover:border-[#7c3aed]/40',
-          )}
-        >
-          <Camera className="h-3.5 w-3.5" style={{ color: '#7c3aed' }} />
-          <span className="text-[11px] font-semibold" style={{ color: filterFuncao === 'foto' ? '#7c3aed' : 'var(--muted-foreground)' }}>Foto</span>
-          <span className="tabular-nums text-xs font-bold" style={{ fontFamily: 'Orbitron, monospace', color: '#7c3aed' }}>
-            {totalFoto}
-          </span>
-        </button>
-        <button
-          onClick={() => setFilterFuncao('video')}
-          className={cn(
-            'flex items-center gap-2 rounded-full border px-3 py-1 transition-all',
-            filterFuncao === 'video'
-              ? 'border-[#1a5c5c] bg-[#1a5c5c]/10'
-              : 'border-[var(--border)] hover:border-[#1a5c5c]/40',
-          )}
-        >
-          <Video className="h-3.5 w-3.5" style={{ color: '#1a5c5c' }} />
-          <span className="text-[11px] font-semibold" style={{ color: filterFuncao === 'video' ? '#1a5c5c' : 'var(--muted-foreground)' }}>Vídeo</span>
-          <span className="tabular-nums text-xs font-bold" style={{ fontFamily: 'Orbitron, monospace', color: '#1a5c5c' }}>
-            {totalVideo}
-          </span>
-        </button>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--muted-foreground)]">Setores c/ evento</span>
-          <span className="tabular-nums text-sm font-bold text-[var(--foreground)]" style={{ fontFamily: 'Orbitron, monospace' }}>
-            {setoresComEvento.size}
-          </span>
-        </div>
-        {buracos.length > 0 && (
-          <div className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1">
-            <AlertCircle className="h-3 w-3 text-red-500" />
-            <span className="text-[11px] font-semibold text-red-600">
-              {buracos.length} sem cobertura completa
-            </span>
+      {/* ── Stats hero + actions ── */}
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)]/40 p-3.5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          {/* Stats principais */}
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1.5">
+            <Stat label="Setores" value={setoresComEvento.size} />
+            <span className="hidden sm:inline-block h-6 w-px bg-[var(--border)]" />
+            <Stat label="Foto"  value={totalFoto}  color={FOTO_COLOR} />
+            <Stat label="Vídeo" value={totalVideo} color={VIDEO_COLOR} />
+            {conflitos.size > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-600">
+                <AlertTriangle className="h-3 w-3" />
+                {conflitos.size / 2} conflito{conflitos.size > 2 ? 's' : ''}
+              </span>
+            )}
+            {buracos.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-600">
+                <AlertCircle className="h-3 w-3" />
+                {buracos.length} sem cobertura
+              </span>
+            )}
           </div>
-        )}
-        <div className="ml-auto">
-          <Button
-            size="sm"
-            onClick={() => setDialog({ open: true, defaultFuncao: 'foto' })}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Adicionar turno
-          </Button>
+
+          {/* Filtros + Search */}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {/* Função filter */}
+            <div className="flex items-center gap-0.5 rounded-full border border-[var(--border)] bg-[var(--card)] p-0.5">
+              {(['all', 'foto', 'video'] as const).map(f => {
+                const isActive = filterFuncao === f
+                const color = f === 'foto' ? FOTO_COLOR : f === 'video' ? VIDEO_COLOR : 'var(--foreground)'
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setFilterFuncao(f)}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-all',
+                      isActive ? 'shadow-sm' : 'opacity-60 hover:opacity-100',
+                    )}
+                    style={{
+                      background: isActive
+                        ? f === 'foto'  ? FOTO_BG
+                        : f === 'video' ? VIDEO_BG
+                        : 'var(--muted)'
+                        : 'transparent',
+                      color: isActive ? color : 'var(--muted-foreground)',
+                    }}
+                  >
+                    {f === 'foto'  && <Camera className="h-2.5 w-2.5" />}
+                    {f === 'video' && <Video  className="h-2.5 w-2.5" />}
+                    {f === 'all' ? 'Todos' : f}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Search */}
+            <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5">
+              <Search className="h-3 w-3 text-[var(--muted-foreground)]/55" />
+              <input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Buscar colaborador, parceiro, setor…"
+                className="w-32 bg-transparent text-[11px] outline-none placeholder:text-[var(--muted-foreground)]/40 sm:w-48"
+              />
+            </div>
+
+            {/* Replicar dia */}
+            {dias.length > 1 && (
+              <button
+                onClick={() => setReplicarOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)]/40 hover:text-[var(--green-bright)]"
+                title="Copia turnos de outro dia pra este"
+              >
+                <Copy className="h-3 w-3" />
+                Replicar dia
+              </button>
+            )}
+
+            {/* Adicionar turno */}
+            <Button size="sm" onClick={() => setDialog({ open: true, defaultFuncao: 'foto' })}>
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              Adicionar
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* ── Tabela de escala ── */}
       <div
-        className="border-[var(--border)]"
+        className="rounded-2xl border border-[var(--border)] overflow-hidden"
         style={{ background: 'var(--card)' }}
       >
         <EscalaTable
           setores={setores}
           turnosPorSetor={turnosPorSetor}
           setoresComEvento={setoresComEvento}
+          conflitos={conflitos}
           onAdd={(funcao, setorId) => setDialog({ open: true, defaultFuncao: funcao, defaultSetorId: setorId })}
           onEdit={t => setDialog({ open: true, defaultFuncao: t.funcao as 'foto' | 'video', defaultSetorId: t.setor_id ?? undefined, editing: t })}
           onDelete={id => setDeleteConfirm(id)}
         />
       </div>
+
+      {/* Replicar dia dialog */}
+      <ReplicarDiaDialog
+        open={replicarOpen}
+        onClose={() => setReplicarOpen(false)}
+        dias={dias}
+        diaDestino={dia}
+        loading={replicating}
+        onConfirm={(origemId) => {
+          startReplicarTransition(async () => {
+            const r = await replicarDiaAV(origemId, dia.id)
+            if (r.ok && r.data) {
+              toast.success(
+                `Escala replicada · ${r.data.criados} criados${r.data.pulados > 0 ? ` · ${r.data.pulados} pulados (duplicatas)` : ''}`,
+              )
+              router.refresh()
+              setReplicarOpen(false)
+            } else {
+              toast.error('Falha ao replicar dia', { description: r.error })
+            }
+          })
+        }}
+      />
 
       {/* Dialog criar/editar */}
       {dialog.open && (
@@ -1117,5 +1277,90 @@ export function EscalaAVGrid({
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+// ─── Stat ───────────────────────────────────────────────────────────────────
+
+function Stat({ label, value, color }: { label: string; value: number; color?: string }) {
+  return (
+    <div className="flex items-baseline gap-1.5">
+      <span
+        className="text-xl font-extrabold tabular-nums leading-none"
+        style={{
+          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+          color: color ?? 'var(--foreground)',
+          letterSpacing: '-0.02em',
+        }}
+      >
+        {value}
+      </span>
+      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]/65">
+        {label}
+      </span>
+    </div>
+  )
+}
+
+// ─── ReplicarDiaDialog ──────────────────────────────────────────────────────
+
+function ReplicarDiaDialog({
+  open, onClose, dias, diaDestino, loading, onConfirm,
+}: {
+  open:       boolean
+  onClose:    () => void
+  dias:       Dia[]
+  diaDestino: Dia
+  loading:    boolean
+  onConfirm:  (origemId: string) => void
+}) {
+  const [origemId, setOrigemId] = React.useState<string>('')
+
+  React.useEffect(() => {
+    if (open) {
+      const firstOther = dias.find(d => d.id !== diaDestino.id)
+      setOrigemId(firstOther?.id ?? '')
+    }
+  }, [open, dias, diaDestino])
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Replicar dia</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Copia todos os turnos de outro dia pra <strong className="text-[var(--foreground)]">{diaDestino.nome_dia} {diaDestino.data}</strong>.
+            Mantém setor, função, parceiro, colaborador, horários e briefing.
+            Turnos duplicados (mesmo setor+função+horário) são ignorados.
+          </p>
+
+          <div>
+            <Label className="mb-1.5 block text-xs">Copiar a partir de</Label>
+            <Select value={origemId} onValueChange={setOrigemId}>
+              <SelectTrigger className="h-10 text-sm">
+                <SelectValue placeholder="— escolha um dia —" />
+              </SelectTrigger>
+              <SelectContent>
+                {dias.filter(d => d.id !== diaDestino.id).map(d => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.nome_dia} · {d.data}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
+          <Button size="sm" disabled={loading || !origemId} onClick={() => onConfirm(origemId)}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Copy className="mr-1.5 h-4 w-4" />
+            Replicar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

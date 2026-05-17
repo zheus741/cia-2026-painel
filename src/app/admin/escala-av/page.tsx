@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { EscalaAVGrid } from './EscalaAVGrid'
 import type { Dia, Setor, Parceiro, ProfileAV, TurnoAV } from './EscalaAVGrid'
+import { PageContainer } from '@/components/page-container'
 import { PageHeader } from '@/components/page-header'
 
 export default async function EscalaAVPage() {
@@ -74,14 +75,12 @@ export default async function EscalaAVPage() {
   ] as { dia_id: string; setor_id: string }[]
 
   return (
-    <div>
-      <div className="px-6 pt-6 pb-4">
-        <PageHeader
-          eyebrow="Operacional"
-          title="Escala Foto & Vídeo"
-          subtitle="Distribua fotógrafos e videomakers por setor e dia. O colaborador é notificado ao ser escalado."
-        />
-      </div>
+    <PageContainer size="wide" gap="default">
+      <PageHeader
+        eyebrow="Operacional · Mídia"
+        title="Escala Foto & Vídeo"
+        subtitle="Distribua fotógrafos e videomakers por setor e dia. O colaborador é notificado ao ser escalado."
+      />
 
       <EscalaAVGrid
         dias={(dias ?? []) as Dia[]}
@@ -91,6 +90,6 @@ export default async function EscalaAVPage() {
         turnos={(turnos ?? []) as unknown as TurnoAV[]}
         eventosSetores={eventosSetores}
       />
-    </div>
+    </PageContainer>
   )
 }

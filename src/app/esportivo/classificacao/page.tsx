@@ -4,6 +4,7 @@ import {
   computePrevisaoAtletica,
   type JogoDetalhe,
   type InscricaoDetalhe,
+  type ResultadoExterno,
 } from '@/lib/competicao/queries'
 import { CONFERENCIAS } from '@/lib/conferencias'
 import { ClassificacaoClient } from './ClassificacaoClient'
@@ -19,6 +20,7 @@ export default async function ClassificacaoPage() {
     { data: rawAtleticas },
     { data: rawJogos },
     { data: rawInscricoes },
+    { data: rawResultadosExternos },
   ] = await Promise.all([
     supabase
       .from('equipes')
@@ -41,6 +43,12 @@ export default async function ClassificacaoPage() {
       .select(`
         id, equipe_id, modalidade_id, categoria, divisao, conferencia, cabeca_chave,
         modalidades:modalidade_id (nome, slug, icone)
+      `),
+    supabase
+      .from('resultados_externos')
+      .select(`
+        modalidade_id, divisao, equipe_id, colocacao, pontos, observacoes,
+        modalidades:modalidade_id (nome, icone)
       `),
   ])
 
@@ -99,12 +107,32 @@ export default async function ClassificacaoPage() {
     inscricoesPorEquipe.set(r.equipe_id, list)
   }
 
+  // Resultados externos (judô, jiu, atl, nat, xadrez)
+  type RawResExt = {
+    modalidade_id: string; divisao: string; equipe_id: string
+    colocacao: number; pontos: number; observacoes: string | null
+    modalidades: { nome: string; icone: string | null } | { nome: string; icone: string | null }[] | null
+  }
+  const resultadosExternos: ResultadoExterno[] = (rawResultadosExternos as RawResExt[] ?? []).map(r => {
+    const mod = Array.isArray(r.modalidades) ? r.modalidades[0] : r.modalidades
+    return {
+      modalidade_id:    r.modalidade_id,
+      modalidade_nome:  mod?.nome ?? null,
+      modalidade_icone: mod?.icone ?? null,
+      divisao:          r.divisao,
+      equipe_id:        r.equipe_id,
+      colocacao:        r.colocacao,
+      pontos:           r.pontos,
+      observacoes:      r.observacoes,
+    }
+  })
+
   // Stats + Previsão por atlética
   const atleticasWithStats = atleticas.map(a => {
     const myEncerrados = encerrados.filter(j => j.equipe_a_id === a.id || j.equipe_b_id === a.id)
     const stats        = computeStats(myEncerrados, a.id)
     const inscricoes   = inscricoesPorEquipe.get(a.id) ?? []
-    const previsao     = computePrevisaoAtletica(todosJogos, inscricoes, a.id)
+    const previsao     = computePrevisaoAtletica(todosJogos, inscricoes, a.id, resultadosExternos)
     return {
       ...a, ...stats,
       pontos_cia:        previsao.atual,

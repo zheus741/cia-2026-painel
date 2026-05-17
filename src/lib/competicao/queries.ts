@@ -639,10 +639,26 @@ export interface PrevisaoAtletica {
  * @param inscricoes   Inscrições da atlética (de getInscricoesByEquipe)
  * @param equipeId     ID da atlética
  */
+/**
+ * Resultado externo (modalidade que não roda pela app — judô, jiu, atl, nat, xadrez).
+ * Pontuação já calculada na hora do registro (tabela Art. 44/46).
+ */
+export interface ResultadoExterno {
+  modalidade_id:    string
+  modalidade_nome:  string | null
+  modalidade_icone: string | null
+  divisao:          string
+  equipe_id:        string
+  colocacao:        number
+  pontos:           number
+  observacoes:      string | null
+}
+
 export function computePrevisaoAtletica(
   todosJogos: JogoDetalhe[],
   inscricoes: InscricaoDetalhe[],
   equipeId: string,
+  resultadosExternos: ResultadoExterno[] = [],
 ): PrevisaoAtletica {
   const por_modalidade: PrevisaoModalidade[] = []
   let totalMin = 0
@@ -699,6 +715,27 @@ export function computePrevisaoAtletica(
     totalMax += prev.max
     if (prev.min === prev.max) decididas++
     else vivas++
+  }
+
+  // ── Resultados externos (judô, jiu, atl, nat, xadrez) ───────────────────
+  // Pontos já calculados na hora do lançamento — entram direto como decididos
+  const meusExternos = resultadosExternos.filter(r => r.equipe_id === equipeId)
+  for (const r of meusExternos) {
+    por_modalidade.push({
+      modalidade_id:    r.modalidade_id,
+      modalidade_nome:  r.modalidade_nome,
+      modalidade_icone: r.modalidade_icone,
+      categoria:        r.observacoes,  // ex: "-73kg", "100m livre"
+      divisao:          r.divisao,
+      estado:           'prova',
+      fase_atual:       null,
+      pontos_min:       r.pontos,
+      pontos_max:       r.pontos,
+      decidida:         true,
+    })
+    totalMin += r.pontos
+    totalMax += r.pontos
+    decididas++
   }
 
   // Ordena: vivas primeiro (mais interessante), depois decididas por pts

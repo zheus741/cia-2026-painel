@@ -11,7 +11,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp } from 'lucide-react'
+import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 // ── Types (mantém shape esperado pela page.tsx) ──────────────────────────────
@@ -624,6 +624,14 @@ export function EsportivoClient({
       span: 'sm' as const,
     },
     {
+      href: '/esportivo/resultados-externos',
+      label: 'Resultados Externos',
+      meta: 'Judô · Jiu · Atl · Nat · Xadrez',
+      tone: 'terracotta' as const,
+      icon: ClipboardList,
+      span: 'md' as const,
+    },
+    {
       href: '/esportivo/importar',
       label: 'Importar tabela',
       meta: 'XLSX da CIA',
@@ -634,8 +642,8 @@ export function EsportivoClient({
       href: '/esportivo/escala',
       label: 'Escala esportiva',
       meta: 'Setoristas · coordenadores',
-      tone: 'terracotta' as const,
-      span: 'md' as const,
+      tone: 'cream' as const,
+      span: 'sm' as const,
     },
   ]
 

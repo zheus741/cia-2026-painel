@@ -231,7 +231,7 @@ function EmptyState() {
 
 function Standings({ standings, cutoff }: { standings: Super8Standing[]; cutoff: number }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]/40">
+    <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--card)]/40">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-[var(--border)] bg-[var(--muted)]/30 text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]">

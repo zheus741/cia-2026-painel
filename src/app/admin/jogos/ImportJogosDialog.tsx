@@ -239,7 +239,7 @@ export function ImportJogosDialog({ dias, setores, modalidades }: Props) {
                       <Badge variant="secondary" className="w-10 justify-center font-mono text-xs">{mod}</Badge>
                       <span className="text-xs text-[var(--muted-foreground)] w-28 shrink-0">{MOD_LABEL[mod.toUpperCase()] ?? mod}</span>
                       <Select value={modMap[mod] ?? ''} onValueChange={(v) => setModMap((p) => ({ ...p, [mod]: v }))}>
-                        <SelectTrigger className="h-7 text-xs flex-1">
+                        <SelectTrigger className="h-9 text-xs flex-1">
                           <SelectValue placeholder="— modalidade —" />
                         </SelectTrigger>
                         <SelectContent>
@@ -263,7 +263,7 @@ export function ImportJogosDialog({ dias, setores, modalidades }: Props) {
                         setDiaMap((p) => ({ ...p, [nome]: v }))
                         setDataMap((p) => ({ ...p, [nome]: d?.data ?? '' }))
                       }}>
-                        <SelectTrigger className="h-7 text-xs flex-1">
+                        <SelectTrigger className="h-9 text-xs flex-1">
                           <SelectValue placeholder="— dia —" />
                         </SelectTrigger>
                         <SelectContent>
@@ -283,7 +283,7 @@ export function ImportJogosDialog({ dias, setores, modalidades }: Props) {
                     <div key={q} className="flex items-center gap-2">
                       <span className="text-xs truncate w-48 shrink-0">{q}</span>
                       <Select value={setorMap[q] ?? ''} onValueChange={(v) => setSetorMap((p) => ({ ...p, [q]: v }))}>
-                        <SelectTrigger className="h-7 text-xs flex-1">
+                        <SelectTrigger className="h-9 text-xs flex-1">
                           <SelectValue placeholder="— setor (opcional) —" />
                         </SelectTrigger>
                         <SelectContent>

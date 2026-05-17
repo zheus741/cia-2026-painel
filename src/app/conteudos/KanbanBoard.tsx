@@ -877,7 +877,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
             <p className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
               <span>Responsáveis</span>
             </p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <PerfisSelect label="📷 Captação" value={captacaoId} onChange={setCaptacaoId} perfis={perfis} />
               <PerfisSelect label="🎨 Design"   value={designId}   onChange={setDesignId}   perfis={perfis} />
               <PerfisSelect label="🎬 Edição"   value={edicaoId2}  onChange={setEdicaoId2}  perfis={perfis} />

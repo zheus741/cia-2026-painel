@@ -164,14 +164,14 @@ CREATE POLICY "res_ext_write_coord" ON resultados_externos
     EXISTS (
       SELECT 1 FROM profiles p
        WHERE p.id = auth.uid()
-         AND p.role IN ('admin', 'coordenador', 'coordenador_esportivo')
+         AND p.role IN ('admin', 'coordenacao')
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM profiles p
        WHERE p.id = auth.uid()
-         AND p.role IN ('admin', 'coordenador', 'coordenador_esportivo')
+         AND p.role IN ('admin', 'coordenacao')
     )
   );
 
@@ -182,14 +182,14 @@ CREATE POLICY "res_ext_anexos_write_coord" ON resultados_externos_anexos
     EXISTS (
       SELECT 1 FROM profiles p
        WHERE p.id = auth.uid()
-         AND p.role IN ('admin', 'coordenador', 'coordenador_esportivo')
+         AND p.role IN ('admin', 'coordenacao')
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM profiles p
        WHERE p.id = auth.uid()
-         AND p.role IN ('admin', 'coordenador', 'coordenador_esportivo')
+         AND p.role IN ('admin', 'coordenacao')
     )
   );
 
@@ -215,7 +215,7 @@ CREATE POLICY "res_ext_storage_write" ON storage.objects
     AND EXISTS (
       SELECT 1 FROM profiles p
        WHERE p.id = auth.uid()
-         AND p.role IN ('admin', 'coordenador', 'coordenador_esportivo')
+         AND p.role IN ('admin', 'coordenacao')
     )
   );
 
@@ -227,7 +227,7 @@ CREATE POLICY "res_ext_storage_delete" ON storage.objects
     AND EXISTS (
       SELECT 1 FROM profiles p
        WHERE p.id = auth.uid()
-         AND p.role IN ('admin', 'coordenador', 'coordenador_esportivo')
+         AND p.role IN ('admin', 'coordenacao')
     )
   );
 

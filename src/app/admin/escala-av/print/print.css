@@ -1,0 +1,191 @@
+/* Estilos de impressão — otimizado para A4 retrato/paisagem */
+
+.print-root {
+  font-family: var(--font-dm-sans, system-ui), -apple-system, sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #0A0F0B;
+  background: white;
+  padding: 20mm 15mm;
+  max-width: 297mm; /* A4 paisagem */
+  margin: 0 auto;
+}
+
+@page {
+  size: A4 landscape;
+  margin: 12mm;
+}
+
+@media print {
+  .no-print { display: none !important; }
+  .print-root {
+    padding: 0;
+    max-width: none;
+  }
+  body { background: white !important; }
+  /* Remove app shell se ainda houver */
+  nav, aside, header[role="navigation"] {
+    display: none !important;
+  }
+}
+
+.print-header {
+  border-bottom: 2px solid #0A0F0B;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+}
+
+.print-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.print-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.print-meta {
+  font-size: 10px;
+  color: #6b7280;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+  page-break-inside: auto;
+}
+
+.print-table thead {
+  display: table-header-group;
+}
+
+.print-table th {
+  background: #f3f4f6;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4b5563;
+  border-bottom: 1px solid #d1d5db;
+}
+
+.print-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: top;
+  page-break-inside: avoid;
+}
+
+.print-setor {
+  font-weight: 700;
+  color: #0A0F0B;
+}
+
+.print-setor-suffix {
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 9.5px;
+}
+
+.print-row-foto-bg {
+  background: rgba(124, 58, 237, 0.04);
+}
+
+.print-row-video-bg {
+  background: rgba(26, 92, 92, 0.04);
+}
+
+.print-cell-foto {
+  border-left: 3px solid #7c3aed;
+}
+
+.print-cell-video {
+  border-left: 3px solid #1a5c5c;
+}
+
+.print-name {
+  font-weight: 600;
+  color: #0A0F0B;
+}
+
+.print-partner {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+
+.print-time {
+  font-size: 9.5px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.print-warning {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.print-footer {
+  margin-top: 24px;
+  padding-top: 8px;
+  border-top: 1px solid #d1d5db;
+  font-size: 9px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.print-actions {
+  margin-bottom: 24px;
+  padding: 12px;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  text-align: center;
+}
+
+.print-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #0A0F0B;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.print-actions p {
+  margin-top: 8px;
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.print-day-section {
+  page-break-before: always;
+}
+
+.print-day-section:first-child {
+  page-break-before: auto;
+}

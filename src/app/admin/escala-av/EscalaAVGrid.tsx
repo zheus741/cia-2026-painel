@@ -1197,6 +1197,18 @@ export function EscalaAVGrid({
               </button>
             )}
 
+            {/* Export PDF (via página de print) */}
+            <a
+              href={`/admin/escala-av/print?dia=${dia.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] transition-all hover:border-[var(--gold-bright)]/40 hover:text-[var(--gold-bright)]"
+              title="Abre versão imprimível pra exportar PDF (Ctrl+P)"
+            >
+              <Download className="h-3 w-3" />
+              Export PDF
+            </a>
+
             {/* Adicionar turno */}
             <Button size="sm" onClick={() => setDialog({ open: true, defaultFuncao: 'foto' })}>
               <Plus className="mr-1 h-3.5 w-3.5" />

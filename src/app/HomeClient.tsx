@@ -18,8 +18,7 @@ import type {
 } from './CoordDashboard'
 import { AnalyticsCards } from './AnalyticsCards'
 import type { RankingItem, LacunaItem, VolumePorHora, AtleticaItem } from './AnalyticsCards'
-import { HomeBriefing } from './HomeBriefing'
-import { HomeQuickGrid } from './HomeQuickGrid'
+import { HomeBriefing, type DockItem, type DockTone } from './HomeBriefing'
 import { HomeMetrics } from './HomeMetrics'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -450,20 +449,20 @@ export function HomeClient({
 
   const [tab, setTab] = useState<'comandos' | 'analises'>('comandos')
 
-  // Quick-access cards (editorial bold)
-  const quickCards: Parameters<typeof HomeQuickGrid>[0]['cards'] = [
-    { href: '/conteudos',            label: 'Conteúdos',    meta: `${contentStats.total} ativos · ${pct}% publicados`, tone: 'terracotta', span: 'lg', icon: Camera },
-    { href: '/pautas',               label: 'Pautas',       meta: 'Banco de ideias',                                    tone: 'lavender',   span: 'md', icon: Lightbulb },
-    { href: '/agenda',               label: 'Agenda',       meta: 'Jogos · shows · festas',                             tone: 'electric',   span: 'md', icon: Calendar },
-    { href: '/wiki',                 label: 'Wiki',         meta: 'Acervo',                                              tone: 'gold',       span: 'sm', icon: BookOpen },
-    { href: '/checklist',            label: 'Checklists',   meta: 'Tarefas por evento',                                  tone: 'green',      span: 'md', icon: CheckSquare },
-    { href: '/minha-escala',         label: 'Minha escala', meta: 'Seus turnos',                                         tone: 'lavender',   span: 'md', icon: UserCircle },
-    { href: '/admin/escala',         label: 'Escala AV',    meta: 'Foto e vídeo',                                        tone: 'cream',      span: 'md', icon: ClipboardList },
-    { href: '/mapa',                 label: 'Mapa',         meta: 'Setores e WiFi',                                      tone: 'terracotta', span: 'md', icon: MapPin },
-    { href: '/admin/jogos',          label: 'Jogos',        meta: 'Modalidades',                                         tone: 'electric',   span: 'sm', icon: Swords },
-    { href: '/admin/shows',          label: 'Shows',        meta: 'Música',                                              tone: 'lavender',   span: 'sm', icon: Music },
-    { href: '/admin/patrocinadores', label: 'Patrocínios',  meta: 'Marcas parceiras',                                    tone: 'gold',       span: 'sm', icon: Heart },
-    { href: '/placar',               label: 'Placar',       meta: 'Ao vivo',                                             tone: 'green',      span: 'sm', icon: Radio },
+  // Dock items — substitui o antigo HomeQuickGrid, agora dentro do briefing
+  const dockItems: DockItem[] = [
+    { href: '/conteudos',            label: 'Conteúdos',    meta: `${contentStats.total} · ${pct}%`,  icon: Camera,        tone: 'terracotta' satisfies DockTone },
+    { href: '/agenda',               label: 'Agenda',       meta: 'jogos · shows',                    icon: Calendar,      tone: 'electric'   satisfies DockTone },
+    { href: '/checklist',            label: 'Checklists',   meta: 'por evento',                       icon: CheckSquare,   tone: 'green'      satisfies DockTone },
+    { href: '/pautas',               label: 'Pautas',       meta: 'banco de ideias',                  icon: Lightbulb,     tone: 'lavender'   satisfies DockTone },
+    { href: '/minha-escala',         label: 'Minha escala', meta: 'seus turnos',                      icon: UserCircle,    tone: 'lavender'   satisfies DockTone },
+    { href: '/admin/escala',         label: 'Escala AV',    meta: 'foto · vídeo',                     icon: ClipboardList },
+    { href: '/mapa',                 label: 'Mapa',         meta: 'setores · WiFi',                   icon: MapPin,        tone: 'terracotta' satisfies DockTone },
+    { href: '/admin/jogos',          label: 'Jogos',        meta: 'modalidades',                      icon: Swords,        tone: 'electric'   satisfies DockTone },
+    { href: '/admin/shows',          label: 'Shows',        meta: 'música',                           icon: Music,         tone: 'lavender'   satisfies DockTone },
+    { href: '/admin/patrocinadores', label: 'Patrocínios',  meta: 'parceiros',                        icon: Heart,         tone: 'gold'       satisfies DockTone },
+    { href: '/placar',               label: 'Placar',       meta: 'ao vivo',                          icon: Radio,         tone: 'green'      satisfies DockTone },
+    { href: '/wiki',                 label: 'Wiki',         meta: 'acervo',                           icon: BookOpen,      tone: 'gold'       satisfies DockTone },
   ]
 
   return (
@@ -481,12 +480,8 @@ export function HomeClient({
         total={contentStats.total}
         emProducao={contentStats.em_producao}
         rascunho={contentStats.rascunho}
+        dockItems={dockItems}
       />
-
-      {/* ══════════════════════════════════════════════════════════
-          QUICK GRID — bold colored module cards
-          ══════════════════════════════════════════════════════════ */}
-      <HomeQuickGrid cards={quickCards} />
 
       {/* ══════════════════════════════════════════════════════════
           METRICS — saúde · pipeline · clima · cobertura (editorial)

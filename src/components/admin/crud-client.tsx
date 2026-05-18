@@ -400,10 +400,17 @@ function DeleteDialog({
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
-  onConfirm: () => Promise<void>
+  onConfirm: () => Promise<{ ok: boolean; error?: string }>
   entityLabel: string
 }) {
   const [loading, setLoading] = React.useState(false)
+  const [error, setError]     = React.useState<string | null>(null)
+
+  // Limpa o erro ao abrir/fechar
+  React.useEffect(() => {
+    if (!open) setError(null)
+  }, [open])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
@@ -413,6 +420,13 @@ function DeleteDialog({
             Essa ação não pode ser desfeita.
           </DialogDescription>
         </DialogHeader>
+
+        {error && (
+          <p className="rounded-md bg-[var(--destructive)]/10 px-3 py-2 text-sm text-[var(--destructive)]">
+            {error}
+          </p>
+        )}
+
         <DialogFooter>
           <Button
             variant="outline"
@@ -426,8 +440,13 @@ function DeleteDialog({
             disabled={loading}
             onClick={async () => {
               setLoading(true)
-              await onConfirm()
+              setError(null)
+              const res = await onConfirm()
               setLoading(false)
+              if (!res.ok) {
+                setError(res.error ?? 'Erro ao excluir.')
+              }
+              // Sucesso: o CrudClient fecha via setDeleting(null)
             }}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Excluir'}
@@ -637,11 +656,13 @@ export function CrudClient<T extends { id: string }>({
         onOpenChange={(v) => !v && setDeleting(null)}
         entityLabel={entityLabel}
         onConfirm={async () => {
-          if (deleting) {
-            await onDelete(deleting.id)
+          if (!deleting) return { ok: true }
+          const res = await onDelete(deleting.id)
+          if (res.ok) {
             setDeleting(null)
             router.refresh()
           }
+          return res
         }}
       />
     </div>

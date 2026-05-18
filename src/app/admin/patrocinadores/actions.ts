@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   parseFormData,
   requireCoordOrAdmin,
@@ -25,7 +25,7 @@ const SCHEMA = [
 export async function createPatrocinador(fd: FormData): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const edicao_id = await requireEdicaoAtivaId()
     const data = parseFormData(fd, SCHEMA)
     const { error } = await supabase.from('patrocinadores').insert({ ...data, edicao_id })
@@ -36,7 +36,7 @@ export async function createPatrocinador(fd: FormData): Promise<ActionResult> {
 export async function updatePatrocinador(id: string, fd: FormData): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const data = parseFormData(fd, SCHEMA)
     const { error } = await supabase.from('patrocinadores').update(data).eq('id', id)
     if (error) throw error
@@ -46,7 +46,7 @@ export async function updatePatrocinador(id: string, fd: FormData): Promise<Acti
 export async function deletePatrocinador(id: string): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { error } = await supabase.from('patrocinadores').delete().eq('id', id)
     if (error) throw error
   })

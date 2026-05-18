@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCoordOrAdmin } from '@/lib/admin/actions-helper'
 import { requireProfile, ROLES_APROVADORES } from '@/lib/auth/current-user'
 import { enviarNotif } from '@/lib/notif'
@@ -15,7 +15,7 @@ type ValidFuncao = typeof VALID_FUNCOES[number]
 export async function updateRole(userId: string, role: string) {
   if (!VALID_ROLES.includes(role as ValidRole)) throw new Error('Role inválido.')
   await requireCoordOrAdmin()
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('profiles')
     .update({ role })
@@ -27,7 +27,7 @@ export async function updateRole(userId: string, role: string) {
 export async function updateFuncao(userId: string, funcao: string | null) {
   if (funcao !== null && !VALID_FUNCOES.includes(funcao as ValidFuncao)) throw new Error('Função inválida.')
   await requireCoordOrAdmin()
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('profiles')
     .update({ funcao_principal: funcao })
@@ -38,7 +38,7 @@ export async function updateFuncao(userId: string, funcao: string | null) {
 
 export async function toggleAtivo(userId: string, ativo: boolean) {
   await requireCoordOrAdmin()
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('profiles')
     .update({ ativo })
@@ -86,7 +86,7 @@ export async function aprovarUsuario(
       return { ok: false, error: 'Função inválida.' }
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -125,7 +125,7 @@ export async function recusarUsuario(userId: string): Promise<{ ok: boolean; err
       return { ok: false, error: 'Sem permissão pra recusar.' }
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { error } = await supabase
       .from('profiles')
       .update({ ativo: false })

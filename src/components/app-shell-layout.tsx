@@ -371,9 +371,23 @@ function NavDropdown({ group, pathname, badges }: { group: NavGroup; pathname: s
         )}
       </button>
 
-      {/* Dropdown panel */}
+      {/* Dropdown panel — cream com border preto fino */}
       {open && (
         <div className="cia-nav-panel" role="menu">
+          {/* Eyebrow do grupo */}
+          <div style={{
+            fontFamily: 'var(--font-geist), system-ui, sans-serif',
+            fontSize: 9.5,
+            fontWeight: 700,
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            color: 'rgba(10,15,11,0.40)',
+            padding: '6px 10px 8px',
+            borderBottom: '1px dashed rgba(10,15,11,0.10)',
+            marginBottom: 4,
+          }}>
+            {group.label}
+          </div>
           {group.items.map(({ label, href, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/')
             const showLive = href === '/placar' && badges.aoVivo > 0
@@ -387,24 +401,24 @@ function NavDropdown({ group, pathname, badges }: { group: NavGroup; pathname: s
               >
                 <Icon aria-hidden="true" style={{
                   width: 14, height: 14, flexShrink: 0,
-                  color: active ? '#F0D04A' : 'rgba(250,247,240,0.30)',
+                  color: active ? '#2e6b42' : 'rgba(10,15,11,0.40)',
                 }} />
                 {label}
                 {/* Live badge no item Placar */}
                 {showLive && (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-red-400"
+                    className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-red-500"
                     style={{ marginLeft: 6 }}
                   >
-                    <span className="h-1 w-1 rounded-full bg-red-400 animate-pulse" />
+                    <span className="h-1 w-1 rounded-full bg-red-500 animate-pulse" />
                     {badges.aoVivo} ao vivo
                   </span>
                 )}
                 {active && (
                   <span aria-hidden="true" style={{
                     width: 5, height: 5, borderRadius: '50%',
-                    background: '#F0D04A', marginLeft: 'auto', flexShrink: 0,
-                    boxShadow: '0 0 6px rgba(240,208,74,0.55)',
+                    background: '#2e6b42', marginLeft: 'auto', flexShrink: 0,
+                    boxShadow: '0 0 6px rgba(46,107,66,0.55)',
                   }} />
                 )}
               </Link>
@@ -564,19 +578,43 @@ export function AppShellLayout({
           <Menu className="h-4 w-4" aria-hidden="true" style={{ color: 'rgba(10,15,11,0.42)' }} />
         </button>
 
-        {/* Logo */}
+        {/* Logo + wordmark editorial */}
         <Link
           href="/"
           aria-label="CIA 2026 — Ir para a página inicial"
-          className="flex items-center opacity-90 hover:opacity-100 transition-opacity shrink-0"
+          className="flex items-center gap-2.5 opacity-95 hover:opacity-100 transition-opacity shrink-0"
         >
           <CiaLogo size={26} />
+          <span className="hidden sm:flex flex-col leading-none" style={{ gap: 2 }}>
+            <span style={{
+              fontFamily: 'var(--font-fraunces), Georgia, serif',
+              fontVariationSettings: "'opsz' 36, 'SOFT' 0, 'WONK' 0",
+              fontWeight: 700,
+              fontSize: 14,
+              letterSpacing: '-0.01em',
+              color: '#0A0F0B',
+              lineHeight: 1,
+            }}>
+              CIA <em style={{ fontStyle: 'italic', fontWeight: 500, color: '#2e6b42' }}>2026</em>
+            </span>
+            <span style={{
+              fontFamily: 'var(--font-geist), system-ui, sans-serif',
+              fontSize: 8,
+              fontWeight: 700,
+              letterSpacing: '0.30em',
+              textTransform: 'uppercase',
+              color: 'rgba(10,15,11,0.42)',
+              lineHeight: 1,
+            }}>
+              Painel · Cobertura
+            </span>
+          </span>
         </Link>
 
         {/* Separator */}
         <span
           className="hidden md:block shrink-0"
-          style={{ width: 1, height: 20, background: 'rgba(10,15,11,0.10)', marginLeft: 2, marginRight: 2 }}
+          style={{ width: 1, height: 22, background: 'rgba(10,15,11,0.12)', marginLeft: 4, marginRight: 6 }}
         />
 
         {/* Desktop nav groups */}
@@ -614,7 +652,7 @@ export function AppShellLayout({
 
           {userId && <NotifBell userId={userId} />}
 
-          {/* TV pill */}
+          {/* TV pill — editorial */}
           <a
             href="/tv"
             target="_blank"
@@ -622,12 +660,13 @@ export function AppShellLayout({
             className="flex items-center gap-1.5 transition-all"
             style={{
               borderRadius: 999,
-              padding: '4px 11px 4px 9px',
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.07em',
+              padding: '5px 12px 5px 10px',
+              fontFamily: 'var(--font-geist), system-ui, sans-serif',
+              fontSize: 10, fontWeight: 700, letterSpacing: '0.18em',
               textTransform: 'uppercase',
               color: '#2e6b42',
-              border: '1px solid rgba(46,107,66,0.22)',
-              background: 'rgba(46,107,66,0.07)',
+              border: '1px solid rgba(46,107,66,0.28)',
+              background: 'rgba(46,107,66,0.08)',
             }}
             title="Abrir Modo TV"
           >
@@ -635,28 +674,36 @@ export function AppShellLayout({
             <span className="hidden sm:inline">TV</span>
           </a>
 
-          {/* User pill */}
+          {/* User pill — Fraunces italic no nome */}
           <div
             className="flex items-center gap-2 rounded-full pl-1.5 pr-3 py-1"
-            style={{ background: 'rgba(10,15,11,0.05)', border: '1px solid rgba(10,15,11,0.08)' }}
+            style={{ background: 'rgba(10,15,11,0.04)', border: '1px solid rgba(10,15,11,0.10)' }}
           >
             <div
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
-              style={{ background: `${roleColor}18`, border: `1px solid ${roleColor}36`, color: roleColor }}
+              style={{
+                background: `${roleColor}1a`,
+                border: `1px solid ${roleColor}3a`,
+                color: roleColor,
+                fontFamily: 'var(--font-geist), system-ui, sans-serif',
+              }}
             >
               {initials}
             </div>
             <span className="hidden sm:block" style={{
-              fontSize: 12, fontWeight: 600, color: '#0A0F0B',
+              fontFamily: 'var(--font-fraunces), Georgia, serif',
+              fontVariationSettings: "'opsz' 36, 'SOFT' 50, 'WONK' 0",
+              fontStyle: 'italic',
+              fontSize: 13.5, fontWeight: 600, color: '#0A0F0B',
               letterSpacing: '-0.01em',
-              fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
             }}>
               {profile?.nome?.split(' ')[0] ?? userEmail}
             </span>
             <span style={{
-              fontSize: 9, fontWeight: 700, letterSpacing: '0.09em',
+              fontFamily: 'var(--font-geist), system-ui, sans-serif',
+              fontSize: 9, fontWeight: 700, letterSpacing: '0.16em',
               textTransform: 'uppercase',
-              padding: '1px 5px', borderRadius: 99,
+              padding: '2px 6px', borderRadius: 99,
               background: `${roleColor}14`, color: roleColor,
             }}>
               {roleName}

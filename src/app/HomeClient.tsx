@@ -3,9 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
-  Camera, CheckSquare, ClipboardList, Swords, MapPin, Music,
-  Heart, Lightbulb, BookOpen, Calendar,
-  BarChart3, Radio, UserCircle, Tv2, LayoutGrid,
+  CheckSquare, BarChart3, Tv2, LayoutGrid,
 } from 'lucide-react'
 import { CoordDashboard, TimelineVertical, dayLabel } from './CoordDashboard'
 import type {
@@ -18,7 +16,7 @@ import type {
 } from './CoordDashboard'
 import { AnalyticsCards } from './AnalyticsCards'
 import type { RankingItem, LacunaItem, VolumePorHora, AtleticaItem } from './AnalyticsCards'
-import { HomeBriefing, type DockItem, type DockTone } from './HomeBriefing'
+import { HomeBriefing } from './HomeBriefing'
 import { HomeMetrics } from './HomeMetrics'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -443,27 +441,7 @@ export function HomeClient({
   analyticsVolumePorHora  = [],
   analyticsAtleticas      = [],
 }: Props) {
-  const pct = contentStats.total > 0
-    ? Math.round((contentStats.publicado / contentStats.total) * 100)
-    : 0
-
   const [tab, setTab] = useState<'comandos' | 'analises'>('comandos')
-
-  // Dock items — substitui o antigo HomeQuickGrid, agora dentro do briefing
-  const dockItems: DockItem[] = [
-    { href: '/conteudos',            label: 'Conteúdos',    meta: `${contentStats.total} · ${pct}%`,  icon: Camera,        tone: 'terracotta' satisfies DockTone },
-    { href: '/agenda',               label: 'Agenda',       meta: 'jogos · shows',                    icon: Calendar,      tone: 'electric'   satisfies DockTone },
-    { href: '/checklist',            label: 'Checklists',   meta: 'por evento',                       icon: CheckSquare,   tone: 'green'      satisfies DockTone },
-    { href: '/pautas',               label: 'Pautas',       meta: 'banco de ideias',                  icon: Lightbulb,     tone: 'lavender'   satisfies DockTone },
-    { href: '/minha-escala',         label: 'Minha escala', meta: 'seus turnos',                      icon: UserCircle,    tone: 'lavender'   satisfies DockTone },
-    { href: '/admin/escala',         label: 'Escala AV',    meta: 'foto · vídeo',                     icon: ClipboardList },
-    { href: '/mapa',                 label: 'Mapa',         meta: 'setores · WiFi',                   icon: MapPin,        tone: 'terracotta' satisfies DockTone },
-    { href: '/admin/jogos',          label: 'Jogos',        meta: 'modalidades',                      icon: Swords,        tone: 'electric'   satisfies DockTone },
-    { href: '/admin/shows',          label: 'Shows',        meta: 'música',                           icon: Music,         tone: 'lavender'   satisfies DockTone },
-    { href: '/admin/patrocinadores', label: 'Patrocínios',  meta: 'parceiros',                        icon: Heart,         tone: 'gold'       satisfies DockTone },
-    { href: '/placar',               label: 'Placar',       meta: 'ao vivo',                          icon: Radio,         tone: 'green'      satisfies DockTone },
-    { href: '/wiki',                 label: 'Wiki',         meta: 'acervo',                           icon: BookOpen,      tone: 'gold'       satisfies DockTone },
-  ]
 
   return (
     <main className="relative z-10 flex-1 overflow-y-auto">
@@ -480,7 +458,6 @@ export function HomeClient({
         total={contentStats.total}
         emProducao={contentStats.em_producao}
         rascunho={contentStats.rascunho}
-        dockItems={dockItems}
       />
 
       {/* ══════════════════════════════════════════════════════════

@@ -2,21 +2,11 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, type LucideIcon } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
-
-export type DockTone = 'neutral' | 'green' | 'gold' | 'terracotta' | 'lavender' | 'electric'
-
-export interface DockItem {
-  href:  string
-  label: string
-  meta?: string
-  icon:  LucideIcon
-  tone?: DockTone
-}
 
 interface BriefingProps {
   userName:        string
@@ -27,7 +17,6 @@ interface BriefingProps {
   total:           number
   emProducao:      number
   rascunho:        number
-  dockItems?:      DockItem[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,7 +50,7 @@ function CountUp({ to, duration = 1600 }: { to: number; duration?: number }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LiveTicker — agora em Fraunces grande (não monospace)
+// LiveTicker — Fraunces, sobre sage
 // ─────────────────────────────────────────────────────────────────────────────
 
 function LiveTicker({ target }: { target: Date }) {
@@ -103,96 +92,7 @@ function LiveTicker({ target }: { target: Date }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GooeyCloud — nuvem orgânica verde com gradiente em camadas
-// Inspirado nas refs (Health/Intelly) — bumps merged via filter goo
-// ─────────────────────────────────────────────────────────────────────────────
-
-function GooeyCloud() {
-  // 10 bumps em torno de um círculo central, posições programáticas
-  const bumps = Array.from({ length: 10 }, (_, i) => {
-    const angle = (i / 10) * Math.PI * 2
-    const radius = 158
-    return {
-      cx: 200 + Math.cos(angle) * radius,
-      cy: 200 + Math.sin(angle) * radius,
-      // tamanho ligeiramente variável pra parecer orgânico (não geométrico)
-      r: 46 + (i % 3) * 4,
-    }
-  })
-
-  return (
-    <svg
-      className="cia-brf-cloud"
-      viewBox="0 0 400 400"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <defs>
-        {/* Gradient sage 3D — 6 stops criando profundidade de esfera */}
-        <radialGradient id="cia-cloud-sage" cx="35%" cy="28%" r="78%">
-          <stop offset="0%"   stopColor="#f0f5ed" />
-          <stop offset="14%"  stopColor="#dbe8d2" />
-          <stop offset="38%"  stopColor="#a8c2a4" />
-          <stop offset="60%"  stopColor="#6e9a72" />
-          <stop offset="82%"  stopColor="#3a6b48" />
-          <stop offset="100%" stopColor="#1f4a2a" />
-        </radialGradient>
-
-        {/* Highlight superior — brilho de luz */}
-        <radialGradient id="cia-cloud-hl" cx="32%" cy="22%" r="42%">
-          <stop offset="0%"   stopColor="#FAF7F0" stopOpacity="0.55" />
-          <stop offset="55%"  stopColor="#FAF7F0" stopOpacity="0.10" />
-          <stop offset="100%" stopColor="#FAF7F0" stopOpacity="0" />
-        </radialGradient>
-
-        {/* Inner shadow gradient — profundidade nas bordas */}
-        <radialGradient id="cia-cloud-shadow" cx="70%" cy="78%" r="62%">
-          <stop offset="0%"   stopColor="#0a1f12" stopOpacity="0" />
-          <stop offset="70%"  stopColor="#0a1f12" stopOpacity="0.12" />
-          <stop offset="100%" stopColor="#0a1f12" stopOpacity="0.30" />
-        </radialGradient>
-
-        {/* Filter goo — merge dos circles em uma forma só com bordas suaves */}
-        <filter id="cia-cloud-goo">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
-          <feColorMatrix
-            in="blur" mode="matrix"
-            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -10"
-            result="goo"
-          />
-        </filter>
-
-        {/* Mask — define o shape da nuvem (white = visível) */}
-        <mask id="cia-cloud-mask">
-          <g filter="url(#cia-cloud-goo)">
-            {/* Centro */}
-            <circle cx="200" cy="200" r="118" fill="white" />
-            {/* Bumps */}
-            {bumps.map((b, i) => (
-              <circle key={i} cx={b.cx} cy={b.cy} r={b.r} fill="white" />
-            ))}
-          </g>
-        </mask>
-      </defs>
-
-      {/* Base sage com gradiente 3D — aplicada dentro do mask */}
-      <rect x="0" y="0" width="400" height="400" fill="url(#cia-cloud-sage)" mask="url(#cia-cloud-mask)" />
-      {/* Inner shadow */}
-      <rect x="0" y="0" width="400" height="400" fill="url(#cia-cloud-shadow)" mask="url(#cia-cloud-mask)" />
-      {/* Highlight glossy top-left */}
-      <rect x="0" y="0" width="400" height="400" fill="url(#cia-cloud-hl)" mask="url(#cia-cloud-mask)" />
-
-      {/* Outer soft glow halo */}
-      <g style={{ mixBlendMode: 'multiply', opacity: 0.35 }}>
-        <rect x="0" y="0" width="400" height="400" fill="url(#cia-cloud-sage)" mask="url(#cia-cloud-mask)"
-          transform="translate(0,8)" />
-      </g>
-    </svg>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PipelineArc — arc gold orgânico atrás do número do pipeline
+// PipelineArc — arc gold/terracotta sutil atrás do número
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PipelineArc() {
@@ -205,8 +105,8 @@ function PipelineArc() {
     >
       <defs>
         <radialGradient id="cia-pipe-arc" cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#F0D04A" stopOpacity="0.55" />
-          <stop offset="55%"  stopColor="#D8845F" stopOpacity="0.30" />
+          <stop offset="0%"   stopColor="#F0D04A" stopOpacity="0.45" />
+          <stop offset="55%"  stopColor="#D8845F" stopOpacity="0.20" />
           <stop offset="100%" stopColor="#C46B4A" stopOpacity="0" />
         </radialGradient>
       </defs>
@@ -216,17 +116,16 @@ function PipelineArc() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HeroCountdown — light theme + gooey cloud + Fraunces mixed italic/roman
+// HeroCountdown — sage gradient NO QUADRADO TODO + número forte
 // ─────────────────────────────────────────────────────────────────────────────
 
 function HeroCountdown({ diffDays, eventActive }: { diffDays: number; eventActive: boolean }) {
-  // Mix italic/roman: primeiro dígito em italic se tiver 2+ dígitos
+  // Mix italic/roman pra dar caracter à Fraunces
   const digits = String(diffDays).split('')
   const hasMultipleDigits = digits.length >= 2
 
   return (
     <Link href="/cronograma" className="cia-brf-hero" aria-label="Abrir cronograma">
-      <GooeyCloud />
 
       {/* Eyebrow */}
       <div className="cia-brf-hero__eyebrow">
@@ -236,7 +135,7 @@ function HeroCountdown({ diffDays, eventActive }: { diffDays: number; eventActiv
             aria-hidden
             style={{
               width: 6, height: 6, borderRadius: '50%',
-              background: eventActive ? '#22C55E' : '#2e6b42',
+              background: eventActive ? '#22C55E' : '#051a0e',
               boxShadow: '0 0 8px currentColor',
             }}
           />
@@ -244,7 +143,7 @@ function HeroCountdown({ diffDays, eventActive }: { diffDays: number; eventActiv
         </span>
       </div>
 
-      {/* Número gigante dentro da nuvem */}
+      {/* Número gigante centralizado */}
       <div className="cia-brf-hero__numwrap">
         {eventActive ? (
           <>
@@ -272,7 +171,7 @@ function HeroCountdown({ diffDays, eventActive }: { diffDays: number; eventActiv
         )}
       </div>
 
-      {/* Ticker maior em Fraunces */}
+      {/* Ticker Fraunces */}
       {!eventActive && <LiveTicker target={EVENT_START} />}
 
       {/* Foot */}
@@ -281,15 +180,15 @@ function HeroCountdown({ diffDays, eventActive }: { diffDays: number; eventActiv
         <span
           className="cia-circle-arrow"
           style={{
-            width: 40, height: 40, borderRadius: '50%',
-            background: '#0A0F0B',
+            width: 36, height: 36, borderRadius: '50%',
+            background: '#051a0e',
             display: 'inline-flex',
             alignItems: 'center', justifyContent: 'center',
             transition: 'transform 0.3s cubic-bezier(0.16,1,0.3,1)',
             flexShrink: 0,
           }}
         >
-          <ArrowUpRight style={{ width: 17, height: 17, color: '#FAF7F0', strokeWidth: 2.2 }} />
+          <ArrowUpRight style={{ width: 15, height: 15, color: '#FAF7F0', strokeWidth: 2.2 }} />
         </span>
       </div>
     </Link>
@@ -297,7 +196,7 @@ function HeroCountdown({ diffDays, eventActive }: { diffDays: number; eventActiv
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PipelineCard — cream squircle + arc gold + Fraunces mixed
+// PipelineCard — cream squircle + arc gold sutil + Fraunces forte
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PipelineCard({
@@ -367,7 +266,7 @@ function PipelineCard({
         </span>
       </div>
 
-      {/* Big number — Fraunces mixed italic/roman */}
+      {/* Big number — Fraunces 800, mixed italic/roman */}
       <div style={{
         flex: 1,
         display: 'flex',
@@ -377,21 +276,21 @@ function PipelineCard({
         <div style={{
           display: 'flex',
           alignItems: 'baseline',
-          gap: 4,
-          marginTop: 12,
+          gap: 2,
+          marginTop: 10,
         }}>
           <span style={{
             fontFamily: 'var(--font-fraunces), Georgia, serif',
-            fontVariationSettings: "'opsz' 144, 'SOFT' 60, 'WONK' 1",
-            fontSize: 'clamp(116px, 13vw, 180px)',
-            fontWeight: 700,
+            fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
+            fontSize: 'clamp(96px, 11vw, 140px)',
+            fontWeight: 800,
             lineHeight: 0.82,
-            letterSpacing: '-0.05em',
+            letterSpacing: '-0.055em',
             color: '#0A0F0B',
           }}>
             {pctRest ? (
               <>
-                <em style={{ fontStyle: 'italic', fontWeight: 500 }}>{pctFirst}</em>
+                <em style={{ fontStyle: 'italic', fontWeight: 600 }}>{pctFirst}</em>
                 {pctRest}
               </>
             ) : pctFirst}
@@ -399,11 +298,11 @@ function PipelineCard({
           <span style={{
             fontFamily: 'var(--font-fraunces), Georgia, serif',
             fontStyle: 'italic',
-            fontSize: 38,
+            fontSize: 30,
             fontWeight: 500,
-            color: 'rgba(10,15,11,0.32)',
+            color: 'rgba(10,15,11,0.42)',
             letterSpacing: '-0.03em',
-            transform: 'translateY(-12px)',
+            transform: 'translateY(-10px)',
           }}>
             %
           </span>
@@ -412,18 +311,18 @@ function PipelineCard({
           fontFamily: 'var(--font-fraunces), Georgia, serif',
           fontStyle: 'italic',
           fontWeight: 500,
-          fontSize: 15,
-          color: 'rgba(10,15,11,0.55)',
+          fontSize: 14,
+          color: 'rgba(10,15,11,0.58)',
           letterSpacing: '-0.01em',
-          marginTop: 6,
+          marginTop: 4,
         }}>
           <strong style={{ color: '#0A0F0B', fontWeight: 700, fontStyle: 'normal' }}>{publicados}</strong>{' '}
           de <strong style={{ color: '#0A0F0B', fontWeight: 700, fontStyle: 'normal' }}>{total}</strong> publicados
         </p>
 
         {/* Distribution bar */}
-        <div style={{ marginTop: 18 }}>
-          <div style={{ display: 'flex', gap: 4, height: 36 }}>
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: 'flex', gap: 4, height: 30 }}>
             {items.map(s => {
               const widthPct = total > 0 ? Math.max(s.pct, s.val > 0 ? 6 : 0) : (s.label === 'rascunho' ? 100 : 0)
               if (widthPct === 0) return null
@@ -433,7 +332,7 @@ function PipelineCard({
                   className={s.variant === 'hatch' ? 'cia-hatch-stripe cia-hatch-stripe--ink' : ''}
                   style={{
                     width: `${widthPct}%`,
-                    borderRadius: 8,
+                    borderRadius: 7,
                     background: s.variant === 'solid'
                       ? '#0A0F0B'
                       : s.variant === 'soft'
@@ -448,7 +347,7 @@ function PipelineCard({
                 >
                   <span style={{
                     fontFamily: 'var(--font-geist), system-ui, sans-serif',
-                    fontSize: 10.5,
+                    fontSize: 10,
                     fontWeight: 800,
                     color: s.variant === 'solid' ? '#FAF7F0' : 'rgba(10,15,11,0.70)',
                     letterSpacing: '-0.01em',
@@ -459,12 +358,12 @@ function PipelineCard({
               )
             })}
           </div>
-          <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+          <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
             {items.map(s => (
               <span key={s.label} style={{
                 flex: 1,
                 fontFamily: 'var(--font-geist), system-ui, sans-serif',
-                fontSize: 9,
+                fontSize: 8.5,
                 fontWeight: 700,
                 color: 'rgba(10,15,11,0.42)',
                 textTransform: 'uppercase',
@@ -483,14 +382,14 @@ function PipelineCard({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: 18,
-        paddingTop: 14,
+        marginTop: 14,
+        paddingTop: 12,
         borderTop: '1px dashed rgba(10,15,11,0.12)',
       }}>
         <span style={{
           fontFamily: 'var(--font-fraunces), Georgia, serif',
           fontStyle: 'italic',
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: 500,
           color: 'rgba(10,15,11,0.55)',
         }}>
@@ -499,7 +398,7 @@ function PipelineCard({
         <span
           className="cia-circle-arrow"
           style={{
-            width: 34, height: 34, borderRadius: '50%',
+            width: 32, height: 32, borderRadius: '50%',
             background: '#0A0F0B',
             display: 'inline-flex',
             alignItems: 'center', justifyContent: 'center',
@@ -507,43 +406,10 @@ function PipelineCard({
             flexShrink: 0,
           }}
         >
-          <ArrowUpRight style={{ width: 14, height: 14, color: '#FAF7F0', strokeWidth: 2.2 }} />
+          <ArrowUpRight style={{ width: 13, height: 13, color: '#FAF7F0', strokeWidth: 2.2 }} />
         </span>
       </div>
     </Link>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// NavDock — capsulas horizontais com scroll natural + fade-edges
-// Substitui o HomeQuickGrid antigo
-// ─────────────────────────────────────────────────────────────────────────────
-
-function NavDock({ items }: { items: DockItem[] }) {
-  return (
-    <div className="cia-brf-dockwrap">
-      <div className="cia-brf-dockwrap__head">
-        <span className="cia-brf-dockwrap__label">Acesso rápido</span>
-        <span className="cia-brf-dockwrap__hint">arraste para o lado →</span>
-      </div>
-      <nav className="cia-brf-dock" aria-label="Acesso rápido">
-        {items.map(item => {
-          const Icon = item.icon
-          const toneCls = item.tone && item.tone !== 'neutral'
-            ? `cia-brf-dock-pill cia-brf-dock-pill--${item.tone}`
-            : 'cia-brf-dock-pill'
-          return (
-            <Link key={item.href} href={item.href} className={toneCls}>
-              <span className="cia-brf-dock-pill__icon">
-                <Icon style={{ width: 13, height: 13, strokeWidth: 2.2 }} />
-              </span>
-              <span>{item.label}</span>
-              {item.meta && <span className="cia-brf-dock-pill__meta">{item.meta}</span>}
-            </Link>
-          )
-        })}
-      </nav>
-    </div>
   )
 }
 
@@ -560,7 +426,6 @@ export function HomeBriefing({
   total,
   emProducao,
   rascunho,
-  dockItems,
 }: BriefingProps) {
 
   const firstName = userName?.split(' ')[0] ?? 'time'
@@ -569,9 +434,6 @@ export function HomeBriefing({
     <section style={{ padding: '28px 24px 16px' }}>
       <div className="mx-auto max-w-7xl">
 
-        {/* ═══════════════════════════════════════════════════════════
-            Squircle frame com border preto + grain texture
-            ═══════════════════════════════════════════════════════════ */}
         <div className="cia-brf cia-grain">
 
           {/* ── Signature row ─────────────────────────────────────── */}
@@ -605,11 +467,6 @@ export function HomeBriefing({
             />
             <HeroCountdown diffDays={diffDays} eventActive={eventActive} />
           </div>
-
-          {/* ── Dock dinâmico (substitui HomeQuickGrid) ─────────── */}
-          {dockItems && dockItems.length > 0 && (
-            <NavDock items={dockItems} />
-          )}
 
         </div>
       </div>

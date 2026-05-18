@@ -35,7 +35,7 @@ export default async function PatrocinadorDetailPage({ params }: Props) {
       .maybeSingle(),
     supabase
       .from('escopo_itens')
-      .select('id, tipo_conteudo, canal, quantidade_prevista, descricao, status')
+      .select('id, tipo_conteudo, canal, quantidade_prevista, descricao, prazo_limite, status')
       .eq('patrocinador_id', id)
       .order('criado_em'),
     supabase
@@ -50,7 +50,8 @@ export default async function PatrocinadorDetailPage({ params }: Props) {
 
   const escopo = (escopoRaw ?? []) as {
     id: string; tipo_conteudo: string | null; canal: string | null
-    quantidade_prevista: number; descricao: string | null; status: string
+    quantidade_prevista: number; descricao: string | null
+    prazo_limite: string | null; status: string
   }[]
 
   const conteudos = (conteudosRaw ?? []).map((c) => ({
@@ -59,10 +60,6 @@ export default async function PatrocinadorDetailPage({ params }: Props) {
   }))
 
   const cotaStyle = pat.cota ? (COTA_STYLE[pat.cota] ?? COTA_STYLE.Apoio) : COTA_STYLE.Apoio
-
-  const escopoTotal = escopo.reduce((s, e) => s + e.quantidade_prevista, 0)
-  const escopoEntregue = escopo.filter((e) => e.status === 'entregue').reduce((s, e) => s + e.quantidade_prevista, 0)
-  const pctEntregue = escopoTotal > 0 ? Math.round((escopoEntregue / escopoTotal) * 100) : 0
 
   return (
     <div className="space-y-8">
@@ -138,34 +135,12 @@ export default async function PatrocinadorDetailPage({ params }: Props) {
 
         <Link
           href="/admin/patrocinadores"
-          className="shrink-0 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
         >
-          Editar
+          <ChevronLeft className="h-3.5 w-3.5" />
+          Editar dados
         </Link>
       </div>
-
-      {/* ── Progresso do escopo ─────────────────────────────────── */}
-      {escopo.length > 0 && (
-        <div className="cia-metric-card px-5 py-4">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-              Progresso de entregas
-            </p>
-            <span className={`text-sm font-bold tabular-nums ${pctEntregue === 100 ? 'text-[var(--green-bright)]' : 'text-[var(--foreground)]'}`}>
-              {pctEntregue}%
-            </span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--muted)]">
-            <div
-              className="h-full rounded-full bg-[var(--green-bright)] transition-all duration-500"
-              style={{ width: `${pctEntregue}%` }}
-            />
-          </div>
-          <p className="mt-1.5 text-[10px] text-[var(--muted-foreground)]">
-            {escopoEntregue} de {escopoTotal} entregas concluídas
-          </p>
-        </div>
-      )}
 
       {/* ── Escopo de entregas ──────────────────────────────────── */}
       <section>

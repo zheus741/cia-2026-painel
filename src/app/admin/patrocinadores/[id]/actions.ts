@@ -9,12 +9,14 @@ export async function criarEscopoItem(patrocinadorId: string, fd: FormData): Pro
     await requireCoordOrAdmin()
     const supabase = createAdminClient()
     const quantidade = parseInt(fd.get('quantidade_prevista') as string) || 1
+    const prazoRaw = fd.get('prazo_limite') as string | null
     const { error } = await supabase.from('escopo_itens').insert({
       patrocinador_id: patrocinadorId,
       tipo_conteudo: fd.get('tipo_conteudo') as string || null,
       canal: fd.get('canal') as string || null,
       quantidade_prevista: quantidade,
       descricao: (fd.get('descricao') as string)?.trim() || null,
+      prazo_limite: prazoRaw || null,
       status: 'pendente',
     })
     if (error) throw error

@@ -1,10 +1,7 @@
 import Image from 'next/image'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth/current-user'
-import { CiaLogo } from '@/components/cia-logo'
-import { signOut } from './actions'
-import { LogOut, ChevronRight, Tv2 } from 'lucide-react'
+import { AppShell } from '@/components/app-shell'
 import { HomeClient } from './HomeClient'
 import { HomeEsportivo } from './HomeEsportivo'
 import type {
@@ -57,13 +54,6 @@ async function fetchWeather(): Promise<WeatherDaily | null> {
 
 const EVENT_START  = new Date('2026-06-04T00:00:00-03:00')
 const DAY_LABELS   = ['Qui 04/06', 'Sex 05/06', 'Sáb 06/06', 'Dom 07/06']
-
-const ROLE_LABEL: Record<string, string> = {
-  admin:       'Admin',
-  coordenacao: 'Coordenação',
-  lider_area:  'Líder de área',
-  operador:    'Operador',
-}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -419,6 +409,7 @@ export default async function Home() {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
+    <AppShell fullWidth>
     <div className="relative flex flex-1 flex-col overflow-hidden cia-bg">
 
       {/* Dot grid — very subtle */}
@@ -441,75 +432,7 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header
-        className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] px-4 sm:px-6"
-        style={{ background: 'var(--background)' }}
-      >
-        <CiaLogo />
-
-        <div className="flex items-center gap-4">
-
-          {/* Avatar → /perfil */}
-          <Link href="/perfil" title="Meu perfil" className="group flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-[var(--foreground)] group-hover:text-[var(--green-bright)] transition-colors">
-                {profile?.nome ?? profile.email}
-              </p>
-              <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--muted-foreground)]">
-                {profile?.role ? ROLE_LABEL[profile.role] : 'aguardando perfil'}
-              </p>
-            </div>
-            <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--green-dim)] transition-all group-hover:ring-[var(--green)]"
-              style={{ background: 'rgba(45,90,61,0.4)' }}>
-              {profile?.foto_url ? (
-                <Image
-                  src={profile.foto_url}
-                  alt={profile.nome ?? ''}
-                  fill
-                  sizes="36px"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs font-bold text-[var(--green-bright)]">
-                  {(profile?.nome ?? profile.email ?? 'U').charAt(0).toUpperCase()}
-                </div>
-              )}
-            </div>
-          </Link>
-
-          <a
-            href="/tv"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all hover:bg-[rgba(46,107,66,0.10)]"
-            style={{ borderColor: 'rgba(46,107,66,0.25)', color: '#2e6b42' }}
-          >
-            <Tv2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Modo TV</span>
-          </a>
-
-          <Link
-            href="/admin"
-            className="flex items-center gap-1.5 rounded-lg border border-[var(--gold-dim)] bg-[var(--gold-dim)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--gold)] transition-all hover:border-[var(--gold)] hover:bg-[var(--gold-dim)]/25"
-          >
-            Cadastros
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-
-          <form action={signOut}>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted-foreground)] transition-all hover:border-[var(--destructive)]/50 hover:text-[var(--destructive)]"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Sair
-            </button>
-          </form>
-        </div>
-      </header>
-
-      {/* ── Main interactive content ─────────────────────────────────────── */}
+      {/* ── Main interactive content (header agora vem do AppShell) ─────── */}
       <HomeClient
         profile={profile}
         contentStats={contentStats}
@@ -539,5 +462,6 @@ export default async function Home() {
         analyticsAtleticas={analyticsAtleticas}
       />
     </div>
+    </AppShell>
   )
 }

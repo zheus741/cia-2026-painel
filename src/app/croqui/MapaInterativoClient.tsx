@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   X, Radio, Filter, MapPin, Music, Users, Sparkles, ZoomIn, ZoomOut, Crosshair,
@@ -165,73 +165,77 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
   }, [])
 
   return (
-    <div className="flex flex-col h-[calc(100vh-110px)] min-h-[600px] gap-3">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-3 px-1">
+    <div style={{ display:'flex', flexDirection:'column', height:'calc(100vh - 3.5rem)', background:'#060d1e', fontFamily:'Rajdhani,system-ui,sans-serif' }}>
+      {/* ── Header ── */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 20px', flexShrink:0, borderBottom:'1px solid rgba(255,255,255,.06)', gap:12 }}>
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)]">Centro Park · Uberaba</p>
-          <h1 className="font-[var(--font-display)] text-2xl md:text-3xl font-bold tracking-tight mt-0.5">
-            Croqui do Evento
+          <div style={{ fontFamily:'Orbitron,monospace', fontSize:8, letterSpacing:'0.4em', color:'rgba(255,255,255,.3)', textTransform:'uppercase', marginBottom:2 }}>
+            CIA 2026 · Centro Park · Uberaba
+          </div>
+          <h1 style={{ fontFamily:'Orbitron,monospace', fontWeight:700, fontSize:20, color:'#fff', letterSpacing:'0.14em', textTransform:'uppercase', margin:0, lineHeight:1 }}>
+            MAPA DO EVENTO
           </h1>
-          <p className="text-xs text-[var(--muted-foreground)] mt-1">
-            Toque numa área pra ver detalhes. {totalLive > 0 && (
-              <span className="font-semibold text-[var(--green-bright)]">
-                · {totalLive} área{totalLive > 1 ? 's' : ''} com atividade agora
-              </span>
-            )}
-          </p>
+          {totalLive > 0 && (
+            <p style={{ margin:'4px 0 0', fontFamily:'Rajdhani,system-ui', fontSize:12, color:'#4ade80' }}>
+              · {totalLive} área{totalLive > 1 ? 's' : ''} com atividade agora
+            </p>
+          )}
         </div>
-
-        {/* Status realtime */}
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-            conectado
-              ? 'border-[var(--green-bright)]/30 bg-[var(--green-dim)]/10 text-[var(--green-bright)]'
-              : 'border-[var(--border)] bg-[var(--card)]/40 text-[var(--muted-foreground)]'
-          }`}
+          style={{
+            display:'inline-flex', alignItems:'center', gap:6,
+            padding:'5px 12px', borderRadius:9999,
+            border: conectado ? '1px solid rgba(74,222,128,.3)' : '1px solid rgba(255,255,255,.1)',
+            background: conectado ? 'rgba(74,222,128,.08)' : 'rgba(255,255,255,.04)',
+            fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700,
+            letterSpacing:'0.2em', textTransform:'uppercase',
+            color: conectado ? '#4ade80' : 'rgba(255,255,255,.35)',
+            flexShrink:0,
+          }}
         >
-          <span className={`h-1.5 w-1.5 rounded-full ${conectado ? 'bg-[var(--green-bright)] animate-pulse' : 'bg-[var(--muted-foreground)]/50'}`} />
-          {conectado ? 'Tempo real' : 'Conectando'}
+          <span style={{ width:6, height:6, borderRadius:'50%', background: conectado ? '#4ade80' : 'rgba(255,255,255,.3)', animation: conectado ? 'pulse 2s infinite' : 'none' }} />
+          {conectado ? 'Ao vivo' : 'Conectando'}
         </span>
       </div>
 
       {/* Main grid: mapa + side panel */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-3 min-h-0">
+      <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr', gap:8, padding:'8px 8px 8px 8px', minHeight:0, overflow:'hidden' }}
+           className="lg:grid-cols-[1fr_360px]">
 
         {/* MAPA */}
-        <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#080d0a] min-h-[460px]">
+        <div style={{ position:'relative', overflow:'hidden', borderRadius:16, border:'1px solid rgba(255,255,255,.08)', background:'#060d1e', minHeight:460 }}>
 
-          {/* Ambient: vinheta + textura sutil */}
-          <div aria-hidden className="absolute inset-0 pointer-events-none" style={{
-            background: 'radial-gradient(80% 60% at 50% 50%, rgba(46,107,66,0.18) 0%, transparent 70%), radial-gradient(60% 50% at 100% 100%, rgba(216,132,95,0.06) 0%, transparent 60%)',
-          }} />
-          <div aria-hidden className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{
-            backgroundImage: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'120\'><filter id=\'n\'><feTurbulence baseFrequency=\'0.85\' numOctaves=\'2\' stitchTiles=\'stitch\'/></filter><rect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/></svg>")',
+          {/* Subtle vignette */}
+          <div aria-hidden style={{ position:'absolute', inset:0, pointerEvents:'none',
+            background:'radial-gradient(70% 55% at 50% 50%, rgba(74,222,128,.04) 0%, transparent 70%), radial-gradient(50% 40% at 90% 90%, rgba(251,146,60,.03) 0%, transparent 60%)',
           }} />
 
           {/* Zoom controls */}
-          <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5">
-            <button
-              onClick={() => adjustZoom(0.2)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)]/80 text-[var(--muted-foreground)] backdrop-blur transition-colors hover:border-[var(--green-bright)]/40 hover:text-[var(--green-bright)]"
-              title="Zoom in"
-            >
-              <ZoomIn size={14} />
-            </button>
-            <button
-              onClick={() => adjustZoom(-0.2)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)]/80 text-[var(--muted-foreground)] backdrop-blur transition-colors hover:border-[var(--green-bright)]/40 hover:text-[var(--green-bright)]"
-              title="Zoom out"
-            >
-              <ZoomOut size={14} />
-            </button>
-            <button
-              onClick={resetView}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)]/80 text-[var(--muted-foreground)] backdrop-blur transition-colors hover:border-[var(--green-bright)]/40 hover:text-[var(--green-bright)]"
-              title="Resetar visualização"
-            >
-              <Crosshair size={14} />
-            </button>
+          <div style={{ position:'absolute', top:12, right:12, zIndex:10, display:'flex', flexDirection:'column', gap:6 }}>
+            {[
+              { icon: <ZoomIn size={14} />, action: () => adjustZoom(0.2), title: 'Zoom in' },
+              { icon: <ZoomOut size={14} />, action: () => adjustZoom(-0.2), title: 'Zoom out' },
+              { icon: <Crosshair size={14} />, action: resetView, title: 'Resetar' },
+            ].map(({ icon, action, title }) => (
+              <button
+                key={title}
+                onClick={action}
+                title={title}
+                style={{
+                  width:32, height:32, borderRadius:8,
+                  border:'1px solid rgba(255,255,255,0.10)',
+                  background:'rgba(6,13,30,0.85)',
+                  color:'rgba(255,255,255,0.45)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  cursor:'pointer', backdropFilter:'blur(8px)',
+                  transition:'border-color 0.15s, color 0.15s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(74,222,128,0.4)'; (e.currentTarget as HTMLElement).style.color='#4ade80' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.10)'; (e.currentTarget as HTMLElement).style.color='rgba(255,255,255,0.45)' }}
+              >
+                {icon}
+              </button>
+            ))}
           </div>
 
           {/* Hint cmd+scroll */}
@@ -260,32 +264,67 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
                 transition: dragRef.current ? 'none' : 'transform 0.2s ease',
               }}
             >
-              {/* Defs: gradientes e filtros */}
+              {/* Defs */}
               <defs>
                 {categoriasOrdenadas.map(cat => {
                   const cfg = CATEGORIA_CONFIG[cat]
                   return (
                     <linearGradient key={cat} id={`g-${cat}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor={cfg.cor} stopOpacity="0.55" />
-                      <stop offset="100%" stopColor={cfg.cor} stopOpacity="0.18" />
+                      <stop offset="0%"   stopColor={cfg.cor} stopOpacity="0.28" />
+                      <stop offset="100%" stopColor={cfg.cor} stopOpacity="0.10" />
                     </linearGradient>
                   )
                 })}
                 <filter id="glow-live">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feGaussianBlur stdDeviation="4" result="blur" />
                   <feMerge>
                     <feMergeNode in="blur" />
                     <feMergeNode in="SourceGraphic" />
                   </feMerge>
                 </filter>
-                <pattern id="grass" patternUnits="userSpaceOnUse" width="20" height="20">
-                  <rect width="20" height="20" fill="#0d1612" />
-                  <circle cx="10" cy="10" r="0.5" fill="#1a2820" />
+                <filter id="glow-sel">
+                  <feGaussianBlur stdDeviation="6" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                {/* Dot grid — similar ao grid de ruas da ref FIFA */}
+                <pattern id="dotgrid" patternUnits="userSpaceOnUse" width="28" height="28">
+                  <rect width="28" height="28" fill="#060d1e" />
+                  <circle cx="14" cy="14" r="0.7" fill="rgba(255,255,255,0.07)" />
                 </pattern>
               </defs>
 
-              {/* Background "land" */}
-              <rect x={0} y={0} width={VIEWBOX.w} height={VIEWBOX.h} fill="url(#grass)" />
+              {/* Base navy */}
+              <rect x={0} y={0} width={VIEWBOX.w} height={VIEWBOX.h} fill="url(#dotgrid)" />
+
+              {/* Venue ground polygons — área do evento levemente mais clara */}
+              {/* Zona A: Palco Principal + CIA Club esq. */}
+              <polygon
+                points="18,22 392,18 402,98 570,98 582,708 548,752 18,772"
+                fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5"
+              />
+              {/* Zona B: Eletrônico + Bares centro */}
+              <polygon
+                points="570,98 842,98 858,558 596,710 582,708"
+                fill="rgba(255,255,255,0.018)" stroke="rgba(255,255,255,0.08)" strokeWidth="1"
+              />
+              {/* Zona C: CIA Club dir. + Bar 04 */}
+              <polygon
+                points="842,98 1160,200 1162,560 1162,648 988,672 850,558 858,558"
+                fill="rgba(255,255,255,0.018)" stroke="rgba(255,255,255,0.08)" strokeWidth="1"
+              />
+              {/* Faixa de serviços — base */}
+              <rect x={92} y={742} width={690} height={65} rx={4}
+                fill="rgba(255,255,255,0.018)" stroke="rgba(255,255,255,0.07)" strokeWidth="1"
+              />
+
+              {/* Caminho / circulação central */}
+              <polygon
+                points="570,98 600,98 600,290 658,290 658,740 570,740 570,708"
+                fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5"
+              />
 
               {/* Áreas */}
               {areasEnriched.map(({ area, setor, hasLive, live }) => {
@@ -417,7 +456,7 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
         </div>
 
         {/* SIDE PANEL */}
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)]/40 overflow-hidden min-h-0 flex flex-col">
+        <div style={{ borderRadius:16, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(10,18,40,0.95)', overflow:'hidden', minHeight:0, display:'flex', flexDirection:'column' }}>
           {selectedItem ? (
             <SidePanel item={selectedItem} onClose={() => setSelectedSlug(null)} />
           ) : (
@@ -501,57 +540,59 @@ function SidePanel({
   const cfg = CATEGORIA_CONFIG[area.categoria]
 
   return (
-    <div className="flex h-full flex-col">
+    <div style={{ display:'flex', height:'100%', flexDirection:'column', fontFamily:'Rajdhani,system-ui,sans-serif' }}>
       {/* Header */}
-      <div className="relative px-5 pt-5 pb-4 border-b border-[var(--border)]"
-        style={{
-          background: `linear-gradient(180deg, ${cfg.cor}25 0%, transparent 100%)`,
-        }}
-      >
+      <div style={{
+        position:'relative', padding:'20px 20px 16px', flexShrink:0,
+        borderBottom:'1px solid rgba(255,255,255,0.07)',
+        background: `linear-gradient(180deg, ${cfg.cor}20 0%, transparent 100%)`,
+      }}>
         <button
           onClick={onClose}
-          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-[var(--muted-foreground)] hover:bg-[var(--background)]/60 hover:text-[var(--foreground)]"
+          style={{
+            position:'absolute', right:10, top:10,
+            width:28, height:28, borderRadius:'50%',
+            border:'1px solid rgba(255,255,255,0.08)', background:'rgba(6,13,30,0.6)',
+            color:'rgba(255,255,255,0.45)', display:'flex', alignItems:'center', justifyContent:'center',
+            cursor:'pointer', transition:'background 0.15s',
+          }}
         >
-          <X size={14} />
+          <X size={13} />
         </button>
 
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-          style={{ background: `${cfg.cor}25`, color: cfg.cor, border: `1px solid ${cfg.cor}50` }}
-        >
+        <span style={{
+          display:'inline-flex', alignItems:'center', gap:4,
+          borderRadius:9999, padding:'2px 10px',
+          background: `${cfg.cor}20`, color: cfg.cor, border: `1px solid ${cfg.cor}40`,
+          fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700, letterSpacing:'0.15em', textTransform:'uppercase',
+        }}>
           <span>{cfg.icone}</span>
           {cfg.label}
         </span>
-        <h2 className="mt-2 font-[var(--font-display)] text-2xl font-bold tracking-tight">
-          {area.icone ?? cfg.icone} {area.nome}
+        <h2 style={{ margin:'8px 0 0', fontFamily:'Orbitron,monospace', fontSize:18, fontWeight:700, color:'#fff', letterSpacing:'0.05em', lineHeight:1.2 }}>
+          {area.nome}
         </h2>
         {area.descricao && (
-          <p className="mt-1.5 text-xs text-[var(--muted-foreground)] leading-relaxed">
+          <p style={{ margin:'6px 0 0', fontSize:12, color:'rgba(255,255,255,0.45)', lineHeight:1.5 }}>
             {area.descricao}
           </p>
         )}
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
+      <div style={{ flex:1, overflowY:'auto', padding:'16px 20px', display:'flex', flexDirection:'column', gap:16 }}>
 
         {/* Live section */}
         {hasLive && live && (
           <section>
-            <h3 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--green-bright)] mb-2.5">
-              <Radio size={11} className="animate-pulse" />
+            <h3 style={{ display:'flex', alignItems:'center', gap:6, fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:'#4ade80', marginBottom:10 }}>
+              <Radio size={10} style={{ animation:'pulse 2s infinite' }} />
               Acontecendo agora
             </h3>
-            <div className="space-y-2">
-              {live.jogos.map(j => (
-                <LiveJogoCard key={j.id} jogo={j} />
-              ))}
-              {live.shows.map(s => (
-                <LiveShowCard key={s.id} show={s} />
-              ))}
-              {live.festas.map(f => (
-                <LiveFestaCard key={f.id} festa={f} />
-              ))}
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {live.jogos.map(j => <LiveJogoCard key={j.id} jogo={j} />)}
+              {live.shows.map(s => <LiveShowCard key={s.id} show={s} />)}
+              {live.festas.map(f => <LiveFestaCard key={f.id} festa={f} />)}
             </div>
           </section>
         )}
@@ -559,20 +600,20 @@ function SidePanel({
         {/* Setor info */}
         {setor && (
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)] mb-2">
-              <MapPin size={10} className="inline mr-1" />
+            <h3 style={{ fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700, letterSpacing:'0.15em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)', marginBottom:8, display:'flex', alignItems:'center', gap:4 }}>
+              <MapPin size={9} />
               Setor
             </h3>
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--background)]/40 p-3 space-y-1.5">
-              <div className="text-sm font-semibold">{setor.nome}</div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--muted-foreground)]">
-                {setor.tipo && <span>Tipo: <strong className="text-[var(--foreground)]">{setor.tipo}</strong></span>}
+            <div style={{ borderRadius:10, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)', padding:'10px 12px', display:'flex', flexDirection:'column', gap:6 }}>
+              <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>{setor.nome}</div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:'4px 16px', fontSize:11, color:'rgba(255,255,255,0.45)' }}>
+                {setor.tipo && <span>Tipo: <strong style={{ color:'rgba(255,255,255,0.8)' }}>{setor.tipo}</strong></span>}
                 {setor.capacidade_pessoas != null && (
-                  <span>Capacidade: <strong className="text-[var(--foreground)]">{setor.capacidade_pessoas} pessoas</strong></span>
+                  <span>Capacidade: <strong style={{ color:'rgba(255,255,255,0.8)' }}>{setor.capacidade_pessoas} pessoas</strong></span>
                 )}
               </div>
               {setor.observacoes && (
-                <p className="text-[11px] text-[var(--muted-foreground)] mt-1.5 leading-relaxed">
+                <p style={{ fontSize:11, color:'rgba(255,255,255,0.4)', lineHeight:1.5, margin:0 }}>
                   {setor.observacoes}
                 </p>
               )}
@@ -583,19 +624,19 @@ function SidePanel({
         {/* Capacidade fallback (sem setor) */}
         {!setor && area.capacidade && (
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)] mb-2">
-              <Users size={10} className="inline mr-1" />
+            <h3 style={{ fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700, letterSpacing:'0.15em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)', marginBottom:8, display:'flex', alignItems:'center', gap:4 }}>
+              <Users size={9} />
               Capacidade
             </h3>
-            <div className="text-sm font-semibold">{area.capacidade} pessoas</div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>{area.capacidade} pessoas</div>
           </section>
         )}
 
         {/* Sem nada acontecendo */}
         {!hasLive && (
-          <div className="rounded-lg border border-dashed border-[var(--border)] p-4 text-center">
-            <Sparkles size={16} className="mx-auto mb-2 text-[var(--muted-foreground)]/40" />
-            <p className="text-[11px] text-[var(--muted-foreground)]">
+          <div style={{ borderRadius:10, border:'1px dashed rgba(255,255,255,0.10)', padding:20, textAlign:'center' }}>
+            <Sparkles size={16} style={{ margin:'0 auto 8px', color:'rgba(255,255,255,0.2)', display:'block' }} />
+            <p style={{ fontSize:11, color:'rgba(255,255,255,0.35)', margin:0 }}>
               Nenhuma atividade ao vivo aqui agora.
             </p>
           </div>
@@ -605,35 +646,48 @@ function SidePanel({
   )
 }
 
+const LIVE_CARD: React.CSSProperties = {
+  borderRadius:10, border:'1px solid rgba(74,222,128,0.25)',
+  background:'rgba(74,222,128,0.06)', padding:'10px 12px',
+  fontFamily:'Rajdhani,system-ui,sans-serif',
+}
+const LIVE_LABEL: React.CSSProperties = {
+  fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700,
+  letterSpacing:'0.15em', textTransform:'uppercase', color:'#4ade80',
+}
+const BADGE_AMBER: React.CSSProperties = {
+  display:'inline-flex', borderRadius:9999, background:'rgba(245,158,11,0.18)',
+  border:'1px solid rgba(245,158,11,0.35)', padding:'1px 6px',
+  fontSize:8, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'#fbbf24',
+}
+
 function LiveJogoCard({ jogo }: { jogo: JogoVivo }) {
   return (
-    <div className="rounded-lg border border-[var(--green-bright)]/30 bg-[var(--green-dim)]/8 p-3">
-      <div className="flex items-center gap-1.5 mb-1.5">
-        {jogo.modalidade && <span className="text-xs">{jogo.modalidade.icone}</span>}
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--green-bright)]">
-          {jogo.modalidade?.nome ?? 'Jogo'}
-        </span>
-        {jogo.teste && (
-          <span className="ml-auto inline-flex rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-400 border border-amber-500/40">
-            Teste
-          </span>
-        )}
-        {jogo.divisao && (
-          <span className="ml-auto text-[8px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]/60">
+    <div style={LIVE_CARD}>
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+        {jogo.modalidade && <span style={{ fontSize:13 }}>{jogo.modalidade.icone}</span>}
+        <span style={LIVE_LABEL}>{jogo.modalidade?.nome ?? 'Jogo'}</span>
+        {jogo.teste && <span style={{ ...BADGE_AMBER, marginLeft:'auto' }}>Teste</span>}
+        {!jogo.teste && jogo.divisao && (
+          <span style={{ marginLeft:'auto', fontSize:8, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'rgba(255,255,255,0.3)' }}>
             {jogo.divisao}
           </span>
         )}
       </div>
-      <div className="flex items-center gap-2 text-sm">
-        <span className="flex-1 truncate font-semibold">{jogo.equipe_a_nome ?? '—'}</span>
-        <span className="tabular-nums font-bold text-base text-[var(--green-bright)]">
+      <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13 }}>
+        <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight:700, color:'#fff' }}>
+          {jogo.equipe_a_nome ?? '—'}
+        </span>
+        <span style={{ fontVariantNumeric:'tabular-nums', fontWeight:800, fontSize:16, color:'#4ade80' }}>
           {jogo.placar_a ?? 0}
         </span>
-        <span className="text-[var(--muted-foreground)]/40">×</span>
-        <span className="tabular-nums font-bold text-base text-[var(--green-bright)]">
+        <span style={{ color:'rgba(255,255,255,0.2)', fontSize:11 }}>×</span>
+        <span style={{ fontVariantNumeric:'tabular-nums', fontWeight:800, fontSize:16, color:'#4ade80' }}>
           {jogo.placar_b ?? 0}
         </span>
-        <span className="flex-1 truncate font-semibold text-right">{jogo.equipe_b_nome ?? '—'}</span>
+        <span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontWeight:700, color:'#fff', textAlign:'right' }}>
+          {jogo.equipe_b_nome ?? '—'}
+        </span>
       </div>
     </div>
   )
@@ -641,21 +695,15 @@ function LiveJogoCard({ jogo }: { jogo: JogoVivo }) {
 
 function LiveShowCard({ show }: { show: ShowAtivo }) {
   return (
-    <div className="rounded-lg border border-[var(--green-bright)]/30 bg-[var(--green-dim)]/8 p-3">
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <Music size={11} className="text-[var(--green-bright)]" />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--green-bright)]">
-          {show.tipo ?? 'Show'}
-        </span>
-        {show.embaixador && (
-          <span className="inline-flex rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-amber-400 border border-amber-500/40">
-            ⭐ Embaixador
-          </span>
-        )}
+    <div style={LIVE_CARD}>
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+        <Music size={10} style={{ color:'#4ade80', flexShrink:0 }} />
+        <span style={LIVE_LABEL}>{show.tipo ?? 'Show'}</span>
+        {show.embaixador && <span style={{ ...BADGE_AMBER, marginLeft:'auto' }}>⭐ Embaixador</span>}
       </div>
-      <div className="text-sm font-bold leading-tight">{show.nome}</div>
+      <div style={{ fontSize:14, fontWeight:700, color:'#fff', lineHeight:1.2 }}>{show.nome}</div>
       {(show.inicio || show.fim_previsto) && (
-        <div className="mt-1 text-[10px] text-[var(--muted-foreground)] tabular-nums">
+        <div style={{ marginTop:4, fontSize:10, color:'rgba(255,255,255,0.4)', fontVariantNumeric:'tabular-nums' }}>
           {fmtTime(show.inicio)} → {fmtTime(show.fim_previsto)}
         </div>
       )}
@@ -665,17 +713,15 @@ function LiveShowCard({ show }: { show: ShowAtivo }) {
 
 function LiveFestaCard({ festa }: { festa: FestaAtiva }) {
   return (
-    <div className="rounded-lg border border-[var(--green-bright)]/30 bg-[var(--green-dim)]/8 p-3">
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <Sparkles size={11} className="text-[var(--green-bright)]" />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--green-bright)]">
-          Festa
-        </span>
+    <div style={LIVE_CARD}>
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+        <Sparkles size={10} style={{ color:'#4ade80', flexShrink:0 }} />
+        <span style={LIVE_LABEL}>Festa</span>
       </div>
-      <div className="text-sm font-bold leading-tight">{festa.nome}</div>
-      {festa.tema && <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5">{festa.tema}</div>}
+      <div style={{ fontSize:14, fontWeight:700, color:'#fff', lineHeight:1.2 }}>{festa.nome}</div>
+      {festa.tema && <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{festa.tema}</div>}
       {(festa.inicio || festa.fim_previsto) && (
-        <div className="mt-1 text-[10px] text-[var(--muted-foreground)] tabular-nums">
+        <div style={{ marginTop:4, fontSize:10, color:'rgba(255,255,255,0.4)', fontVariantNumeric:'tabular-nums' }}>
           {fmtTime(festa.inicio)} → {fmtTime(festa.fim_previsto)}
         </div>
       )}
@@ -685,26 +731,32 @@ function LiveFestaCard({ festa }: { festa: FestaAtiva }) {
 
 function EmptyPanel({ totalAreas, totalLive }: { totalAreas: number; totalLive: number }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center p-6 text-center gap-3">
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--background)]/40">
-        <MapPin size={22} className="text-[var(--muted-foreground)]/50" />
+    <div style={{ display:'flex', height:'100%', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24, textAlign:'center', gap:12, fontFamily:'Rajdhani,system-ui,sans-serif' }}>
+      {/* Ícone */}
+      <div style={{
+        width:56, height:56, borderRadius:'50%',
+        border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+      }}>
+        <MapPin size={22} style={{ color:'rgba(255,255,255,0.25)' }} />
       </div>
       <div>
-        <p className="font-[var(--font-display)] text-lg font-bold tracking-tight">
+        <p style={{ fontFamily:'Orbitron,monospace', fontSize:15, fontWeight:700, color:'#fff', letterSpacing:'0.05em', margin:0 }}>
           Toque numa área
         </p>
-        <p className="text-xs text-[var(--muted-foreground)] mt-1 max-w-[260px]">
-          Cada bloco do mapa abre aqui — capacidade, setor relacionado e o que está rolando ao vivo.
+        <p style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginTop:6, maxWidth:240, lineHeight:1.5 }}>
+          Cada bloco do mapa abre aqui — capacidade, setor e o que está rolando ao vivo.
         </p>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 text-center w-full max-w-[240px]">
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--background)]/40 p-2.5">
-          <div className="tabular-nums text-xl font-bold">{totalAreas}</div>
-          <div className="text-[9px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">áreas</div>
+      {/* Stats */}
+      <div style={{ marginTop:16, display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, width:'100%', maxWidth:220 }}>
+        <div style={{ borderRadius:10, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)', padding:'10px 8px', textAlign:'center' }}>
+          <div style={{ fontVariantNumeric:'tabular-nums', fontSize:22, fontWeight:800, color:'#fff' }}>{totalAreas}</div>
+          <div style={{ fontFamily:'Orbitron,monospace', fontSize:8, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(255,255,255,0.3)', marginTop:2 }}>áreas</div>
         </div>
-        <div className="rounded-lg border border-[var(--green-bright)]/30 bg-[var(--green-dim)]/10 p-2.5">
-          <div className="tabular-nums text-xl font-bold text-[var(--green-bright)]">{totalLive}</div>
-          <div className="text-[9px] font-semibold uppercase tracking-wider text-[var(--green-bright)]/70 mt-0.5">ao vivo</div>
+        <div style={{ borderRadius:10, border:'1px solid rgba(74,222,128,0.25)', background:'rgba(74,222,128,0.06)', padding:'10px 8px', textAlign:'center' }}>
+          <div style={{ fontVariantNumeric:'tabular-nums', fontSize:22, fontWeight:800, color:'#4ade80' }}>{totalLive}</div>
+          <div style={{ fontFamily:'Orbitron,monospace', fontSize:8, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(74,222,128,0.6)', marginTop:2 }}>ao vivo</div>
         </div>
       </div>
     </div>

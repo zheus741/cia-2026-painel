@@ -1,85 +1,64 @@
 /**
  * Mapa do Centro Park — CIA 2026
  *
- * Geometria de cada área pública do evento, baseada no croqui
- * "CIA ARQEST A1 R5.pdf" da EXP Produções (16/04/2026).
+ * Geometria baseada no croqui "CIA ARQEST A1 R5.pdf" — EXP Produções (16/04/2026).
+ * ViewBox: 0 0 1400 820  (escala ≈ 6.5 px/m, proporção ≈ 217m × 127m)
  *
- * ViewBox padrão: 0 0 1400 820 (proporção ≈ 217m × 127m, escala ~6.5 px/m)
- *
- * Áreas operacionais (LED, som, elétrica, MKT etc.) NÃO entram aqui — esse mapa
- * é pra público + cobertura. Pra adicionar ou ajustar coordenadas, mexer só
- * neste arquivo.
+ * Layout:
+ *   Zona A (x: 20–570)   — Palco Principal + CIA Club esq. + Bares 01/02
+ *   Zona B (x: 570–860)  — Eletrônico + Bares 03/RedBull + PhotoPoint + Mirante
+ *   Zona C (x: 840–1160) — Bar 04 + Banheiros + CIA Club dir. + Paredão RedBull
+ *   Faixa (y: 745–800)   — Ambulatório, Alimentação, Serviços
  */
 
 export type MapaCategoria =
-  | 'palco'        // Palcos (principal, CIA Club)
-  | 'bar'          // Bares
-  | 'banheiro'     // Banheiros
-  | 'servico'      // Ambulatório, SAC, caixa, troca de kit, etc.
-  | 'acesso'       // Acessos / entradas
-  | 'emergencia'   // Saídas de emergência
-  | 'lazer'        // Vila, mirante, brinquedos, alimentação, descanso
+  | 'palco'
+  | 'bar'
+  | 'banheiro'
+  | 'servico'
+  | 'acesso'
+  | 'emergencia'
+  | 'lazer'
 
 export interface MapaArea {
-  /** Slug único pra URL/key. */
-  slug: string
-  /** Nome curto pra label dentro do SVG. */
-  nome: string
-  /** Categoria — define cor base e ícone fallback. */
-  categoria: MapaCategoria
-  /** Descrição que aparece no painel ao clicar. */
-  descricao?: string
-  /** Capacidade aproximada (opcional). */
+  slug:        string
+  nome:        string
+  categoria:   MapaCategoria
+  descricao?:  string
   capacidade?: number
-  /** Slug do setor relacionado (caso queira linkar pro setor real). */
   setor_slug?: string
-  /** Emoji/ícone customizado (sobrescreve o ícone da categoria). */
-  icone?: string
-  /**
-   * Geometria — `rect` é mais simples; `polygon` aceita pontos arbitrários.
-   * Coords em unidades do viewBox (0..1400 horizontal, 0..820 vertical).
-   */
+  icone?:      string
   geom:
-    | { kind: 'rect'; x: number; y: number; w: number; h: number; rx?: number }
+    | { kind: 'rect';    x: number; y: number; w: number; h: number; rx?: number }
     | { kind: 'polygon'; points: [number, number][] }
-  /** Coord (cx, cy) pra posicionar o label. Se omitido, usa centro do bbox. */
-  labelPos?: [number, number]
-  /** Tamanho do label em unidades do viewBox. */
+  labelPos?:  [number, number]
   labelSize?: number
 }
 
-// ─── Tema (cores por categoria) ─────────────────────────────────────────────
+// ── Cores por categoria — calibradas para fundo navy escuro ──────────────────
 
 export const CATEGORIA_CONFIG: Record<MapaCategoria, {
-  label: string
-  icone: string
-  cor: string        // cor primária (fill base)
-  corStroke: string  // borda
-  ordem: number      // pra legenda
+  label:      string
+  icone:      string
+  cor:        string
+  corStroke:  string
+  ordem:      number
 }> = {
-  palco:       { label: 'Palcos',       icone: '🎤', cor: '#6AB87E', corStroke: '#9BE3A8', ordem: 1 },
-  bar:         { label: 'Bares',        icone: '🍻', cor: '#D8845F', corStroke: '#E89A6F', ordem: 2 },
-  servico:     { label: 'Serviços',     icone: '🛎️', cor: '#F0D04A', corStroke: '#FBE388', ordem: 3 },
-  banheiro:    { label: 'Banheiros',    icone: '🚻', cor: '#5E7A9B', corStroke: '#7E97B5', ordem: 4 },
-  lazer:       { label: 'Lazer',        icone: '🎡', cor: '#A07BD6', corStroke: '#C09BE6', ordem: 5 },
-  acesso:      { label: 'Acessos',      icone: '➡️', cor: '#3A6F4B', corStroke: '#6AB87E', ordem: 6 },
-  emergencia:  { label: 'Emergência',   icone: '🚨', cor: '#EF4444', corStroke: '#FCA5A5', ordem: 7 },
+  palco:      { label: 'Palcos',      icone: '🎤', cor: '#4ade80', corStroke: '#86efac', ordem: 1 },
+  bar:        { label: 'Bares',       icone: '🍻', cor: '#fb923c', corStroke: '#fdba74', ordem: 2 },
+  servico:    { label: 'Serviços',    icone: '🛎️', cor: '#fbbf24', corStroke: '#fde68a', ordem: 3 },
+  banheiro:   { label: 'Banheiros',   icone: '🚻', cor: '#60a5fa', corStroke: '#93c5fd', ordem: 4 },
+  lazer:      { label: 'Lazer',       icone: '🎡', cor: '#a78bfa', corStroke: '#c4b5fd', ordem: 5 },
+  acesso:     { label: 'Acessos',     icone: '➡️', cor: '#94a3b8', corStroke: '#cbd5e1', ordem: 6 },
+  emergencia: { label: 'Emergência',  icone: '🚨', cor: '#f87171', corStroke: '#fca5a5', ordem: 7 },
 }
 
-// ─── Áreas ──────────────────────────────────────────────────────────────────
-//
-// Coordenadas aproximadas tiradas do croqui. Eixo Y cresce pra baixo.
-// ViewBox total: 0 0 1400 820.
-//
-// Layout geral:
-//   - Zona principal (esquerda, x≈40..640): Palco principal + Bares 01/02 + banheiros
-//   - Zona CIA Club (centro, x≈680..950): Palco CIA Club + Bar 03
-//   - Zona direita (x≈960..1280): Bar 04, banheiros, validação, mirante
-//   - Faixa inferior (y≈700..800): Serviços (ambulatório, caixa, lojinha etc.)
-//   - Acessos / emergências distribuídos no perímetro
+// ── Áreas ────────────────────────────────────────────────────────────────────
 
 export const MAPA_AREAS: MapaArea[] = [
-  // ── PALCOS ─────────────────────────────────────────────────────────────────
+
+  // ─── PALCOS ─────────────────────────────────────────────────────────────────
+
   {
     slug: 'palco-principal',
     nome: 'Palco Principal',
@@ -88,169 +67,167 @@ export const MAPA_AREAS: MapaArea[] = [
     setor_slug: 'palco-principal',
     icone: '🎤',
     geom: { kind: 'polygon', points: [
-      [110, 470], [430, 410], [530, 560], [410, 660], [180, 660], [110, 580],
+      [115, 470], [290, 410], [435, 420], [525, 530],
+      [465, 665], [270, 685], [135, 615],
     ]},
-    labelPos: [275, 555], labelSize: 22,
+    labelPos: [300, 550], labelSize: 22,
   },
   {
-    slug: 'palco-cia-club',
-    nome: 'Palco CIA Club',
+    slug: 'palco-cia-club-esq',
+    nome: 'CIA Club',
     categoria: 'palco',
     descricao: 'Palco do CIA Club — programação alternativa, sets exclusivos.',
     setor_slug: 'palco-cia-club',
     icone: '🎧',
-    geom: { kind: 'rect', x: 720, y: 215, w: 200, h: 115, rx: 8 },
-    labelSize: 16,
+    geom: { kind: 'rect', x: 108, y: 230, w: 160, h: 55, rx: 6 },
+    labelSize: 15,
+  },
+  {
+    slug: 'eletronico',
+    nome: 'Eletrônico',
+    categoria: 'palco',
+    descricao: 'Palco eletrônico — sets de DJ, música eletrônica ao vivo.',
+    setor_slug: 'eletronico',
+    icone: '🎛️',
+    geom: { kind: 'rect', x: 692, y: 258, w: 102, h: 62, rx: 6 },
+    labelSize: 14,
   },
 
-  // ── BARES ──────────────────────────────────────────────────────────────────
+  // ─── BARES ──────────────────────────────────────────────────────────────────
+
   {
     slug: 'bar-01',
     nome: 'Bar 01',
     categoria: 'bar',
     descricao: 'Bar 01 — lateral esquerda da área principal.',
-    geom: { kind: 'rect', x: 50, y: 220, w: 55, h: 290, rx: 6 },
-    labelPos: [77, 365], labelSize: 14,
+    geom: { kind: 'rect', x: 118, y: 440, w: 58, h: 160, rx: 6 },
+    labelPos: [147, 520], labelSize: 14,
   },
   {
     slug: 'bar-02',
     nome: 'Bar 02',
     categoria: 'bar',
-    descricao: 'Bar 02 — central, ao lado dos banheiros principais.',
-    geom: { kind: 'rect', x: 545, y: 290, w: 60, h: 235, rx: 6 },
-    labelPos: [575, 405], labelSize: 14,
+    descricao: 'Bar 02 — central, próximo aos banheiros.',
+    geom: { kind: 'rect', x: 442, y: 360, w: 58, h: 210, rx: 6 },
+    labelPos: [471, 465], labelSize: 14,
   },
   {
     slug: 'bar-03',
     nome: 'Bar 03',
     categoria: 'bar',
-    descricao: 'Bar 03 — área de transição entre Palco Principal e CIA Club.',
-    geom: { kind: 'rect', x: 850, y: 295, w: 55, h: 215, rx: 6 },
-    labelPos: [877, 400], labelSize: 14,
+    descricao: 'Bar 03 — área entre Palco Principal e Eletrônico.',
+    geom: { kind: 'rect', x: 610, y: 332, w: 58, h: 185, rx: 6 },
+    labelPos: [639, 425], labelSize: 14,
   },
   {
     slug: 'bar-04',
     nome: 'Bar 04',
     categoria: 'bar',
-    descricao: 'Bar 04 — lateral direita, próximo ao Palco CIA Club.',
-    geom: { kind: 'rect', x: 1015, y: 305, w: 55, h: 180, rx: 6 },
-    labelPos: [1042, 395], labelSize: 14,
+    descricao: 'Bar 04 — lateral direita, próximo ao CIA Club.',
+    geom: { kind: 'rect', x: 858, y: 348, w: 62, h: 105, rx: 6 },
+    labelPos: [889, 400], labelSize: 14,
+  },
+  {
+    slug: 'bar-redbull',
+    nome: 'Bar RedBull',
+    categoria: 'bar',
+    descricao: 'Ativação RedBull — bebidas e experiência de marca.',
+    icone: '🔴',
+    geom: { kind: 'rect', x: 572, y: 582, w: 80, h: 52, rx: 6 },
+    labelSize: 12,
   },
 
-  // ── BANHEIROS ──────────────────────────────────────────────────────────────
+  // ─── BANHEIROS ──────────────────────────────────────────────────────────────
+
+  {
+    slug: 'banheiros-top-esq',
+    nome: 'Banheiros',
+    categoria: 'banheiro',
+    descricao: 'Banheiros próximos ao Camarim e CIA Club esquerdo.',
+    geom: { kind: 'rect', x: 280, y: 132, w: 108, h: 62, rx: 6 },
+    labelSize: 11,
+  },
   {
     slug: 'banheiros-centro',
     nome: 'Banheiros',
     categoria: 'banheiro',
-    descricao: 'Bloco central de banheiros — área principal.',
-    geom: { kind: 'rect', x: 460, y: 320, w: 80, h: 175, rx: 6 },
-    labelPos: [500, 410], labelSize: 12,
-  },
-  {
-    slug: 'banheiros-bar01',
-    nome: 'Banheiros',
-    categoria: 'banheiro',
-    descricao: 'Banheiros próximos ao Bar 01.',
-    geom: { kind: 'rect', x: 115, y: 230, w: 75, h: 55, rx: 6 },
-    labelSize: 11,
+    descricao: 'Banheiros centrais — área principal.',
+    geom: { kind: 'rect', x: 458, y: 468, w: 82, h: 108, rx: 6 },
+    labelPos: [499, 522], labelSize: 12,
   },
   {
     slug: 'banheiros-palco-sul',
     nome: 'Banheiros',
     categoria: 'banheiro',
-    descricao: 'Banheiros próximos à entrada inferior do Palco Principal.',
-    geom: { kind: 'rect', x: 200, y: 685, w: 230, h: 60, rx: 6 },
+    descricao: 'Banheiros sul — próximos à Ativação RedBull e saída.',
+    geom: { kind: 'rect', x: 200, y: 648, w: 232, h: 58, rx: 6 },
     labelSize: 12,
   },
   {
-    slug: 'banheiros-cia-club',
+    slug: 'banheiros-centro-dir',
     nome: 'Banheiros',
     categoria: 'banheiro',
-    descricao: 'Banheiros do CIA Club.',
-    geom: { kind: 'rect', x: 935, y: 405, w: 75, h: 120, rx: 6 },
-    labelSize: 11,
-  },
-  {
-    slug: 'banheiros-direita',
-    nome: 'Banheiros',
-    categoria: 'banheiro',
-    descricao: 'Banheiros laterais direitos.',
-    geom: { kind: 'rect', x: 1075, y: 295, w: 130, h: 230, rx: 6 },
-    labelPos: [1140, 410], labelSize: 13,
+    descricao: 'Banheiros da área central direita — Eletrônico.',
+    geom: { kind: 'rect', x: 885, y: 408, w: 130, h: 110, rx: 6 },
+    labelPos: [950, 463], labelSize: 13,
   },
 
-  // ── SERVIÇOS (faixa inferior) ──────────────────────────────────────────────
+  // ─── SERVIÇOS ────────────────────────────────────────────────────────────────
+
+  {
+    slug: 'credenciamento',
+    nome: 'Credenciamento',
+    categoria: 'servico',
+    descricao: 'Credenciamento de staff, imprensa e equipes — entrada principal.',
+    icone: '🪪',
+    geom: { kind: 'rect', x: 82, y: 22, w: 100, h: 42, rx: 6 },
+    labelSize: 12,
+  },
   {
     slug: 'ambulatorio',
     nome: 'Ambulatório',
     categoria: 'servico',
-    descricao: 'Atendimento médico 24h. Equipe de paramédicos + ambulância.',
+    descricao: 'Atendimento médico 24h — paramédicos e ambulância.',
     icone: '⛑️',
     setor_slug: 'ambulatorio',
-    geom: { kind: 'rect', x: 145, y: 740, w: 85, h: 50, rx: 6 },
+    geom: { kind: 'rect', x: 232, y: 752, w: 90, h: 46, rx: 6 },
     labelSize: 11,
   },
   {
     slug: 'acolhimento',
     nome: 'Acolhimento',
     categoria: 'servico',
-    descricao: 'Espaço de acolhimento — apoio emocional e segurança para todes.',
+    descricao: 'Espaço de acolhimento — apoio emocional e segurança.',
     icone: '🤝',
-    geom: { kind: 'rect', x: 245, y: 740, w: 80, h: 50, rx: 6 },
+    geom: { kind: 'rect', x: 326, y: 752, w: 80, h: 46, rx: 6 },
     labelSize: 11,
   },
   {
-    slug: 'sac',
-    nome: 'SAC',
+    slug: 'alimentacao',
+    nome: 'Alimentação',
     categoria: 'servico',
-    descricao: 'Serviço de Atendimento ao Consumidor — dúvidas, achados e perdidos.',
-    icone: 'ℹ️',
-    geom: { kind: 'rect', x: 580, y: 730, w: 60, h: 60, rx: 6 },
-    labelSize: 12,
+    descricao: 'Food trucks e praça de alimentação.',
+    icone: '🍔',
+    setor_slug: 'alimentacao',
+    geom: { kind: 'rect', x: 448, y: 756, w: 106, h: 42, rx: 6 },
+    labelSize: 11,
   },
   {
-    slug: 'caixa',
-    nome: 'Caixa',
+    slug: 'caixlojinha',
+    nome: 'Caixa / Lojinha',
     categoria: 'servico',
-    descricao: 'Compra de fichas e recarga de cartão.',
+    descricao: 'Compra de fichas, recarga e merchandise oficial do CIA.',
     icone: '💳',
-    geom: { kind: 'rect', x: 405, y: 740, w: 55, h: 50, rx: 6 },
-    labelSize: 11,
-  },
-  {
-    slug: 'lojinha',
-    nome: 'Lojinha',
-    categoria: 'servico',
-    descricao: 'Merchandise oficial do CIA — camisas, copos, lembranças.',
-    icone: '🛍️',
-    geom: { kind: 'rect', x: 465, y: 740, w: 55, h: 50, rx: 6 },
-    labelSize: 11,
-  },
-  {
-    slug: 'eco-copo',
-    nome: 'Eco Copo',
-    categoria: 'servico',
-    descricao: 'Retirada e devolução do copo reutilizável.',
-    icone: '♻️',
-    geom: { kind: 'rect', x: 525, y: 740, w: 50, h: 50, rx: 6 },
-    labelSize: 10,
+    geom: { kind: 'rect', x: 556, y: 756, w: 82, h: 42, rx: 6 },
+    labelPos: [597, 777], labelSize: 10,
   },
   {
     slug: 'troca-de-kit',
     nome: 'Troca de Kit',
     categoria: 'servico',
-    descricao: 'Retirada do kit do participante.',
+    descricao: 'Retirada do kit do participante — pulseira e copo.',
     icone: '🎟️',
-    geom: { kind: 'rect', x: 645, y: 740, w: 75, h: 50, rx: 6 },
-    labelSize: 11,
-  },
-  {
-    slug: 'credenciamento',
-    nome: 'Credenciamento',
-    categoria: 'servico',
-    descricao: 'Credenciamento de staff, imprensa e equipes.',
-    icone: '🪪',
-    geom: { kind: 'rect', x: 725, y: 740, w: 100, h: 50, rx: 6 },
+    geom: { kind: 'rect', x: 640, y: 752, w: 82, h: 46, rx: 6 },
     labelSize: 11,
   },
   {
@@ -259,19 +236,29 @@ export const MAPA_AREAS: MapaArea[] = [
     categoria: 'servico',
     descricao: 'Validação de pulseiras CIA Club.',
     icone: '✅',
-    geom: { kind: 'rect', x: 935, y: 285, w: 70, h: 75, rx: 6 },
+    geom: { kind: 'rect', x: 858, y: 508, w: 66, h: 44, rx: 6 },
+    labelSize: 11,
+  },
+  {
+    slug: 'apoio',
+    nome: 'Apoio',
+    categoria: 'servico',
+    descricao: 'Base de apoio operacional — staff e coordenação.',
+    icone: '🏠',
+    geom: { kind: 'rect', x: 858, y: 458, w: 66, h: 46, rx: 6 },
     labelSize: 11,
   },
 
-  // ── LAZER ──────────────────────────────────────────────────────────────────
+  // ─── LAZER / ATIVAÇÕES ───────────────────────────────────────────────────────
+
   {
     slug: 'vila',
     nome: 'Vila',
     categoria: 'lazer',
     descricao: 'Vila do CIA — espaço de convivência das atléticas, ativações e parceiros.',
     icone: '🏘️',
-    geom: { kind: 'rect', x: 70, y: 600, w: 320, h: 90, rx: 8 },
-    labelPos: [230, 645], labelSize: 16,
+    geom: { kind: 'rect', x: 295, y: 48, w: 90, h: 80, rx: 8 },
+    labelSize: 14,
   },
   {
     slug: 'mirante',
@@ -279,91 +266,135 @@ export const MAPA_AREAS: MapaArea[] = [
     categoria: 'lazer',
     descricao: 'Mirante — vista panorâmica do evento.',
     icone: '👁️',
-    geom: { kind: 'rect', x: 685, y: 540, w: 50, h: 55, rx: 6 },
+    geom: { kind: 'rect', x: 648, y: 544, w: 54, h: 52, rx: 6 },
     labelSize: 11,
   },
   {
-    slug: 'alimentacao',
-    nome: 'Alimentação',
+    slug: 'photopoint',
+    nome: 'PhotoPoint',
     categoria: 'lazer',
-    descricao: 'Praça de alimentação — food trucks e parceiros gastronômicos.',
-    icone: '🍔',
-    geom: { kind: 'rect', x: 405, y: 600, w: 220, h: 80, rx: 8 },
-    labelPos: [515, 640], labelSize: 14,
+    descricao: 'Espaço instagramável — fotos e ativações de marca.',
+    icone: '📸',
+    geom: { kind: 'rect', x: 580, y: 544, w: 64, h: 52, rx: 6 },
+    labelSize: 11,
+  },
+  {
+    slug: 'estrela-redbull',
+    nome: 'Estrela RedBull',
+    categoria: 'lazer',
+    descricao: 'Estrutura da Estrela RedBull — ativação principal da marca.',
+    icone: '🔴',
+    geom: { kind: 'polygon', points: [
+      [660, 445], [718, 438], [782, 448], [790, 502], [722, 512], [658, 502],
+    ]},
+    labelPos: [725, 478], labelSize: 13,
+  },
+  {
+    slug: 'ativacao-redbull',
+    nome: 'Ativação RedBull',
+    categoria: 'lazer',
+    descricao: 'Área de ativação RedBull — experiências e branding.',
+    icone: '🔴',
+    geom: { kind: 'rect', x: 348, y: 668, w: 110, h: 55, rx: 6 },
+    labelSize: 12,
+  },
+  {
+    slug: 'paredao-redbull',
+    nome: 'Paredão RedBull',
+    categoria: 'lazer',
+    descricao: 'Telão/paredão RedBull — transmissão ao vivo e interativo.',
+    icone: '📺',
+    geom: { kind: 'rect', x: 838, y: 545, w: 232, h: 28, rx: 4 },
+    labelPos: [954, 558], labelSize: 12,
+  },
+  {
+    slug: 'super-totem',
+    nome: 'Super Totem',
+    categoria: 'lazer',
+    descricao: 'Totem central — sinalização e ponto de referência.',
+    icone: '🗼',
+    geom: { kind: 'rect', x: 658, y: 554, w: 50, h: 42, rx: 6 },
+    labelSize: 10,
   },
   {
     slug: 'brinquedos',
     nome: 'Brinquedos',
     categoria: 'lazer',
-    descricao: 'Área kids — brinquedos infláveis e atividades para crianças.',
+    descricao: 'Área kids — infláveis e atividades para crianças.',
     icone: '🎠',
-    geom: { kind: 'rect', x: 660, y: 605, w: 95, h: 75, rx: 8 },
+    geom: { kind: 'rect', x: 700, y: 668, w: 128, h: 65, rx: 8 },
     labelSize: 12,
   },
   {
     slug: 'descanso',
     nome: 'Descanso',
     categoria: 'lazer',
-    descricao: 'Área de descanso — sombra e assentos pra recarregar.',
+    descricao: 'Área de descanso — sombra e assentos.',
     icone: '🪑',
-    geom: { kind: 'rect', x: 860, y: 740, w: 110, h: 50, rx: 6 },
+    geom: { kind: 'rect', x: 750, y: 740, w: 128, h: 48, rx: 6 },
     labelSize: 12,
   },
+  {
+    slug: 'cia-club-dir',
+    nome: 'CIA Club',
+    categoria: 'palco',
+    descricao: 'Área CIA Club direita — acesso exclusivo com pulseira.',
+    setor_slug: 'palco-cia-club',
+    icone: '🎧',
+    geom: { kind: 'polygon', points: [
+      [850, 556], [858, 582], [862, 648], [1000, 672], [1152, 644], [1152, 556],
+    ]},
+    labelPos: [990, 620], labelSize: 16,
+  },
 
-  // ── ACESSOS ────────────────────────────────────────────────────────────────
+  // ─── ACESSOS ─────────────────────────────────────────────────────────────────
+
   {
     slug: 'acesso-principal',
     nome: 'Acesso',
     categoria: 'acesso',
-    descricao: 'Acesso principal do público.',
-    geom: { kind: 'rect', x: 520, y: 745, w: 55, h: 40, rx: 4 },
+    descricao: 'Acesso central — entrada principal do público.',
+    geom: { kind: 'rect', x: 598, y: 284, w: 56, h: 50, rx: 4 },
     labelSize: 10,
   },
   {
-    slug: 'acesso-leste',
-    nome: 'Acesso',
+    slug: 'acesso-staff',
+    nome: 'Acesso Staff',
     categoria: 'acesso',
-    descricao: 'Acesso pela lateral leste do parque.',
-    geom: { kind: 'rect', x: 1240, y: 410, w: 50, h: 40, rx: 4 },
-    labelSize: 10,
-  },
-  {
-    slug: 'acesso-oeste',
-    nome: 'Acesso',
-    categoria: 'acesso',
-    descricao: 'Acesso lateral oeste — perto do Bar 01.',
-    geom: { kind: 'rect', x: 10, y: 410, w: 35, h: 50, rx: 4 },
+    descricao: 'Acesso exclusivo de staff e equipes técnicas.',
+    geom: { kind: 'rect', x: 16, y: 64, w: 64, h: 42, rx: 4 },
     labelSize: 10,
   },
 
-  // ── SAÍDAS DE EMERGÊNCIA ───────────────────────────────────────────────────
+  // ─── EMERGÊNCIA ──────────────────────────────────────────────────────────────
+
   {
     slug: 'emergencia-1',
     nome: 'Saída',
     categoria: 'emergencia',
     descricao: 'Saída de emergência — lado oeste.',
-    geom: { kind: 'rect', x: 10, y: 130, w: 35, h: 35, rx: 4 },
+    geom: { kind: 'rect', x: 16, y: 136, w: 34, h: 34, rx: 4 },
     labelSize: 9,
   },
   {
     slug: 'emergencia-2',
     nome: 'Saída',
     categoria: 'emergencia',
-    descricao: 'Saída de emergência — lado norte do palco principal.',
-    geom: { kind: 'rect', x: 435, y: 200, w: 35, h: 35, rx: 4 },
+    descricao: 'Saída de emergência — norte do palco principal.',
+    geom: { kind: 'rect', x: 438, y: 204, w: 34, h: 34, rx: 4 },
     labelSize: 9,
   },
   {
     slug: 'emergencia-3',
     nome: 'Saída',
     categoria: 'emergencia',
-    descricao: 'Saída de emergência — lado sul / acesso veículos emergência.',
-    geom: { kind: 'rect', x: 95, y: 745, w: 35, h: 35, rx: 4 },
+    descricao: 'Saída de emergência — acesso veículos sul.',
+    geom: { kind: 'rect', x: 96, y: 748, w: 34, h: 34, rx: 4 },
     labelSize: 9,
   },
 ]
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 export function getArea(slug: string): MapaArea | undefined {
   return MAPA_AREAS.find(a => a.slug === slug)
@@ -374,7 +405,6 @@ export function getAreaCenter(area: MapaArea): [number, number] {
   if (area.geom.kind === 'rect') {
     return [area.geom.x + area.geom.w / 2, area.geom.y + area.geom.h / 2]
   }
-  // polygon centroid
   const pts = area.geom.points
   const sx = pts.reduce((s, [x]) => s + x, 0)
   const sy = pts.reduce((s, [, y]) => s + y, 0)

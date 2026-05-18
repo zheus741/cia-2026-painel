@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { ArrowUpRight, Search, Trophy, Users, AlertCircle } from 'lucide-react'
+import { AtleticaLogoSmall } from '@/components/atletica-logo'
 import type { Atletica } from '@/lib/competicao/queries'
 import type { ConferenciaMeta, ConferenciaNome } from '@/lib/conferencias'
 
@@ -39,23 +40,15 @@ function AtleticaCard({ a, accent }: { a: Atletica; accent: string }) {
         transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
-      {/* Seed pill */}
-      <div
-        style={{
-          width: 28, height: 28, flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          borderRadius: 8,
-          background: `${accent}14`,
-          color: accent,
-          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-          fontSize: 12, fontWeight: 800,
-          letterSpacing: '-0.02em',
-          fontVariantNumeric: 'tabular-nums',
-          border: `1px solid ${accent}28`,
-        }}
-      >
-        {a.seed ?? '·'}
-      </div>
+      {/* Logo com fallback automático */}
+      <AtleticaLogoSmall
+        slug={a.slug}
+        nome={a.nome}
+        logoUrl={a.logo_url}
+        seed={a.seed}
+        accent={accent}
+        size={32}
+      />
 
       {/* Nome */}
       <div style={{ flex: 1, minWidth: 0 }}>

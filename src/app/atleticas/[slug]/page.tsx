@@ -33,7 +33,7 @@ export default async function AtleticaWikiPage({ params }: PageProps) {
 
   const confMeta = getConferencia(atletica.conferencia)
   const divMeta  = getDivisao(atletica.divisao)
-  const accent   = confMeta?.cor ?? divMeta?.cor ?? '#2e6b42'
+  const accent   = atletica.cor_primaria ?? confMeta?.cor ?? divMeta?.cor ?? '#2e6b42'
 
   return (
     <AtleticaWikiClient

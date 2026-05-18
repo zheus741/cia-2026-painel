@@ -106,7 +106,7 @@ function StatusBadge({
 
 function DeleteButton({ onConfirm, disabled }: { onConfirm: () => void; disabled: boolean }) {
   const [step, setStep] = useState<'idle' | 'confirm'>('idle')
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   function handleClick() {
     if (step === 'idle') {

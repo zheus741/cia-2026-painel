@@ -211,7 +211,7 @@ function makeVenuePin(venue: Venue, active = false) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const C = {
-  bg:      'rgba(6,13,30,.94)',
+  bg:      'rgba(5,12,6,.94)',
   border:  'rgba(255,255,255,.08)',
   border2: 'rgba(255,255,255,.05)',
   gold:    '#c8973a',
@@ -249,17 +249,17 @@ function VenuePanel({
       {/* Header */}
       <div style={{ padding: '12px 14px 10px', borderBottom: `1px solid ${C.border2}`, flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <div style={{ fontFamily: 'Orbitron,monospace', fontSize: 8, letterSpacing: '0.38em', color: C.goldBr, textTransform: 'uppercase' }}>
+          <div style={{ fontSize: 8, letterSpacing: '0.38em', color: C.goldBr, textTransform: 'uppercase' }}>
             Praça · {String(venue.id).padStart(2, '0')}
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0 }}>
             ×
           </button>
         </div>
-        <div style={{ fontFamily: 'Orbitron,monospace', fontWeight: 700, fontSize: 13, color: C.fg, textAlign: 'center', letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.25 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: C.fg, textAlign: 'center', letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.25 }}>
           {venue.name}
         </div>
-        <div style={{ fontFamily: 'Rajdhani,system-ui', fontStyle: 'italic', fontSize: 12, color: C.muted, textAlign: 'center', marginTop: 4 }}>
+        <div style={{ fontStyle: 'italic', fontSize: 12, color: C.muted, textAlign: 'center', marginTop: 4 }}>
           {venue.addr} — <span style={{ color: C.goldBr }}>{venue.neigh}</span>
         </div>
       </div>
@@ -268,7 +268,7 @@ function VenuePanel({
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', scrollbarWidth: 'thin' }}>
 
         {/* Facilities */}
-        <div style={{ fontFamily: 'Orbitron,monospace', fontSize: 8, letterSpacing: '0.3em', color: C.goldBr, textTransform: 'uppercase', marginBottom: 6, paddingBottom: 4, borderBottom: `1px dashed ${C.border2}` }}>
+        <div style={{ fontSize: 8, letterSpacing: '0.3em', color: C.goldBr, textTransform: 'uppercase', marginBottom: 6, paddingBottom: 4, borderBottom: `1px dashed ${C.border2}` }}>
           Instalações
         </div>
         {venue.fac.map((f, i) => (
@@ -276,8 +276,8 @@ function VenuePanel({
             <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%,#d4c08a,#c8973a)', display: 'grid', placeItems: 'center', fontSize: 12, boxShadow: 'inset 0 0 0 1.5px rgba(0,0,0,.25),0 2px 5px rgba(0,0,0,.3)' }}>
               {f.i}
             </div>
-            <span style={{ fontSize: 12, color: C.fg, fontFamily: 'Rajdhani,system-ui', fontWeight: 500 }}>{f.n}</span>
-            <span style={{ fontFamily: 'Orbitron,monospace', fontWeight: 700, fontSize: 12, color: C.goldBr }}>{f.q}</span>
+            <span style={{ fontSize: 12, color: C.fg, fontWeight: 500 }}>{f.n}</span>
+            <span style={{ fontWeight: 700, fontSize: 12, color: C.goldBr }}>{f.q}</span>
           </div>
         ))}
         {venue.note && (
@@ -287,7 +287,7 @@ function VenuePanel({
         )}
 
         {/* Distances */}
-        <div style={{ marginTop: 12, fontFamily: 'Orbitron,monospace', fontSize: 8, letterSpacing: '0.3em', color: C.goldBr, textTransform: 'uppercase', marginBottom: 6, paddingBottom: 4, borderBottom: `1px dashed ${C.border2}` }}>
+        <div style={{ marginTop: 12, fontSize: 8, letterSpacing: '0.3em', color: C.goldBr, textTransform: 'uppercase', marginBottom: 6, paddingBottom: 4, borderBottom: `1px dashed ${C.border2}` }}>
           Praças Próximas
         </div>
         {distances.map(v => {
@@ -301,8 +301,8 @@ function VenuePanel({
               onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'transparent'}
             >
               <span style={{ fontSize: 12, textAlign: 'center' }}>{v.icon}</span>
-              <span style={{ fontSize: 11, color: C.muted, fontFamily: 'Rajdhani,system-ui', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
-              <span style={{ fontFamily: 'Orbitron,monospace', fontWeight: 700, fontSize: 11, color: distColor, background: 'rgba(255,255,255,.04)', padding: '2px 6px', borderRadius: 3, border: `1px solid rgba(255,255,255,.07)`, whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 11, color: C.muted, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+              <span style={{ fontWeight: 700, fontSize: 11, color: distColor, background: 'rgba(255,255,255,.04)', padding: '2px 6px', borderRadius: 3, border: `1px solid rgba(255,255,255,.07)`, whiteSpace: 'nowrap' }}>
                 {v.km} km
               </span>
             </div>
@@ -389,7 +389,7 @@ export function MapaVenuesClient() {
     })
       .addTo(map)
       .bindPopup(`
-        <div style="min-width:140px;font-family:Orbitron,monospace;color:#c8dccb;font-size:11px;text-align:center;padding:4px 0">
+        <div style="min-width:140px;color:#c8dccb;font-size:11px;text-align:center;padding:4px 0">
           <div style="font-size:9px;letter-spacing:.3em;color:#4ade80;text-transform:uppercase;margin-bottom:4px">Sede do Evento</div>
           <div style="font-weight:700;font-size:14px;color:#fff">Centro Park</div>
           <div style="font-size:10px;color:#4e7055;margin-top:3px">Uberaba · MG</div>
@@ -429,24 +429,23 @@ export function MapaVenuesClient() {
     <div style={{
       display: 'flex', flexDirection: 'column',
       height: 'calc(100vh - 3.5rem)',
-      background: '#060d1e',
-      fontFamily: 'Rajdhani,system-ui,sans-serif',
+      background: '#060e07',
     }}>
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 20px', flexShrink: 0,
-        background: '#060d1e',
+        background: '#060e07',
         borderBottom: '1px solid rgba(255,255,255,.06)',
         gap: 16,
       }}>
         {/* Title */}
         <div>
-          <div style={{ fontFamily: 'Orbitron,monospace', fontSize: 8, letterSpacing: '0.4em', color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', marginBottom: 2 }}>
+          <div style={{ fontSize: 8, letterSpacing: '0.4em', color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', marginBottom: 2 }}>
             CIA 2026 · Uberaba · MG
           </div>
-          <h1 style={{ fontFamily: 'Orbitron,monospace', fontWeight: 700, fontSize: 20, color: '#fff', letterSpacing: '0.14em', textTransform: 'uppercase', margin: 0, lineHeight: 1 }}>
+          <h1 style={{ fontWeight: 700, fontSize: 20, color: '#fff', letterSpacing: '0.14em', textTransform: 'uppercase', margin: 0, lineHeight: 1 }}>
             MAPA DO EVENTO
           </h1>
         </div>
@@ -464,7 +463,7 @@ export function MapaVenuesClient() {
                 onClick={() => { setTab(t.id as Tab); if (t.id === 'pracas') setSelected(null) }}
                 style={{
                   padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                  fontFamily: 'Rajdhani,system-ui', fontWeight: 600, fontSize: 13, letterSpacing: '0.04em',
+                  fontWeight: 600, fontSize: 13, letterSpacing: '0.04em',
                   transition: 'all .2s',
                   background: active
                     ? (t.id === 'centropark' ? 'rgba(74,222,128,.14)' : 'rgba(255,255,255,.10)')
@@ -496,16 +495,16 @@ export function MapaVenuesClient() {
         <div style={{
           position: 'absolute', top: 12, left: 12, zIndex: 500, pointerEvents: 'none',
           padding: '8px 12px',
-          background: 'rgba(6,13,30,.88)', backdropFilter: 'blur(10px)',
+          background: 'rgba(5,12,6,.88)', backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255,255,255,.1)', borderRadius: 6,
         }}>
-          <div style={{ fontFamily: 'Orbitron,monospace', fontSize: 7, letterSpacing: '0.4em', color: 'rgba(255,255,255,.35)', textTransform: 'uppercase', marginBottom: 2 }}>
+          <div style={{ fontSize: 7, letterSpacing: '0.4em', color: 'rgba(255,255,255,.35)', textTransform: 'uppercase', marginBottom: 2 }}>
             {tab === 'pracas' ? '◆ Satélite ◆' : '◆ Venue ◆'}
           </div>
-          <div style={{ fontFamily: 'Orbitron,monospace', fontWeight: 700, fontSize: 13, color: 'rgba(255,255,255,.85)', letterSpacing: '0.14em' }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: 'rgba(255,255,255,.85)', letterSpacing: '0.14em' }}>
             {tab === 'pracas' ? 'UBERABA · MG' : 'CENTRO PARK'}
           </div>
-          <div style={{ fontFamily: 'Rajdhani,system-ui', fontStyle: 'italic', fontSize: 10, color: 'rgba(255,255,255,.3)', marginTop: 2 }}>
+          <div style={{ fontStyle: 'italic', fontSize: 10, color: 'rgba(255,255,255,.3)', marginTop: 2 }}>
             {tab === 'pracas' ? '19°45′S · 47°55′W' : '04–07 Jun 2026'}
           </div>
         </div>
@@ -521,11 +520,11 @@ export function MapaVenuesClient() {
             <line x1="86" y1="50" x2="94" y2="50" stroke="rgba(255,255,255,.3)" strokeWidth=".8"/>
             <polygon points="50,14 54,50 50,42 46,50" fill="rgba(255,255,255,.85)"/>
             <polygon points="50,86 46,50 50,58 54,50" fill="rgba(255,255,255,.3)"/>
-            <circle cx="50" cy="50" r="3" fill="rgba(255,255,255,.6)" stroke="#060d1e" strokeWidth=".8"/>
-            <text x="50" y="26" textAnchor="middle" fontFamily="Orbitron,serif" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.8)">N</text>
-            <text x="50" y="78" textAnchor="middle" fontFamily="Orbitron,serif" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">S</text>
-            <text x="18" y="53" textAnchor="middle" fontFamily="Orbitron,serif" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">O</text>
-            <text x="82" y="53" textAnchor="middle" fontFamily="Orbitron,serif" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">L</text>
+            <circle cx="50" cy="50" r="3" fill="rgba(255,255,255,.6)" stroke="#060e07" strokeWidth=".8"/>
+            <text x="50" y="26" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.8)">N</text>
+            <text x="50" y="78" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">S</text>
+            <text x="18" y="53" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">O</text>
+            <text x="82" y="53" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">L</text>
           </svg>
         </div>
 
@@ -534,7 +533,7 @@ export function MapaVenuesClient() {
           <div style={{
             position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
             zIndex: 500,
-            background: 'rgba(6,13,30,.94)', backdropFilter: 'blur(20px)',
+            background: 'rgba(5,12,6,.94)', backdropFilter: 'blur(20px)',
             border: '1px solid rgba(74,222,128,.25)', borderRadius: 14,
             padding: '14px 20px',
             display: 'flex', alignItems: 'center', gap: 14,
@@ -543,10 +542,10 @@ export function MapaVenuesClient() {
           }}>
             <div style={{ fontSize: '2rem', lineHeight: 1, flexShrink: 0 }}>🗺️</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'Orbitron,monospace', fontWeight: 700, fontSize: 11, color: '#fff', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3 }}>
+              <div style={{ fontWeight: 700, fontSize: 11, color: '#fff', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3 }}>
                 Croqui Interno
               </div>
-              <div style={{ fontFamily: 'Rajdhani,system-ui', fontSize: 13, color: 'rgba(255,255,255,.45)', lineHeight: 1.35 }}>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,.45)', lineHeight: 1.35 }}>
                 Palcos, bares, banheiros, acessos e serviços do Centro Park
               </div>
             </div>
@@ -558,7 +557,7 @@ export function MapaVenuesClient() {
                 background: 'rgba(74,222,128,.15)',
                 border: '1px solid rgba(74,222,128,.4)',
                 color: '#4ade80', textDecoration: 'none',
-                fontFamily: 'Rajdhani,system-ui', fontWeight: 700, fontSize: 13, letterSpacing: '0.06em',
+                fontWeight: 700, fontSize: 13, letterSpacing: '0.06em',
                 whiteSpace: 'nowrap', flexShrink: 0,
                 transition: 'background .2s',
               }}
@@ -590,7 +589,7 @@ export function MapaVenuesClient() {
       <div style={{
         display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 6px',
         padding: '8px 16px', flexShrink: 0,
-        background: '#060d1e',
+        background: '#060e07',
         borderTop: '1px solid rgba(255,255,255,.06)',
       }}>
         {LEGEND.map(item => (
@@ -604,10 +603,10 @@ export function MapaVenuesClient() {
             }}
           >
             <span style={{ fontSize: 13 }}>{item.icon}</span>
-            <span style={{ fontFamily: 'Rajdhani,system-ui', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: item.highlight ? '#4ade80' : 'rgba(255,255,255,.38)' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: item.highlight ? '#4ade80' : 'rgba(255,255,255,.38)' }}>
               {item.label}
             </span>
-            <span style={{ fontFamily: 'Orbitron,monospace', fontSize: 10, fontWeight: 700, color: item.highlight ? '#4ade80' : 'rgba(255,255,255,.25)' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: item.highlight ? '#4ade80' : 'rgba(255,255,255,.25)' }}>
               {item.count}
             </span>
           </div>

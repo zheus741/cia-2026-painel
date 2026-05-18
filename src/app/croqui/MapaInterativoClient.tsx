@@ -165,18 +165,18 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
   }, [])
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'calc(100vh - 3.5rem)', background:'#060d1e', fontFamily:'Rajdhani,system-ui,sans-serif' }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'calc(100vh - 3.5rem)', background:'#060e07' }}>
       {/* ── Header ── */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 20px', flexShrink:0, borderBottom:'1px solid rgba(255,255,255,.06)', gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Orbitron,monospace', fontSize:8, letterSpacing:'0.4em', color:'rgba(255,255,255,.3)', textTransform:'uppercase', marginBottom:2 }}>
+          <div style={{ fontSize:8, letterSpacing:'0.4em', color:'rgba(255,255,255,.3)', textTransform:'uppercase', marginBottom:2 }}>
             CIA 2026 · Centro Park · Uberaba
           </div>
-          <h1 style={{ fontFamily:'Orbitron,monospace', fontWeight:700, fontSize:20, color:'#fff', letterSpacing:'0.14em', textTransform:'uppercase', margin:0, lineHeight:1 }}>
+          <h1 style={{ fontWeight:700, fontSize:20, color:'#fff', letterSpacing:'0.14em', textTransform:'uppercase', margin:0, lineHeight:1 }}>
             MAPA DO EVENTO
           </h1>
           {totalLive > 0 && (
-            <p style={{ margin:'4px 0 0', fontFamily:'Rajdhani,system-ui', fontSize:12, color:'#4ade80' }}>
+            <p style={{ margin:'4px 0 0', fontSize:12, color:'#4ade80' }}>
               · {totalLive} área{totalLive > 1 ? 's' : ''} com atividade agora
             </p>
           )}
@@ -187,7 +187,7 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
             padding:'5px 12px', borderRadius:9999,
             border: conectado ? '1px solid rgba(74,222,128,.3)' : '1px solid rgba(255,255,255,.1)',
             background: conectado ? 'rgba(74,222,128,.08)' : 'rgba(255,255,255,.04)',
-            fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700,
+            fontSize:9, fontWeight:700,
             letterSpacing:'0.2em', textTransform:'uppercase',
             color: conectado ? '#4ade80' : 'rgba(255,255,255,.35)',
             flexShrink:0,
@@ -203,7 +203,7 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
            className="lg:grid-cols-[1fr_360px]">
 
         {/* MAPA */}
-        <div style={{ position:'relative', overflow:'hidden', borderRadius:16, border:'1px solid rgba(255,255,255,.08)', background:'#060d1e', minHeight:460 }}>
+        <div style={{ position:'relative', overflow:'hidden', borderRadius:16, border:'1px solid rgba(255,255,255,.08)', background:'#060e07', minHeight:460 }}>
 
           {/* Subtle vignette */}
           <div aria-hidden style={{ position:'absolute', inset:0, pointerEvents:'none',
@@ -224,7 +224,7 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
                 style={{
                   width:32, height:32, borderRadius:8,
                   border:'1px solid rgba(255,255,255,0.10)',
-                  background:'rgba(6,13,30,0.85)',
+                  background:'rgba(5,12,6,0.85)',
                   color:'rgba(255,255,255,0.45)',
                   display:'flex', alignItems:'center', justifyContent:'center',
                   cursor:'pointer', backdropFilter:'blur(8px)',
@@ -291,7 +291,7 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
                 </filter>
                 {/* Dot grid — similar ao grid de ruas da ref FIFA */}
                 <pattern id="dotgrid" patternUnits="userSpaceOnUse" width="28" height="28">
-                  <rect width="28" height="28" fill="#060d1e" />
+                  <rect width="28" height="28" fill="#060e07" />
                   <circle cx="14" cy="14" r="0.7" fill="rgba(255,255,255,0.07)" />
                 </pattern>
               </defs>
@@ -456,7 +456,7 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
         </div>
 
         {/* SIDE PANEL */}
-        <div style={{ borderRadius:16, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(10,18,40,0.95)', overflow:'hidden', minHeight:0, display:'flex', flexDirection:'column' }}>
+        <div style={{ borderRadius:16, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(8,18,10,0.95)', overflow:'hidden', minHeight:0, display:'flex', flexDirection:'column' }}>
           {selectedItem ? (
             <SidePanel item={selectedItem} onClose={() => setSelectedSlug(null)} />
           ) : (
@@ -540,7 +540,7 @@ function SidePanel({
   const cfg = CATEGORIA_CONFIG[area.categoria]
 
   return (
-    <div style={{ display:'flex', height:'100%', flexDirection:'column', fontFamily:'Rajdhani,system-ui,sans-serif' }}>
+    <div style={{ display:'flex', height:'100%', flexDirection:'column' }}>
       {/* Header */}
       <div style={{
         position:'relative', padding:'20px 20px 16px', flexShrink:0,
@@ -552,7 +552,7 @@ function SidePanel({
           style={{
             position:'absolute', right:10, top:10,
             width:28, height:28, borderRadius:'50%',
-            border:'1px solid rgba(255,255,255,0.08)', background:'rgba(6,13,30,0.6)',
+            border:'1px solid rgba(255,255,255,0.08)', background:'rgba(5,12,6,0.6)',
             color:'rgba(255,255,255,0.45)', display:'flex', alignItems:'center', justifyContent:'center',
             cursor:'pointer', transition:'background 0.15s',
           }}
@@ -564,12 +564,12 @@ function SidePanel({
           display:'inline-flex', alignItems:'center', gap:4,
           borderRadius:9999, padding:'2px 10px',
           background: `${cfg.cor}20`, color: cfg.cor, border: `1px solid ${cfg.cor}40`,
-          fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700, letterSpacing:'0.15em', textTransform:'uppercase',
+          fontSize:9, fontWeight:700, letterSpacing:'0.15em', textTransform:'uppercase',
         }}>
           <span>{cfg.icone}</span>
           {cfg.label}
         </span>
-        <h2 style={{ margin:'8px 0 0', fontFamily:'Orbitron,monospace', fontSize:18, fontWeight:700, color:'#fff', letterSpacing:'0.05em', lineHeight:1.2 }}>
+        <h2 style={{ margin:'8px 0 0', fontSize:18, fontWeight:700, color:'#fff', letterSpacing:'0.05em', lineHeight:1.2 }}>
           {area.nome}
         </h2>
         {area.descricao && (
@@ -585,7 +585,7 @@ function SidePanel({
         {/* Live section */}
         {hasLive && live && (
           <section>
-            <h3 style={{ display:'flex', alignItems:'center', gap:6, fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:'#4ade80', marginBottom:10 }}>
+            <h3 style={{ display:'flex', alignItems:'center', gap:6, fontSize:9, fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:'#4ade80', marginBottom:10 }}>
               <Radio size={10} style={{ animation:'pulse 2s infinite' }} />
               Acontecendo agora
             </h3>
@@ -600,7 +600,7 @@ function SidePanel({
         {/* Setor info */}
         {setor && (
           <section>
-            <h3 style={{ fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700, letterSpacing:'0.15em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)', marginBottom:8, display:'flex', alignItems:'center', gap:4 }}>
+            <h3 style={{ fontSize:9, fontWeight:700, letterSpacing:'0.15em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)', marginBottom:8, display:'flex', alignItems:'center', gap:4 }}>
               <MapPin size={9} />
               Setor
             </h3>
@@ -624,7 +624,7 @@ function SidePanel({
         {/* Capacidade fallback (sem setor) */}
         {!setor && area.capacidade && (
           <section>
-            <h3 style={{ fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700, letterSpacing:'0.15em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)', marginBottom:8, display:'flex', alignItems:'center', gap:4 }}>
+            <h3 style={{ fontSize:9, fontWeight:700, letterSpacing:'0.15em', textTransform:'uppercase', color:'rgba(255,255,255,0.35)', marginBottom:8, display:'flex', alignItems:'center', gap:4 }}>
               <Users size={9} />
               Capacidade
             </h3>
@@ -649,10 +649,9 @@ function SidePanel({
 const LIVE_CARD: React.CSSProperties = {
   borderRadius:10, border:'1px solid rgba(74,222,128,0.25)',
   background:'rgba(74,222,128,0.06)', padding:'10px 12px',
-  fontFamily:'Rajdhani,system-ui,sans-serif',
 }
 const LIVE_LABEL: React.CSSProperties = {
-  fontFamily:'Orbitron,monospace', fontSize:9, fontWeight:700,
+  fontSize:9, fontWeight:700,
   letterSpacing:'0.15em', textTransform:'uppercase', color:'#4ade80',
 }
 const BADGE_AMBER: React.CSSProperties = {
@@ -731,7 +730,7 @@ function LiveFestaCard({ festa }: { festa: FestaAtiva }) {
 
 function EmptyPanel({ totalAreas, totalLive }: { totalAreas: number; totalLive: number }) {
   return (
-    <div style={{ display:'flex', height:'100%', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24, textAlign:'center', gap:12, fontFamily:'Rajdhani,system-ui,sans-serif' }}>
+    <div style={{ display:'flex', height:'100%', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24, textAlign:'center', gap:12 }}>
       {/* Ícone */}
       <div style={{
         width:56, height:56, borderRadius:'50%',
@@ -741,7 +740,7 @@ function EmptyPanel({ totalAreas, totalLive }: { totalAreas: number; totalLive: 
         <MapPin size={22} style={{ color:'rgba(255,255,255,0.25)' }} />
       </div>
       <div>
-        <p style={{ fontFamily:'Orbitron,monospace', fontSize:15, fontWeight:700, color:'#fff', letterSpacing:'0.05em', margin:0 }}>
+        <p style={{ fontSize:15, fontWeight:700, color:'#fff', letterSpacing:'0.05em', margin:0 }}>
           Toque numa área
         </p>
         <p style={{ fontSize:12, color:'rgba(255,255,255,0.35)', marginTop:6, maxWidth:240, lineHeight:1.5 }}>
@@ -752,11 +751,11 @@ function EmptyPanel({ totalAreas, totalLive }: { totalAreas: number; totalLive: 
       <div style={{ marginTop:16, display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, width:'100%', maxWidth:220 }}>
         <div style={{ borderRadius:10, border:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)', padding:'10px 8px', textAlign:'center' }}>
           <div style={{ fontVariantNumeric:'tabular-nums', fontSize:22, fontWeight:800, color:'#fff' }}>{totalAreas}</div>
-          <div style={{ fontFamily:'Orbitron,monospace', fontSize:8, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(255,255,255,0.3)', marginTop:2 }}>áreas</div>
+          <div style={{ fontSize:8, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(255,255,255,0.3)', marginTop:2 }}>áreas</div>
         </div>
         <div style={{ borderRadius:10, border:'1px solid rgba(74,222,128,0.25)', background:'rgba(74,222,128,0.06)', padding:'10px 8px', textAlign:'center' }}>
           <div style={{ fontVariantNumeric:'tabular-nums', fontSize:22, fontWeight:800, color:'#4ade80' }}>{totalLive}</div>
-          <div style={{ fontFamily:'Orbitron,monospace', fontSize:8, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(74,222,128,0.6)', marginTop:2 }}>ao vivo</div>
+          <div style={{ fontSize:8, fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'rgba(74,222,128,0.6)', marginTop:2 }}>ao vivo</div>
         </div>
       </div>
     </div>

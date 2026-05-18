@@ -264,67 +264,58 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
                 transition: dragRef.current ? 'none' : 'transform 0.2s ease',
               }}
             >
-              {/* Defs */}
+              {/* ── Defs ─────────────────────────────────────────────────────────── */}
               <defs>
+                {/* Fills muito sutis — cor apenas no traço, interior quase vazio */}
                 {categoriasOrdenadas.map(cat => {
                   const cfg = CATEGORIA_CONFIG[cat]
                   return (
                     <linearGradient key={cat} id={`g-${cat}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%"   stopColor={cfg.cor} stopOpacity="0.28" />
-                      <stop offset="100%" stopColor={cfg.cor} stopOpacity="0.10" />
+                      <stop offset="0%"   stopColor={cfg.cor} stopOpacity="0.11" />
+                      <stop offset="100%" stopColor={cfg.cor} stopOpacity="0.04" />
                     </linearGradient>
                   )
                 })}
-                <filter id="glow-live">
-                  <feGaussianBlur stdDeviation="4" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-                <filter id="glow-sel">
-                  <feGaussianBlur stdDeviation="6" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-                {/* Dot grid — similar ao grid de ruas da ref FIFA */}
-                <pattern id="dotgrid" patternUnits="userSpaceOnUse" width="28" height="28">
-                  <rect width="28" height="28" fill="#060e07" />
-                  <circle cx="14" cy="14" r="0.7" fill="rgba(255,255,255,0.07)" />
+
+                {/* Grid fino — textura de chão */}
+                <pattern id="grid" patternUnits="userSpaceOnUse" width="60" height="60">
+                  <rect width="60" height="60" fill="#060e07" />
+                  <path d="M60 0H0V60" fill="none" stroke="rgba(255,255,255,0.035)" strokeWidth="0.5"/>
                 </pattern>
+
+                {/* Glow para live activity */}
+                <filter id="glow-live" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="5" result="blur" />
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+
+                {/* Glow para área selecionada */}
+                <filter id="glow-sel" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="8" result="blur" />
+                  <feColorMatrix in="blur" type="matrix"
+                    values="0 0 0 0 0.29  0 0 0 0 0.87  0 0 0 0 0.5  0 0 0 0.6 0" result="green"/>
+                  <feMerge><feMergeNode in="green"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
               </defs>
 
-              {/* Base navy */}
-              <rect x={0} y={0} width={VIEWBOX.w} height={VIEWBOX.h} fill="url(#dotgrid)" />
+              {/* ── Fundo: grid de chão ───────────────────────────────────────────── */}
+              <rect x={0} y={0} width={VIEWBOX.w} height={VIEWBOX.h} fill="url(#grid)" />
 
-              {/* Venue ground polygons — área do evento levemente mais clara */}
-              {/* Zona A: Palco Principal + CIA Club esq. */}
+              {/* ── Perímetro do venue — contorno único limpo ─────────────────────── */}
               <polygon
-                points="18,22 392,18 402,98 570,98 582,708 548,752 18,772"
-                fill="rgba(255,255,255,0.025)" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5"
-              />
-              {/* Zona B: Eletrônico + Bares centro */}
-              <polygon
-                points="570,98 842,98 858,558 596,710 582,708"
-                fill="rgba(255,255,255,0.018)" stroke="rgba(255,255,255,0.08)" strokeWidth="1"
-              />
-              {/* Zona C: CIA Club dir. + Bar 04 */}
-              <polygon
-                points="842,98 1160,200 1162,560 1162,648 988,672 850,558 858,558"
-                fill="rgba(255,255,255,0.018)" stroke="rgba(255,255,255,0.08)" strokeWidth="1"
-              />
-              {/* Faixa de serviços — base */}
-              <rect x={92} y={742} width={690} height={65} rx={4}
-                fill="rgba(255,255,255,0.018)" stroke="rgba(255,255,255,0.07)" strokeWidth="1"
+                points="18,18 1162,18 1162,648 1000,672 862,808 18,808"
+                fill="rgba(255,255,255,0.012)"
+                stroke="rgba(255,255,255,0.13)"
+                strokeWidth="1.5"
               />
 
-              {/* Caminho / circulação central */}
-              <polygon
-                points="570,98 600,98 600,290 658,290 658,740 570,740 570,708"
-                fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5"
-              />
+              {/* ── Separador faixa de serviços ───────────────────────────────────── */}
+              <line x1="18" y1="742" x2="862" y2="742"
+                stroke="rgba(255,255,255,0.07)" strokeWidth="0.8" strokeDasharray="10,6" />
+
+              {/* ── Corredor central (L→R) ────────────────────────────────────────── */}
+              <line x1="18" y1="400" x2="862" y2="400"
+                stroke="rgba(255,255,255,0.04)" strokeWidth="0.5" strokeDasharray="6,10" />
 
               {/* Áreas */}
               {areasEnriched.map(({ area, setor, hasLive, live }) => {
@@ -349,9 +340,14 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
                 }
 
                 const fill = `url(#g-${area.categoria})`
-                const stroke = isSelected ? '#fafaf0' : isHovered ? cfg.corStroke : cfg.cor
-                const strokeWidth = isSelected ? 2.5 : isHovered ? 2 : 1.2
-                const opacity = isHovered || isSelected ? 1 : 0.92
+                const stroke = isSelected
+                  ? cfg.cor
+                  : isHovered ? cfg.corStroke : `${cfg.cor}90`
+                const strokeWidth = isSelected ? 2 : isHovered ? 1.8 : 1
+                const opacity = isHovered || isSelected ? 1 : 0.88
+
+                // Tamanho de label: aumentar para áreas principais
+                const lsz = area.labelSize ?? 12
 
                 return (
                   <g
@@ -363,57 +359,81 @@ export function MapaInterativoClient({ setores, jogosVivo, showsAtivos, festasAt
                     style={{ cursor: 'pointer' }}
                     opacity={opacity}
                   >
+                    {/* Selecionado: glow colorido por trás */}
+                    {isSelected && (
+                      <AreaShape
+                        area={area}
+                        fill={`${cfg.cor}18`}
+                        stroke={cfg.cor}
+                        strokeWidth={4}
+                        filter="url(#glow-sel)"
+                      />
+                    )}
+
                     {/* Glow ao redor se tem live activity */}
-                    {hasLive && (
+                    {hasLive && !isSelected && (
                       <AreaShape
                         area={area}
                         fill="none"
-                        stroke="#6AB87E"
+                        stroke="#4ade80"
                         strokeWidth={3}
                         filter="url(#glow-live)"
                         className="animate-pulse"
                         style={{ animationDuration: '2.2s' }}
                       />
                     )}
+
                     <AreaShape
                       area={area}
                       fill={fill}
                       stroke={stroke}
                       strokeWidth={strokeWidth}
-                      style={{ transition: 'stroke-width 0.18s, stroke 0.18s' }}
+                      style={{ transition: 'stroke-width 0.15s, stroke 0.15s, opacity 0.15s' }}
                     />
 
-                    {/* Label */}
+                    {/* Ícone acima do label para áreas grandes */}
+                    {lsz >= 18 && (
+                      <text
+                        x={cx} y={cy - lsz * 0.75}
+                        textAnchor="middle" dominantBaseline="middle"
+                        fontSize={lsz * 1.2}
+                        style={{ pointerEvents:'none', userSelect:'none' }}
+                      >
+                        {area.icone ?? cfg.icone}
+                      </text>
+                    )}
+
+                    {/* Label nome */}
                     <text
                       x={cx}
-                      y={cy}
+                      y={lsz >= 18 ? cy + lsz * 0.65 : cy}
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      fill="#fafaf0"
-                      fontSize={area.labelSize ?? 12}
-                      fontWeight={700}
+                      fill={isSelected ? '#fff' : isHovered ? cfg.corStroke : 'rgba(255,255,255,0.88)'}
+                      fontSize={lsz}
+                      fontWeight={lsz >= 18 ? 800 : 700}
                       style={{
                         pointerEvents: 'none',
                         userSelect: 'none',
-                        textShadow: '0 1px 3px rgba(0,0,0,0.7)',
-                        letterSpacing: '-0.01em',
+                        letterSpacing: lsz >= 18 ? '0.06em' : '0.01em',
+                        textTransform: lsz >= 18 ? 'uppercase' : 'none',
                       }}
                     >
-                      {area.icone ?? cfg.icone} {area.nome}
+                      {lsz < 18 && `${area.icone ?? cfg.icone} `}{area.nome}
                     </text>
 
                     {/* Badge de contagem live */}
                     {hasLive && live && (
                       <LiveBadge
                         x={cx}
-                        y={cy + (area.labelSize ?? 12) * 0.9}
+                        y={cy + lsz * 1.1}
                         count={live.jogos.length + live.shows.length + live.festas.length}
                       />
                     )}
 
-                    {/* Se vinculado a setor mas sem live, ainda mostra ponto verde sutil */}
+                    {/* Se vinculado a setor mas sem live, mostra ponto verde */}
                     {!hasLive && setor && (
-                      <circle cx={cx} cy={cy - (area.labelSize ?? 12) * 0.7} r={2} fill="#6AB87E" opacity={0.5} />
+                      <circle cx={cx} cy={cy - lsz * 0.7} r={2.5} fill="#4ade80" opacity={0.4} />
                     )}
                   </g>
                 )

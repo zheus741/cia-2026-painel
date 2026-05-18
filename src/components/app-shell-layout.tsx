@@ -68,7 +68,6 @@ const ADMIN_GROUPS: NavGroup[] = [
       { label: 'Escala',         href: '/admin/escala',       icon: ClipboardList },
       { label: 'Foto & Vídeo',   href: '/admin/escala-av',    icon: Aperture },
       { label: 'Mapa Ao Vivo',   href: '/mapa',               icon: MapPin },
-      { label: 'Croqui Evento',  href: '/croqui',             icon: Map },
       { label: 'Shows',          href: '/admin/shows',        icon: Music },
       { label: 'Festas',         href: '/admin/festas',       icon: PartyPopper },
     ],
@@ -101,7 +100,6 @@ function getMediaGroups(role: string): NavGroup[] {
         ...(!isOperador ? [{ label: 'Pautas', href: '/pautas', icon: Lightbulb }] : []),
         { label: 'Conteúdos',     href: '/conteudos',    icon: Camera },
         { label: 'Mapa Ao Vivo',  href: '/mapa',         icon: MapPin },
-        { label: 'Croqui Evento', href: '/croqui',       icon: Map },
       ],
     },
     {

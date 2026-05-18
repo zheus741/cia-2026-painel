@@ -3,7 +3,6 @@
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef, useState } from 'react'
 import * as L from 'leaflet'
-import Link from 'next/link'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -532,46 +531,6 @@ export function MapaVenuesClient() {
           </svg>
         </div>
 
-        {/* Centro Park tab — CTA banner */}
-        {tab === 'centropark' && !selected && (
-          <div style={{
-            position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 500,
-            background: 'rgba(5,12,6,.94)', backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(74,222,128,.25)', borderRadius: 14,
-            padding: '14px 20px',
-            display: 'flex', alignItems: 'center', gap: 14,
-            maxWidth: 420, width: 'calc(100% - 32px)',
-            boxShadow: '0 8px 40px rgba(0,0,0,.6),0 0 0 1px rgba(74,222,128,.1)',
-          }}>
-            <div style={{ fontSize: '2rem', lineHeight: 1, flexShrink: 0 }}>🗺️</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 11, color: '#fff', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 3 }}>
-                Croqui Interno
-              </div>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,.45)', lineHeight: 1.35 }}>
-                Palcos, bares, banheiros, acessos e serviços do Centro Park
-              </div>
-            </div>
-            <Link
-              href="/croqui"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '9px 16px', borderRadius: 8,
-                background: 'rgba(74,222,128,.15)',
-                border: '1px solid rgba(74,222,128,.4)',
-                color: '#4ade80', textDecoration: 'none',
-                fontWeight: 700, fontSize: 13, letterSpacing: '0.06em',
-                whiteSpace: 'nowrap', flexShrink: 0,
-                transition: 'background .2s',
-              }}
-              onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(74,222,128,.25)'}
-              onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(74,222,128,.15)'}
-            >
-              Ver Croqui →
-            </Link>
-          </div>
-        )}
 
         {/* Side venue panel */}
         <div style={{

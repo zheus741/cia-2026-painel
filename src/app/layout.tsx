@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { DM_Sans } from 'next/font/google'
+import { DM_Sans, Fraunces, Geist } from 'next/font/google'
 import { PushNotificationSetup } from '@/components/PushNotificationSetup'
 import { NavigationProgress } from '@/components/NavigationProgress'
 import { Toaster } from '@/components/toast'
@@ -10,6 +10,24 @@ const dmSans = DM_Sans({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700', '800'],
   variable: '--font-dm-sans',
+  display: 'swap',
+})
+
+// Fraunces — serif display variable (optical sizing + soft + wonk).
+// Usada nos números gigantes e headers editoriais.
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800', '900'],
+  style: ['normal', 'italic'],
+  variable: '--font-fraunces',
+  display: 'swap',
+})
+
+// Geist Sans — body / UI.
+const geist = Geist({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-geist',
   display: 'swap',
 })
 
@@ -37,7 +55,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`h-full antialiased ${dmSans.variable}`}>
+    <html lang="pt-BR" className={`h-full antialiased ${dmSans.variable} ${fraunces.variable} ${geist.variable}`}>
       <body className="min-h-full flex flex-col">
         <NavigationProgress />
         {children}

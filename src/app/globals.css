@@ -1103,6 +1103,289 @@ body {
     0 18px 44px rgba(196,107,74,0.22);
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   ── HomeBriefing v2 — Editorial Sport Terminal ──
+   Fraunces serif display + Geist + blob orgânico + grain + signature
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Container do briefing — squircle frame com border preto ultra-fino */
+.cia-brf {
+  position: relative;
+  padding: 36px 28px 28px;
+  border-radius: 28px;
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(240,208,74,0.10) 0%, transparent 55%),
+    radial-gradient(90% 70% at 0% 100%, rgba(46,107,66,0.06) 0%, transparent 50%),
+    #FAF7F0;
+  border: 1px solid rgba(10,15,11,0.10);
+  box-shadow:
+    0 1px 0 rgba(10,15,11,0.03),
+    0 28px 68px -32px rgba(10,15,11,0.20);
+  overflow: hidden;
+}
+
+/* Grain overlay — SVG noise inline, sutil */
+.cia-grain::before {
+  content: '';
+  position: absolute; inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.42;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.04 0 0 0 0 0.06 0 0 0 0 0.04 0 0 0 0.18 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 220px 220px;
+}
+
+/* Signature row — micro-caps + estrela ★ */
+.cia-brf-signature {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(10,15,11,0.48);
+}
+.cia-brf-signature::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(10,15,11,0.18) 0%, transparent 100%);
+}
+.cia-brf-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  color: #2e6b42;
+  font-size: 14px;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+/* Greeting v2 — pareamento serif italic + sans bold */
+.cia-brf-greeting {
+  position: relative; z-index: 2;
+  margin: 22px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  animation: cia-brf-rise 0.7s cubic-bezier(0.16,1,0.3,1) both;
+}
+.cia-brf-greeting__ola {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: clamp(34px, 4vw, 56px);
+  font-variation-settings: 'opsz' 144, 'SOFT' 100, 'WONK' 1;
+  line-height: 0.96;
+  letter-spacing: -0.02em;
+  color: rgba(10,15,11,0.55);
+}
+.cia-brf-greeting__nome {
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-weight: 800;
+  font-size: clamp(48px, 6.2vw, 92px);
+  line-height: 0.94;
+  letter-spacing: -0.045em;
+  color: #0A0F0B;
+}
+.cia-brf-greeting__rule {
+  width: 64px; height: 2px;
+  background: #0A0F0B;
+  margin: 18px 0 12px;
+}
+.cia-brf-greeting__line {
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-size: clamp(15px, 1.2vw, 17px);
+  font-weight: 500;
+  color: rgba(10,15,11,0.58);
+  letter-spacing: -0.01em;
+  max-width: 540px;
+}
+.cia-brf-greeting__role {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #2e6b42;
+}
+.cia-brf-greeting__role::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #2e6b42;
+  box-shadow: 0 0 8px rgba(46,107,66,0.55);
+}
+
+@keyframes cia-brf-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Hero countdown card (right side) ─── */
+.cia-brf-hero {
+  position: relative;
+  border-radius: 26px;
+  padding: 26px 28px;
+  background: #0A0F0B;
+  border: 1px solid rgba(10,15,11,0.12);
+  overflow: hidden;
+  text-decoration: none;
+  isolation: isolate;
+  display: flex; flex-direction: column;
+  min-height: 360px;
+  animation: cia-brf-rise 0.7s cubic-bezier(0.16,1,0.3,1) 80ms both;
+  transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s ease;
+}
+.cia-brf-hero:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 32px 64px -28px rgba(46,107,66,0.45);
+}
+
+/* Blob orgânico verde místico — assinatura visual */
+.cia-brf-blob {
+  position: absolute;
+  z-index: 0;
+  top: 50%; left: 50%;
+  width: 520px; height: 520px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter: blur(0.4px);
+  animation: cia-brf-blob-drift 16s ease-in-out infinite;
+}
+
+@keyframes cia-brf-blob-drift {
+  0%, 100% { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+  33%      { transform: translate(-47%, -53%) rotate(8deg) scale(1.05); }
+  66%      { transform: translate(-53%, -48%) rotate(-6deg) scale(0.96); }
+}
+
+/* Eyebrow do hero (preto sobre verde) */
+.cia-brf-hero__eyebrow {
+  position: relative; z-index: 2;
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cia-brf-hero__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #FFFFFF;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+}
+
+/* Número gigante do hero — Fraunces variable */
+.cia-brf-hero__num {
+  position: relative; z-index: 2;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-variation-settings: 'opsz' 144, 'SOFT' 0, 'WONK' 0;
+  font-weight: 700;
+  font-size: clamp(140px, 18vw, 240px);
+  line-height: 0.82;
+  letter-spacing: -0.05em;
+  color: #FAF7F0;
+  margin-top: auto;
+}
+.cia-brf-hero__num em {
+  font-style: italic;
+  font-weight: 500;
+  color: #2e6b42;
+}
+.cia-brf-hero__unit {
+  display: block;
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.50);
+  margin-top: 18px;
+}
+.cia-brf-hero__ticker {
+  position: relative; z-index: 2;
+  margin-top: 8px;
+  font-family: 'ShareTechMono', ui-monospace, monospace;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: rgba(46,107,66,0.95);
+  font-variant-numeric: tabular-nums;
+}
+.cia-brf-hero__foot {
+  position: relative; z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 22px;
+  gap: 12px;
+}
+.cia-brf-hero__date {
+  font-family: var(--font-geist), system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.40);
+}
+
+/* Pipeline card v2 — squircle cream com border preto */
+.cia-brf-pipe {
+  position: relative;
+  border-radius: 26px;
+  padding: 22px 24px 20px;
+  background: #FAF7F0;
+  border: 1px solid rgba(10,15,11,0.12);
+  text-decoration: none;
+  display: flex; flex-direction: column;
+  min-height: 360px;
+  overflow: hidden;
+  animation: cia-brf-rise 0.7s cubic-bezier(0.16,1,0.3,1) 160ms both;
+  transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s ease, border-color 0.3s;
+}
+.cia-brf-pipe:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 32px 64px -28px rgba(70,50,5,0.25);
+  border-color: rgba(10,15,11,0.20);
+}
+
+/* Grid container do briefing v2 */
+.cia-brf-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1.45fr;
+  gap: 14px;
+  margin-top: 30px;
+}
+@media (max-width: 1024px) {
+  .cia-brf-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Live ticker — monospace tabular, evita layout shift */
 .cia-live-ticker {
   display: inline-flex;

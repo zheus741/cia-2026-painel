@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, Maximize2 } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -23,15 +23,13 @@ interface BriefingProps {
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-// EVENT_START — duplicado de page.tsx pois HomeBriefing é client component
-// e precisa do tempo exato para o LiveTicker.
 const EVENT_START = new Date('2026-06-04T00:00:00-03:00')
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CountUp — animated number counter
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CountUp({ to, duration = 1400 }: { to: number; duration?: number }) {
+function CountUp({ to, duration = 1600 }: { to: number; duration?: number }) {
   const [val, setVal] = useState(0)
 
   useEffect(() => {
@@ -53,7 +51,6 @@ function CountUp({ to, duration = 1400 }: { to: number; duration?: number }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LiveTicker — tique-taque preciso até o início do evento
-// Mostra Hh MMmin SSs (resto sub-dia) — visualmente conta para baixo
 // ─────────────────────────────────────────────────────────────────────────────
 
 function LiveTicker({ target }: { target: Date }) {
@@ -65,13 +62,8 @@ function LiveTicker({ target }: { target: Date }) {
     return () => clearInterval(id)
   }, [])
 
-  // Reserva espaço durante SSR/pré-hidratação — evita layout shift
   if (!now) {
-    return (
-      <span className="cia-live-ticker" style={{ visibility: 'hidden' }} aria-hidden="true">
-        00h 00min 00s
-      </span>
-    )
+    return <span className="cia-brf-hero__ticker" style={{ visibility: 'hidden' }}>00h 00min 00s</span>
   }
 
   const diffMs = Math.max(0, target.getTime() - now.getTime())
@@ -86,7 +78,7 @@ function LiveTicker({ target }: { target: Date }) {
 
   return (
     <span
-      className="cia-live-ticker"
+      className="cia-brf-hero__ticker"
       aria-label={`Faltam ${fullDays} dias, ${hours} horas, ${min} minutos e ${sec} segundos`}
     >
       {pad(hours)}h {pad(min)}min {pad(sec)}s
@@ -95,196 +87,112 @@ function LiveTicker({ target }: { target: Date }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CircleArrow — black circular CTA button (signature element)
+// OrganicBlob — assinatura visual SVG (verde místico)
+// Curva orgânica imperfeita, anima de leve via .cia-brf-blob
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CircleArrow({ size = 44, dark = true }: { size?: number; dark?: boolean }) {
+function OrganicBlob() {
   return (
-    <span
-      style={{
-        width: size, height: size,
-        borderRadius: '50%',
-        background: dark ? '#0A0F0B' : '#FFFFFF',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        boxShadow: '0 2px 8px rgba(10,15,11,0.18)',
-        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}
-      className="cia-circle-arrow"
+    <svg
+      className="cia-brf-blob"
+      viewBox="0 0 600 600"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
     >
-      <ArrowUpRight
-        style={{
-          width: size * 0.42,
-          height: size * 0.42,
-          color: dark ? '#FFFFFF' : '#0A0F0B',
-          strokeWidth: 2,
-        }}
+      <defs>
+        <radialGradient id="blob-grad" cx="50%" cy="45%" r="55%">
+          <stop offset="0%"   stopColor="#3d7a52" stopOpacity="0.95" />
+          <stop offset="55%"  stopColor="#2e6b42" stopOpacity="0.75" />
+          <stop offset="100%" stopColor="#1a3a24" stopOpacity="0.55" />
+        </radialGradient>
+        <filter id="blob-soft" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="6" />
+        </filter>
+      </defs>
+      {/* Forma orgânica — não é círculo perfeito */}
+      <path
+        d="M300,72 C402,72 488,128 530,220 C572,312 564,420 502,488 C440,556 326,572 232,540 C138,508 60,420 60,316 C60,212 122,124 200,90 C236,76 268,72 300,72 Z"
+        fill="url(#blob-grad)"
+        filter="url(#blob-soft)"
       />
-    </span>
+      {/* Halo interno mais claro */}
+      <path
+        d="M290,140 C360,140 420,180 446,250 C470,320 458,390 410,432 C362,474 290,484 232,460 C176,436 130,386 134,316 C138,246 184,180 240,156 C262,146 276,140 290,140 Z"
+        fill="rgba(250,247,240,0.06)"
+      />
+    </svg>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Pill — rounded chip used inside cards
+// HeroCountdown — card preto com blob orgânico + contador Fraunces gigante
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Pill({
-  children,
-  bg = 'rgba(10,15,11,0.08)',
-  color = '#0A0F0B',
-}: {
-  children: React.ReactNode
-  bg?: string
-  color?: string
-}) {
+function HeroCountdown({ diffDays, eventActive }: { diffDays: number; eventActive: boolean }) {
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '4px 11px',
-        borderRadius: 999,
-        background: bg,
-        color,
-        fontSize: 11.5,
-        fontWeight: 600,
-        letterSpacing: '-0.01em',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {children}
-    </span>
-  )
-}
+    <Link href="/cronograma" className="cia-brf-hero" aria-label="Abrir cronograma do evento">
+      <OrganicBlob />
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HeroVisualCard — gradient mesh + glass overlay (signature centerpiece)
-// ─────────────────────────────────────────────────────────────────────────────
+      {/* Eyebrow */}
+      <div className="cia-brf-hero__eyebrow">
+        <span>{eventActive ? 'Cobertura ao vivo' : 'Contagem regressiva'}</span>
+        <span className="cia-brf-hero__pill">
+          <span
+            aria-hidden
+            style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: eventActive ? '#22C55E' : '#F0D04A',
+              boxShadow: eventActive ? '0 0 8px rgba(34,197,94,0.7)' : '0 0 6px rgba(240,208,74,0.6)',
+            }}
+          />
+          {eventActive ? 'AO VIVO' : '04 — 07 jun'}
+        </span>
+      </div>
 
-function HeroVisualCard({ diffDays, eventActive }: { diffDays: number; eventActive: boolean }) {
-  return (
-    <Link href="/cronograma" className="cia-hero-canvas group" style={{ textDecoration: 'none' }}>
-      {/* Animated mesh orbs */}
-      <span aria-hidden className="cia-mesh-orb cia-mesh-orb--1" />
-      <span aria-hidden className="cia-mesh-orb cia-mesh-orb--2" />
-      <span aria-hidden className="cia-mesh-orb cia-mesh-orb--3" />
-      <span aria-hidden className="cia-mesh-orb cia-mesh-orb--4" />
-      <span aria-hidden className="cia-mesh-orb cia-mesh-orb--5" />
-
-      <div className="cia-hero-glass" style={{ position: 'relative', zIndex: 1 }}>
-        {/* eyebrow */}
-        <div className="flex items-center justify-between mb-3">
-          <span style={{
-            fontSize: 10.5, fontWeight: 700,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: 'rgba(120,60,40,0.65)',
-          }}>
-            {eventActive ? 'cobertura ao vivo' : 'contagem regressiva'}
-          </span>
-          <Pill bg="rgba(120,60,40,0.08)" color="#5A2A18">
-            <span
-              className={eventActive ? '' : 'cia-dot-pulse'}
-              aria-hidden="true"
-              style={{
-                width: 6, height: 6, borderRadius: '50%',
-                background: eventActive ? '#22C55E' : '#C46B4A',
-                boxShadow: eventActive ? '0 0 8px rgba(34,197,94,0.6)' : 'none',
-              }}
-            />
-            {eventActive ? 'AO VIVO' : '04 — 07 jun'}
-          </Pill>
+      {/* Big number */}
+      {eventActive ? (
+        <div className="cia-brf-hero__num" style={{ marginTop: 'auto' }}>
+          <em>Hoje</em>
+          <span className="cia-brf-hero__unit">é o dia</span>
         </div>
-
-        {/* big number / status */}
-        {eventActive ? (
-          <>
-            <h2 style={{
-              fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-              fontSize: 'clamp(56px, 6.5vw, 96px)',
-              fontWeight: 800,
-              lineHeight: 0.92,
-              letterSpacing: '-0.045em',
-              color: '#0A0F0B',
-              marginBottom: 8,
-            }}>
-              Hoje
-            </h2>
-            <p style={{
-              fontSize: 15, fontWeight: 500,
-              color: 'rgba(10,15,11,0.62)',
-              letterSpacing: '-0.01em',
-              maxWidth: 280,
-            }}>
-              Cobertura ao vivo da Copa Inter Atléticas em Uberaba, MG.
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="flex items-baseline gap-3" style={{ marginBottom: 2 }}>
-              <span
-                className="cia-digit-sweep"
-                style={{
-                  fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                  fontSize: 'clamp(72px, 8.5vw, 124px)',
-                  fontWeight: 800,
-                  lineHeight: 0.85,
-                  letterSpacing: '-0.05em',
-                }}
-              >
-                <CountUp to={diffDays} />
-              </span>
-              <span style={{
-                fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                fontSize: 22, fontWeight: 700,
-                color: 'rgba(10,15,11,0.40)',
-                letterSpacing: '-0.02em',
-              }}>
-                {diffDays === 1 ? 'dia' : 'dias'}
-              </span>
-            </div>
-            {/* Live ticker — tique-taque preciso, atualiza a cada 1s */}
-            <div style={{ marginBottom: 12 }}>
-              <LiveTicker target={EVENT_START} />
-            </div>
-            <p style={{
-              fontSize: 14, fontWeight: 500,
-              color: 'rgba(10,15,11,0.62)',
-              letterSpacing: '-0.01em',
-              maxWidth: 280,
-              marginBottom: 4,
-            }}>
-              Tudo num único painel — conteúdos, equipe e tempo real.
-            </p>
-            <span style={{
-              fontSize: 11,
-              color: 'rgba(120,60,40,0.55)',
-              letterSpacing: '0.10em',
-              textTransform: 'uppercase',
-              fontWeight: 700,
-            }}>
-              04 – 07 jun 2026 · Uberaba/MG
-            </span>
-          </>
-        )}
-
-        {/* CTA */}
-        <div className="flex items-center justify-between mt-5">
-          <span style={{ fontSize: 13, color: 'rgba(10,15,11,0.55)', fontWeight: 600 }}>
-            Ver cronograma
+      ) : (
+        <div className="cia-brf-hero__num">
+          <CountUp to={diffDays} />
+          <span className="cia-brf-hero__unit">
+            {diffDays === 1 ? '· dia restante' : '· dias restantes'}
           </span>
-          <CircleArrow size={40} />
         </div>
+      )}
+
+      {/* Ticker */}
+      {!eventActive && (
+        <LiveTicker target={EVENT_START} />
+      )}
+
+      {/* Foot */}
+      <div className="cia-brf-hero__foot">
+        <span className="cia-brf-hero__date">04 – 07 jun 2026 · Uberaba/MG</span>
+        <span
+          style={{
+            width: 44, height: 44, borderRadius: '50%',
+            background: '#FAF7F0',
+            display: 'inline-flex',
+            alignItems: 'center', justifyContent: 'center',
+            transition: 'transform 0.3s cubic-bezier(0.16,1,0.3,1)',
+            flexShrink: 0,
+          }}
+          className="cia-circle-arrow"
+        >
+          <ArrowUpRight style={{ width: 18, height: 18, color: '#0A0F0B', strokeWidth: 2.2 }} />
+        </span>
       </div>
     </Link>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PipelineCard — gold, content production health
+// PipelineCard v2 — squircle cream com border preto fino + Fraunces
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PipelineCard({
@@ -296,131 +204,154 @@ function PipelineCard({
     pct >= 70   ? 'saudável'   :
     pct >= 40   ? 'atenção'    :
                   'crítico'
-  const statusEmoji =
-    total === 0 ? '○' :
-    pct >= 70   ? '●' :
-    pct >= 40   ? '◑' :
-                  '◐'
+  const statusColor =
+    total === 0 ? 'rgba(10,15,11,0.40)' :
+    pct >= 70   ? '#2e6b42' :
+    pct >= 40   ? '#C46B4A' :
+                  '#9C2F1F'
+
+  const safeTotal = Math.max(total, 1)
+  const items = [
+    { label: 'publicado', val: publicados, pct: Math.round((publicados / safeTotal) * 100), variant: 'solid'  as const },
+    { label: 'produção',  val: emProducao, pct: Math.round((emProducao / safeTotal) * 100), variant: 'hatch'  as const },
+    { label: 'rascunho',  val: rascunho,   pct: Math.round((rascunho   / safeTotal) * 100), variant: 'soft'   as const },
+  ]
 
   return (
-    <Link href="/conteudos" className="cia-edit-card cia-edit-card--gold group">
-      {/* eyebrow + affordance */}
-      <div className="flex items-center justify-between">
+    <Link href="/conteudos" className="cia-brf-pipe">
+      {/* Eyebrow */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+      }}>
         <span style={{
-          fontSize: 11.5,
-          fontWeight: 600,
-          color: 'rgba(70, 50, 5, 0.65)',
-          letterSpacing: '-0.01em',
+          fontFamily: 'var(--font-geist), system-ui, sans-serif',
+          fontSize: 10.5,
+          fontWeight: 700,
+          letterSpacing: '0.28em',
+          textTransform: 'uppercase',
+          color: 'rgba(10,15,11,0.45)',
         }}>
-          pipeline de conteúdo
+          Pipeline
         </span>
-        <div className="flex items-center gap-2">
-          <Pill bg="rgba(70,50,5,0.12)" color="#46320C">
-            {statusEmoji} {status}
-          </Pill>
-          <span
-            aria-hidden
-            style={{
-              display: 'inline-flex',
-              width: 22, height: 22,
-              borderRadius: 7,
-              alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(70,50,5,0.10)',
-              color: 'rgba(70,50,5,0.65)',
-            }}
-          >
-            <Maximize2 style={{ width: 11, height: 11 }} />
-          </span>
-        </div>
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          fontFamily: 'var(--font-geist), system-ui, sans-serif',
+          fontSize: 10.5,
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: statusColor,
+        }}>
+          <span style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: statusColor,
+            boxShadow: `0 0 6px ${statusColor}80`,
+          }} />
+          {status}
+        </span>
       </div>
 
-      {/* big number */}
-      <div className="flex-1 flex flex-col justify-end">
-        <div className="flex items-baseline gap-3">
+      {/* Big number */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-end',
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 8,
+          marginTop: 12,
+        }}>
           <span style={{
-            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-            fontSize: 'clamp(72px, 9vw, 124px)',
-            fontWeight: 800,
-            lineHeight: 0.85,
+            fontFamily: 'var(--font-fraunces), Georgia, serif',
+            fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 0",
+            fontSize: 'clamp(96px, 11vw, 156px)',
+            fontWeight: 700,
+            lineHeight: 0.82,
             letterSpacing: '-0.05em',
             color: '#0A0F0B',
           }}>
-            {pct}
+            <CountUp to={pct} />
           </span>
           <span style={{
-            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-            fontSize: 32, fontWeight: 700,
-            color: 'rgba(10,15,11,0.45)',
+            fontFamily: 'var(--font-fraunces), Georgia, serif',
+            fontStyle: 'italic',
+            fontSize: 32,
+            fontWeight: 500,
+            color: 'rgba(10,15,11,0.32)',
             letterSpacing: '-0.03em',
-          }}>%</span>
+            transform: 'translateY(-6px)',
+          }}>
+            %
+          </span>
         </div>
-        <span style={{
-          fontSize: 17, fontWeight: 500,
-          color: 'rgba(10,15,11,0.60)',
+        <p style={{
+          fontFamily: 'var(--font-geist), system-ui, sans-serif',
+          fontSize: 14,
+          fontWeight: 500,
+          color: 'rgba(10,15,11,0.55)',
           letterSpacing: '-0.01em',
-          marginTop: 4,
+          marginTop: 8,
         }}>
-          {publicados} de {total} publicados
-        </span>
+          <strong style={{ color: '#0A0F0B', fontWeight: 700 }}>{publicados}</strong>{' '}
+          de <strong style={{ color: '#0A0F0B', fontWeight: 700 }}>{total}</strong> publicados
+        </p>
 
-        {/* hatched distribution bars (signature element) */}
-        <div className="mt-4">
-          {(() => {
-            const safeTotal = Math.max(total, 1)
-            const items = [
-              { label: 'publicado', val: publicados, pct: Math.round((publicados / safeTotal) * 100), variant: 'solid'  as const },
-              { label: 'produção',  val: emProducao, pct: Math.round((emProducao / safeTotal) * 100), variant: 'hatch'  as const },
-              { label: 'rascunho',  val: rascunho,   pct: Math.round((rascunho   / safeTotal) * 100), variant: 'soft'   as const },
-            ]
-            return (
-              <div className="flex gap-1.5" style={{ height: 38 }}>
-                {items.map(s => {
-                  const widthPct = total > 0 ? Math.max(s.pct, s.val > 0 ? 6 : 0) : (s.label === 'rascunho' ? 100 : 0)
-                  if (widthPct === 0) return null
-                  return (
-                    <div
-                      key={s.label}
-                      className={s.variant === 'hatch' ? 'cia-hatch-stripe cia-hatch-stripe--ink' : ''}
-                      style={{
-                        width: `${widthPct}%`,
-                        borderRadius: 9,
-                        background: s.variant === 'solid'
-                          ? '#0A0F0B'
-                          : s.variant === 'soft'
-                            ? 'rgba(10,15,11,0.10)'
-                            : undefined,
-                        position: 'relative',
-                        minWidth: 28,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: s.variant === 'soft' ? '1px solid rgba(10,15,11,0.10)' : 'none',
-                      }}
-                    >
-                      <span style={{
-                        fontSize: 11, fontWeight: 700,
-                        color: s.variant === 'solid' ? '#FFFFFF' : 'rgba(10,15,11,0.75)',
-                        letterSpacing: '-0.01em',
-                      }}>
-                        {s.pct}%
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          })()}
-          <div className="flex gap-1.5 mt-1.5">
-            {[
-              { label: 'publicado', val: publicados },
-              { label: 'produção',  val: emProducao },
-              { label: 'rascunho',  val: rascunho   },
-            ].map(s => (
+        {/* Distribution bar */}
+        <div style={{ marginTop: 18 }}>
+          <div style={{ display: 'flex', gap: 4, height: 36 }}>
+            {items.map(s => {
+              const widthPct = total > 0 ? Math.max(s.pct, s.val > 0 ? 6 : 0) : (s.label === 'rascunho' ? 100 : 0)
+              if (widthPct === 0) return null
+              return (
+                <div
+                  key={s.label}
+                  className={s.variant === 'hatch' ? 'cia-hatch-stripe cia-hatch-stripe--ink' : ''}
+                  style={{
+                    width: `${widthPct}%`,
+                    borderRadius: 8,
+                    background: s.variant === 'solid'
+                      ? '#0A0F0B'
+                      : s.variant === 'soft'
+                        ? 'rgba(10,15,11,0.08)'
+                        : undefined,
+                    minWidth: 26,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: s.variant === 'soft' ? '1px solid rgba(10,15,11,0.12)' : 'none',
+                  }}
+                >
+                  <span style={{
+                    fontFamily: 'var(--font-geist), system-ui, sans-serif',
+                    fontSize: 10.5,
+                    fontWeight: 800,
+                    color: s.variant === 'solid' ? '#FAF7F0' : 'rgba(10,15,11,0.70)',
+                    letterSpacing: '-0.01em',
+                  }}>
+                    {s.pct}%
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+            {items.map(s => (
               <span key={s.label} style={{
-                flex: 1, fontSize: 9, fontWeight: 700,
-                color: 'rgba(70,50,5,0.55)',
+                flex: 1,
+                fontFamily: 'var(--font-geist), system-ui, sans-serif',
+                fontSize: 9,
+                fontWeight: 700,
+                color: 'rgba(10,15,11,0.42)',
                 textTransform: 'uppercase',
-                letterSpacing: '0.06em',
+                letterSpacing: '0.10em',
                 textAlign: 'center',
               }}>
                 {s.label} · {s.val}
@@ -430,19 +361,43 @@ function PipelineCard({
         </div>
       </div>
 
-      {/* CTA */}
-      <div className="flex items-end justify-between mt-5">
-        <span style={{ fontSize: 13, color: 'rgba(70,50,5,0.65)', fontWeight: 500 }}>
+      {/* CTA foot */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 22,
+        paddingTop: 16,
+        borderTop: '1px solid rgba(10,15,11,0.08)',
+      }}>
+        <span style={{
+          fontFamily: 'var(--font-geist), system-ui, sans-serif',
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'rgba(10,15,11,0.55)',
+        }}>
           Abrir kanban
         </span>
-        <CircleArrow size={42} />
+        <span
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: '#0A0F0B',
+            display: 'inline-flex',
+            alignItems: 'center', justifyContent: 'center',
+            transition: 'transform 0.3s cubic-bezier(0.16,1,0.3,1)',
+            flexShrink: 0,
+          }}
+          className="cia-circle-arrow"
+        >
+          <ArrowUpRight style={{ width: 15, height: 15, color: '#FAF7F0', strokeWidth: 2.2 }} />
+        </span>
       </div>
     </Link>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HomeBriefing — exported component
+// HomeBriefing — main export
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function HomeBriefing({
@@ -459,62 +414,48 @@ export function HomeBriefing({
   const firstName = userName?.split(' ')[0] ?? 'time'
 
   return (
-    <section className="relative" style={{
-      background: 'transparent',
-      padding: '32px 24px 24px',
-    }}>
+    <section style={{ padding: '28px 24px 16px' }}>
       <div className="mx-auto max-w-7xl">
 
-        {/* ─── Greeting block (2-line, dramatic) ─── */}
-        <div className="mb-8">
-          <p style={{
-            fontSize: 11.5, fontWeight: 700,
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            color: 'rgba(46,107,66,0.55)',
-            marginBottom: 10,
-          }}>
-            CIA · Copa Inter Atléticas 2026
-          </p>
-          <h1 className="cia-greeting-headline">
-            Olá, {firstName}!
-            <span>
-              {eventActive
-                ? 'A cobertura está rolando — fica de olho.'
-                : 'Vamos preparar a cobertura de hoje.'}
-            </span>
-          </h1>
-          {userRole && (
-            <p className="mt-3" style={{
-              fontSize: 14, fontWeight: 600,
-              color: 'rgba(10,15,11,0.45)',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-            }}>
-              {userRole}
-            </p>
-          )}
-        </div>
+        {/* ═══════════════════════════════════════════════════════════
+            Squircle frame com border preto + grain texture
+            ═══════════════════════════════════════════════════════════ */}
+        <div className="cia-brf cia-grain">
 
-        {/* ─── Hero card grid (Pipeline | Hero Visual | Signature) ─── */}
-        <div
-          className="cia-briefing-grid"
-          style={{
-            display: 'grid',
-            gap: 14,
-          }}
-        >
-          <div className="cia-briefing-cell-1">
+          {/* ── Signature row ─────────────────────────────────────── */}
+          <div className="cia-brf-signature">
+            <span className="cia-brf-star">★</span>
+            <span>CIA · Copa Inter Atléticas · 2026</span>
+          </div>
+
+          {/* ── Greeting block (Fraunces italic + Geist bold) ────── */}
+          <div className="cia-brf-greeting">
+            <span className="cia-brf-greeting__ola">Olá,</span>
+            <span className="cia-brf-greeting__nome">
+              {firstName}.
+            </span>
+            <span className="cia-brf-greeting__rule" aria-hidden="true" />
+            <p className="cia-brf-greeting__line">
+              {eventActive
+                ? 'A cobertura está rolando — fica de olho no que está acontecendo agora.'
+                : 'Vamos preparar a cobertura de hoje. Tudo num único painel — conteúdos, equipe e tempo real.'}
+            </p>
+            {userRole && (
+              <span className="cia-brf-greeting__role">{userRole}</span>
+            )}
+          </div>
+
+          {/* ── Hero grid ────────────────────────────────────────── */}
+          <div className="cia-brf-grid">
             <PipelineCard
               publicados={publicados}
               total={total}
               emProducao={emProducao}
               rascunho={rascunho}
             />
+            <HeroCountdown diffDays={diffDays} eventActive={eventActive} />
           </div>
-          <div className="cia-briefing-cell-2">
-            <HeroVisualCard diffDays={diffDays} eventActive={eventActive} />
-          </div>
+
         </div>
       </div>
     </section>

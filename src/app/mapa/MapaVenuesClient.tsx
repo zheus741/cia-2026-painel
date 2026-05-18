@@ -40,90 +40,94 @@ const CENTRO_PARK = {
 // ⚠️  Coordenadas precisam de revisão no mapa antes do evento.
 // ─────────────────────────────────────────────────────────────────────────────
 const VENUES: Venue[] = [
+  // ── Quadras poliesportivas ──────────────────────────────────────────────────
   { id: 1,  icon: '🏟️', feat: true,
     name: 'CEMEA Boa Vista',              neigh: 'Indianópolis',      addr: 'Av. Djalma Castro Alves, 340',
-    lat: -19.7282, lng: -47.9554,
+    lat: -19.7715, lng: -47.9437, // ⚠ aprox. bairro Indianópolis
     fac: [{ i:'🏐',q:'1',n:'Quadra de Vôlei' },{ i:'🥅',q:'1',n:'Quadra de Futsal' },{ i:'🤾',q:'1',n:'Quadra de Handebol' },{ i:'🏀',q:'1',n:'Quadra de Basquete' },{ i:'🧍',q:'✓',n:'Área do Atleta' }] },
 
   { id: 2,  icon: '🏟️', feat: true,
     name: 'FUNEL',                        neigh: 'Abadia',            addr: 'Av. Orlando Rodrigues da Cunha, 1837',
-    lat: -19.7493, lng: -47.9270,
+    lat: -19.7589, lng: -47.9255, // ⚠ aprox. bairro Abadia
     fac: [{ i:'🏐',q:'1',n:'Quadra de Vôlei' },{ i:'🥅',q:'1',n:'Quadra de Futsal' },{ i:'🤾',q:'2',n:'Quadras de Handebol' },{ i:'🏀',q:'1',n:'Quadra de Basquete' },{ i:'🧍',q:'✓',n:'Área do Atleta' }] },
 
   { id: 3,  icon: '⛵', feat: true,
     name: 'Uirapuru Iate Clube',          neigh: 'Santa Maria',       addr: 'Rua Amapá, 810',
-    lat: -19.7750, lng: -47.9380,
+    lat: -19.7604, lng: -47.9587,
     fac: [{ i:'🏀',q:'3',n:'Quadras de Basquete' },{ i:'🏐',q:'2',n:'Quadras de Vôlei' },{ i:'🏸',q:'6',n:'Quadras de Peteca' },{ i:'🎾',q:'6',n:'Quadras de Tênis' },{ i:'⚽',q:'1',n:'Campo de Futebol (iluminado)' },{ i:'🧍',q:'✓',n:'Área do Atleta' }] },
 
   { id: 4,  icon: '🤾',
     name: 'CIE — C. Iniciação ao Esporte',neigh: 'Beija-Flor II',    addr: 'Rua Mário Teodoro, 148',
-    lat: -19.7895, lng: -47.9680,
+    lat: -19.7530, lng: -47.9907,
     fac: [{ i:'🤾',q:'1',n:'Quadra de Handebol' }] },
 
   { id: 5,  icon: '🏊',
     name: 'UTC — Uberaba Tênis Clube',    neigh: 'N. Sra. da Abadia', addr: 'Praça Dr. Thomaz Ulhôa, 461',
-    lat: -19.7535, lng: -47.9305,
+    lat: -19.7508, lng: -47.9367,
     fac: [{ i:'🥅',q:'1',n:'Quadra de Futsal' },{ i:'🏊',q:'✓',n:'Piscina' },{ i:'🥁',q:'✓',n:'Bateria' }] },
 
   { id: 6,  icon: '🏓',
     name: 'FETI — Fundação Ensino Técnico',neigh: 'São Benedito',     addr: 'Rua Major Eustáquio, 790',
-    lat: -19.7485, lng: -47.9400,
+    lat: -19.7626, lng: -47.9428, // ⚠ aprox. bairro São Benedito
     fac: [{ i:'🏓',q:'✓',n:'Tênis de Mesa' },{ i:'♟️',q:'✓',n:'Xadrez' }] },
 
   { id: 7,  icon: '🥋', feat: true,
     name: 'Clube SESI Minas',             neigh: 'Res. Estados Unidos',addr: 'Rua Francisco Bertoldi, 133',
-    lat: -19.7140, lng: -47.9810,
+    lat: -19.7405, lng: -47.9098,
     fac: [{ i:'⚽',q:'1',n:'Campo de Futebol' },{ i:'🥋',q:'✓',n:'Lutas · Cheer · Jiu-Jitsu · Judô' }] },
 
   { id: 8,  icon: '🎓', feat: true,
     name: 'UNIUBE',                       neigh: 'Universitário',     addr: 'Av. Nenê Sabino, 1801',
-    lat: -19.7200, lng: -47.9682,
+    lat: -19.7550, lng: -47.9646,
     fac: [{ i:'🥅',q:'*',n:'Futsal (sob demanda)' },{ i:'🤾',q:'*',n:'Handebol (sob demanda)' },{ i:'🏃',q:'✓',n:'Pista de Atletismo' }],
     note: '* Ativadas conforme demanda de inscrições.' },
 
+  // ── Estádio ─────────────────────────────────────────────────────────────────
   { id: 9,  icon: '⚽', feat: true,
     name: 'Estádio Uberabão',             neigh: 'Vila Olímpica',     addr: 'R. Aluísio de Melo Teixeira',
-    lat: -19.7380, lng: -47.9425,
+    lat: -19.7387, lng: -47.9383,
     fac: [{ i:'⚽',q:'1',n:'Campo c/ iluminação' }] },
 
+  // ── Campos de futebol ────────────────────────────────────────────────────────
   { id: 10, icon: '⚽',
     name: 'Campo Vila Nova',              neigh: 'COHAB Boa Vista',   addr: 'R. Soldado José Costa Souza',
-    lat: -19.7250, lng: -47.9520,
+    lat: -19.7264, lng: -47.9188,
     fac: [{ i:'⚽',q:'1',n:'Campo Iluminado' }] },
 
   { id: 11, icon: '⚽',
     name: 'Campo Atlético Abadia',        neigh: 'Abadia',            addr: 'R. Iguatama, 460',
-    lat: -19.7510, lng: -47.9325,
+    lat: -19.7631, lng: -47.9260,
     fac: [{ i:'⚽',q:'1',n:'Campo Iluminado' }] },
 
   { id: 12, icon: '⚽',
     name: 'Campo Nenenzão',               neigh: 'Olinda',            addr: 'Av. Nenê Sabino, 744–854',
-    lat: -19.7255, lng: -47.9645,
+    lat: -19.7480, lng: -47.9600, // ⚠ aprox. trecho inicial da Av. Nenê Sabino
     fac: [{ i:'⚽',q:'1',n:'Campo Iluminado' }] },
 
+  // ── Outras instituições ──────────────────────────────────────────────────────
   { id: 13, icon: '🏫',
     name: 'Ginásio Corina de Oliveira',   neigh: 'Mercês',            addr: 'Av. da Saudade, 289',
-    lat: -19.7460, lng: -47.9315,
+    lat: -19.7421, lng: -47.9439, // ⚠ aprox. bairro Mercês
     fac: [{ i:'🥅',q:'1',n:'Quadra de Futsal' },{ i:'🏐',q:'1',n:'Quadra de Vôlei' }] },
 
   { id: 14, icon: '🏫',
     name: 'SESC Uberaba',                 neigh: 'Fabrício',          addr: 'Rua Ricardo Misson, 411',
-    lat: -19.7520, lng: -47.9455,
+    lat: -19.7428, lng: -47.9380,
     fac: [{ i:'🏐',q:'1',n:'Quadra de Vôlei' }] },
 
   { id: 15, icon: '🏀',
     name: 'Conselho Afro',                neigh: 'Jardim Elza Amui I',addr: 'Rua Nilton Rosa Nunes, 40',
-    lat: -19.7700, lng: -47.9820,
+    lat: -19.7431, lng: -47.8897,
     fac: [{ i:'🏀',q:'1',n:'Quadra de Basquete' }] },
 
   { id: 16, icon: '⚽',
     name: 'Toca da Bola',                 neigh: 'Universitário',     addr: 'R. Guiomar Rodrigues da Cunha, 201',
-    lat: -19.7220, lng: -47.9660,
+    lat: -19.7528, lng: -47.9614,
     fac: [{ i:'⚽',q:'1',n:'Campo Fut7' },{ i:'🏐',q:'2',n:'Vôlei de Areia' }] },
 
   { id: 17, icon: '⚽',
     name: 'Campo SESI (iluminado)',        neigh: 'Res. Estados Unidos',addr: 'R. Francisco Bertoldi, 133',
-    lat: -19.7155, lng: -47.9800,
+    lat: -19.7405, lng: -47.9098, // mesmo endereço que Clube SESI Minas
     fac: [{ i:'⚽',q:'1',n:'Campo Iluminado' }] },
 ]
 

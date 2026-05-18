@@ -92,25 +92,73 @@ function LiveTicker({ target }: { target: Date }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PipelineArc — arc gold/terracotta sutil atrás do número
+// DonutChart — anel verde com pct no centro (estilo ref imagem 2)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PipelineArc() {
+function DonutChart({ percent, color = '#2e6b42' }: { percent: number; color?: string }) {
+  const radius = 56
+  const stroke = 11
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference * (1 - Math.max(0, Math.min(100, percent)) / 100)
+
   return (
     <svg
-      className="cia-brf-pipe-arc"
-      viewBox="0 0 200 200"
-      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 140 140"
+      width="138"
+      height="138"
       aria-hidden="true"
+      style={{ flexShrink: 0, display: 'block' }}
     >
-      <defs>
-        <radialGradient id="cia-pipe-arc" cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#F0D04A" stopOpacity="0.45" />
-          <stop offset="55%"  stopColor="#D8845F" stopOpacity="0.20" />
-          <stop offset="100%" stopColor="#C46B4A" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <circle cx="100" cy="100" r="100" fill="url(#cia-pipe-arc)" />
+      {/* track */}
+      <circle
+        cx="70" cy="70" r={radius}
+        fill="none"
+        stroke="rgba(10,15,11,0.10)"
+        strokeWidth={stroke}
+      />
+      {/* progress */}
+      <circle
+        cx="70" cy="70" r={radius}
+        fill="none"
+        stroke={color}
+        strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        transform="rotate(-90 70 70)"
+        style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.16,1,0.3,1)' }}
+      />
+      {/* big number — Fraunces 800 mixed italic/roman */}
+      <text
+        x="70" y="72"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{
+          fontFamily: 'var(--font-fraunces), Georgia, serif',
+          fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
+          fontWeight: 800,
+          fontSize: 42,
+          letterSpacing: '-0.04em',
+          fill: '#0A0F0B',
+        }}
+      >
+        {percent}
+      </text>
+      {/* % label */}
+      <text
+        x="70" y="100"
+        textAnchor="middle"
+        style={{
+          fontFamily: 'var(--font-fraunces), Georgia, serif',
+          fontStyle: 'italic',
+          fontWeight: 500,
+          fontSize: 13,
+          letterSpacing: '-0.01em',
+          fill: 'rgba(10,15,11,0.45)',
+        }}
+      >
+        %
+      </text>
     </svg>
   )
 }
@@ -214,22 +262,24 @@ function PipelineCard({
     pct >= 40   ? '#C46B4A' :
                   '#9C2F1F'
 
-  const safeTotal = Math.max(total, 1)
-  const items = [
-    { label: 'publicado', val: publicados, pct: Math.round((publicados / safeTotal) * 100), variant: 'solid'  as const },
-    { label: 'produção',  val: emProducao, pct: Math.round((emProducao / safeTotal) * 100), variant: 'hatch'  as const },
-    { label: 'rascunho',  val: rascunho,   pct: Math.round((rascunho   / safeTotal) * 100), variant: 'soft'   as const },
+  // Linhas da tabela (label + valor + cor semântica)
+  const rows: { label: string; value: number; valueColor: string }[] = [
+    { label: 'Total',       value: total,      valueColor: '#0A0F0B' },
+    { label: 'Publicados',  value: publicados, valueColor: '#2e6b42' },
+    { label: 'Em produção', value: emProducao, valueColor: '#3D49E0' },
+    { label: 'Rascunho',    value: rascunho,   valueColor: 'rgba(10,15,11,0.40)' },
   ]
 
-  const pctStr = String(pct)
-  const pctFirst = pctStr[0]
-  const pctRest = pctStr.slice(1)
+  const statusBg =
+    total === 0 ? 'rgba(10,15,11,0.06)' :
+    pct >= 70   ? 'rgba(46,107,66,0.12)' :
+    pct >= 40   ? 'rgba(196,107,74,0.14)' :
+                  'rgba(156,47,31,0.12)'
 
   return (
     <Link href="/conteudos" className="cia-brf-pipe">
-      <PipelineArc />
 
-      {/* Eyebrow */}
+      {/* Eyebrow editorial + status pill */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -237,28 +287,32 @@ function PipelineCard({
         gap: 12,
       }}>
         <span style={{
-          fontFamily: 'var(--font-geist), system-ui, sans-serif',
-          fontSize: 10.5,
-          fontWeight: 700,
-          letterSpacing: '0.28em',
-          textTransform: 'uppercase',
-          color: 'rgba(10,15,11,0.45)',
+          fontFamily: 'var(--font-fraunces), Georgia, serif',
+          fontStyle: 'italic',
+          fontWeight: 500,
+          fontSize: 13,
+          color: 'rgba(10,15,11,0.55)',
+          letterSpacing: '-0.01em',
         }}>
-          Pipeline
+          saúde do pipeline
         </span>
         <span style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 6,
+          gap: 5,
+          padding: '4px 10px',
+          borderRadius: 999,
+          background: statusBg,
+          border: `1px solid ${statusColor}40`,
           fontFamily: 'var(--font-geist), system-ui, sans-serif',
-          fontSize: 10.5,
+          fontSize: 9.5,
           fontWeight: 700,
-          letterSpacing: '0.12em',
+          letterSpacing: '0.16em',
           textTransform: 'uppercase',
           color: statusColor,
         }}>
           <span style={{
-            width: 6, height: 6, borderRadius: '50%',
+            width: 5, height: 5, borderRadius: '50%',
             background: statusColor,
             boxShadow: `0 0 6px ${statusColor}80`,
           }} />
@@ -266,148 +320,56 @@ function PipelineCard({
         </span>
       </div>
 
-      {/* Big number — Fraunces 800, mixed italic/roman (50% menor) */}
+      {/* Conteúdo horizontal compacto: donut esquerda + tabela direita */}
       <div style={{
         flex: 1,
         display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'flex-start',
-        marginTop: 6,
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: 2,
-        }}>
-          <span style={{
-            fontFamily: 'var(--font-fraunces), Georgia, serif',
-            fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
-            fontSize: 'clamp(56px, 6.5vw, 78px)',
-            fontWeight: 800,
-            lineHeight: 0.84,
-            letterSpacing: '-0.055em',
-            color: '#0A0F0B',
-          }}>
-            {pctRest ? (
-              <>
-                <em style={{ fontStyle: 'italic', fontWeight: 600 }}>{pctFirst}</em>
-                {pctRest}
-              </>
-            ) : pctFirst}
-          </span>
-          <span style={{
-            fontFamily: 'var(--font-fraunces), Georgia, serif',
-            fontStyle: 'italic',
-            fontSize: 18,
-            fontWeight: 500,
-            color: 'rgba(10,15,11,0.40)',
-            letterSpacing: '-0.03em',
-            transform: 'translateY(-6px)',
-          }}>
-            %
-          </span>
-        </div>
-        <p style={{
-          fontFamily: 'var(--font-fraunces), Georgia, serif',
-          fontStyle: 'italic',
-          fontWeight: 500,
-          fontSize: 12,
-          color: 'rgba(10,15,11,0.58)',
-          letterSpacing: '-0.01em',
-          marginTop: 1,
-        }}>
-          <strong style={{ color: '#0A0F0B', fontWeight: 700, fontStyle: 'normal' }}>{publicados}</strong>{' '}
-          de <strong style={{ color: '#0A0F0B', fontWeight: 700, fontStyle: 'normal' }}>{total}</strong> publicados
-        </p>
-
-        {/* Distribution bar — pushed to bottom */}
-        <div style={{ marginTop: 'auto', paddingTop: 10 }}>
-          <div style={{ display: 'flex', gap: 3, height: 22 }}>
-            {items.map(s => {
-              const widthPct = total > 0 ? Math.max(s.pct, s.val > 0 ? 6 : 0) : (s.label === 'rascunho' ? 100 : 0)
-              if (widthPct === 0) return null
-              return (
-                <div
-                  key={s.label}
-                  className={s.variant === 'hatch' ? 'cia-hatch-stripe cia-hatch-stripe--ink' : ''}
-                  style={{
-                    width: `${widthPct}%`,
-                    borderRadius: 7,
-                    background: s.variant === 'solid'
-                      ? '#0A0F0B'
-                      : s.variant === 'soft'
-                        ? 'rgba(10,15,11,0.08)'
-                        : undefined,
-                    minWidth: 26,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: s.variant === 'soft' ? '1px solid rgba(10,15,11,0.12)' : 'none',
-                  }}
-                >
-                  <span style={{
-                    fontFamily: 'var(--font-geist), system-ui, sans-serif',
-                    fontSize: 10,
-                    fontWeight: 800,
-                    color: s.variant === 'solid' ? '#FAF7F0' : 'rgba(10,15,11,0.70)',
-                    letterSpacing: '-0.01em',
-                  }}>
-                    {s.pct}%
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-          <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
-            {items.map(s => (
-              <span key={s.label} style={{
-                flex: 1,
-                fontFamily: 'var(--font-geist), system-ui, sans-serif',
-                fontSize: 8.5,
-                fontWeight: 700,
-                color: 'rgba(10,15,11,0.42)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.10em',
-                textAlign: 'center',
-              }}>
-                {s.label} · {s.val}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* CTA foot */}
-      <div style={{
-        display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 6,
-        paddingTop: 6,
-        borderTop: '1px dashed rgba(10,15,11,0.10)',
+        gap: 18,
+        marginTop: 10,
       }}>
-        <span style={{
-          fontFamily: 'var(--font-fraunces), Georgia, serif',
-          fontStyle: 'italic',
-          fontSize: 11.5,
-          fontWeight: 500,
-          color: 'rgba(10,15,11,0.55)',
+        {/* Donut chart */}
+        <DonutChart percent={pct} color={statusColor} />
+
+        {/* Tabela: 4 linhas com label + valor */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 0,
         }}>
-          Abrir kanban
-        </span>
-        <span
-          className="cia-circle-arrow"
-          style={{
-            width: 24, height: 24, borderRadius: '50%',
-            background: '#0A0F0B',
-            display: 'inline-flex',
-            alignItems: 'center', justifyContent: 'center',
-            transition: 'transform 0.3s cubic-bezier(0.16,1,0.3,1)',
-            flexShrink: 0,
-          }}
-        >
-          <ArrowUpRight style={{ width: 12, height: 12, color: '#FAF7F0', strokeWidth: 2.2 }} />
-        </span>
+          {rows.map((r, i) => (
+            <div key={r.label} style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr auto',
+              alignItems: 'baseline',
+              gap: 8,
+              padding: '6px 0 6px',
+              borderBottom: i < rows.length - 1 ? '1px solid rgba(10,15,11,0.08)' : 'none',
+            }}>
+              <span style={{
+                fontFamily: 'var(--font-geist), system-ui, sans-serif',
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'rgba(10,15,11,0.62)',
+                letterSpacing: '-0.005em',
+              }}>
+                {r.label}
+              </span>
+              <span style={{
+                fontFamily: 'var(--font-fraunces), Georgia, serif',
+                fontVariationSettings: "'opsz' 36, 'SOFT' 0, 'WONK' 0",
+                fontWeight: 800,
+                fontSize: 18,
+                color: r.valueColor,
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '-0.02em',
+              }}>
+                {r.value}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </Link>
   )

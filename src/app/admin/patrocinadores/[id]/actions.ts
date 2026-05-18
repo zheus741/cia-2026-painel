@@ -1,13 +1,13 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCoordOrAdmin, safe, type ActionResult } from '@/lib/admin/actions-helper'
 
 export async function criarEscopoItem(patrocinadorId: string, fd: FormData): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const quantidade = parseInt(fd.get('quantidade_prevista') as string) || 1
     const { error } = await supabase.from('escopo_itens').insert({
       patrocinador_id: patrocinadorId,
@@ -25,7 +25,7 @@ export async function criarEscopoItem(patrocinadorId: string, fd: FormData): Pro
 export async function updateEscopoItemStatus(id: string, patrocinadorId: string, status: string): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { error } = await supabase.from('escopo_itens').update({ status }).eq('id', id)
     if (error) throw error
     revalidatePath(`/admin/patrocinadores/${patrocinadorId}`)
@@ -35,7 +35,7 @@ export async function updateEscopoItemStatus(id: string, patrocinadorId: string,
 export async function deleteEscopoItem(id: string, patrocinadorId: string): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { error } = await supabase.from('escopo_itens').delete().eq('id', id)
     if (error) throw error
     revalidatePath(`/admin/patrocinadores/${patrocinadorId}`)

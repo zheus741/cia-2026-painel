@@ -180,7 +180,7 @@ function HeroCountdown({ diffDays, eventActive }: { diffDays: number; eventActiv
         <span
           className="cia-circle-arrow"
           style={{
-            width: 28, height: 28, borderRadius: '50%',
+            width: 24, height: 24, borderRadius: '50%',
             background: '#051a0e',
             display: 'inline-flex',
             alignItems: 'center', justifyContent: 'center',
@@ -188,7 +188,7 @@ function HeroCountdown({ diffDays, eventActive }: { diffDays: number; eventActiv
             flexShrink: 0,
           }}
         >
-          <ArrowUpRight style={{ width: 12, height: 12, color: '#FAF7F0', strokeWidth: 2.2 }} />
+          <ArrowUpRight style={{ width: 11, height: 11, color: '#FAF7F0', strokeWidth: 2.2 }} />
         </span>
       </div>
     </Link>
@@ -266,13 +266,13 @@ function PipelineCard({
         </span>
       </div>
 
-      {/* Big number — Fraunces 800, mixed italic/roman */}
+      {/* Big number — Fraunces 800, mixed italic/roman (50% menor) */}
       <div style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'flex-start',
-        marginTop: 10,
+        marginTop: 6,
       }}>
         <div style={{
           display: 'flex',
@@ -282,9 +282,9 @@ function PipelineCard({
           <span style={{
             fontFamily: 'var(--font-fraunces), Georgia, serif',
             fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
-            fontSize: 'clamp(72px, 8vw, 100px)',
+            fontSize: 'clamp(56px, 6.5vw, 78px)',
             fontWeight: 800,
-            lineHeight: 0.82,
+            lineHeight: 0.84,
             letterSpacing: '-0.055em',
             color: '#0A0F0B',
           }}>
@@ -298,11 +298,11 @@ function PipelineCard({
           <span style={{
             fontFamily: 'var(--font-fraunces), Georgia, serif',
             fontStyle: 'italic',
-            fontSize: 22,
+            fontSize: 18,
             fontWeight: 500,
             color: 'rgba(10,15,11,0.40)',
             letterSpacing: '-0.03em',
-            transform: 'translateY(-8px)',
+            transform: 'translateY(-6px)',
           }}>
             %
           </span>
@@ -311,18 +311,18 @@ function PipelineCard({
           fontFamily: 'var(--font-fraunces), Georgia, serif',
           fontStyle: 'italic',
           fontWeight: 500,
-          fontSize: 13,
+          fontSize: 12,
           color: 'rgba(10,15,11,0.58)',
           letterSpacing: '-0.01em',
-          marginTop: 2,
+          marginTop: 1,
         }}>
           <strong style={{ color: '#0A0F0B', fontWeight: 700, fontStyle: 'normal' }}>{publicados}</strong>{' '}
           de <strong style={{ color: '#0A0F0B', fontWeight: 700, fontStyle: 'normal' }}>{total}</strong> publicados
         </p>
 
         {/* Distribution bar — pushed to bottom */}
-        <div style={{ marginTop: 'auto', paddingTop: 14 }}>
-          <div style={{ display: 'flex', gap: 4, height: 26 }}>
+        <div style={{ marginTop: 'auto', paddingTop: 10 }}>
+          <div style={{ display: 'flex', gap: 3, height: 22 }}>
             {items.map(s => {
               const widthPct = total > 0 ? Math.max(s.pct, s.val > 0 ? 6 : 0) : (s.label === 'rascunho' ? 100 : 0)
               if (widthPct === 0) return null
@@ -382,14 +382,14 @@ function PipelineCard({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginTop: 10,
-        paddingTop: 8,
-        borderTop: '1px dashed rgba(10,15,11,0.12)',
+        marginTop: 6,
+        paddingTop: 6,
+        borderTop: '1px dashed rgba(10,15,11,0.10)',
       }}>
         <span style={{
           fontFamily: 'var(--font-fraunces), Georgia, serif',
           fontStyle: 'italic',
-          fontSize: 12.5,
+          fontSize: 11.5,
           fontWeight: 500,
           color: 'rgba(10,15,11,0.55)',
         }}>
@@ -398,7 +398,7 @@ function PipelineCard({
         <span
           className="cia-circle-arrow"
           style={{
-            width: 28, height: 28, borderRadius: '50%',
+            width: 24, height: 24, borderRadius: '50%',
             background: '#0A0F0B',
             display: 'inline-flex',
             alignItems: 'center', justifyContent: 'center',
@@ -431,7 +431,7 @@ export function HomeBriefing({
   const firstName = userName?.split(' ')[0] ?? 'time'
 
   return (
-    <section style={{ padding: '20px 24px 12px' }}>
+    <section style={{ padding: '14px 24px 8px' }}>
       <div className="mx-auto max-w-7xl">
 
         <div className="cia-brf cia-grain">

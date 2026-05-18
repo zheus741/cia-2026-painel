@@ -578,43 +578,19 @@ export function AppShellLayout({
           <Menu className="h-4 w-4" aria-hidden="true" style={{ color: 'rgba(10,15,11,0.42)' }} />
         </button>
 
-        {/* Logo + wordmark editorial */}
+        {/* Logo CIA (já contém wordmark "CIA 2026 PAINEL · COBERTURA" no SVG) */}
         <Link
           href="/"
           aria-label="CIA 2026 — Ir para a página inicial"
-          className="flex items-center gap-2.5 opacity-95 hover:opacity-100 transition-opacity shrink-0"
+          className="flex items-center opacity-95 hover:opacity-100 transition-opacity shrink-0"
         >
           <CiaLogo size={26} />
-          <span className="hidden sm:flex flex-col leading-none" style={{ gap: 2 }}>
-            <span style={{
-              fontFamily: 'var(--font-fraunces), Georgia, serif',
-              fontVariationSettings: "'opsz' 36, 'SOFT' 0, 'WONK' 0",
-              fontWeight: 700,
-              fontSize: 14,
-              letterSpacing: '-0.01em',
-              color: '#0A0F0B',
-              lineHeight: 1,
-            }}>
-              CIA <em style={{ fontStyle: 'italic', fontWeight: 500, color: '#2e6b42' }}>2026</em>
-            </span>
-            <span style={{
-              fontFamily: 'var(--font-geist), system-ui, sans-serif',
-              fontSize: 8,
-              fontWeight: 700,
-              letterSpacing: '0.30em',
-              textTransform: 'uppercase',
-              color: 'rgba(10,15,11,0.42)',
-              lineHeight: 1,
-            }}>
-              Painel · Cobertura
-            </span>
-          </span>
         </Link>
 
         {/* Separator */}
         <span
           className="hidden md:block shrink-0"
-          style={{ width: 1, height: 22, background: 'rgba(10,15,11,0.12)', marginLeft: 4, marginRight: 6 }}
+          style={{ width: 1, height: 20, background: 'rgba(10,15,11,0.10)', marginLeft: 8, marginRight: 6 }}
         />
 
         {/* Desktop nav groups */}

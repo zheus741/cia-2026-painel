@@ -152,6 +152,19 @@ export default async function TVPage() {
     .slice(0, 8)
     .map(([canal, counts]) => ({ canal, ...counts }))
 
+  // Tipo breakdown (today)
+  const tipoMap: Record<string, { total: number; publicados: number }> = {}
+  for (const c of conteudosHoje) {
+    const key = c.tipo ?? 'outro'
+    if (!tipoMap[key]) tipoMap[key] = { total: 0, publicados: 0 }
+    tipoMap[key].total++
+    if (c.status === 'publicado') tipoMap[key].publicados++
+  }
+  const tipoBreakdown = Object.entries(tipoMap)
+    .sort((a, b) => b[1].total - a[1].total)
+    .slice(0, 8)
+    .map(([tipo, counts]) => ({ tipo, ...counts }))
+
   // Patrocínio
   const patrocinadores = (patrocinadoresRes.data ?? []) as { id: string; nome: string; ativo: boolean }[]
   const patrocStats = patrocinadores.filter(p => p.ativo).map(p => {
@@ -230,8 +243,9 @@ export default async function TVPage() {
     inicio: string | null; fim_previsto: string | null; dia_id: string | null
     status: string | null; placar_a: number | null; placar_b: number | null
   }[]
-  const jogosAoVivo = jogos.filter(j => j.status === 'ao_vivo')
-  const jogosHoje   = diaId ? jogos.filter(j => j.dia_id === diaId) : []
+  const jogosAoVivo    = jogos.filter(j => j.status === 'ao_vivo')
+  const jogosEncerrados = jogos.filter(j => j.status === 'encerrado')
+  const jogosHoje      = diaId ? jogos.filter(j => j.dia_id === diaId) : []
   const showsHoje   = diaId ? (showsRes.data ?? []).filter((s: { dia_id: string | null }) => s.dia_id === diaId) : []
   const festasHoje  = diaId ? (festasRes.data ?? []).filter((f: { dia_id: string | null }) => f.dia_id === diaId) : []
 
@@ -300,6 +314,8 @@ export default async function TVPage() {
       recentPublicados={recentPublicados}
       rankingEquipes={rankingEquipes}
       podiosRecentes={podiosRecentes}
+      tipoBreakdown={tipoBreakdown}
+      jogosEncerrados={jogosEncerrados}
     />
   )
 }

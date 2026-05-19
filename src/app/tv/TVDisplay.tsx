@@ -59,6 +59,7 @@ interface EmCampoItem { nome: string; setor: string }
 interface RecentPublicado { id: string; titulo: string | null; canal: string | null }
 interface RankingEquipe  { id: string; nome: string; divisao: string | null; cor_primaria: string | null; total_pontos: number }
 interface PodioRecente   { equipe_nome: string; modalidade_nome: string; modalidade_icone: string | null; colocacao: number; pontos: number }
+interface TipoStat       { tipo: string; total: number; publicados: number }
 
 interface Props {
   pipelineStats:    PipelineStats
@@ -83,6 +84,8 @@ interface Props {
   recentPublicados: RecentPublicado[]
   rankingEquipes:   RankingEquipe[]
   podiosRecentes:   PodioRecente[]
+  tipoBreakdown:    TipoStat[]
+  jogosEncerrados:  Jogo[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,6 +114,30 @@ const CANAL_COLOR: Record<string, string> = {
   x_cia:               '#94A3B8',
   youtube_exp:         '#EF4444',
   outro:               '#6B7280',
+}
+
+const TIPO_LABELS: Record<string, string> = {
+  story_rapido:      'Story Rápido',
+  story_editado:     'Story Edit.',
+  reels:             'Reels',
+  card_feed:         'Card Feed',
+  card_patrocinado:  'Patrocinado',
+  texto_legenda:     'Legenda',
+  repost:            'Repost',
+  cobertura_ao_vivo: 'Ao Vivo',
+  outro:             'Outros',
+}
+
+const TIPO_COLOR: Record<string, string> = {
+  story_rapido:      '#F97316',
+  story_editado:     '#EF4444',
+  reels:             '#E1306C',
+  card_feed:         '#4aa06a',
+  card_patrocinado:  '#F0D04A',
+  texto_legenda:     '#B8A4E8',
+  repost:            '#69C9D0',
+  cobertura_ao_vivo: '#ef4444',
+  outro:             '#6B7280',
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -843,6 +870,116 @@ function CanalChart({ canais }: { canais: CanalStat[] }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TipoChart — content type bars (mirrors CanalChart style)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TipoChart({ tipos }: { tipos: TipoStat[] }) {
+  const maxTotal = Math.max(...tipos.map(t => t.total), 1)
+  if (tipos.length === 0) return (
+    <p style={{ fontSize: 11, color: C.creamFade, textAlign: 'center', marginTop: 10 }}>Sem conteúdos hoje</p>
+  )
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+      {tipos.map(t => {
+        const color = TIPO_COLOR[t.tipo] ?? '#6b7280'
+        const label = TIPO_LABELS[t.tipo] ?? t.tipo
+        const barW  = (t.total / maxTotal) * 100
+        const pubW  = t.total > 0 ? (t.publicados / t.total) * barW : 0
+        const pct   = t.total > 0 ? Math.round((t.publicados / t.total) * 100) : 0
+        return (
+          <div key={t.tipo}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+              <span style={{ fontSize: 10, color: C.creamDim, fontWeight: 600, letterSpacing: '-0.01em' }}>{label}</span>
+              <span style={{
+                fontFamily: FONT_DISPLAY, fontSize: 10.5, color, fontWeight: 700,
+                letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums',
+              }}>
+                {t.publicados}<span style={{ color: C.creamFade, fontWeight: 400 }}>/{t.total}</span>
+                <span style={{ marginLeft: 6, fontSize: 9, color: C.creamMute, fontWeight: 500 }}>{pct}%</span>
+              </span>
+            </div>
+            <div style={{ position: 'relative', height: 5, borderRadius: 3, background: C.surface, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${barW}%`, background: 'rgba(250,247,240,0.05)', borderRadius: 3 }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${pubW}%`, background: color, borderRadius: 3, opacity: 0.92, boxShadow: `0 0 6px ${color}55` }} />
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PlacarFinaisStrip — completed game scores
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PlacarFinaisStrip({ jogos }: { jogos: Jogo[] }) {
+  if (jogos.length === 0) return null
+  return (
+    <div style={{
+      background: 'rgba(74,160,106,0.06)',
+      border: '1px solid rgba(74,160,106,0.18)',
+      borderRadius: 14,
+      padding: '8px 14px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 14,
+      overflow: 'hidden',
+      flexShrink: 0,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <span style={{
+          display: 'inline-block', width: 8, height: 8,
+          background: C.green, transform: 'rotate(45deg)', flexShrink: 0,
+        }} />
+        <span style={{
+          fontFamily: FONT_SANS, fontSize: 8.5, fontWeight: 800,
+          color: C.green, letterSpacing: '0.18em',
+        }}>
+          ENCERRADO
+        </span>
+      </div>
+      <div style={{ width: 1, height: 30, background: 'rgba(74,160,106,0.18)', flexShrink: 0 }} />
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', flex: 1 }}>
+        {jogos.map(j => (
+          <div key={j.id} style={{
+            display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+            background: 'rgba(74,160,106,0.06)', border: '1px solid rgba(74,160,106,0.16)',
+            borderRadius: 12, padding: '5px 14px',
+          }}>
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 600,
+              color: C.creamDim, maxWidth: 90,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              letterSpacing: '-0.01em',
+            }}>
+              {j.equipe_a_nome ?? '?'}
+            </span>
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 20, fontWeight: 800,
+              color: C.green, letterSpacing: '-0.03em', lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+            }}>
+              {j.placar_a ?? '—'}
+              <span style={{ fontSize: 12, color: 'rgba(74,160,106,0.35)', margin: '0 6px', fontWeight: 500 }}>×</span>
+              {j.placar_b ?? '—'}
+            </span>
+            <span style={{
+              fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 600,
+              color: C.creamDim, maxWidth: 90,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              letterSpacing: '-0.01em',
+            }}>
+              {j.equipe_b_nome ?? '?'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TVTimeline — editorial vertical timeline
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1250,6 +1387,8 @@ interface TickerSource {
   ckFeitos:         number
   rankingEquipes:   RankingEquipe[]
   podiosRecentes:   PodioRecente[]
+  jogosEncerrados:  Jogo[]
+  tipoBreakdown:    TipoStat[]
 }
 
 function buildTickerItems(s: TickerSource): TickerItem[] {
@@ -1378,6 +1517,27 @@ function buildTickerItems(s: TickerSource): TickerItem[] {
       label:  'EQUIPE',
       text:   `${s.equipeAtiva} ${s.equipeAtiva === 1 ? 'pessoa escalada' : 'pessoas escaladas'} hoje`,
       color:  C.cream,
+    })
+  }
+
+  // ✅ Resultados encerrados (top 5)
+  for (const j of s.jogosEncerrados.slice(0, 5)) {
+    items.push({
+      label:  'RESULTADO',
+      text:   `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`,
+      detail: `${j.placar_a ?? 0} × ${j.placar_b ?? 0}`,
+      color:  C.green,
+    })
+  }
+
+  // 🎨 Formato mais produzido hoje
+  if (s.tipoBreakdown.length > 0) {
+    const top = s.tipoBreakdown[0]
+    items.push({
+      label:  'FORMATO',
+      text:   `${TIPO_LABELS[top.tipo] ?? top.tipo} lidera hoje`,
+      detail: `${top.total} peças`,
+      color:  TIPO_COLOR[top.tipo] ?? C.cream,
     })
   }
 
@@ -1580,6 +1740,9 @@ export function TVDisplay({
   recentPublicados,
   rankingEquipes,
   podiosRecentes,
+  tipoBreakdown,
+  jogosEncerrados,
+  setoresCobertos,
 }: Props) {
   const router        = useRouter()
   const [fullscreen, setFullscreen]   = useState(false)
@@ -1682,12 +1845,15 @@ export function TVDisplay({
   const ckColor      = checklistPct >= 70 ? C.green : C.gold
 
   // Broadcast ticker — comprehensive newsroom feed
+  const presencaPct = equipeAtiva > 0 ? Math.round((emCampo.length / equipeAtiva) * 100) : 0
+
   const tickerItems = buildTickerItems({
     jogosAoVivo, recentPublicados, jogosHoje, showsHoje, festasHoje,
     emCampo, setoresFrios, capturasCount,
     pipelineStats, velocidade, equipeAtiva,
     weatherData, ckTotal, ckFeitos,
     rankingEquipes, podiosRecentes,
+    jogosEncerrados, tipoBreakdown,
   })
 
   return (
@@ -1893,17 +2059,23 @@ export function TVDisplay({
         <AlertBanner setoresFrios={setoresFrios} />
       </div>
 
-      {/* ═══════ ROW 3 — PLACAR STRIP ════════════════════════════════════════ */}
+      {/* ═══════ ROW 3 — PLACAR STRIPS (ao vivo + encerrados) ══════════════ */}
       {jogosAoVivo.length > 0 && (
         <div style={{ zIndex: 1, position: 'relative', flexShrink: 0 }}>
           <PlacarStrip jogos={jogosAoVivo} />
+        </div>
+      )}
+      {jogosEncerrados.length > 0 && (
+        <div style={{ zIndex: 1, position: 'relative', flexShrink: 0 }}>
+          <PlacarFinaisStrip jogos={jogosEncerrados} />
         </div>
       )}
 
       {/* ═══════ ROW 4 — KPI BAR ════════════════════════════════════════════ */}
       <div style={{ display: 'flex', gap: 8, zIndex: 1, position: 'relative', flexShrink: 0 }}>
         <KPI value={emCampo.length} label="Em Campo" color={emCampo.length > 0 ? C.green : C.creamFade} accent={emCampo.length > 0} />
-        <KPI value={equipeAtiva} label="Escalados" sub="hoje" color={C.cream} />
+        <KPI value={setoresCobertos} label="Setores" sub="cobertos" color={setoresCobertos > 0 ? C.green : C.creamFade} />
+        <KPI value={equipeAtiva} label="Escalados" sub={presencaPct > 0 ? `${presencaPct}% presença` : 'hoje'} color={C.cream} />
         <KPI value={`${publicadosHoje}/${totalConteudosHoje}`} label="Publicados Hoje" color={C.gold} accent />
         <KPI value={pipelineStats.total} label="Total Geral" color={C.cream} />
         <KPI value={`${healthPct}%`} label="Saúde" color={healthColor} accent={healthPct < 70} />
@@ -1929,12 +2101,17 @@ export function TVDisplay({
           </TVCard>
         </div>
 
-        {/* CENTER: Próximo Evento + Pipeline (hero) */}
+        {/* CENTER: Próximo Evento + Pipeline + Tipos de Conteúdo */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
           <ProximoEvento jogos={jogosHoje} shows={showsHoje} festas={festasHoje} />
           <TVCard title="Pipeline · Saúde da Produção" style={{ flex: '0 0 auto' }}>
             <PipelineDonut stats={pipelineStats} velocidade={velocidade} />
           </TVCard>
+          {tipoBreakdown.length > 0 && (
+            <TVCard title="Formatos · Hoje" style={{ flex: 1, minHeight: 0 }}>
+              <TipoChart tipos={tipoBreakdown} />
+            </TVCard>
+          )}
         </div>
 
         {/* RIGHT: Conteúdos por Dia (horizontal) + Classificação (ou Patrocínio) */}

@@ -13,14 +13,17 @@ export default async function PautasPage() {
 
   const supabase = await createClient()
 
-  // Tenta buscar com referencias; se a coluna ainda não existir, busca sem ela
+  // Pautas tem 2 FKs pra profiles (autor_id e responsavel_id), então o join
+  // precisa especificar qual usar — caso contrário PostgREST retorna erro
+  // "more than one relationship was found" e quebra a query inteira.
+  // Tenta buscar com referencias; se a coluna ainda não existir, busca sem ela.
   let { data, error: fetchError } = await supabase
     .from('pautas')
     .select(`
       id, titulo, descricao, referencias, status, criado_em,
       setor:setores(nome),
       dia:dias_evento(nome_dia),
-      autor:profiles(nome)
+      autor:profiles!autor_id(nome)
     `)
     .order('criado_em', { ascending: false })
 
@@ -31,7 +34,7 @@ export default async function PautasPage() {
         id, titulo, descricao, status, criado_em,
         setor:setores(nome),
         dia:dias_evento(nome_dia),
-        autor:profiles(nome)
+        autor:profiles!autor_id(nome)
       `)
       .order('criado_em', { ascending: false })
     data = fallback.data as typeof data
@@ -62,6 +65,7 @@ export default async function PautasPage() {
       <PautasBoard
         pautas={pautas as Parameters<typeof PautasBoard>[0]['pautas']}
         edicaoId={edicao?.id ?? '00000000-0000-0000-0000-000000000001'}
+        currentUserName={profile.nome}
       />
     </div>
   )

@@ -26,6 +26,7 @@ interface Pauta {
 interface Props {
   pautas: Pauta[]
   edicaoId: string
+  currentUserName: string
 }
 
 interface DrawerState {
@@ -448,7 +449,7 @@ function PautaDrawer({
 
 // ── Main Board ───────────────────────────────────────────────────────────────
 
-export function PautasBoard({ pautas: initial, edicaoId }: Props) {
+export function PautasBoard({ pautas: initial, edicaoId, currentUserName }: Props) {
   const [pautas, setPautas] = useState(initial)
   // Lista de IDs de pautas criadas/movidas localmente que ainda não bateram no server.
   // Enquanto estiver na lista, preserva o estado local em vez de sobrescrever com `initial`.
@@ -507,7 +508,7 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
     setPautas(prev => [...prev, {
       id: tempId, titulo, descricao: descricao || null,
       referencias, status: 'ideia', criado_em: now,
-      setor: null, dia: null, autor: null,
+      setor: null, dia: null, autor: { nome: currentUserName },
     }])
     closeDrawer()
 
@@ -520,7 +521,7 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
         localRecentRef.current.add(realId)
         setPautas(prev => prev.map(p =>
           p.id === tempId
-            ? { ...result.data!, criado_em: now, setor: null, dia: null, autor: null }
+            ? { ...result.data!, criado_em: now, setor: null, dia: null, autor: { nome: currentUserName } }
             : p
         ))
       } else {

@@ -59,6 +59,8 @@ export default async function TVPage() {
     conteudosTodosRes,
     patrocinadoresRes,
     weatherData,
+    atleticasRes,
+    resultadosExtRes,
   ] = await Promise.all([
     supabase.from('dias_evento').select('id, data').order('data'),
     supabase.from('conteudos')
@@ -66,6 +68,15 @@ export default async function TVPage() {
       .not('status', 'in', '(arquivado,cancelado)'),
     supabase.from('patrocinadores').select('id, nome, ativo').eq('ativo', true),
     fetchWeather(),
+    // Ranking parcial da competição
+    supabase.from('equipes')
+      .select('id, nome, divisao, conferencia, cor_primaria')
+      .eq('tipo', 'atletica')
+      .order('nome'),
+    // Resultados externos (judô, jiu-jitsu, atletismo, etc.)
+    supabase.from('resultados_externos')
+      .select('equipe_id, colocacao, pontos, modalidades:modalidade_id(nome, icone), divisao')
+      .order('colocacao'),
   ])
 
   const dias = (diasRes.data ?? []) as { id: string; data: string }[]
@@ -224,6 +235,47 @@ export default async function TVPage() {
   const showsHoje   = diaId ? (showsRes.data ?? []).filter((s: { dia_id: string | null }) => s.dia_id === diaId) : []
   const festasHoje  = diaId ? (festasRes.data ?? []).filter((f: { dia_id: string | null }) => f.dia_id === diaId) : []
 
+  // ── Ranking parcial & pódios ──────────────────────────────────────────────
+  const atleticas = (atleticasRes.data ?? []) as {
+    id: string; nome: string; divisao: string | null
+    conferencia: string | null; cor_primaria: string | null
+  }[]
+  const resultadosExt = (resultadosExtRes.data ?? []) as {
+    equipe_id: string; colocacao: number; pontos: number
+    modalidades: { nome: string; icone: string | null } | { nome: string; icone: string | null }[] | null
+    divisao: string
+  }[]
+
+  const pontosMap = new Map<string, number>()
+  for (const r of resultadosExt) {
+    pontosMap.set(r.equipe_id, (pontosMap.get(r.equipe_id) ?? 0) + (r.pontos ?? 0))
+  }
+  const rankingEquipes = atleticas
+    .map(a => ({
+      id:           a.id,
+      nome:         a.nome,
+      divisao:      a.divisao,
+      cor_primaria: a.cor_primaria,
+      total_pontos: pontosMap.get(a.id) ?? 0,
+    }))
+    .filter(a => a.total_pontos > 0)
+    .sort((a, b) => b.total_pontos - a.total_pontos)
+    .slice(0, 10)
+
+  const podiosRecentes = resultadosExt
+    .filter(r => r.colocacao <= 3)
+    .slice(0, 8)
+    .map(r => {
+      const mod = Array.isArray(r.modalidades) ? r.modalidades[0] : r.modalidades
+      return {
+        equipe_nome:      atleticas.find(a => a.id === r.equipe_id)?.nome ?? '?',
+        modalidade_nome:  mod?.nome ?? '?',
+        modalidade_icone: mod?.icone ?? null,
+        colocacao:        r.colocacao,
+        pontos:           r.pontos,
+      }
+    })
+
   return (
     <TVDisplay
       pipelineStats={pipelineStats}
@@ -246,6 +298,8 @@ export default async function TVPage() {
       capturasCount={capturasCount}
       velocidade={velocidade}
       recentPublicados={recentPublicados}
+      rankingEquipes={rankingEquipes}
+      podiosRecentes={podiosRecentes}
     />
   )
 }

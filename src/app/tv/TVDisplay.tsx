@@ -57,6 +57,8 @@ interface EventItem {
 interface WeatherDay { date: string; tMax: number; tMin: number; rain: number; emoji: string }
 interface EmCampoItem { nome: string; setor: string }
 interface RecentPublicado { id: string; titulo: string | null; canal: string | null }
+interface RankingEquipe  { id: string; nome: string; divisao: string | null; cor_primaria: string | null; total_pontos: number }
+interface PodioRecente   { equipe_nome: string; modalidade_nome: string; modalidade_icone: string | null; colocacao: number; pontos: number }
 
 interface Props {
   pipelineStats:    PipelineStats
@@ -79,6 +81,8 @@ interface Props {
   capturasCount:    number
   velocidade:       number
   recentPublicados: RecentPublicado[]
+  rankingEquipes:   RankingEquipe[]
+  podiosRecentes:   PodioRecente[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1025,6 +1029,138 @@ function CelebrationToast({ show }: { show: boolean }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ClassificacaoCard — partial standings + recent podiums
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ClassificacaoCard({ ranking, podios }: { ranking: RankingEquipe[]; podios: PodioRecente[] }) {
+  const MEDAL = ['🥇', '🥈', '🥉']
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%', overflow: 'hidden' }}>
+
+      {/* ── Ranking table ── */}
+      {ranking.length > 0 && (
+        <div style={{
+          background: 'rgba(46,107,66,0.04)', border: '1px solid rgba(46,107,66,0.12)',
+          borderRadius: 16, padding: '12px 14px',
+          display: 'flex', flexDirection: 'column',
+          flex: 1, minHeight: 0, overflow: 'hidden',
+        }}>
+          <p style={{
+            fontFamily: FONT_SANS, fontSize: 8, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.22em',
+            color: C.creamMute, marginBottom: 8, flexShrink: 0,
+          }}>
+            Classificação Parcial
+          </p>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {ranking.map((eq, i) => {
+              const isFirst  = i === 0
+              const posColor = isFirst ? C.gold : i === 1 ? '#C8C8C8' : i === 2 ? '#CD7F32' : C.creamFade
+              return (
+                <div key={eq.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '5px 8px', borderRadius: 9,
+                  background: isFirst ? `${C.gold}0a` : 'rgba(250,247,240,0.025)',
+                  border: `1px solid ${isFirst ? C.gold + '22' : C.border}`,
+                }}>
+                  <span style={{
+                    fontFamily: FONT_DISPLAY,
+                    fontStyle: i < 3 ? 'italic' : 'normal',
+                    fontVariationSettings: i < 3 ? "'opsz' 144, 'SOFT' 0, 'WONK' 1" : 'normal',
+                    fontSize: i < 3 ? 15 : 12, fontWeight: 800,
+                    color: posColor, letterSpacing: '-0.02em', lineHeight: 1,
+                    minWidth: 18, textAlign: 'right',
+                    fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                  }}>
+                    {i + 1}
+                  </span>
+                  {eq.cor_primaria && (
+                    <div style={{
+                      width: 3, height: 24, borderRadius: 2,
+                      background: eq.cor_primaria, flexShrink: 0, opacity: 0.80,
+                    }} />
+                  )}
+                  <span style={{
+                    flex: 1, fontSize: 11, fontWeight: 600,
+                    color: isFirst ? C.cream : C.creamDim, letterSpacing: '-0.01em',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {eq.nome}
+                  </span>
+                  <span style={{
+                    fontFamily: FONT_DISPLAY,
+                    fontStyle: isFirst ? 'italic' : 'normal',
+                    fontVariationSettings: isFirst ? "'opsz' 144, 'SOFT' 0, 'WONK' 1" : 'normal',
+                    fontSize: isFirst ? 16 : 13, fontWeight: 800,
+                    color: posColor, letterSpacing: '-0.03em',
+                    fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                  }}>
+                    {eq.total_pontos}
+                    <span style={{ fontSize: 8, color: C.creamFade, fontWeight: 500, marginLeft: 2 }}>pts</span>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Pódios recentes ── */}
+      {podios.length > 0 && (
+        <div style={{
+          background: 'rgba(46,107,66,0.04)', border: '1px solid rgba(46,107,66,0.12)',
+          borderRadius: 16, padding: '12px 14px',
+          flex: '0 0 auto',
+        }}>
+          <p style={{
+            fontFamily: FONT_SANS, fontSize: 8, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.22em',
+            color: C.creamMute, marginBottom: 8,
+          }}>
+            Pódios Recentes
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {podios.map((p, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '5px 8px', borderRadius: 9,
+                background: p.colocacao === 1 ? `${C.gold}0a` : 'rgba(250,247,240,0.025)',
+                border: `1px solid ${p.colocacao === 1 ? C.gold + '22' : C.border}`,
+              }}>
+                <span style={{ fontSize: 13, flexShrink: 0 }}>{MEDAL[p.colocacao - 1] ?? '🏅'}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 10.5, fontWeight: 700, color: C.creamDim,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    letterSpacing: '-0.01em',
+                  }}>
+                    {p.equipe_nome}
+                  </div>
+                  <div style={{
+                    fontSize: 9, color: C.creamMute, marginTop: 1,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {p.modalidade_icone ? `${p.modalidade_icone} ` : ''}{p.modalidade_nome}
+                  </div>
+                </div>
+                <span style={{
+                  fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 800,
+                  color: p.colocacao === 1 ? C.gold : C.creamMute,
+                  letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                }}>
+                  +{p.pontos}
+                  <span style={{ fontSize: 7.5, fontWeight: 500, color: C.creamFade, marginLeft: 1 }}>pts</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TVCard wrapper
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1112,6 +1248,8 @@ interface TickerSource {
   weatherData:      WeatherDay[] | null
   ckTotal:          number
   ckFeitos:         number
+  rankingEquipes:   RankingEquipe[]
+  podiosRecentes:   PodioRecente[]
 }
 
 function buildTickerItems(s: TickerSource): TickerItem[] {
@@ -1240,6 +1378,29 @@ function buildTickerItems(s: TickerSource): TickerItem[] {
       label:  'EQUIPE',
       text:   `${s.equipeAtiva} ${s.equipeAtiva === 1 ? 'pessoa escalada' : 'pessoas escaladas'} hoje`,
       color:  C.cream,
+    })
+  }
+
+  // 🏆 Classificação parcial (top 3)
+  if (s.rankingEquipes.length > 0) {
+    const top = s.rankingEquipes.slice(0, 3)
+    items.push({
+      label:  'CLASSIFICAÇÃO',
+      text:   top.map((e, i) => `${i + 1}° ${e.nome.split(' ')[0]}`).join(' · '),
+      detail: `${top[0].total_pontos}pts`,
+      color:  C.gold,
+    })
+  }
+
+  // 🥇 Pódios recentes
+  const MEDAL_LABEL = ['🥇 OURO', '🥈 PRATA', '🥉 BRONZE']
+  const MEDAL_COLOR = [C.gold, '#C8C8C8', '#CD7F32']
+  for (const p of s.podiosRecentes.slice(0, 3)) {
+    items.push({
+      label:  MEDAL_LABEL[p.colocacao - 1] ?? '🏅 PÓDIO',
+      text:   `${p.equipe_nome} — ${p.modalidade_nome}`,
+      detail: `+${p.pontos}pts`,
+      color:  MEDAL_COLOR[p.colocacao - 1] ?? C.cream,
     })
   }
 
@@ -1417,6 +1578,8 @@ export function TVDisplay({
   capturasCount,
   velocidade,
   recentPublicados,
+  rankingEquipes,
+  podiosRecentes,
 }: Props) {
   const router        = useRouter()
   const [fullscreen, setFullscreen]   = useState(false)
@@ -1524,6 +1687,7 @@ export function TVDisplay({
     emCampo, setoresFrios, capturasCount,
     pipelineStats, velocidade, equipeAtiva,
     weatherData, ckTotal, ckFeitos,
+    rankingEquipes, podiosRecentes,
   })
 
   return (
@@ -1773,12 +1937,19 @@ export function TVDisplay({
           </TVCard>
         </div>
 
-        {/* RIGHT: Conteúdos por Dia (horizontal) + Patrocínio */}
+        {/* RIGHT: Conteúdos por Dia (horizontal) + Classificação (ou Patrocínio) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0, overflow: 'hidden' }}>
           <TVCard title={`Conteúdos por Dia · ${diasEvento.length || 4} dias`} style={{ flex: '0 0 auto' }}>
             <FourDayChartHorizontal dias={conteudosPorDia} />
           </TVCard>
-          {patrocStats.length > 0 && (
+
+          {rankingEquipes.length > 0 ? (
+            /* Classificação parcial — main mode during event */
+            <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <ClassificacaoCard ranking={rankingEquipes} podios={podiosRecentes} />
+            </div>
+          ) : patrocStats.length > 0 && (
+            /* Patrocínio — fallback before rankings exist */
             <TVCard title="Patrocínio" style={{ flex: 1, minHeight: 0 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {patrocStats.slice(0, 5).map((p) => {

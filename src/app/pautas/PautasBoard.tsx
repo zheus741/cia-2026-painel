@@ -219,16 +219,16 @@ function PautaDrawer({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop centralizador */}
       <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
         onClick={onClose}
-      />
-
-      {/* Panel — bottom sheet mobile, right panel desktop */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-2xl border-t border-[var(--border)] bg-[var(--card)] max-h-[90vh] overflow-hidden md:bottom-auto md:top-0 md:left-auto md:right-0 md:h-screen md:w-[420px] md:rounded-none md:border-t-0 md:border-l">
-        {/* Handle (mobile only) */}
-        <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-[var(--border)] md:hidden" />
+      >
+        {/* Modal central */}
+        <div
+          onClick={e => e.stopPropagation()}
+          className="relative z-50 flex w-full max-w-lg max-h-[88vh] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl"
+        >
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
@@ -440,6 +440,7 @@ function PautaDrawer({
             </button>
           </div>
         )}
+        </div>
       </div>
     </>
   )
@@ -449,7 +450,25 @@ function PautaDrawer({
 
 export function PautasBoard({ pautas: initial, edicaoId }: Props) {
   const [pautas, setPautas] = useState(initial)
-  useEffect(() => { setPautas(initial) }, [initial])
+  // Lista de IDs de pautas criadas/movidas localmente que ainda não bateram no server.
+  // Enquanto estiver na lista, preserva o estado local em vez de sobrescrever com `initial`.
+  const localRecentRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    setPautas(prev => {
+      // Pega os IDs vindos do server
+      const serverIds = new Set(initial.map(p => p.id))
+      // Mantém itens locais recentes que ainda não chegaram no server (ex: optimistic)
+      const stillLocal = prev.filter(p =>
+        localRecentRef.current.has(p.id) && !serverIds.has(p.id)
+      )
+      // Limpa do "recent" tudo que já apareceu no server (server venceu)
+      for (const id of localRecentRef.current) {
+        if (serverIds.has(id)) localRecentRef.current.delete(id)
+      }
+      return [...stillLocal, ...initial]
+    })
+  }, [initial])
 
   const [isPending, startTransition] = useTransition()
   const [drawer, setDrawer] = useState<DrawerState | null>(null)
@@ -483,6 +502,8 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
   function handleCreate(titulo: string, descricao: string, referencias: string[]) {
     const tempId = 'temp-' + Date.now()
     const now = new Date().toISOString()
+    // Marca o tempId como "local recente" — protege contra o useEffect sync
+    localRecentRef.current.add(tempId)
     setPautas(prev => [...prev, {
       id: tempId, titulo, descricao: descricao || null,
       referencias, status: 'ideia', criado_em: now,
@@ -493,12 +514,17 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
     startTransition(async () => {
       const result = await criarPautaAction(titulo, descricao, referencias, edicaoId)
       if (result.ok && result.data) {
+        // Substitui o temp pelo id real; transfere a "marca local"
+        const realId = result.data.id
+        localRecentRef.current.delete(tempId)
+        localRecentRef.current.add(realId)
         setPautas(prev => prev.map(p =>
           p.id === tempId
             ? { ...result.data!, criado_em: now, setor: null, dia: null, autor: null }
             : p
         ))
       } else {
+        localRecentRef.current.delete(tempId)
         setPautas(prev => prev.filter(p => p.id !== tempId))
         alert(`Não foi possível salvar a pauta:\n${result.error ?? 'Erro desconhecido'}`)
         setDrawer({ mode: 'create' })

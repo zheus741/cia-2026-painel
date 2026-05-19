@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, refresh } from 'next/cache'
+import { revalidatePath } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/service'
 import { requireProfile } from '@/lib/auth/current-user'
 
@@ -78,7 +78,6 @@ export async function criarPautaAction(
   if (!data) return { ok: false, error: 'Erro inesperado ao salvar' }
 
   revalidatePath('/pautas')
-  refresh()
 
   return {
     ok: true,

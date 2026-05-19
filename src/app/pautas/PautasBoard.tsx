@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus, Lightbulb, Zap, CheckCircle, XCircle, Trash2, ChevronRight } from 'lucide-react'
 import { FAB } from '@/components/fab'
 
@@ -47,6 +48,7 @@ async function criarPauta(titulo: string, descricao: string, edicaoId: string) {
 }
 
 export function PautasBoard({ pautas: initial, edicaoId }: Props) {
+  const router = useRouter()
   const [pautas, setPautas] = useState(initial)
   const [isPending, startTransition] = useTransition()
   const [showNew, setShowNew] = useState(false)
@@ -99,8 +101,8 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
     startTransition(async () => {
       try {
         await criarPauta(capTitulo, capDesc, edicaoId)
-        // revalidar a página recarrega os dados reais
-        window.location.reload()
+        // revalidar server components com os dados reais do banco
+        router.refresh()
       } catch (err) {
         // Reverte o optimistic update e mostra o erro
         setPautas((prev) => prev.filter((p) => p.id !== tempId))

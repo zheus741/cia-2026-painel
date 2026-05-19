@@ -90,3 +90,31 @@ export async function criarPautaAction(
     },
   }
 }
+
+export interface AtualizarPautaResult {
+  ok: boolean
+  error?: string
+}
+
+/**
+ * Atualiza setor e dia de uma pauta existente.
+ * Permite null pra "remover" a atribuição.
+ */
+export async function atualizarSetorDiaAction(
+  id: string,
+  setorId: string | null,
+  diaId: string | null,
+): Promise<AtualizarPautaResult> {
+  await requireProfile()
+
+  const service = createServiceClient()
+  const { error } = await service
+    .from('pautas')
+    .update({ setor_id: setorId, dia_id: diaId })
+    .eq('id', id)
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/pautas')
+  return { ok: true }
+}

@@ -20,7 +20,7 @@ export default async function PautasPage() {
   let { data, error: fetchError } = await supabase
     .from('pautas')
     .select(`
-      id, titulo, descricao, referencias, status, criado_em,
+      id, titulo, descricao, referencias, status, criado_em, setor_id, dia_id,
       setor:setores(nome),
       dia:dias_evento(nome_dia),
       autor:profiles!autor_id(nome)
@@ -31,7 +31,7 @@ export default async function PautasPage() {
     const fallback = await supabase
       .from('pautas')
       .select(`
-        id, titulo, descricao, status, criado_em,
+        id, titulo, descricao, status, criado_em, setor_id, dia_id,
         setor:setores(nome),
         dia:dias_evento(nome_dia),
         autor:profiles!autor_id(nome)
@@ -40,19 +40,28 @@ export default async function PautasPage() {
     data = fallback.data as typeof data
   }
 
+  // Normaliza status antigos (em_execucao, entregue) pra 'executada' no front,
+  // garantindo compatibilidade caso a migração 0032 ainda não tenha rodado.
+  const normalizeStatus = (s: string): string =>
+    s === 'em_execucao' || s === 'entregue' ? 'executada' : s
+
   const pautas = (data ?? []).map((p) => ({
     ...p,
+    status: normalizeStatus(p.status),
     referencias: (p.referencias ?? []) as string[],
+    setor_id: (p.setor_id ?? null) as string | null,
+    dia_id: (p.dia_id ?? null) as string | null,
     setor: p.setor as unknown as { nome: string } | null,
     dia: p.dia as unknown as { nome_dia: string } | null,
     autor: p.autor as unknown as { nome: string } | null,
   }))
 
-  const { data: edicao } = await supabase
-    .from('edicoes')
-    .select('id')
-    .eq('ativa', true)
-    .maybeSingle()
+  // Setores e dias pra dropdowns de edição no modal
+  const [{ data: setores }, { data: dias }, { data: edicao }] = await Promise.all([
+    supabase.from('setores').select('id, nome').order('nome'),
+    supabase.from('dias_evento').select('id, nome_dia').order('nome_dia'),
+    supabase.from('edicoes').select('id').eq('ativa', true).maybeSingle(),
+  ])
 
   return (
     <div className="space-y-6">
@@ -66,6 +75,8 @@ export default async function PautasPage() {
         pautas={pautas as Parameters<typeof PautasBoard>[0]['pautas']}
         edicaoId={edicao?.id ?? '00000000-0000-0000-0000-000000000001'}
         currentUserName={profile.nome}
+        setores={setores ?? []}
+        dias={dias ?? []}
       />
     </div>
   )

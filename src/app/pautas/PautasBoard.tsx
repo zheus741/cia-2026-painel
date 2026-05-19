@@ -7,9 +7,9 @@ import {
   Tag, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { FAB } from '@/components/fab'
-import { criarPautaAction } from './actions'
+import { criarPautaAction, atualizarSetorDiaAction } from './actions'
 
-type StatusPauta = 'ideia' | 'aprovada' | 'em_execucao' | 'entregue' | 'descartada'
+type StatusPauta = 'ideia' | 'aprovada' | 'executada' | 'descartada'
 
 interface Pauta {
   id: string
@@ -18,15 +18,22 @@ interface Pauta {
   referencias: string[]
   status: StatusPauta
   criado_em: string
+  setor_id: string | null
+  dia_id: string | null
   setor: { nome: string } | null
   dia: { nome_dia: string } | null
   autor: { nome: string } | null
 }
 
+interface SetorOpt { id: string; nome: string }
+interface DiaOpt   { id: string; nome_dia: string }
+
 interface Props {
   pautas: Pauta[]
   edicaoId: string
   currentUserName: string
+  setores: SetorOpt[]
+  dias: DiaOpt[]
 }
 
 interface DrawerState {
@@ -35,22 +42,19 @@ interface DrawerState {
 }
 
 const COLS: { key: StatusPauta; label: string; icon: React.ReactNode; color: string; bg: string }[] = [
-  { key: 'ideia',       label: 'Ideia',      icon: <Lightbulb className="h-3.5 w-3.5" />, color: 'text-yellow-400',                    bg: 'bg-yellow-400/10' },
-  { key: 'aprovada',    label: 'Aprovada',   icon: <ChevronRight className="h-3.5 w-3.5" />, color: 'text-blue-400',                  bg: 'bg-blue-400/10' },
-  { key: 'em_execucao', label: 'Executando', icon: <Zap className="h-3.5 w-3.5" />,           color: 'text-orange-400',               bg: 'bg-orange-400/10' },
-  { key: 'entregue',    label: 'Entregue',   icon: <CheckCircle className="h-3.5 w-3.5" />,   color: 'text-[var(--green-bright)]',    bg: 'bg-[var(--green-bright)]/10' },
+  { key: 'ideia',     label: 'Ideia',     icon: <Lightbulb className="h-3.5 w-3.5" />,    color: 'text-yellow-400',                  bg: 'bg-yellow-400/10' },
+  { key: 'aprovada',  label: 'Aprovada',  icon: <ChevronRight className="h-3.5 w-3.5" />, color: 'text-blue-400',                    bg: 'bg-blue-400/10' },
+  { key: 'executada', label: 'Executada', icon: <CheckCircle className="h-3.5 w-3.5" />,  color: 'text-[var(--green-bright)]',       bg: 'bg-[var(--green-bright)]/10' },
 ]
 
 const NEXT_STATUS: Partial<Record<StatusPauta, StatusPauta>> = {
   ideia: 'aprovada',
-  aprovada: 'em_execucao',
-  em_execucao: 'entregue',
+  aprovada: 'executada',
 }
 
 const NEXT_LABEL: Partial<Record<StatusPauta, string>> = {
   ideia: 'Aprovar',
-  aprovada: 'Iniciar',
-  em_execucao: 'Entregar',
+  aprovada: 'Marcar executada',
 }
 
 async function avancarStatusFetch(id: string, novoStatus: StatusPauta) {
@@ -141,7 +145,7 @@ function PautaCard({
       </div>
 
       {/* Ações */}
-      {(next || (pauta.status !== 'descartada' && pauta.status !== 'entregue')) && (
+      {(next || (pauta.status !== 'descartada' && pauta.status !== 'executada')) && (
         <div className="flex gap-1.5">
           {next && (
             <button
@@ -153,7 +157,7 @@ function PautaCard({
               {nextLabel}
             </button>
           )}
-          {pauta.status !== 'descartada' && pauta.status !== 'entregue' && (
+          {pauta.status !== 'descartada' && pauta.status !== 'executada' && (
             <button
               onClick={() => onDiscard(pauta.id)}
               disabled={isPending}
@@ -175,18 +179,24 @@ function PautaDrawer({
   drawer,
   edicaoId,
   isPending,
+  setores,
+  dias,
   onClose,
   onCreate,
   onMove,
   onDiscard,
+  onUpdateSetorDia,
 }: {
   drawer: DrawerState
   edicaoId: string
   isPending: boolean
+  setores: SetorOpt[]
+  dias: DiaOpt[]
   onClose: () => void
   onCreate: (titulo: string, descricao: string, referencias: string[]) => void
   onMove: (id: string, status: StatusPauta) => void
   onDiscard: (id: string) => void
+  onUpdateSetorDia: (id: string, setorId: string | null, diaId: string | null) => void
 }) {
   // Form state
   const [titulo, setTitulo] = useState('')
@@ -360,39 +370,64 @@ function PautaDrawer({
                 </div>
               )}
 
-              {/* Meta */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Meta — autor (readonly) + setor/dia (editáveis) */}
+              <div className="space-y-3 pt-1">
                 {pauta.autor && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-wide text-[var(--muted-foreground)] font-semibold">Autor</p>
-                    <div className="flex items-center gap-1.5">
-                      <User className="h-3 w-3 text-[var(--muted-foreground)]" />
-                      <span className="text-xs">{pauta.autor.nome}</span>
-                    </div>
+                  <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+                    <User className="h-3 w-3" />
+                    <span>Criado por <span className="text-[var(--foreground)] font-medium">{pauta.autor.nome}</span></span>
                   </div>
                 )}
-                {pauta.dia && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-wide text-[var(--muted-foreground)] font-semibold">Dia</p>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="h-3 w-3 text-[var(--muted-foreground)]" />
-                      <span className="text-xs">{pauta.dia.nome_dia}</span>
-                    </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Dia */}
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-[var(--muted-foreground)] font-semibold">
+                      <Calendar className="h-2.5 w-2.5" />
+                      Dia
+                    </label>
+                    <select
+                      value={pauta.dia_id ?? ''}
+                      disabled={isPending}
+                      onChange={e => {
+                        const newDia = e.target.value || null
+                        onUpdateSetorDia(pauta.id, pauta.setor_id, newDia)
+                      }}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--muted)] px-2 py-1.5 text-xs outline-none transition-colors focus:border-[var(--accent)] disabled:opacity-60"
+                    >
+                      <option value="">Sem dia</option>
+                      {dias.map(d => (
+                        <option key={d.id} value={d.id}>{d.nome_dia}</option>
+                      ))}
+                    </select>
                   </div>
-                )}
-                {pauta.setor && (
-                  <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-wide text-[var(--muted-foreground)] font-semibold">Setor</p>
-                    <div className="flex items-center gap-1.5">
-                      <Tag className="h-3 w-3 text-[var(--muted-foreground)]" />
-                      <span className="text-xs">{pauta.setor.nome}</span>
-                    </div>
+
+                  {/* Setor */}
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-[var(--muted-foreground)] font-semibold">
+                      <Tag className="h-2.5 w-2.5" />
+                      Setor
+                    </label>
+                    <select
+                      value={pauta.setor_id ?? ''}
+                      disabled={isPending}
+                      onChange={e => {
+                        const newSetor = e.target.value || null
+                        onUpdateSetorDia(pauta.id, newSetor, pauta.dia_id)
+                      }}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--muted)] px-2 py-1.5 text-xs outline-none transition-colors focus:border-[var(--accent)] disabled:opacity-60"
+                    >
+                      <option value="">Sem setor</option>
+                      {setores.map(s => (
+                        <option key={s.id} value={s.id}>{s.nome}</option>
+                      ))}
+                    </select>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Status progression */}
-              {(next || (pauta.status !== 'descartada' && pauta.status !== 'entregue')) && (
+              {(next || (pauta.status !== 'descartada' && pauta.status !== 'executada')) && (
                 <div className="space-y-2 pt-2 border-t border-[var(--border)]">
                   <p className="text-[10px] uppercase tracking-wide text-[var(--muted-foreground)] font-semibold">Avançar</p>
                   <div className="flex gap-2">
@@ -406,7 +441,7 @@ function PautaDrawer({
                         {nextLabel}
                       </button>
                     )}
-                    {pauta.status !== 'descartada' && pauta.status !== 'entregue' && (
+                    {pauta.status !== 'descartada' && pauta.status !== 'executada' && (
                       <button
                         onClick={() => { onDiscard(pauta.id); onClose() }}
                         disabled={isPending}
@@ -449,7 +484,7 @@ function PautaDrawer({
 
 // ── Main Board ───────────────────────────────────────────────────────────────
 
-export function PautasBoard({ pautas: initial, edicaoId, currentUserName }: Props) {
+export function PautasBoard({ pautas: initial, edicaoId, currentUserName, setores, dias }: Props) {
   const [pautas, setPautas] = useState(initial)
   // Lista de IDs de pautas criadas/movidas localmente que ainda não bateram no server.
   // Enquanto estiver na lista, preserva o estado local em vez de sobrescrever com `initial`.
@@ -500,6 +535,46 @@ export function PautasBoard({ pautas: initial, edicaoId, currentUserName }: Prop
     })
   }
 
+  function handleUpdateSetorDia(id: string, setorId: string | null, diaId: string | null) {
+    // Marca como recente pra não ser sobrescrita pelo useEffect sync
+    localRecentRef.current.add(id)
+    const setorNome = setorId ? setores.find(s => s.id === setorId)?.nome ?? null : null
+    const diaNome   = diaId   ? dias.find(d => d.id === diaId)?.nome_dia ?? null : null
+
+    setPautas(prev => prev.map(p => p.id === id
+      ? {
+          ...p,
+          setor_id: setorId,
+          dia_id: diaId,
+          setor: setorNome ? { nome: setorNome } : null,
+          dia: diaNome ? { nome_dia: diaNome } : null,
+        }
+      : p
+    ))
+    // Atualiza o drawer aberto se for o mesmo pauta
+    setDrawer(prev => prev?.pauta?.id === id
+      ? {
+          mode: 'view',
+          pauta: {
+            ...prev.pauta,
+            setor_id: setorId,
+            dia_id: diaId,
+            setor: setorNome ? { nome: setorNome } : null,
+            dia: diaNome ? { nome_dia: diaNome } : null,
+          },
+        }
+      : prev
+    )
+
+    startTransition(async () => {
+      const result = await atualizarSetorDiaAction(id, setorId, diaId)
+      if (!result.ok) {
+        localRecentRef.current.delete(id)
+        alert(`Erro ao atualizar:\n${result.error ?? 'Erro desconhecido'}`)
+      }
+    })
+  }
+
   function handleCreate(titulo: string, descricao: string, referencias: string[]) {
     const tempId = 'temp-' + Date.now()
     const now = new Date().toISOString()
@@ -508,6 +583,7 @@ export function PautasBoard({ pautas: initial, edicaoId, currentUserName }: Prop
     setPautas(prev => [...prev, {
       id: tempId, titulo, descricao: descricao || null,
       referencias, status: 'ideia', criado_em: now,
+      setor_id: null, dia_id: null,
       setor: null, dia: null, autor: { nome: currentUserName },
     }])
     closeDrawer()
@@ -521,7 +597,7 @@ export function PautasBoard({ pautas: initial, edicaoId, currentUserName }: Prop
         localRecentRef.current.add(realId)
         setPautas(prev => prev.map(p =>
           p.id === tempId
-            ? { ...result.data!, criado_em: now, setor: null, dia: null, autor: { nome: currentUserName } }
+            ? { ...result.data!, criado_em: now, setor_id: null, dia_id: null, setor: null, dia: null, autor: { nome: currentUserName } }
             : p
         ))
       } else {
@@ -611,10 +687,13 @@ export function PautasBoard({ pautas: initial, edicaoId, currentUserName }: Prop
           drawer={drawer}
           edicaoId={edicaoId}
           isPending={isPending}
+          setores={setores}
+          dias={dias}
           onClose={closeDrawer}
           onCreate={handleCreate}
           onMove={move}
           onDiscard={id => move(id, 'descartada')}
+          onUpdateSetorDia={handleUpdateSetorDia}
         />
       )}
     </>

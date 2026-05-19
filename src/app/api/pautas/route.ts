@@ -28,7 +28,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(data)
 }
 
-const VALID_PAUTA_STATUSES = ['ideia', 'aprovada', 'em_execucao', 'entregue', 'descartada'] as const
+// Aceita statuses novos (executada) e antigos (em_execucao, entregue) pra
+// compatibilidade durante a transição da migração 0032.
+const VALID_PAUTA_STATUSES = ['ideia', 'aprovada', 'executada', 'em_execucao', 'entregue', 'descartada'] as const
 
 export async function PATCH(req: NextRequest) {
   // Verifica autenticação — qualquer usuário logado pode mover pautas

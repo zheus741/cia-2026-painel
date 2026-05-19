@@ -12,7 +12,11 @@ export async function POST(req: NextRequest) {
 
   if (!titulo?.trim()) return NextResponse.json({ error: 'Título obrigatório' }, { status: 400 })
 
-  const { data, error } = await supabase
+  // Usa service client para bypassar a RLS restritiva do INSERT
+  // (a política atual pode exigir lider_or_above; pautas é um board colaborativo —
+  // toda a equipe pode criar ideias, independentemente de role)
+  const service = createServiceClient()
+  const { data, error } = await service
     .from('pautas')
     .insert({ titulo: titulo.trim(), descricao: descricao?.trim() || null, edicao_id, autor_id: user.id })
     .select('id')

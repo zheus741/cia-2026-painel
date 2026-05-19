@@ -87,17 +87,29 @@ export function PautasBoard({ pautas: initial, edicaoId }: Props) {
   function handleCreate() {
     if (!newTitulo.trim()) return
     const tempId = 'temp-' + Date.now()
+    const capTitulo = newTitulo
+    const capDesc   = newDesc
     setPautas((prev) => [...prev, {
-      id: tempId, titulo: newTitulo, descricao: newDesc || null,
+      id: tempId, titulo: capTitulo, descricao: capDesc || null,
       status: 'ideia', setor: null, dia: null, autor: null,
     }])
     setNewTitulo('')
     setNewDesc('')
     setShowNew(false)
     startTransition(async () => {
-      await criarPauta(newTitulo, newDesc, edicaoId)
-      // revalidar a página recarrega os dados reais
-      window.location.reload()
+      try {
+        await criarPauta(capTitulo, capDesc, edicaoId)
+        // revalidar a página recarrega os dados reais
+        window.location.reload()
+      } catch (err) {
+        // Reverte o optimistic update e mostra o erro
+        setPautas((prev) => prev.filter((p) => p.id !== tempId))
+        setNewTitulo(capTitulo)
+        setNewDesc(capDesc)
+        setShowNew(true)
+        const msg = err instanceof Error ? err.message : 'Erro ao salvar pauta'
+        alert(`Não foi possível salvar a pauta:\n${msg}`)
+      }
     })
   }
 

@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Pencil, Trash2, Loader2, Wifi, WifiOff, Utensils,
-  ShieldCheck, MapPin, X, ChevronDown, ChevronRight, Youtube, Ticket,
+  ShieldCheck, MapPin, X, ChevronDown, ChevronRight, Radio, Ticket,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -305,7 +305,7 @@ function SetorFormDialog({
                   onChange={e => set('tem_youtube_live', e.target.checked)}
                   className="h-4 w-4 rounded border-[var(--border)]"
                 />
-                <Youtube className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+                <Radio className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
                 Transmissão YouTube
               </label>
               <div>
@@ -449,7 +449,7 @@ function SetorCard({ setor, onEdit, onDelete }: {
         )}
         {setor.tem_youtube_live && (
           <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
-            <Youtube className="h-2.5 w-2.5" /> Live
+            <Radio className="h-2.5 w-2.5" /> Live
           </span>
         )}
         {setor.alimentacao && setor.alimentacao !== 'nenhuma' && (

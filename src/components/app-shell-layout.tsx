@@ -97,7 +97,7 @@ function getMediaGroups(role: string): NavGroup[] {
       label: 'Conteúdo',
       items: [
         { label: 'Agenda',        href: '/agenda',       icon: LayoutList },
-        ...(!isOperador ? [{ label: 'Pautas', href: '/pautas', icon: Lightbulb }] : []),
+        { label: 'Pautas',        href: '/pautas',       icon: Lightbulb },
         { label: 'Conteúdos',     href: '/conteudos',    icon: Camera },
         { label: 'Mapa Ao Vivo',  href: '/mapa',         icon: MapPin },
       ],

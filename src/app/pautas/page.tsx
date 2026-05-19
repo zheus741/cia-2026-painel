@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth/current-user'
 import { PautasBoard } from './PautasBoard'
 
-const BLOCKED_ROLES = ['operador', 'coordenador_esportivo', 'operador_esportivo']
+const BLOCKED_ROLES = ['coordenador_esportivo', 'operador_esportivo']
 
 export default async function PautasPage() {
   const profile = await requireProfile()

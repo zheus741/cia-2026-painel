@@ -149,7 +149,7 @@ export default async function ConteudosPage({
           patrocinadores={patrocinadores as Patrocin[]}
           perfis={perfis as Perfil[]}
           activeDiaId={activeDiaId}
-          readOnly={profile?.role === 'operador'}
+          readOnly={false}
         />
       </div>
     </div>

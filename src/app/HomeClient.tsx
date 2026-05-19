@@ -454,10 +454,6 @@ export function HomeClient({
         userRole={profile?.role ? ROLE_LABEL[profile.role] ?? null : null}
         diffDays={diffDays}
         eventActive={eventActive}
-        publicados={contentStats.publicado}
-        total={contentStats.total}
-        emProducao={contentStats.em_producao}
-        rascunho={contentStats.rascunho}
       />
 
       {/* ══════════════════════════════════════════════════════════

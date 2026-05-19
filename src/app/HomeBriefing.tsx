@@ -13,10 +13,6 @@ interface BriefingProps {
   userRole:        string | null
   diffDays:        number
   eventActive:     boolean
-  publicados:      number
-  total:           number
-  emProducao:      number
-  rascunho:        number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,77 +87,6 @@ function LiveTicker({ target }: { target: Date }) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DonutChart — anel verde com pct no centro (estilo ref imagem 2)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function DonutChart({ percent, color = '#2e6b42' }: { percent: number; color?: string }) {
-  const radius = 56
-  const stroke = 11
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference * (1 - Math.max(0, Math.min(100, percent)) / 100)
-
-  return (
-    <svg
-      viewBox="0 0 140 140"
-      width="138"
-      height="138"
-      aria-hidden="true"
-      style={{ flexShrink: 0, display: 'block' }}
-    >
-      {/* track */}
-      <circle
-        cx="70" cy="70" r={radius}
-        fill="none"
-        stroke="rgba(10,15,11,0.10)"
-        strokeWidth={stroke}
-      />
-      {/* progress */}
-      <circle
-        cx="70" cy="70" r={radius}
-        fill="none"
-        stroke={color}
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        transform="rotate(-90 70 70)"
-        style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.16,1,0.3,1)' }}
-      />
-      {/* big number — Fraunces 800 mixed italic/roman */}
-      <text
-        x="70" y="72"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        style={{
-          fontFamily: 'var(--font-fraunces), Georgia, serif',
-          fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
-          fontWeight: 800,
-          fontSize: 42,
-          letterSpacing: '-0.04em',
-          fill: '#0A0F0B',
-        }}
-      >
-        {percent}
-      </text>
-      {/* % label */}
-      <text
-        x="70" y="100"
-        textAnchor="middle"
-        style={{
-          fontFamily: 'var(--font-fraunces), Georgia, serif',
-          fontStyle: 'italic',
-          fontWeight: 500,
-          fontSize: 13,
-          letterSpacing: '-0.01em',
-          fill: 'rgba(10,15,11,0.45)',
-        }}
-      >
-        %
-      </text>
-    </svg>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HeroCountdown — sage gradient NO QUADRADO TODO + número forte
@@ -244,138 +169,6 @@ function HeroCountdown({ diffDays, eventActive }: { diffDays: number; eventActiv
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PipelineCard — cream squircle + arc gold sutil + Fraunces forte
-// ─────────────────────────────────────────────────────────────────────────────
-
-function PipelineCard({
-  publicados, total, emProducao, rascunho,
-}: { publicados: number; total: number; emProducao: number; rascunho: number }) {
-  const pct = total > 0 ? Math.round((publicados / total) * 100) : 0
-  const status =
-    total === 0 ? 'aguardando' :
-    pct >= 70   ? 'saudável'   :
-    pct >= 40   ? 'atenção'    :
-                  'crítico'
-  const statusColor =
-    total === 0 ? 'rgba(10,15,11,0.40)' :
-    pct >= 70   ? '#2e6b42' :
-    pct >= 40   ? '#C46B4A' :
-                  '#9C2F1F'
-
-  // Linhas da tabela (label + valor + cor semântica)
-  const rows: { label: string; value: number; valueColor: string }[] = [
-    { label: 'Total',       value: total,      valueColor: '#0A0F0B' },
-    { label: 'Publicados',  value: publicados, valueColor: '#2e6b42' },
-    { label: 'Em produção', value: emProducao, valueColor: '#3D49E0' },
-    { label: 'Rascunho',    value: rascunho,   valueColor: 'rgba(10,15,11,0.40)' },
-  ]
-
-  const statusBg =
-    total === 0 ? 'rgba(10,15,11,0.06)' :
-    pct >= 70   ? 'rgba(46,107,66,0.12)' :
-    pct >= 40   ? 'rgba(196,107,74,0.14)' :
-                  'rgba(156,47,31,0.12)'
-
-  return (
-    <Link href="/conteudos" className="cia-brf-pipe">
-
-      {/* Eyebrow editorial + status pill */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-      }}>
-        <span style={{
-          fontFamily: 'var(--font-fraunces), Georgia, serif',
-          fontStyle: 'italic',
-          fontWeight: 500,
-          fontSize: 13,
-          color: 'rgba(10,15,11,0.55)',
-          letterSpacing: '-0.01em',
-        }}>
-          saúde do pipeline
-        </span>
-        <span style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 5,
-          padding: '4px 10px',
-          borderRadius: 999,
-          background: statusBg,
-          border: `1px solid ${statusColor}40`,
-          fontFamily: 'var(--font-geist), system-ui, sans-serif',
-          fontSize: 9.5,
-          fontWeight: 700,
-          letterSpacing: '0.16em',
-          textTransform: 'uppercase',
-          color: statusColor,
-        }}>
-          <span style={{
-            width: 5, height: 5, borderRadius: '50%',
-            background: statusColor,
-            boxShadow: `0 0 6px ${statusColor}80`,
-          }} />
-          {status}
-        </span>
-      </div>
-
-      {/* Conteúdo horizontal compacto: donut esquerda + tabela direita */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 18,
-        marginTop: 10,
-      }}>
-        {/* Donut chart */}
-        <DonutChart percent={pct} color={statusColor} />
-
-        {/* Tabela: 4 linhas com label + valor */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 0,
-        }}>
-          {rows.map((r, i) => (
-            <div key={r.label} style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr auto',
-              alignItems: 'baseline',
-              gap: 8,
-              padding: '6px 0 6px',
-              borderBottom: i < rows.length - 1 ? '1px solid rgba(10,15,11,0.08)' : 'none',
-            }}>
-              <span style={{
-                fontFamily: 'var(--font-geist), system-ui, sans-serif',
-                fontSize: 12,
-                fontWeight: 500,
-                color: 'rgba(10,15,11,0.62)',
-                letterSpacing: '-0.005em',
-              }}>
-                {r.label}
-              </span>
-              <span style={{
-                fontFamily: 'var(--font-fraunces), Georgia, serif',
-                fontVariationSettings: "'opsz' 36, 'SOFT' 0, 'WONK' 0",
-                fontWeight: 800,
-                fontSize: 18,
-                color: r.valueColor,
-                fontVariantNumeric: 'tabular-nums',
-                letterSpacing: '-0.02em',
-              }}>
-                {r.value}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Link>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // HomeBriefing — main export
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -384,10 +177,6 @@ export function HomeBriefing({
   userRole,
   diffDays,
   eventActive,
-  publicados,
-  total,
-  emProducao,
-  rascunho,
 }: BriefingProps) {
 
   const firstName = userName?.split(' ')[0] ?? 'time'
@@ -419,14 +208,8 @@ export function HomeBriefing({
             )}
           </div>
 
-          {/* ── Hero grid ──────────────────────────────────────── */}
+          {/* ── Hero único: contagem regressiva ───────────────── */}
           <div className="cia-brf-grid">
-            <PipelineCard
-              publicados={publicados}
-              total={total}
-              emProducao={emProducao}
-              rascunho={rascunho}
-            />
             <HeroCountdown diffDays={diffDays} eventActive={eventActive} />
           </div>
 

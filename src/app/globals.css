@@ -1253,7 +1253,7 @@ body {
   text-decoration: none;
   isolation: isolate;
   display: flex; flex-direction: column;
-  min-height: 220px;
+  min-height: 280px;
   animation: cia-brf-rise 0.7s cubic-bezier(0.16,1,0.3,1) 80ms both;
   transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s ease, border-color 0.3s;
 }
@@ -1331,7 +1331,7 @@ body {
   font-family: var(--font-fraunces), Georgia, serif;
   font-variation-settings: 'opsz' 144, 'SOFT' 0, 'WONK' 1;
   font-weight: 800;
-  font-size: clamp(60px, 7vw, 90px);
+  font-size: clamp(96px, 12vw, 160px);
   line-height: 0.86;
   letter-spacing: -0.055em;
   color: #051a0e;
@@ -1346,25 +1346,25 @@ body {
   font-family: var(--font-fraunces), Georgia, serif;
   font-style: italic;
   font-weight: 500;
-  font-size: clamp(13px, 1.1vw, 16px);
+  font-size: clamp(16px, 1.5vw, 22px);
   font-variation-settings: 'opsz' 36, 'SOFT' 100, 'WONK' 1;
   letter-spacing: -0.01em;
   color: rgba(5,26,14,0.72);
-  margin-top: 2px;
+  margin-top: 4px;
 }
 .cia-brf-hero__ticker {
   position: relative; z-index: 3;
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 6px;
   font-family: var(--font-fraunces), Georgia, serif;
   font-variation-settings: 'opsz' 36, 'SOFT' 50, 'WONK' 0;
-  font-size: clamp(13px, 1.2vw, 17px);
+  font-size: clamp(20px, 2vw, 28px);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #051a0e;
   font-variant-numeric: tabular-nums;
-  margin-top: 0;
+  margin-top: 8px;
   align-self: center;
 }
 .cia-brf-hero__ticker__label {
@@ -1417,19 +1417,12 @@ body {
 }
 .cia-brf-pipe > * { position: relative; z-index: 1; }
 
-/* Grid container do briefing v4 */
+/* Grid container do briefing v5 — hero único full width */
 .cia-brf-grid {
   position: relative;
   z-index: 2;
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 10px;
+  display: block;
   margin-top: 14px;
-}
-@media (max-width: 1024px) {
-  .cia-brf-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ═══════════════════════════════════════════════════════════════

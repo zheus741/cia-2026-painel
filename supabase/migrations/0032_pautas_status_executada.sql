@@ -3,19 +3,16 @@
 -- Antes:  ideia → aprovada → em_execucao → entregue → (descartada)
 -- Depois: ideia → aprovada → executada               → (descartada)
 --
--- 'em_execucao' e 'entregue' são consolidados em 'executada' — menos atrito
--- pra equipe e mais alinhado com o fluxo real (uma pauta tá no kanban até
--- ser executada; cobertura ao vivo não precisa do estado intermediário).
+-- IMPORTANTE: este arquivo precisa ser executado em DUAS partes separadas
+-- no Supabase Studio. Postgres exige que ALTER TYPE ADD VALUE seja
+-- commitado antes de o novo valor poder ser usado em UPDATE.
+--
+-- Parte 1 (rodar primeiro, sozinha):
 
--- ── 1. Adiciona novo valor ao enum ──────────────────────────────────────────
-DO $$
-BEGIN
-  ALTER TYPE status_pauta ADD VALUE IF NOT EXISTS 'executada';
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+ALTER TYPE status_pauta ADD VALUE IF NOT EXISTS 'executada';
 
--- ── 2. Migra pautas existentes ──────────────────────────────────────────────
--- Tanto 'em_execucao' (em produção) quanto 'entregue' (já publicado) viram
--- 'executada' — o que importa é "saiu da fila de cobertura".
-UPDATE pautas SET status = 'executada'
-  WHERE status IN ('em_execucao', 'entregue');
+-- ──────────────────────────────────────────────────────────────────────────
+-- Parte 2 (rodar DEPOIS da Parte 1 ter sido commitada):
+--
+--   UPDATE pautas SET status = 'executada'
+--     WHERE status IN ('em_execucao', 'entregue');

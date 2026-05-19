@@ -10,14 +10,20 @@ import {
 } from '@/lib/admin/actions-helper'
 
 const SCHEMA = [
-  { name: 'nome', type: 'text' as const },
-  { name: 'tipo', type: 'text' as const },
-  { name: 'endereco', type: 'nullable_text' as const },
-  { name: 'lat', type: 'number' as const },
-  { name: 'lng', type: 'number' as const },
-  { name: 'capacidade_pessoas', type: 'number' as const },
-  { name: 'cor_hex', type: 'nullable_text' as const },
-  { name: 'observacoes', type: 'nullable_text' as const },
+  { name: 'nome',               type: 'text'          as const },
+  { name: 'tipo',               type: 'text'          as const },
+  { name: 'endereco',           type: 'nullable_text' as const },
+  { name: 'lat',                type: 'number'        as const },
+  { name: 'lng',                type: 'number'        as const },
+  { name: 'capacidade_pessoas', type: 'number'        as const },
+  { name: 'cor_hex',            type: 'nullable_text' as const },
+  { name: 'observacoes',        type: 'nullable_text' as const },
+  { name: 'maps_url',           type: 'nullable_text' as const },
+  { name: 'tem_wifi',           type: 'boolean'       as const },
+  { name: 'tem_ponto_apoio',    type: 'boolean'       as const },
+  { name: 'alimentacao',        type: 'nullable_text' as const },
+  { name: 'notas_acesso',       type: 'nullable_text' as const },
+  { name: 'tem_youtube_live',   type: 'boolean'       as const },
 ]
 
 export async function createSetor(fd: FormData): Promise<ActionResult> {

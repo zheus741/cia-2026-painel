@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth/current-user'
 import { PautasBoard } from './PautasBoard'
 
+export const dynamic = 'force-dynamic'
+
 const BLOCKED_ROLES = ['coordenador_esportivo', 'operador_esportivo']
 
 export default async function PautasPage() {
@@ -11,18 +13,33 @@ export default async function PautasPage() {
 
   const supabase = await createClient()
 
-  const { data } = await supabase
+  // Tenta buscar com referencias; se a coluna ainda não existir, busca sem ela
+  let { data, error: fetchError } = await supabase
     .from('pautas')
     .select(`
-      id, titulo, descricao, status,
+      id, titulo, descricao, referencias, status, criado_em,
       setor:setores(nome),
       dia:dias_evento(nome_dia),
       autor:profiles(nome)
     `)
     .order('criado_em', { ascending: false })
 
+  if (fetchError?.message?.includes('referencias')) {
+    const fallback = await supabase
+      .from('pautas')
+      .select(`
+        id, titulo, descricao, status, criado_em,
+        setor:setores(nome),
+        dia:dias_evento(nome_dia),
+        autor:profiles(nome)
+      `)
+      .order('criado_em', { ascending: false })
+    data = fallback.data
+  }
+
   const pautas = (data ?? []).map((p) => ({
     ...p,
+    referencias: (p.referencias ?? []) as string[],
     setor: p.setor as unknown as { nome: string } | null,
     dia: p.dia as unknown as { nome_dia: string } | null,
     autor: p.autor as unknown as { nome: string } | null,

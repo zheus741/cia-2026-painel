@@ -650,10 +650,15 @@ export function AppShellLayout({
             <span className="hidden sm:inline">TV</span>
           </a>
 
-          {/* User pill — Fraunces italic no nome */}
-          <div
-            className="flex items-center gap-2 rounded-full pl-1.5 pr-3 py-1"
-            style={{ background: 'rgba(10,15,11,0.04)', border: '1px solid rgba(10,15,11,0.10)' }}
+          {/* User pill — link para /perfil */}
+          <Link
+            href="/perfil"
+            aria-label="Ver meu perfil"
+            className="flex items-center gap-2 rounded-full pl-1.5 pr-3 py-1 transition-all hover:opacity-80"
+            style={{
+              background: 'rgba(10,15,11,0.04)', border: '1px solid rgba(10,15,11,0.10)',
+              textDecoration: 'none', cursor: 'pointer',
+            }}
           >
             <div
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
@@ -684,7 +689,7 @@ export function AppShellLayout({
             }}>
               {roleName}
             </span>
-          </div>
+          </Link>
 
           <form action={signOut}>
             <button type="submit" className="mac-logout-btn" title="Sair" aria-label="Sair da conta">

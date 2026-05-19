@@ -31,7 +31,8 @@ const C = {
   blue:      '#5C68E8',
 } as const
 
-const FONT_DISPLAY = 'var(--font-dm-sans), system-ui, sans-serif'
+const FONT_DISPLAY = 'var(--font-fraunces), Georgia, serif'
+const FONT_SANS    = 'var(--font-geist), system-ui, sans-serif'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -153,18 +154,21 @@ function MonumentalClock() {
     <div style={{ textAlign: 'center', flex: 1 }}>
       <div style={{
         fontFamily: FONT_DISPLAY,
-        fontSize: 'clamp(56px, 6.5vw, 92px)',
+        fontStyle: 'italic',
+        fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
+        fontSize: 'clamp(52px, 6.5vw, 88px)',
         fontWeight: 800,
         color: C.cream,
-        letterSpacing: '-0.04em',
-        lineHeight: 0.95,
+        letterSpacing: '-0.03em',
+        lineHeight: 0.92,
         fontVariantNumeric: 'tabular-nums',
       }}>
         {time}
       </div>
       <div style={{
-        fontSize: 11, color: C.creamMute, marginTop: 6,
-        textTransform: 'capitalize', letterSpacing: '0.06em', fontWeight: 500,
+        fontFamily: FONT_SANS,
+        fontSize: 10.5, color: C.creamMute, marginTop: 7,
+        textTransform: 'capitalize', letterSpacing: '0.10em', fontWeight: 500,
       }}>
         {date}
       </div>
@@ -191,8 +195,8 @@ function AlertBanner({ setoresFrios }: { setoresFrios: string[] }) {
     }}>
       <AlertTriangle style={{ width: 14, height: 14, color: C.terracotta, flexShrink: 0, animation: 'pulse 2s ease-in-out infinite' }} />
       <span style={{
-        fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
-        textTransform: 'uppercase', letterSpacing: '0.16em',
+        fontFamily: FONT_SANS, fontSize: 8.5, fontWeight: 800,
+        textTransform: 'uppercase', letterSpacing: '0.20em',
         color: C.terracotta, flexShrink: 0,
       }}>
         Setores sem cobertura
@@ -236,8 +240,8 @@ function PlacarStrip({ jogos }: { jogos: Jogo[] }) {
           boxShadow: `0 0 8px ${C.red}cc`, animation: 'ping 1.5s ease-in-out infinite',
         }} />
         <span style={{
-          fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
-          color: C.red, letterSpacing: '0.16em',
+          fontFamily: FONT_SANS, fontSize: 8.5, fontWeight: 800,
+          color: C.red, letterSpacing: '0.18em',
         }}>
           AO VIVO
         </span>
@@ -300,14 +304,16 @@ function EmCampoPanel({ emCampo, setoresFrios }: { emCampo: EmCampoItem[]; setor
       }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10, flexShrink: 0 }}>
           <p style={{
-            fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
-            textTransform: 'uppercase', letterSpacing: '0.16em', color: C.creamMute,
+            fontFamily: FONT_SANS, fontSize: 8, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.20em', color: C.creamMute,
           }}>
             Em Campo
           </p>
           <span style={{
-            fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 800,
-            letterSpacing: '-0.04em', lineHeight: 1,
+            fontFamily: FONT_DISPLAY, fontStyle: 'italic',
+            fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
+            fontSize: 24, fontWeight: 800,
+            letterSpacing: '-0.03em', lineHeight: 1,
             color: emCampo.length > 0 ? C.green : C.creamFade,
           }}>
             {emCampo.length}
@@ -455,15 +461,19 @@ function ProximoEvento({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventIt
       boxShadow: isActive ? `0 0 60px ${focal.color}14` : 'none',
     }}>
       <div style={{
-        fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
-        textTransform: 'uppercase', letterSpacing: '0.18em',
+        fontFamily: FONT_SANS, fontSize: 8.5, fontWeight: 800,
+        textTransform: 'uppercase', letterSpacing: '0.20em',
         color: isActive ? focal.color : C.creamMute, marginBottom: 6,
       }}>
         {isActive ? '● Em Andamento' : 'Próximo Evento'}
       </div>
       <div style={{ fontSize: 24, lineHeight: 1, marginBottom: 6 }}>{focal.icon}</div>
+      {/* Nome do evento — Fraunces serif, italic se ativo */}
       <div style={{
-        fontFamily: FONT_DISPLAY, fontSize: 16, fontWeight: 700,
+        fontFamily: FONT_DISPLAY,
+        fontStyle: isActive ? 'italic' : 'normal',
+        fontVariationSettings: isActive ? "'opsz' 144, 'SOFT' 0, 'WONK' 1" : 'normal',
+        fontSize: 18, fontWeight: 800,
         color: isActive ? focal.color : C.cream, lineHeight: 1.15, marginBottom: 10,
         letterSpacing: '-0.02em',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -473,7 +483,7 @@ function ProximoEvento({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventIt
       {isActive ? (
         <span style={{
           display: 'inline-block',
-          fontFamily: FONT_DISPLAY, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.14em',
+          fontFamily: FONT_SANS, fontSize: 9, fontWeight: 800, letterSpacing: '0.16em',
           textTransform: 'uppercase', color: focal.color,
           background: `${focal.color}18`, border: `1px solid ${focal.color}40`,
           borderRadius: 999, padding: '4px 14px',
@@ -483,9 +493,11 @@ function ProximoEvento({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventIt
       ) : timer && (
         <div style={{
           fontFamily: FONT_DISPLAY,
-          fontSize: 'clamp(28px, 3.5vw, 42px)',
+          fontStyle: 'italic',
+          fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
+          fontSize: 'clamp(28px, 3.5vw, 44px)',
           fontWeight: 800,
-          color: C.cream, letterSpacing: '-0.04em',
+          color: C.cream, letterSpacing: '-0.03em',
           fontVariantNumeric: 'tabular-nums',
           lineHeight: 1,
         }}>
@@ -494,7 +506,7 @@ function ProximoEvento({ jogos, shows, festas }: { jogos: Jogo[]; shows: EventIt
       )}
       <div style={{
         marginTop: 8, fontSize: 10, color: C.creamFade,
-        fontFamily: FONT_DISPLAY, letterSpacing: '0.04em',
+        fontFamily: FONT_SANS, letterSpacing: '0.06em',
         fontVariantNumeric: 'tabular-nums',
       }}>
         {fmtTime(focal.inicio)} → {fmtTime(focal.fim)}
@@ -550,14 +562,16 @@ function PipelineDonut({ stats, velocidade }: { stats: PipelineStats; velocidade
           pointerEvents: 'none',
         }}>
           <span style={{
-            fontFamily: FONT_DISPLAY, fontSize: 32, fontWeight: 800,
-            color: C.gold, letterSpacing: '-0.04em', lineHeight: 1,
+            fontFamily: FONT_DISPLAY, fontStyle: 'italic',
+            fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
+            fontSize: 34, fontWeight: 800,
+            color: C.gold, letterSpacing: '-0.03em', lineHeight: 1,
           }}>
-            {pct}<span style={{ fontSize: 16, marginLeft: 1 }}>%</span>
+            {pct}<span style={{ fontSize: 17, marginLeft: 1 }}>%</span>
           </span>
           <span style={{
-            fontFamily: FONT_DISPLAY, fontSize: 8.5, fontWeight: 800,
-            color: C.creamMute, letterSpacing: '0.18em',
+            fontFamily: FONT_SANS, fontSize: 8, fontWeight: 700,
+            color: C.creamMute, letterSpacing: '0.20em',
             textTransform: 'uppercase', marginTop: 3,
           }}>
             saúde
@@ -650,9 +664,9 @@ function FourDayChartHorizontal({ dias }: { dias: DiaStat[] }) {
           }}>
             {/* Day label */}
             <div style={{
-              fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 800,
+              fontFamily: FONT_SANS, fontSize: 10, fontWeight: 700,
               color: d.publicados > 0 ? C.creamDim : C.creamMute,
-              letterSpacing: '0.10em', textTransform: 'uppercase',
+              letterSpacing: '0.12em', textTransform: 'uppercase',
               textAlign: 'right',
             }}>
               {dayLabel}
@@ -1017,13 +1031,14 @@ function CelebrationToast({ show }: { show: boolean }) {
 function TVCard({ title, children, style }: { title: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      background: C.surface, border: `1px solid ${C.border}`,
+      background: 'rgba(46,107,66,0.04)',
+      border: '1px solid rgba(46,107,66,0.12)',
       borderRadius: 16, padding: '12px 14px',
       display: 'flex', flexDirection: 'column', overflow: 'hidden', ...style,
     }}>
       <p style={{
-        fontFamily: FONT_DISPLAY, fontSize: 8.5, fontWeight: 800,
-        textTransform: 'uppercase', letterSpacing: '0.18em',
+        fontFamily: FONT_SANS, fontSize: 8, fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: '0.22em',
         color: C.creamMute, marginBottom: 10, flexShrink: 0,
       }}>
         {title}
@@ -1051,19 +1066,21 @@ function KPI({ value, label, sub, color = C.cream, accent = false }: {
       minHeight: 76,
     }}>
       <span style={{
-        fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 800,
-        color, lineHeight: 1, letterSpacing: '-0.04em',
+        fontFamily: FONT_DISPLAY, fontStyle: 'italic',
+        fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
+        fontSize: 28, fontWeight: 800,
+        color, lineHeight: 1, letterSpacing: '-0.03em',
         fontVariantNumeric: 'tabular-nums',
       }}>
         {value}
       </span>
       <span style={{
-        fontFamily: FONT_DISPLAY, fontSize: 9, fontWeight: 800,
-        textTransform: 'uppercase', letterSpacing: '0.14em', color: C.creamMute,
+        fontFamily: FONT_SANS, fontSize: 8.5, fontWeight: 700,
+        textTransform: 'uppercase', letterSpacing: '0.16em', color: C.creamMute,
       }}>
         {label}
       </span>
-      {sub && <span style={{ fontSize: 8.5, color: C.creamFade, letterSpacing: '0.04em' }}>{sub}</span>}
+      {sub && <span style={{ fontFamily: FONT_SANS, fontSize: 8, color: C.creamFade, letterSpacing: '0.06em' }}>{sub}</span>}
     </div>
   )
 }
@@ -1286,8 +1303,8 @@ function BroadcastTicker({ items }: { items: TickerItem[] }) {
           animation: 'ping 1.8s ease-in-out infinite',
         }} />
         <span style={{
-          fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 800,
-          color: C.gold, letterSpacing: '0.18em',
+          fontFamily: FONT_SANS, fontSize: 10, fontWeight: 800,
+          color: C.gold, letterSpacing: '0.20em',
           textTransform: 'uppercase',
         }}>
           Newsfeed
@@ -1522,19 +1539,22 @@ export function TVDisplay({
     }}>
 
       {/* Background atmosphere */}
+      {/* Grain texture — mesmo SVG feTurbulence da home */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
-        backgroundImage: 'radial-gradient(circle, rgba(250,247,240,0.025) 1px, transparent 1px)',
-        backgroundSize: '32px 32px',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.80' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.055'/%3E%3C/svg%3E")`,
+        backgroundSize: '300px 300px',
       }} />
+      {/* Verde místico — radial top-left */}
       <div style={{
-        position: 'absolute', top: -120, left: -100, width: 560, height: 560,
-        background: `radial-gradient(circle, ${C.gold}08 0%, transparent 65%)`,
+        position: 'absolute', top: -80, left: -80, width: 500, height: 500,
+        background: 'radial-gradient(circle, rgba(46,107,66,0.12) 0%, transparent 65%)',
         borderRadius: '50%', pointerEvents: 'none', zIndex: 0,
       }} />
+      {/* Gold — radial bottom-right */}
       <div style={{
-        position: 'absolute', bottom: -120, right: -120, width: 600, height: 600,
-        background: `radial-gradient(circle, ${C.green}08 0%, transparent 65%)`,
+        position: 'absolute', bottom: -100, right: -80, width: 520, height: 520,
+        background: `radial-gradient(circle, ${C.gold}0a 0%, transparent 65%)`,
         borderRadius: '50%', pointerEvents: 'none', zIndex: 0,
       }} />
 
@@ -1546,21 +1566,25 @@ export function TVDisplay({
       }}>
         {/* Left: Brand + day */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, flexShrink: 0 }}>
+          {/* Brand */}
           <div style={{
-            background: 'rgba(250,247,240,0.04)',
-            border: `1px solid ${C.borderHi}`,
-            borderRadius: 12, padding: '7px 14px',
-            display: 'flex', alignItems: 'baseline', gap: 9,
+            background: 'rgba(46,107,66,0.08)',
+            border: '1px solid rgba(46,107,66,0.20)',
+            borderRadius: 12, padding: '6px 14px',
+            display: 'flex', flexDirection: 'column', gap: 1,
           }}>
             <span style={{
-              fontFamily: FONT_DISPLAY, fontSize: 18, fontWeight: 800,
-              color: C.cream, letterSpacing: '-0.04em', lineHeight: 1,
+              fontFamily: FONT_SANS, fontSize: 7.5, fontWeight: 700,
+              color: 'rgba(74,160,106,0.70)', letterSpacing: '0.30em',
+              textTransform: 'uppercase', lineHeight: 1,
             }}>
-              CIA
+              ★ CIA · PAINEL
             </span>
             <span style={{
-              fontFamily: FONT_DISPLAY, fontSize: 13, fontWeight: 600,
-              color: C.creamMute, letterSpacing: '-0.02em', lineHeight: 1,
+              fontFamily: FONT_DISPLAY, fontStyle: 'italic',
+              fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
+              fontSize: 20, fontWeight: 800,
+              color: C.cream, letterSpacing: '-0.03em', lineHeight: 1,
             }}>
               2026
             </span>
@@ -1571,8 +1595,8 @@ export function TVDisplay({
               borderRadius: 99, padding: '5px 13px',
             }}>
               <span style={{
-                fontFamily: FONT_DISPLAY, fontSize: 11, fontWeight: 800,
-                color: C.gold, letterSpacing: '0.10em',
+                fontFamily: FONT_SANS, fontSize: 10, fontWeight: 800,
+                color: C.gold, letterSpacing: '0.14em',
               }}>
                 DIA {diaIdx}/4
               </span>
@@ -1581,15 +1605,17 @@ export function TVDisplay({
           {!eventActive && (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
               <span style={{
-                fontFamily: FONT_DISPLAY, fontSize: 32, fontWeight: 800,
-                color: C.gold, letterSpacing: '-0.04em', lineHeight: 1,
+                fontFamily: FONT_DISPLAY, fontStyle: 'italic',
+                fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
+                fontSize: 36, fontWeight: 800,
+                color: C.gold, letterSpacing: '-0.03em', lineHeight: 1,
                 fontVariantNumeric: 'tabular-nums',
               }}>
                 {diffDays}
               </span>
               <span style={{
-                fontSize: 9.5, color: C.creamMute, letterSpacing: '0.14em',
-                textTransform: 'uppercase', fontWeight: 700,
+                fontFamily: FONT_SANS, fontSize: 9, color: C.creamMute,
+                letterSpacing: '0.16em', textTransform: 'uppercase', fontWeight: 700,
               }}>
                 dias
               </span>
@@ -1610,8 +1636,8 @@ export function TVDisplay({
             }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.green, display: 'inline-block', boxShadow: `0 0 8px ${C.green}`, animation: 'ping 2s ease-in-out infinite' }} />
               <span style={{
-                fontFamily: FONT_DISPLAY, fontSize: 10.5, fontWeight: 800,
-                color: C.green, letterSpacing: '0.10em',
+                fontFamily: FONT_SANS, fontSize: 10, fontWeight: 800,
+                color: C.green, letterSpacing: '0.14em',
               }}>
                 AO VIVO
               </span>
@@ -1625,8 +1651,8 @@ export function TVDisplay({
             }}>
               <AlertTriangle style={{ width: 11, height: 11, color: C.terracotta }} />
               <span style={{
-                fontFamily: FONT_DISPLAY, fontSize: 10, fontWeight: 800,
-                color: C.terracotta, letterSpacing: '0.10em',
+                fontFamily: FONT_SANS, fontSize: 9.5, fontWeight: 800,
+                color: C.terracotta, letterSpacing: '0.12em',
               }}>
                 {setoresFrios.length} FRIOS
               </span>
@@ -1640,8 +1666,8 @@ export function TVDisplay({
             }}>
               <Camera style={{ width: 11, height: 11, color: C.gold }} />
               <span style={{
-                fontFamily: FONT_DISPLAY, fontSize: 10, fontWeight: 800,
-                color: C.gold, letterSpacing: '-0.02em',
+                fontFamily: FONT_SANS, fontSize: 10, fontWeight: 800,
+                color: C.gold, letterSpacing: '-0.01em',
                 fontVariantNumeric: 'tabular-nums',
               }}>
                 {capturasCount}
@@ -1651,14 +1677,14 @@ export function TVDisplay({
           {/* Meta strip — logo + version + refresh countdown */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 9,
-            background: C.surface, border: `1px solid ${C.borderHi}`,
+            background: 'rgba(46,107,66,0.06)', border: '1px solid rgba(46,107,66,0.15)',
             borderRadius: 12, padding: '5px 12px',
             marginLeft: 4,
           }}>
             <CiaLogo size={20} showText={false} />
             <span style={{
-              fontFamily: 'monospace', fontSize: 9, fontWeight: 700,
-              color: C.creamFade, letterSpacing: '0.08em',
+              fontFamily: FONT_SANS, fontSize: 8.5, fontWeight: 600,
+              color: C.creamFade, letterSpacing: '0.10em',
             }}>
               v0.7
             </span>
@@ -1671,7 +1697,7 @@ export function TVDisplay({
               transition: 'background 0.3s',
             }} />
             <span style={{
-              fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 700,
+              fontFamily: FONT_SANS, fontSize: 12, fontWeight: 700,
               color: C.creamDim, letterSpacing: '-0.02em',
               fontVariantNumeric: 'tabular-nums',
             }}>

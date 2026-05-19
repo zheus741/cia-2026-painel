@@ -34,7 +34,7 @@ export default async function PautasPage() {
         autor:profiles(nome)
       `)
       .order('criado_em', { ascending: false })
-    data = fallback.data
+    data = fallback.data as typeof data
   }
 
   const pautas = (data ?? []).map((p) => ({

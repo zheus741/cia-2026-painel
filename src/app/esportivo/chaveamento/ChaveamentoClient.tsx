@@ -4,10 +4,11 @@ import { useMemo, useState, useTransition } from 'react'
 import {
   Trophy, ChevronRight, ChevronLeft, Search, Inbox, ArrowLeft,
   Radio, Clock, CheckCircle2, Users, Calendar, Crown, X, Swords,
-  Layers, Sparkles, RefreshCw,
+  Layers, Sparkles, RefreshCw, AlertTriangle, Settings, Save, ChevronDown,
 } from 'lucide-react'
 import { BracketView } from './BracketView'
 import { recalcularChaveAction } from '@/app/placar/actions'
+import { upsertChaveConfig } from './actions'
 import { toast } from '@/components/toast'
 import { confirmDialog } from '@/components/confirm-dialog'
 
@@ -129,6 +130,10 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
   const [chaveAberta, setChaveAberta] = useState<ChaveKey | null>(null)
   const [busca, setBusca] = useState('')
   const [isRecalcPending, startRecalcTransition] = useTransition()
+  const [showConfigEditor, setShowConfigEditor] = useState(false)
+  const [configEditorSeeds, setConfigEditorSeeds] = useState('')
+  const [configEditorNumTeams, setConfigEditorNumTeams] = useState('')
+  const [isSavingConfig, startSaveConfigTransition] = useTransition()
 
   // ── Derived: lista de divisões dos jogos ────────────────────────────────────
   const divisoesDisponiveis = useMemo(() => {
@@ -410,11 +415,7 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
 
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => prevChave && setChaveAberta({
-                  modalidade: prevChave.modalidadeSlug,
-                  categoria: prevChave.categoria,
-                  divisao: prevChave.divisao,
-                })}
+                onClick={() => { if (prevChave) { setChaveAberta({ modalidade: prevChave.modalidadeSlug, categoria: prevChave.categoria, divisao: prevChave.divisao }); setShowConfigEditor(false) } }}
                 disabled={!prevChave}
                 title={prevChave ? `${prevChave.modalidade} · ${prevChave.categoria}` : 'Primeira chave da divisão'}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)]/60 text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)]/40 hover:text-[var(--green-bright)] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-[var(--border)] disabled:hover:text-[var(--muted-foreground)]"
@@ -425,11 +426,7 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                 {currentIdx >= 0 ? currentIdx + 1 : 0} / {todasNaDivisao.length}
               </span>
               <button
-                onClick={() => nextChave && setChaveAberta({
-                  modalidade: nextChave.modalidadeSlug,
-                  categoria: nextChave.categoria,
-                  divisao: nextChave.divisao,
-                })}
+                onClick={() => { if (nextChave) { setChaveAberta({ modalidade: nextChave.modalidadeSlug, categoria: nextChave.categoria, divisao: nextChave.divisao }); setShowConfigEditor(false) } }}
                 disabled={!nextChave}
                 title={nextChave ? `${nextChave.modalidade} · ${nextChave.categoria}` : 'Última chave da divisão'}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)]/60 text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)]/40 hover:text-[var(--green-bright)] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-[var(--border)] disabled:hover:text-[var(--muted-foreground)]"
@@ -563,6 +560,179 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
             </div>
           )}
         </div>
+
+        {/* ─── Config panel ─── */}
+        {(() => {
+          const modalidadeAtualLocal = modalidades.find(m => m.slug === chaveAberta.modalidade)
+          if (!modalidadeAtualLocal) return null
+
+          // Auto-sugestão de seeds: times únicos dos jogos de oitavas (ou quartas, se não há oitavas)
+          const oitavasJogos = jogosChave.filter(j => j.fase === 'oitavas')
+          const fontJogos    = oitavasJogos.length > 0 ? oitavasJogos : jogosChave
+          const suggestedTeams = Array.from(new Set(
+            fontJogos.flatMap(j => [j.equipe_a_nome, j.equipe_b_nome]).filter(Boolean) as string[]
+          )).sort()
+
+          // num_teams auto: em single elimination, num_games = num_teams - 1
+          const suggestedNumTeams = jogosChave.length + 1
+
+          function openEditor() {
+            if (!config) {
+              setConfigEditorNumTeams(String(suggestedNumTeams))
+              setConfigEditorSeeds(suggestedTeams.join('\n'))
+            } else {
+              setConfigEditorNumTeams(String(config.num_teams))
+              setConfigEditorSeeds(config.seeds.join('\n'))
+            }
+            setShowConfigEditor(true)
+          }
+
+          function handleSave() {
+            const seeds = configEditorSeeds
+              .split('\n')
+              .map(s => s.trim())
+              .filter(Boolean)
+            const numTeams = parseInt(configEditorNumTeams, 10)
+
+            if (isNaN(numTeams) || numTeams < 2) {
+              toast.error('Número de equipes inválido')
+              return
+            }
+            if (seeds.length < 2) {
+              toast.error('Precisa de pelo menos 2 seeds')
+              return
+            }
+
+            const capModalidadeId = modalidadeAtualLocal!.id
+            const capCategoria    = chaveAberta!.categoria
+            const capDivisao      = chaveAberta!.divisao
+            startSaveConfigTransition(async () => {
+              const result = await upsertChaveConfig(
+                capModalidadeId,
+                capCategoria,
+                capDivisao,
+                numTeams,
+                seeds,
+              )
+              if (result.ok) {
+                toast.success('Seeds configuradas!', {
+                  description: `${seeds.length} equipes · ${numTeams} vagas no bracket`,
+                })
+                setShowConfigEditor(false)
+              } else {
+                toast.error('Falha ao salvar', { description: result.error })
+              }
+            })
+          }
+
+          return (
+            <div className={`rounded-2xl border ${
+              !config
+                ? 'border-amber-500/35 bg-amber-500/5'
+                : 'border-[var(--border)] bg-[var(--card)]/40'
+            }`}>
+              {/* Header */}
+              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  {!config ? (
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                  ) : (
+                    <Settings className="h-4 w-4 shrink-0 text-[var(--green-bright)]" />
+                  )}
+                  <div>
+                    {!config ? (
+                      <>
+                        <p className="text-[12px] font-bold text-amber-500">
+                          Seeds não configuradas — propagação automática desativada
+                        </p>
+                        <p className="text-[11px] text-amber-700/80">
+                          Defina as seeds para que o vencedor de cada jogo avance automaticamente na chave.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-[12px] font-semibold text-[var(--muted-foreground)]">
+                        Seeds configuradas · <span className="tabular-nums text-[var(--foreground)]">{config.num_teams}</span> equipes
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => showConfigEditor ? setShowConfigEditor(false) : openEditor()}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all ${
+                    !config
+                      ? 'border-amber-500/50 bg-amber-500/15 text-amber-500 hover:bg-amber-500/25'
+                      : 'border-[var(--border)] bg-[var(--card)]/60 text-[var(--muted-foreground)] hover:border-[var(--green-bright)]/40 hover:text-[var(--green-bright)]'
+                  }`}
+                >
+                  {showConfigEditor ? (
+                    <><ChevronDown className="h-3 w-3" /> Fechar</>
+                  ) : (
+                    <><Settings className="h-3 w-3" /> {!config ? 'Configurar seeds' : 'Editar seeds'}</>
+                  )}
+                </button>
+              </div>
+
+              {/* Editor (collapsible) */}
+              {showConfigEditor && (
+                <div className="border-t border-[var(--border)]/60 px-4 pb-4 pt-3 space-y-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[120px_1fr]">
+                    {/* num_teams */}
+                    <div>
+                      <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/70">
+                        Nº equipes
+                      </label>
+                      <input
+                        type="number"
+                        min={2}
+                        max={64}
+                        value={configEditorNumTeams}
+                        onChange={e => setConfigEditorNumTeams(e.target.value)}
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm tabular-nums text-[var(--foreground)] focus:border-[var(--green-bright)]/60 focus:outline-none"
+                      />
+                      <p className="mt-1 text-[10px] text-[var(--muted-foreground)]/55">
+                        Auto: {suggestedNumTeams} (jogos + 1)
+                      </p>
+                    </div>
+
+                    {/* seeds */}
+                    <div>
+                      <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-[var(--muted-foreground)]/70">
+                        Seeds — uma equipe por linha (1ª = melhor colocada)
+                      </label>
+                      <textarea
+                        value={configEditorSeeds}
+                        onChange={e => setConfigEditorSeeds(e.target.value)}
+                        rows={Math.max(6, suggestedTeams.length)}
+                        placeholder={suggestedTeams.slice(0, 3).join('\n') + '\n...'}
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-mono text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/35 focus:border-[var(--green-bright)]/60 focus:outline-none resize-y min-h-[120px]"
+                      />
+                      <p className="mt-1 text-[10px] text-[var(--muted-foreground)]/55">
+                        {configEditorSeeds.split('\n').filter(s => s.trim()).length} seeds · sugeridas de {suggestedTeams.length} times nos jogos
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => setShowConfigEditor(false)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={isSavingConfig}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--green-bright)]/50 bg-[var(--green-dim)]/20 px-4 py-1.5 text-[11px] font-bold text-[var(--green-bright)] transition-all hover:bg-[var(--green-dim)]/35 disabled:opacity-50"
+                    >
+                      <Save className="h-3 w-3" />
+                      {isSavingConfig ? 'Salvando…' : 'Salvar seeds'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         <BracketView jogos={jogosChave} config={config ?? null} />
       </div>
@@ -872,11 +1042,7 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
             return (
               <button
                 key={`${c.modalidadeSlug}-${c.categoria}-${c.divisao}`}
-                onClick={() => setChaveAberta({
-                  modalidade: c.modalidadeSlug,
-                  categoria: c.categoria,
-                  divisao: c.divisao,
-                })}
+                onClick={() => { setChaveAberta({ modalidade: c.modalidadeSlug, categoria: c.categoria, divisao: c.divisao }); setShowConfigEditor(false) }}
                 className={`group relative overflow-hidden rounded-2xl border bg-[var(--card)] text-left transition-all hover:-translate-y-0.5 hover:shadow-xl ${
                   isLive
                     ? 'border-red-500/35 hover:border-red-500/55 shadow-[0_0_20px_rgba(239,68,68,0.08)]'

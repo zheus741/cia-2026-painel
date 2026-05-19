@@ -1,14 +1,12 @@
 'use client'
 
 import 'leaflet/dist/leaflet.css'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import * as L from 'leaflet'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
-
-type Tab = 'pracas' | 'centropark'
 
 interface Venue {
   id:    number
@@ -24,109 +22,119 @@ interface Venue {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Centro Park — sede principal do evento
-// ⚠️  VERIFICAR coordenadas exatas via Google Maps antes do evento!
+// Centro Park — sede principal
 // ─────────────────────────────────────────────────────────────────────────────
+
 const CENTRO_PARK = {
-  lat:  -19.7477, // TODO: confirmar endereço exato
-  lng:  -47.9320, // TODO: confirmar endereço exato
+  lat:  -19.7477,
+  lng:  -47.9320,
   name: 'Centro Park',
   addr: 'Uberaba · MG',
 }
 
+const CP_AREAS = [
+  { icon: '🎪', label: 'Arena Principal',           desc: 'Cerimônias de abertura e encerramento' },
+  { icon: '🏅', label: 'Pódio & Premiações',         desc: 'Entrega de medalhas e troféus' },
+  { icon: '🍽️', label: 'Praça de Alimentação',       desc: 'Food trucks e espaço convivência' },
+  { icon: '🎤', label: 'Palco Cultural',             desc: 'Shows e atrações noturnas' },
+  { icon: '⚕️', label: 'Área Médica',               desc: 'Pronto atendimento e suporte atlético' },
+  { icon: '📸', label: 'Media Center — Olharr',     desc: 'Credenciamento, cobertura e lives' },
+  { icon: '🏟️', label: 'Palco de Esportes',         desc: 'Exibições e disputas especiais' },
+]
+
 // ─────────────────────────────────────────────────────────────────────────────
-// 17 Praças Esportivas
-// ⚠️  Coordenadas precisam de revisão no mapa antes do evento.
+// 17 Praças Esportivas — coordenadas geocodificadas via Nominatim (maio 2026)
 // ─────────────────────────────────────────────────────────────────────────────
+
 const VENUES: Venue[] = [
-  // ── Quadras poliesportivas ──────────────────────────────────────────────────
+  // ── Quadras poliesportivas ─────────────────────────────────────────────────
   { id: 1,  icon: '🏟️', feat: true,
-    name: 'CEMEA Boa Vista',              neigh: 'Indianópolis',      addr: 'Av. Djalma Castro Alves, 340',
-    lat: -19.7715, lng: -47.9437, // ⚠ aprox. bairro Indianópolis
+    name: 'CEMEA Boa Vista',              neigh: 'Amoroso Costa',     addr: 'Av. São Paulo, 340',
+    lat: -19.7374608, lng: -47.9034980,
     fac: [{ i:'🏐',q:'1',n:'Quadra de Vôlei' },{ i:'🥅',q:'1',n:'Quadra de Futsal' },{ i:'🤾',q:'1',n:'Quadra de Handebol' },{ i:'🏀',q:'1',n:'Quadra de Basquete' },{ i:'🧍',q:'✓',n:'Área do Atleta' }] },
 
   { id: 2,  icon: '🏟️', feat: true,
     name: 'FUNEL',                        neigh: 'Abadia',            addr: 'Av. Orlando Rodrigues da Cunha, 1837',
-    lat: -19.7589, lng: -47.9255, // ⚠ aprox. bairro Abadia
+    lat: -19.7669293, lng: -47.9229271,  // mesmo corredor que CEMEA Abadia (1853)
     fac: [{ i:'🏐',q:'1',n:'Quadra de Vôlei' },{ i:'🥅',q:'1',n:'Quadra de Futsal' },{ i:'🤾',q:'2',n:'Quadras de Handebol' },{ i:'🏀',q:'1',n:'Quadra de Basquete' },{ i:'🧍',q:'✓',n:'Área do Atleta' }] },
 
   { id: 3,  icon: '⛵', feat: true,
     name: 'Uirapuru Iate Clube',          neigh: 'Santa Maria',       addr: 'Rua Amapá, 810',
-    lat: -19.7604, lng: -47.9587,
+    lat: -19.7603832, lng: -47.9586606,
     fac: [{ i:'🏀',q:'3',n:'Quadras de Basquete' },{ i:'🏐',q:'2',n:'Quadras de Vôlei' },{ i:'🏸',q:'6',n:'Quadras de Peteca' },{ i:'🎾',q:'6',n:'Quadras de Tênis' },{ i:'⚽',q:'1',n:'Campo de Futebol (iluminado)' },{ i:'🧍',q:'✓',n:'Área do Atleta' }] },
 
   { id: 4,  icon: '🤾',
     name: 'CIE — C. Iniciação ao Esporte',neigh: 'Beija-Flor II',    addr: 'Rua Mário Teodoro, 148',
-    lat: -19.7530, lng: -47.9907,
+    lat: -19.7529939, lng: -47.9907016,
     fac: [{ i:'🤾',q:'1',n:'Quadra de Handebol' }] },
 
   { id: 5,  icon: '🏊',
     name: 'UTC — Uberaba Tênis Clube',    neigh: 'N. Sra. da Abadia', addr: 'Praça Dr. Thomaz Ulhôa, 461',
-    lat: -19.7508, lng: -47.9367,
+    lat: -19.7508, lng: -47.9367, // ⚠ aprox.
     fac: [{ i:'🥅',q:'1',n:'Quadra de Futsal' },{ i:'🏊',q:'✓',n:'Piscina' },{ i:'🥁',q:'✓',n:'Bateria' }] },
 
   { id: 6,  icon: '🏓',
-    name: 'FETI — Fundação Ensino Técnico',neigh: 'São Benedito',     addr: 'Rua Major Eustáquio, 790',
-    lat: -19.7626, lng: -47.9428, // ⚠ aprox. bairro São Benedito
+    name: 'FETI — Fundação Ensino Técnico',neigh: 'Centro',           addr: 'Rua Major Eustáquio, 790',
+    lat: -19.7523377, lng: -47.9397969,
     fac: [{ i:'🏓',q:'✓',n:'Tênis de Mesa' },{ i:'♟️',q:'✓',n:'Xadrez' }] },
 
   { id: 7,  icon: '🥋', feat: true,
     name: 'Clube SESI Minas',             neigh: 'Res. Estados Unidos',addr: 'Rua Francisco Bertoldi, 133',
-    lat: -19.7405, lng: -47.9098,
+    lat: -19.7405356, lng: -47.9098069,
     fac: [{ i:'⚽',q:'1',n:'Campo de Futebol' },{ i:'🥋',q:'✓',n:'Lutas · Cheer · Jiu-Jitsu · Judô' }] },
 
   { id: 8,  icon: '🎓', feat: true,
     name: 'UNIUBE',                       neigh: 'Universitário',     addr: 'Av. Nenê Sabino, 1801',
-    lat: -19.7550, lng: -47.9646,
+    lat: -19.7550391, lng: -47.9646474,
     fac: [{ i:'🥅',q:'*',n:'Futsal (sob demanda)' },{ i:'🤾',q:'*',n:'Handebol (sob demanda)' },{ i:'🏃',q:'✓',n:'Pista de Atletismo' }],
     note: '* Ativadas conforme demanda de inscrições.' },
 
-  // ── Estádio ─────────────────────────────────────────────────────────────────
+  // ── Estádio ────────────────────────────────────────────────────────────────
   { id: 9,  icon: '⚽', feat: true,
-    name: 'Estádio Uberabão',             neigh: 'Vila Olímpica',     addr: 'R. Aluísio de Melo Teixeira',
-    lat: -19.7387, lng: -47.9383,
+    name: 'Estádio Uberabão',             neigh: 'Vila Olímpica',     addr: 'Av. Maria Carmelita Castro Cunha',
+    lat: -19.7395092, lng: -47.9397143,
     fac: [{ i:'⚽',q:'1',n:'Campo c/ iluminação' }] },
 
-  // ── Campos de futebol ────────────────────────────────────────────────────────
+  // ── Campos de futebol ──────────────────────────────────────────────────────
   { id: 10, icon: '⚽',
     name: 'Campo Vila Nova',              neigh: 'COHAB Boa Vista',   addr: 'R. Soldado José Costa Souza',
-    lat: -19.7264, lng: -47.9188,
+    lat: -19.7268497, lng: -47.9181091,
     fac: [{ i:'⚽',q:'1',n:'Campo Iluminado' }] },
 
   { id: 11, icon: '⚽',
     name: 'Campo Atlético Abadia',        neigh: 'Abadia',            addr: 'R. Iguatama, 460',
-    lat: -19.7631, lng: -47.9260,
+    lat: -19.7639772, lng: -47.9222304,
     fac: [{ i:'⚽',q:'1',n:'Campo Iluminado' }] },
 
   { id: 12, icon: '⚽',
     name: 'Campo Nenenzão',               neigh: 'Olinda',            addr: 'Av. Nenê Sabino, 744–854',
-    lat: -19.7480, lng: -47.9600, // ⚠ aprox. trecho inicial da Av. Nenê Sabino
+    lat: -19.7480, lng: -47.9600, // ⚠ aprox.
     fac: [{ i:'⚽',q:'1',n:'Campo Iluminado' }] },
 
-  // ── Outras instituições ──────────────────────────────────────────────────────
+  // ── Outras instituições ────────────────────────────────────────────────────
   { id: 13, icon: '🏫',
-    name: 'Ginásio Corina de Oliveira',   neigh: 'Mercês',            addr: 'Av. da Saudade, 289',
-    lat: -19.7421, lng: -47.9439, // ⚠ aprox. bairro Mercês
+    name: 'Ginásio Corina de Oliveira',   neigh: 'Sete Colinas',      addr: 'Av. da Saudade, 289',
+    lat: -19.7462439, lng: -47.9502775,
     fac: [{ i:'🥅',q:'1',n:'Quadra de Futsal' },{ i:'🏐',q:'1',n:'Quadra de Vôlei' }] },
 
   { id: 14, icon: '🏫',
     name: 'SESC Uberaba',                 neigh: 'Fabrício',          addr: 'Rua Ricardo Misson, 411',
-    lat: -19.7428, lng: -47.9380,
+    lat: -19.7428146, lng: -47.9379767,
     fac: [{ i:'🏐',q:'1',n:'Quadra de Vôlei' }] },
 
   { id: 15, icon: '🏀',
-    name: 'Conselho Afro',                neigh: 'Jardim Elza Amui I',addr: 'Rua Nilton Rosa Nunes, 40',
-    lat: -19.7431, lng: -47.8897,
+    name: 'Conselho Afro',                neigh: 'Paraíso',           addr: 'Rua Nilton Rosa Nunes, 40',
+    lat: -19.7430624, lng: -47.8896871,
     fac: [{ i:'🏀',q:'1',n:'Quadra de Basquete' }] },
 
   { id: 16, icon: '⚽',
     name: 'Toca da Bola',                 neigh: 'Universitário',     addr: 'R. Guiomar Rodrigues da Cunha, 201',
-    lat: -19.7528, lng: -47.9614,
+    lat: -19.7528311, lng: -47.9613570,
     fac: [{ i:'⚽',q:'1',n:'Campo Fut7' },{ i:'🏐',q:'2',n:'Vôlei de Areia' }] },
 
   { id: 17, icon: '⚽',
     name: 'Campo SESI (iluminado)',        neigh: 'Res. Estados Unidos',addr: 'R. Francisco Bertoldi, 133',
-    lat: -19.7405, lng: -47.9098, // mesmo endereço que Clube SESI Minas
+    lat: -19.7405356, lng: -47.9098069,
     fac: [{ i:'⚽',q:'1',n:'Campo Iluminado' }] },
 ]
 
@@ -143,10 +151,9 @@ function haversine(a: { lat: number; lng: number }, b: { lat: number; lng: numbe
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Pin factories — FIFA-inspired
+// Pin factories
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Centro Park: teardrop pin with green glow
 function makeCentroParkPin() {
   return L.divIcon({
     html: `
@@ -170,23 +177,22 @@ function makeCentroParkPin() {
   })
 }
 
-// Sports venue: circular white badge
 function makeVenuePin(venue: Venue, active = false) {
-  const sz         = active ? 44 : venue.feat ? 38 : 30
-  const borderClr  = active ? '#4ade80' : venue.feat ? 'rgba(200,151,58,.85)' : 'rgba(255,255,255,.22)'
-  const bg         = active ? 'linear-gradient(135deg,#0a1a10,#122a1c)' : 'rgba(255,255,255,.93)'
-  const iconColor  = active ? '#4ade80' : '#1a1a2e'
-  const shadow     = active
+  const sz        = active ? 44 : venue.feat ? 38 : 30
+  const borderClr = active ? '#4ade80' : venue.feat ? 'rgba(200,151,58,.85)' : 'rgba(255,255,255,.22)'
+  const bg        = active ? 'linear-gradient(135deg,#0a1a10,#122a1c)' : 'rgba(255,255,255,.93)'
+  const iconColor = active ? '#4ade80' : '#1a1a2e'
+  const shadow    = active
     ? '0 0 0 3px rgba(74,222,128,.35),0 4px 18px rgba(0,0,0,.75)'
     : venue.feat
     ? '0 0 0 2px rgba(200,151,58,.2),0 3px 14px rgba(0,0,0,.65)'
     : '0 2px 10px rgba(0,0,0,.6)'
-  const transform  = active ? 'translateY(-5px) scale(1.1)' : 'none'
-  const fontSize   = Math.floor(sz * 0.43)
-  const anim       = venue.feat && !active
+  const transform = active ? 'translateY(-5px) scale(1.1)' : 'none'
+  const fontSize  = Math.floor(sz * 0.43)
+  const anim      = venue.feat && !active
     ? `@keyframes fp${venue.id}{50%{box-shadow:0 0 0 5px rgba(200,151,58,.18),0 3px 14px rgba(0,0,0,.6);}}`
     : ''
-  const animStyle  = venue.feat && !active ? `animation:fp${venue.id} 2.5s ease-in-out infinite` : ''
+  const animStyle = venue.feat && !active ? `animation:fp${venue.id} 2.5s ease-in-out infinite` : ''
 
   return L.divIcon({
     html: `
@@ -210,19 +216,23 @@ function makeVenuePin(venue: Venue, active = false) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VenuePanel — details drawer (side)
+// Tokens de cor
 // ─────────────────────────────────────────────────────────────────────────────
 
 const C = {
-  bg:      'rgba(5,12,6,.94)',
-  border:  'rgba(255,255,255,.08)',
-  border2: 'rgba(255,255,255,.05)',
-  gold:    '#c8973a',
-  goldBr:  '#e8b94f',
-  fg:      'rgba(255,255,255,.88)',
-  muted:   'rgba(255,255,255,.35)',
-  green:   '#4ade80',
+  bg:     'rgba(5,12,6,.94)',
+  border: 'rgba(255,255,255,.08)',
+  bdash:  'rgba(255,255,255,.05)',
+  gold:   '#c8973a',
+  goldBr: '#e8b94f',
+  fg:     'rgba(255,255,255,.88)',
+  muted:  'rgba(255,255,255,.35)',
+  green:  '#4ade80',
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VenuePanel — drawer lateral sobre o mapa esquerdo
+// ─────────────────────────────────────────────────────────────────────────────
 
 function VenuePanel({
   venue, onSelectVenue, onClose,
@@ -237,7 +247,7 @@ function VenuePanel({
     .filter(v => v.id !== venue.id)
     .map(v => ({ ...v, km: haversine(venue, v) }))
     .sort((a, b) => a.km - b.km)
-    .slice(0, 6)
+    .slice(0, 5)
 
   return (
     <div style={{
@@ -248,9 +258,8 @@ function VenuePanel({
       overflow: 'hidden',
       boxShadow: '0 8px 40px rgba(0,0,0,.7)',
     }}>
-
       {/* Header */}
-      <div style={{ padding: '12px 14px 10px', borderBottom: `1px solid ${C.border2}`, flexShrink: 0 }}>
+      <div style={{ padding: '12px 14px 10px', borderBottom: `1px solid ${C.bdash}`, flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
           <div style={{ fontSize: 8, letterSpacing: '0.38em', color: C.goldBr, textTransform: 'uppercase' }}>
             Praça · {String(venue.id).padStart(2, '0')}
@@ -262,20 +271,19 @@ function VenuePanel({
         <div style={{ fontWeight: 700, fontSize: 13, color: C.fg, textAlign: 'center', letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.25 }}>
           {venue.name}
         </div>
-        <div style={{ fontStyle: 'italic', fontSize: 12, color: C.muted, textAlign: 'center', marginTop: 4 }}>
+        <div style={{ fontStyle: 'italic', fontSize: 11, color: C.muted, textAlign: 'center', marginTop: 4 }}>
           {venue.addr} — <span style={{ color: C.goldBr }}>{venue.neigh}</span>
         </div>
       </div>
 
       {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', scrollbarWidth: 'thin' }}>
-
-        {/* Facilities */}
-        <div style={{ fontSize: 8, letterSpacing: '0.3em', color: C.goldBr, textTransform: 'uppercase', marginBottom: 6, paddingBottom: 4, borderBottom: `1px dashed ${C.border2}` }}>
+        {/* Instalações */}
+        <div style={{ fontSize: 8, letterSpacing: '0.3em', color: C.goldBr, textTransform: 'uppercase', marginBottom: 6, paddingBottom: 4, borderBottom: `1px dashed ${C.bdash}` }}>
           Instalações
         </div>
         {venue.fac.map((f, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '26px 1fr auto', alignItems: 'center', gap: 7, padding: '5px 4px', borderBottom: `1px dashed ${C.border2}` }}>
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '26px 1fr auto', alignItems: 'center', gap: 7, padding: '5px 4px', borderBottom: `1px dashed ${C.bdash}` }}>
             <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'radial-gradient(circle at 30% 30%,#d4c08a,#c8973a)', display: 'grid', placeItems: 'center', fontSize: 12, boxShadow: 'inset 0 0 0 1.5px rgba(0,0,0,.25),0 2px 5px rgba(0,0,0,.3)' }}>
               {f.i}
             </div>
@@ -289,8 +297,8 @@ function VenuePanel({
           </div>
         )}
 
-        {/* Distances */}
-        <div style={{ marginTop: 12, fontSize: 8, letterSpacing: '0.3em', color: C.goldBr, textTransform: 'uppercase', marginBottom: 6, paddingBottom: 4, borderBottom: `1px dashed ${C.border2}` }}>
+        {/* Praças próximas */}
+        <div style={{ marginTop: 12, fontSize: 8, letterSpacing: '0.3em', color: C.goldBr, textTransform: 'uppercase', marginBottom: 6, paddingBottom: 4, borderBottom: `1px dashed ${C.bdash}` }}>
           Praças Próximas
         </div>
         {distances.map(v => {
@@ -317,32 +325,127 @@ function VenuePanel({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Legend pills data
+// CentroParkPanel — painel direito estático
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LEGEND = [
-  { icon: '⭐', label: 'Centro Park',     count: '1',  highlight: true  },
-  { icon: '🏟️', label: 'Praça Esportiva', count: '17', highlight: false },
-  { icon: '⚽',  label: 'Futebol',         count: '8',  highlight: false },
-  { icon: '🏐',  label: 'Vôlei',           count: '8',  highlight: false },
-  { icon: '🏀',  label: 'Basquete',        count: '6',  highlight: false },
-  { icon: '🤾',  label: 'Handebol',        count: '5',  highlight: false },
-  { icon: '🎾',  label: 'Tênis/Peteca',    count: '12', highlight: false },
-  { icon: '🏊',  label: 'Natação',         count: '1',  highlight: false },
-]
+function CentroParkPanel({ cpMapRef }: { cpMapRef: RefObject<HTMLDivElement | null> }) {
+  const stats = [
+    { value: '4',   label: 'dias de evento' },
+    { value: '17',  label: 'praças' },
+    { value: '~100',label: 'pessoas' },
+    { value: '500+',label: 'conteúdos' },
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#060e07' }}>
+
+      {/* Header */}
+      <div style={{
+        padding: '10px 16px 9px',
+        borderBottom: '1px solid rgba(255,255,255,.06)',
+        flexShrink: 0,
+      }}>
+        <div style={{ fontSize: 8, letterSpacing: '0.4em', color: 'rgba(74,222,128,.65)', textTransform: 'uppercase', marginBottom: 2 }}>
+          ⭐ Sede Principal
+        </div>
+        <div style={{ fontWeight: 700, fontSize: 17, color: '#fff', letterSpacing: '0.12em', textTransform: 'uppercase', lineHeight: 1 }}>
+          CENTRO PARK
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 3, letterSpacing: '0.04em' }}>
+          Uberaba · MG · 04–07 Jun 2026
+        </div>
+      </div>
+
+      {/* Mapa CP zoomed */}
+      <div
+        ref={cpMapRef}
+        style={{ height: 190, flexShrink: 0, position: 'relative' }}
+      />
+
+      {/* Linha divisória */}
+      <div style={{ height: 1, background: 'rgba(255,255,255,.06)', flexShrink: 0 }} />
+
+      {/* Conteúdo rolável */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, scrollbarWidth: 'thin' }}>
+
+        {/* Endereço */}
+        <div style={{
+          padding: '9px 12px',
+          background: 'rgba(74,222,128,.05)',
+          border: '1px solid rgba(74,222,128,.14)',
+          borderRadius: 9,
+        }}>
+          <div style={{ fontSize: 7.5, letterSpacing: '0.32em', color: 'rgba(74,222,128,.7)', textTransform: 'uppercase', marginBottom: 3 }}>Localização</div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.85)' }}>{CENTRO_PARK.addr}</div>
+          <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.3)', marginTop: 2 }}>Coordenadas confirmadas em campo</div>
+        </div>
+
+        {/* Stats grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+          {stats.map(s => (
+            <div key={s.label} style={{
+              padding: '8px 10px',
+              background: 'rgba(255,255,255,.03)',
+              border: '1px solid rgba(255,255,255,.07)',
+              borderRadius: 8,
+              textAlign: 'center',
+            }}>
+              <div style={{ fontWeight: 800, fontSize: 18, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: 9.5, color: 'rgba(255,255,255,.35)', marginTop: 3, letterSpacing: '0.05em' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Áreas do evento */}
+        <div style={{ fontSize: 7.5, letterSpacing: '0.32em', color: 'rgba(255,255,255,.28)', textTransform: 'uppercase', margin: '4px 0 2px' }}>
+          Áreas do Evento
+        </div>
+        {CP_AREAS.map((area, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'flex-start', gap: 9,
+            padding: '7px 10px',
+            background: 'rgba(255,255,255,.025)',
+            border: '1px solid rgba(255,255,255,.055)',
+            borderRadius: 8,
+          }}>
+            <div style={{ fontSize: 15, flexShrink: 0, lineHeight: 1, marginTop: 1 }}>{area.icon}</div>
+            <div>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,.82)', lineHeight: 1.2 }}>{area.label}</div>
+              <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.34)', marginTop: 2, lineHeight: 1.4 }}>{area.desc}</div>
+            </div>
+          </div>
+        ))}
+
+        {/* Footer note */}
+        <div style={{
+          marginTop: 4, padding: '8px 11px',
+          borderLeft: '2px solid rgba(74,222,128,.35)',
+          background: 'rgba(74,222,128,.03)',
+          fontSize: 10.5, color: 'rgba(255,255,255,.3)', fontStyle: 'italic', lineHeight: 1.5,
+        }}>
+          Planta baixa e setorização serão publicadas próximo ao evento.
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Main component
+// Main — layout em dois painéis
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function MapaVenuesClient() {
-  const containerRef  = useRef<HTMLDivElement>(null)
-  const mapRef        = useRef<L.Map | null>(null)
-  const markersRef    = useRef<Record<number, L.Marker>>({})
-  const [selected, setSelected] = useState<Venue | null>(null)
-  const [tab, setTab] = useState<Tab>('pracas')
+  // ── Referências ─────────────────────────────────────────────────────────────
+  const uberabaContainerRef = useRef<HTMLDivElement>(null)
+  const uberabaMapRef       = useRef<L.Map | null>(null)
+  const markersRef          = useRef<Record<number, L.Marker>>({})
 
-  // ── Sync pin icons when selection changes ─────────────────────────────────
+  const cpContainerRef = useRef<HTMLDivElement>(null)
+  const cpMapRef       = useRef<L.Map | null>(null)
+
+  const [selected, setSelected] = useState<Venue | null>(null)
+
+  // ── Sync ícones ao mudar seleção ────────────────────────────────────────────
   useEffect(() => {
     Object.entries(markersRef.current).forEach(([idStr, marker]) => {
       const id    = Number(idStr)
@@ -351,55 +454,37 @@ export function MapaVenuesClient() {
     })
   }, [selected])
 
-  // ── Fly to correct area when tab changes ──────────────────────────────────
+  // ── Init mapa Uberaba ───────────────────────────────────────────────────────
   useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
-    if (tab === 'pracas') {
-      map.flyTo([-19.748, -47.945], 13, { duration: 0.8 })
-    } else {
-      map.flyTo([CENTRO_PARK.lat, CENTRO_PARK.lng], 16, { duration: 0.9 })
-    }
-  }, [tab])
+    if (!uberabaContainerRef.current || uberabaMapRef.current) return
 
-  // ── Init Leaflet (once) ───────────────────────────────────────────────────
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return
-
-    const map = L.map(containerRef.current, {
-      center: [-19.748, -47.945],
+    const map = L.map(uberabaContainerRef.current, {
+      center: [-19.748, -47.930],
       zoom: 13,
       zoomControl: false,
       scrollWheelZoom: true,
     })
 
-    // CartoDB Dark Matter — same look as FIFA WC26 reference
     L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-      {
-        attribution: '©<a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ©<a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-      },
+      { attribution: '©OpenStreetMap ©CARTO', subdomains: 'abcd', maxZoom: 19 },
     ).addTo(map)
 
     L.control.zoom({ position: 'bottomright' }).addTo(map)
 
-    // Centro Park pin
+    // Centro Park no mapa de Uberaba
     L.marker([CENTRO_PARK.lat, CENTRO_PARK.lng], {
       icon: makeCentroParkPin(),
       zIndexOffset: 1000,
-    })
-      .addTo(map)
-      .bindPopup(`
-        <div style="min-width:140px;color:#c8dccb;font-size:11px;text-align:center;padding:4px 0">
-          <div style="font-size:9px;letter-spacing:.3em;color:#4ade80;text-transform:uppercase;margin-bottom:4px">Sede do Evento</div>
-          <div style="font-weight:700;font-size:14px;color:#fff">Centro Park</div>
-          <div style="font-size:10px;color:#4e7055;margin-top:3px">Uberaba · MG</div>
-        </div>
-      `, { className: 'cia-popup-dark' })
+    }).addTo(map).bindPopup(`
+      <div style="min-width:130px;color:#c8dccb;font-size:11px;text-align:center;padding:4px 0">
+        <div style="font-size:9px;letter-spacing:.3em;color:#4ade80;text-transform:uppercase;margin-bottom:4px">Sede do Evento</div>
+        <div style="font-weight:700;font-size:14px;color:#fff">Centro Park</div>
+        <div style="font-size:10px;color:#4e7055;margin-top:3px">Uberaba · MG</div>
+      </div>
+    `, { className: 'cia-popup-dark' })
 
-    // Sports venues
+    // Pins de praças
     VENUES.forEach(v => {
       const m = L.marker([v.lat, v.lng], { icon: makeVenuePin(v) }).addTo(map)
       m.on('click', (e: L.LeafletMouseEvent) => {
@@ -410,170 +495,193 @@ export function MapaVenuesClient() {
       markersRef.current[v.id] = m
     })
 
-    // Click map background → deselect
     map.on('click', () => setSelected(null))
+    uberabaMapRef.current = map
 
-    mapRef.current = map
     return () => {
       map.remove()
-      mapRef.current = null
+      uberabaMapRef.current = null
       markersRef.current = {}
+    }
+  }, [])
+
+  // ── Init mapa Centro Park (mini-mapa estático) ──────────────────────────────
+  useEffect(() => {
+    if (!cpContainerRef.current || cpMapRef.current) return
+
+    const map = L.map(cpContainerRef.current, {
+      center: [CENTRO_PARK.lat, CENTRO_PARK.lng],
+      zoom: 16,
+      zoomControl: false,
+      scrollWheelZoom: false,
+      dragging: true,
+      attributionControl: false,
+    })
+
+    L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      { subdomains: 'abcd', maxZoom: 19 },
+    ).addTo(map)
+
+    L.marker([CENTRO_PARK.lat, CENTRO_PARK.lng], {
+      icon: makeCentroParkPin(),
+      zIndexOffset: 1000,
+    }).addTo(map)
+
+    cpMapRef.current = map
+
+    return () => {
+      map.remove()
+      cpMapRef.current = null
     }
   }, [])
 
   function handleSelectVenue(id: number) {
     const venue = VENUES.find(v => v.id === id)
-    if (!venue || !mapRef.current) return
+    if (!venue || !uberabaMapRef.current) return
     setSelected(venue)
-    mapRef.current.flyTo([venue.lat, venue.lng], 16, { duration: 0.7 })
+    uberabaMapRef.current.flyTo([venue.lat, venue.lng], 16, { duration: 0.7 })
   }
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column',
-      height: 'calc(100vh - 3.5rem)',
+      display: 'flex',
+      height: 'calc(100dvh - 3.5rem)',
       background: '#060e07',
+      overflow: 'hidden',
     }}>
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 20px', flexShrink: 0,
-        background: '#060e07',
-        borderBottom: '1px solid rgba(255,255,255,.06)',
-        gap: 16,
-      }}>
-        {/* Title */}
-        <div>
-          <div style={{ fontSize: 8, letterSpacing: '0.4em', color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', marginBottom: 2 }}>
-            CIA 2026 · Uberaba · MG
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* PAINEL ESQUERDO — Mapa de Uberaba                                     */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+
+        {/* Cabeçalho esquerdo */}
+        <div style={{
+          padding: '9px 16px 8px',
+          borderBottom: '1px solid rgba(255,255,255,.06)',
+          flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div>
+            <div style={{ fontSize: 7.5, letterSpacing: '0.4em', color: 'rgba(255,255,255,.28)', textTransform: 'uppercase', marginBottom: 1 }}>
+              CIA 2026 · Praças Esportivas
+            </div>
+            <div style={{ fontWeight: 700, fontSize: 17, color: '#fff', letterSpacing: '0.12em', textTransform: 'uppercase', lineHeight: 1 }}>
+              UBERABA · MG
+            </div>
           </div>
-          <h1 style={{ fontWeight: 700, fontSize: 20, color: '#fff', letterSpacing: '0.14em', textTransform: 'uppercase', margin: 0, lineHeight: 1 }}>
-            MAPA DO EVENTO
-          </h1>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {[
+              { icon: '⭐', label: 'CP',  clr: 'rgba(74,222,128,.2)',  txt: '#4ade80' },
+              { icon: '🏟️', label: '17×', clr: 'rgba(255,255,255,.06)', txt: 'rgba(255,255,255,.5)' },
+              { icon: '⚽',  label: '8×',  clr: 'rgba(255,255,255,.04)', txt: 'rgba(255,255,255,.35)' },
+            ].map(b => (
+              <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 5, background: b.clr, border: `1px solid ${b.txt}22` }}>
+                <span style={{ fontSize: 11 }}>{b.icon}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: b.txt, letterSpacing: '0.05em' }}>{b.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 3, padding: '4px', background: 'rgba(255,255,255,.04)', borderRadius: 10, border: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
+        {/* Área do mapa */}
+        <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+
+          {/* Leaflet container */}
+          <div ref={uberabaContainerRef} style={{ width: '100%', height: '100%' }} />
+
+          {/* Cartouche */}
+          <div style={{
+            position: 'absolute', top: 12, left: 12, zIndex: 500, pointerEvents: 'none',
+            padding: '7px 11px',
+            background: 'rgba(5,12,6,.88)', backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,.1)', borderRadius: 6,
+          }}>
+            <div style={{ fontSize: 6.5, letterSpacing: '0.4em', color: 'rgba(255,255,255,.35)', textTransform: 'uppercase', marginBottom: 2 }}>◆ Satélite ◆</div>
+            <div style={{ fontWeight: 700, fontSize: 12, color: 'rgba(255,255,255,.85)', letterSpacing: '0.14em' }}>UBERABA · MG</div>
+            <div style={{ fontStyle: 'italic', fontSize: 9.5, color: 'rgba(255,255,255,.3)', marginTop: 1 }}>19°45′S · 47°55′W</div>
+          </div>
+
+          {/* Bússola */}
+          <div style={{ position: 'absolute', top: 12, right: selected ? 288 : 12, zIndex: 500, pointerEvents: 'none', opacity: .65, transition: 'right .35s ease' }}>
+            <svg width="48" height="48" viewBox="0 0 100 100" fill="none">
+              <circle cx="50" cy="50" r="44" stroke="rgba(255,255,255,.2)" strokeWidth="1"/>
+              <circle cx="50" cy="50" r="35" stroke="rgba(255,255,255,.1)" strokeWidth=".6" strokeDasharray="2 2"/>
+              <line x1="50" y1="6"  x2="50" y2="14" stroke="rgba(255,255,255,.3)" strokeWidth=".8"/>
+              <line x1="50" y1="86" x2="50" y2="94" stroke="rgba(255,255,255,.3)" strokeWidth=".8"/>
+              <line x1="6"  y1="50" x2="14" y2="50" stroke="rgba(255,255,255,.3)" strokeWidth=".8"/>
+              <line x1="86" y1="50" x2="94" y2="50" stroke="rgba(255,255,255,.3)" strokeWidth=".8"/>
+              <polygon points="50,14 54,50 50,42 46,50" fill="rgba(255,255,255,.85)"/>
+              <polygon points="50,86 46,50 50,58 54,50" fill="rgba(255,255,255,.3)"/>
+              <circle cx="50" cy="50" r="3" fill="rgba(255,255,255,.6)" stroke="#060e07" strokeWidth=".8"/>
+              <text x="50" y="26" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.8)">N</text>
+              <text x="50" y="78" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">S</text>
+              <text x="18" y="53" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">O</text>
+              <text x="82" y="53" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">L</text>
+            </svg>
+          </div>
+
+          {/* Venue panel */}
+          <div style={{
+            position: 'absolute', top: 12, right: 12, bottom: 12,
+            width: 268, zIndex: 500,
+            transform: selected ? 'translateX(0)' : 'translateX(calc(100% + 16px))',
+            transition: 'transform .3s cubic-bezier(.4,0,.2,1)',
+            pointerEvents: selected ? 'all' : 'none',
+          }}>
+            <VenuePanel
+              venue={selected}
+              onSelectVenue={handleSelectVenue}
+              onClose={() => setSelected(null)}
+            />
+          </div>
+        </div>
+
+        {/* Legenda */}
+        <div style={{
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '3px 5px',
+          padding: '6px 14px',
+          background: '#060e07',
+          borderTop: '1px solid rgba(255,255,255,.06)',
+          flexShrink: 0,
+        }}>
           {[
-            { id: 'pracas',     label: '🏟 Praças Esportivas' },
-            { id: 'centropark', label: '⭐ Centro Park'         },
-          ].map(t => {
-            const active = tab === t.id
-            return (
-              <button
-                key={t.id}
-                onClick={() => { setTab(t.id as Tab); if (t.id === 'pracas') setSelected(null) }}
-                style={{
-                  padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                  fontWeight: 600, fontSize: 13, letterSpacing: '0.04em',
-                  transition: 'all .2s',
-                  background: active
-                    ? (t.id === 'centropark' ? 'rgba(74,222,128,.14)' : 'rgba(255,255,255,.10)')
-                    : 'transparent',
-                  color: active
-                    ? (t.id === 'centropark' ? '#4ade80' : '#fff')
-                    : 'rgba(255,255,255,.42)',
-                  boxShadow: active
-                    ? (t.id === 'centropark'
-                      ? '0 0 0 1px rgba(74,222,128,.3)'
-                      : '0 0 0 1px rgba(255,255,255,.15)')
-                    : 'none',
-                }}
-              >
-                {t.label}
-              </button>
-            )
-          })}
+            { icon: '⭐', label: 'Centro Park',     count: '1',  hl: true  },
+            { icon: '🏟️', label: 'Praça',           count: '17', hl: false },
+            { icon: '⚽',  label: 'Futebol',         count: '8',  hl: false },
+            { icon: '🏐',  label: 'Vôlei',           count: '8',  hl: false },
+            { icon: '🏀',  label: 'Basquete',        count: '6',  hl: false },
+            { icon: '🤾',  label: 'Handebol',        count: '5',  hl: false },
+            { icon: '🎾',  label: 'Tênis/Peteca',    count: '12', hl: false },
+          ].map(item => (
+            <div key={item.label} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '3px 8px', borderRadius: 5,
+              border: `1px solid ${item.hl ? 'rgba(74,222,128,.3)' : 'rgba(255,255,255,.08)'}`,
+              background: item.hl ? 'rgba(74,222,128,.06)' : 'transparent',
+            }}>
+              <span style={{ fontSize: 11 }}>{item.icon}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: item.hl ? '#4ade80' : 'rgba(255,255,255,.35)' }}>
+                {item.label}
+              </span>
+              <span style={{ fontSize: 9.5, fontWeight: 700, color: item.hl ? '#4ade80' : 'rgba(255,255,255,.22)' }}>
+                {item.count}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* ── Map area ─────────────────────────────────────────────────────────── */}
-      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+      {/* Divisor vertical */}
+      <div style={{ width: 1, background: 'rgba(255,255,255,.07)', flexShrink: 0 }} />
 
-        {/* Leaflet mount */}
-        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-
-        {/* Cartouche — top left */}
-        <div style={{
-          position: 'absolute', top: 12, left: 12, zIndex: 500, pointerEvents: 'none',
-          padding: '8px 12px',
-          background: 'rgba(5,12,6,.88)', backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255,255,255,.1)', borderRadius: 6,
-        }}>
-          <div style={{ fontSize: 7, letterSpacing: '0.4em', color: 'rgba(255,255,255,.35)', textTransform: 'uppercase', marginBottom: 2 }}>
-            {tab === 'pracas' ? '◆ Satélite ◆' : '◆ Venue ◆'}
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 13, color: 'rgba(255,255,255,.85)', letterSpacing: '0.14em' }}>
-            {tab === 'pracas' ? 'UBERABA · MG' : 'CENTRO PARK'}
-          </div>
-          <div style={{ fontStyle: 'italic', fontSize: 10, color: 'rgba(255,255,255,.3)', marginTop: 2 }}>
-            {tab === 'pracas' ? '19°45′S · 47°55′W' : '04–07 Jun 2026'}
-          </div>
-        </div>
-
-        {/* Compass — top right */}
-        <div style={{ position: 'absolute', top: 12, right: selected ? 328 : 12, zIndex: 500, pointerEvents: 'none', opacity: .7, transition: 'right .35s ease' }}>
-          <svg width="56" height="56" viewBox="0 0 100 100" fill="none">
-            <circle cx="50" cy="50" r="44" stroke="rgba(255,255,255,.2)" strokeWidth="1"/>
-            <circle cx="50" cy="50" r="35" stroke="rgba(255,255,255,.1)" strokeWidth=".6" strokeDasharray="2 2"/>
-            <line x1="50" y1="6"  x2="50" y2="14" stroke="rgba(255,255,255,.3)" strokeWidth=".8"/>
-            <line x1="50" y1="86" x2="50" y2="94" stroke="rgba(255,255,255,.3)" strokeWidth=".8"/>
-            <line x1="6"  y1="50" x2="14" y2="50" stroke="rgba(255,255,255,.3)" strokeWidth=".8"/>
-            <line x1="86" y1="50" x2="94" y2="50" stroke="rgba(255,255,255,.3)" strokeWidth=".8"/>
-            <polygon points="50,14 54,50 50,42 46,50" fill="rgba(255,255,255,.85)"/>
-            <polygon points="50,86 46,50 50,58 54,50" fill="rgba(255,255,255,.3)"/>
-            <circle cx="50" cy="50" r="3" fill="rgba(255,255,255,.6)" stroke="#060e07" strokeWidth=".8"/>
-            <text x="50" y="26" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.8)">N</text>
-            <text x="50" y="78" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">S</text>
-            <text x="18" y="53" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">O</text>
-            <text x="82" y="53" textAnchor="middle" fontSize="7" fontWeight="700" fill="rgba(255,255,255,.35)">L</text>
-          </svg>
-        </div>
-
-
-        {/* Side venue panel */}
-        <div style={{
-          position: 'absolute', top: 12, right: 12, bottom: 12,
-          width: 300, zIndex: 500,
-          transform: selected ? 'translateX(0)' : 'translateX(calc(100% + 16px))',
-          transition: 'transform .3s cubic-bezier(.4,0,.2,1)',
-          pointerEvents: selected ? 'all' : 'none',
-        }}>
-          <VenuePanel
-            venue={selected}
-            onSelectVenue={handleSelectVenue}
-            onClose={() => setSelected(null)}
-          />
-        </div>
-      </div>
-
-      {/* ── Legend bar ──────────────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 6px',
-        padding: '8px 16px', flexShrink: 0,
-        background: '#060e07',
-        borderTop: '1px solid rgba(255,255,255,.06)',
-      }}>
-        {LEGEND.map(item => (
-          <div
-            key={item.label}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '5px 11px', borderRadius: 6,
-              border: `1px solid ${item.highlight ? 'rgba(74,222,128,.3)' : 'rgba(255,255,255,.09)'}`,
-              background: item.highlight ? 'rgba(74,222,128,.07)' : 'transparent',
-            }}
-          >
-            <span style={{ fontSize: 13 }}>{item.icon}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: item.highlight ? '#4ade80' : 'rgba(255,255,255,.38)' }}>
-              {item.label}
-            </span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: item.highlight ? '#4ade80' : 'rgba(255,255,255,.25)' }}>
-              {item.count}
-            </span>
-          </div>
-        ))}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* PAINEL DIREITO — Centro Park                                          */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <div style={{ width: 320, flexShrink: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <CentroParkPanel cpMapRef={cpContainerRef} />
       </div>
 
     </div>

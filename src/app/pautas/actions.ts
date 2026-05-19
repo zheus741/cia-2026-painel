@@ -37,10 +37,11 @@ export async function criarPautaAction(
 
   const refsClean = referencias.filter(r => r.trim())
 
+  type PautaRow = { id: string; titulo: string; descricao: string | null; referencias: string[]; status: string }
+
   // Tenta inserir com referencias; se a coluna ainda não existir (migração pendente),
   // faz fallback sem ela para não bloquear a criação de pautas.
-  let data: { id: string; titulo: string; descricao: string | null; referencias: string[]; status: string } | null = null
-  let error: { message: string } | null = null
+  let data: PautaRow | null = null
 
   const insertWithRefs = await service
     .from('pautas')
@@ -67,11 +68,11 @@ export async function criarPautaAction(
       .select('id, titulo, descricao, status')
       .single()
     if (fallback.error) return { ok: false, error: fallback.error.message }
-    data = { ...fallback.data, referencias: refsClean } as typeof data
+    data = { ...(fallback.data as Omit<PautaRow, 'referencias'>), referencias: refsClean }
   } else if (insertWithRefs.error) {
     return { ok: false, error: insertWithRefs.error.message }
   } else {
-    data = insertWithRefs.data as typeof data
+    data = insertWithRefs.data as PautaRow
   }
 
   if (!data) return { ok: false, error: 'Erro inesperado ao salvar' }

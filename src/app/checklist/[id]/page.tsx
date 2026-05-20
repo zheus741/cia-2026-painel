@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ChevronLeft, Calendar, User } from 'lucide-react'
 import { ChecklistUI } from './ChecklistUI'
 import { DeleteInstanciaButton } from './DeleteInstanciaButton'
+import { RenomearInstanciaButton } from './RenomearInstanciaButton'
 import { getCurrentProfile, hasRole } from '@/lib/auth/current-user'
 
 interface Props {
@@ -115,9 +116,17 @@ export default async function ChecklistDetailPage({ params }: Props) {
             {tipoLabel[t.tipo] ?? t.tipo}
           </p>
         )}
-        <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
-          {titulo}
-        </h1>
+        {isCoord ? (
+          <RenomearInstanciaButton
+            instanciaId={inst.id}
+            titulo={titulo}
+            nomeOverride={inst.nome_override ?? null}
+          />
+        ) : (
+          <h1 className="mt-1 font-[var(--font-display)] text-3xl font-bold tracking-tight">
+            {titulo}
+          </h1>
+        )}
         {subtitulo && (
           <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">{subtitulo}</p>
         )}

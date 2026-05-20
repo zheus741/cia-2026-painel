@@ -76,3 +76,17 @@ export async function deletarInstancia(id: string) {
     revalidatePath('/checklist')
   })
 }
+
+export async function renomearInstancia(id: string, nome: string | null) {
+  return safe(async () => {
+    await requireCoordOrAdmin()
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('checklist_instancias')
+      .update({ nome_override: nome || null })
+      .eq('id', id)
+    if (error) throw error
+    revalidatePath('/checklist')
+    revalidatePath(`/checklist/${id}`)
+  })
+}

@@ -10,6 +10,7 @@ interface Jogo { id: string; label: string }
 interface Show { id: string; label: string }
 interface Festa { id: string; label: string }
 interface Patrocinador { id: string; nome: string }
+interface Dia { id: string; nome_dia: string }
 
 interface Props {
   edicaoId: string
@@ -18,18 +19,20 @@ interface Props {
   shows: Show[]
   festas: Festa[]
   patrocinadores: Patrocinador[]
+  dias: Dia[]
 }
 
 const TIPO_LABEL: Record<string, string> = {
   jogo: 'Jogo', show: 'Show', festa: 'Festa', ativacao_patrocinador: 'Ativação',
 }
 
-export function NovaInstanciaForm({ edicaoId, templates, jogos, shows, festas, patrocinadores }: Props) {
+export function NovaInstanciaForm({ edicaoId, templates, jogos, shows, festas, patrocinadores, dias }: Props) {
   const [open, setOpen] = useState(false)
   const [templateId, setTemplateId] = useState('')
   const [vinculo, setVinculo] = useState('')
   const [vinculoId, setVinculoId] = useState('')
   const [nomeOverride, setNomeOverride] = useState('')
+  const [diaId, setDiaId] = useState('')
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -45,7 +48,7 @@ export function NovaInstanciaForm({ edicaoId, templates, jogos, shows, festas, p
   })()
 
   function reset() {
-    setTemplateId(''); setVinculo(''); setVinculoId(''); setNomeOverride('')
+    setTemplateId(''); setVinculo(''); setVinculoId(''); setNomeOverride(''); setDiaId('')
     setOpen(false)
   }
 
@@ -56,6 +59,7 @@ export function NovaInstanciaForm({ edicaoId, templates, jogos, shows, festas, p
       await criarInstancia({
         template_id: templateId,
         edicao_id: edicaoId,
+        dia_id: diaId || null,
         jogo_id: vinculo === 'jogo' ? vinculoId || null : null,
         show_id: vinculo === 'show' ? vinculoId || null : null,
         festa_id: vinculo === 'festa' ? vinculoId || null : null,
@@ -158,6 +162,23 @@ export function NovaInstanciaForm({ edicaoId, templates, jogos, shows, festas, p
           className="w-full rounded-lg border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/50"
         />
       </div>
+
+      {/* Dia do evento */}
+      {dias.length > 0 && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-[var(--muted-foreground)]">Dia do evento (opcional)</label>
+          <select
+            value={diaId}
+            onChange={(e) => setDiaId(e.target.value)}
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--muted)] px-3 py-2 text-sm text-[var(--foreground)]"
+          >
+            <option value="">Sem dia específico</option>
+            {dias.map((d) => (
+              <option key={d.id} value={d.id}>{d.nome_dia}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="flex gap-2 pt-1">
         <button

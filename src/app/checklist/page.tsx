@@ -1,7 +1,11 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
-import { CheckSquare, AlertCircle, Clock } from 'lucide-react'
+import { CheckSquare } from 'lucide-react'
 import { NovaInstanciaForm } from './NovaInstanciaForm'
+import { ChecklistListClient } from './ChecklistListClient'
+import { deletarInstancia } from './actions'
+import { getCurrentProfile, hasRole } from '@/lib/auth/current-user'
 
 export default async function ChecklistPage() {
   const supabase = await createClient()
@@ -14,6 +18,8 @@ export default async function ChecklistPage() {
     { data: festasDB },
     { data: patrocinadores },
     { data: edicao },
+    { data: diasDB },
+    profile,
   ] = await Promise.all([
     supabase
       .from('checklist_instancias')
@@ -35,6 +41,8 @@ export default async function ChecklistPage() {
     supabase.from('festas').select('id, nome, inicio').order('inicio'),
     supabase.from('patrocinadores').select('id, nome').eq('ativo', true).order('nome'),
     supabase.from('edicoes').select('id').eq('ativa', true).maybeSingle(),
+    supabase.from('dias_evento').select('id, nome_dia').order('data'),
+    getCurrentProfile(),
   ])
 
   const rows = (instancias ?? []).map((inst) => {
@@ -59,15 +67,7 @@ export default async function ChecklistPage() {
     return { ...inst, titulo, dia, horario, t, total, feitos, pendentes, pct }
   })
 
-  const tipoLabel: Record<string, string> = {
-    jogo: 'Jogo', show: 'Show', festa: 'Festa', ativacao_patrocinador: 'Ativação',
-  }
-  const tipoColor: Record<string, string> = {
-    jogo: 'text-[var(--green-bright)] bg-[var(--green-dim)]/30',
-    show: 'text-purple-700 bg-purple-50',
-    festa: 'text-rose-700 bg-rose-50',
-    ativacao_patrocinador: 'text-yellow-700 bg-yellow-50',
-  }
+  const isCoord = profile ? hasRole(profile, 'admin', 'coordenacao') : false
 
   const edicaoId = edicao?.id ?? '00000000-0000-0000-0000-000000000001'
 
@@ -78,6 +78,7 @@ export default async function ChecklistPage() {
   }))
   const showsForm = (showsDB ?? []).map((s) => ({ id: s.id, label: s.nome }))
   const festasForm = (festasDB ?? []).map((f) => ({ id: f.id, label: f.nome }))
+  const diasForm = (diasDB ?? []).map((d) => ({ id: d.id, nome_dia: d.nome_dia }))
 
   return (
     <div className="space-y-6">
@@ -96,6 +97,7 @@ export default async function ChecklistPage() {
         shows={showsForm}
         festas={festasForm}
         patrocinadores={(patrocinadores ?? []) as { id: string; nome: string }[]}
+        dias={diasForm}
       />
 
       {rows.length === 0 ? (
@@ -107,59 +109,11 @@ export default async function ChecklistPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((row) => (
-            <Link
-              key={row.id}
-              href={`/checklist/${row.id}`}
-              className="group flex flex-col gap-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 transition-colors hover:border-[var(--accent)]"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex flex-col gap-1">
-                  {row.t && (
-                    <span className={`inline-flex w-fit rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tipoColor[row.t.tipo] ?? ''}`}>
-                      {tipoLabel[row.t.tipo] ?? row.t.tipo}
-                    </span>
-                  )}
-                  <h3 className="text-sm font-semibold leading-snug">{row.titulo}</h3>
-                </div>
-                <span className="shrink-0 text-2xl font-bold tabular-nums text-[var(--muted-foreground)]">
-                  {row.pct}%
-                </span>
-              </div>
-
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--muted)]">
-                <div
-                  className="h-full rounded-full bg-[var(--green-bright)] transition-all"
-                  style={{ width: `${row.pct}%` }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-                {row.dia && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {row.dia.nome_dia}
-                    {row.horario && (
-                      <> · {new Date(row.horario).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</>
-                    )}
-                  </span>
-                )}
-                <div className="flex items-center gap-1 ml-auto">
-                  {row.pendentes > 0 && (
-                    <span className="flex items-center gap-1 text-orange-400">
-                      <AlertCircle className="h-3 w-3" />
-                      {row.pendentes} pendente{row.pendentes !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                  {row.pendentes === 0 && row.total > 0 && (
-                    <span className="text-[var(--green-bright)]">Concluído</span>
-                  )}
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <ChecklistListClient
+          rows={rows}
+          isCoord={isCoord}
+          deletarInstancia={deletarInstancia}
+        />
       )}
     </div>
   )

@@ -1,8 +1,12 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Calendar, User } from 'lucide-react'
 import { ChecklistUI } from './ChecklistUI'
+import { DeleteInstanciaButton } from './DeleteInstanciaButton'
+import { getCurrentProfile, hasRole } from '@/lib/auth/current-user'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -12,26 +16,31 @@ export default async function ChecklistDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: inst } = await supabase
-    .from('checklist_instancias')
-    .select(`
-      id, nome_override, criado_em,
-      template:checklist_templates(nome, tipo),
-      dia:dias_evento(nome_dia, data),
-      jogo:jogos(equipe_a_nome, equipe_b_nome, inicio, modalidade:modalidades(nome)),
-      show:shows(nome, inicio, setor:setores(nome)),
-      festa:festas(nome, inicio),
-      patrocinador:patrocinadores(nome),
-      responsavel:profiles(nome),
-      checklist_itens(
-        id, label, obrigatorio, ordem, status, link_post, observacao, feito_em,
-        operador:profiles(nome)
-      )
-    `)
-    .eq('id', id)
-    .single()
+  const [{ data: inst }, profile] = await Promise.all([
+    supabase
+      .from('checklist_instancias')
+      .select(`
+        id, nome_override, criado_em,
+        template:checklist_templates(nome, tipo),
+        dia:dias_evento(nome_dia, data),
+        jogo:jogos(equipe_a_nome, equipe_b_nome, inicio, modalidade:modalidades(nome)),
+        show:shows(nome, inicio, setor:setores(nome)),
+        festa:festas(nome, inicio),
+        patrocinador:patrocinadores(nome),
+        responsavel:profiles(nome),
+        checklist_itens(
+          id, label, obrigatorio, ordem, status, link_post, observacao, feito_em,
+          operador:profiles(nome)
+        )
+      `)
+      .eq('id', id)
+      .single(),
+    getCurrentProfile(),
+  ])
 
   if (!inst) notFound()
+
+  const isCoord = profile ? hasRole(profile, 'admin', 'coordenacao') : false
 
   const t = inst.template as unknown as { nome: string; tipo: string } | null
   const dia = inst.dia as unknown as { nome_dia: string; data: string } | null
@@ -87,14 +96,17 @@ export default async function ChecklistDetailPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      {/* Voltar */}
-      <Link
-        href="/checklist"
-        className="inline-flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Checklists
-      </Link>
+      {/* Voltar + ações */}
+      <div className="flex items-center justify-between">
+        <Link
+          href="/checklist"
+          className="inline-flex items-center gap-1.5 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Checklists
+        </Link>
+        {isCoord && <DeleteInstanciaButton instanciaId={inst.id} />}
+      </div>
 
       {/* Header */}
       <div>
@@ -144,7 +156,7 @@ export default async function ChecklistDetailPage({ params }: Props) {
           Este checklist não tem itens. Verifique se foi criado corretamente.
         </p>
       ) : (
-        <ChecklistUI instanciaId={inst.id} itens={itens} />
+        <ChecklistUI instanciaId={inst.id} itens={itens} isCoord={isCoord} />
       )}
     </div>
   )

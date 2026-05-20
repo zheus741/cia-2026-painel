@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
-import { Check, X, Minus, ExternalLink, Loader2 } from 'lucide-react'
+import { Check, Minus, ExternalLink, Loader2, ChevronDown } from 'lucide-react'
 import { marcarItem } from '../actions'
 
 type ItemStatus = 'pendente' | 'feito' | 'nao_aplica'
@@ -21,15 +21,17 @@ interface ChecklistItem {
 interface Props {
   instanciaId: string
   itens: ChecklistItem[]
+  isCoord?: boolean
 }
 
-export function ChecklistUI({ instanciaId, itens: initialItens }: Props) {
+export function ChecklistUI({ instanciaId: _instanciaId, itens: initialItens, isCoord: _isCoord }: Props) {
   const [itens, setItens] = useState(initialItens)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [linkDraft, setLinkDraft] = useState<Record<string, string>>({})
   const [obsDraft, setObsDraft] = useState<Record<string, string>>({})
   const [isPending, startTransition] = useTransition()
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [savedId, setSavedId] = useState<string | null>(null)
 
   const feitos = itens.filter((i) => i.status === 'feito').length
   const total = itens.length
@@ -55,18 +57,16 @@ export function ChecklistUI({ instanciaId, itens: initialItens }: Props) {
     if (!isPending) setLoadingId(null)
   }, [isPending])
 
-  function handleMark(id: string, status: ItemStatus) {
+  function handleMark(id: string, status: ItemStatus, fromSaveButton = false) {
     setLoadingId(id)
     optimisticMark(id, status)
     startTransition(async () => {
       await marcarItem(id, status, linkDraft[id], obsDraft[id])
+      if (fromSaveButton) {
+        setSavedId(id)
+        setTimeout(() => setSavedId((prev) => (prev === id ? null : prev)), 2000)
+      }
     })
-  }
-
-  const statusIcon: Record<ItemStatus, React.ReactNode> = {
-    feito: <Check className="h-4 w-4" />,
-    nao_aplica: <Minus className="h-4 w-4" />,
-    pendente: null,
   }
 
   const statusBg: Record<ItemStatus, string> = {
@@ -107,7 +107,7 @@ export function ChecklistUI({ instanciaId, itens: initialItens }: Props) {
                   <button
                     onClick={() => handleMark(item.id, item.status === 'feito' ? 'pendente' : 'feito')}
                     disabled={isLoading}
-                    className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all ${
+                    className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border transition-all ${
                       item.status === 'feito'
                         ? 'border-[var(--green-bright)] bg-[var(--green-bright)] text-black'
                         : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--green)] hover:text-[var(--green)]'
@@ -115,22 +115,22 @@ export function ChecklistUI({ instanciaId, itens: initialItens }: Props) {
                     title="Marcar como feito"
                   >
                     {isLoading ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Check className="h-3.5 w-3.5" />
+                      <Check className="h-4 w-4" />
                     )}
                   </button>
                   <button
                     onClick={() => handleMark(item.id, item.status === 'nao_aplica' ? 'pendente' : 'nao_aplica')}
                     disabled={isLoading}
-                    className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all ${
+                    className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border transition-all ${
                       item.status === 'nao_aplica'
                         ? 'border-[var(--muted-foreground)] bg-[var(--muted)] text-[var(--foreground)]'
                         : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                     }`}
                     title="Não se aplica"
                   >
-                    <Minus className="h-3.5 w-3.5" />
+                    <Minus className="h-4 w-4" />
                   </button>
                 </div>
 
@@ -163,9 +163,12 @@ export function ChecklistUI({ instanciaId, itens: initialItens }: Props) {
                 {/* Expand toggle */}
                 <button
                   onClick={() => setExpanded(isExpanded ? null : item.id)}
-                  className="shrink-0 text-xs text-[var(--muted-foreground)]/50 hover:text-[var(--muted-foreground)] px-1"
+                  className="shrink-0 p-2 text-[var(--muted-foreground)]/50 hover:text-[var(--muted-foreground)] transition-colors"
+                  title={isExpanded ? 'Recolher' : 'Expandir'}
                 >
-                  {isExpanded ? '▲' : '▼'}
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                  />
                 </button>
               </div>
 
@@ -196,13 +199,19 @@ export function ChecklistUI({ instanciaId, itens: initialItens }: Props) {
                       className="mt-1 w-full resize-none rounded border border-[var(--border)] bg-[var(--muted)] px-2 py-1 text-xs outline-none focus:border-[var(--accent)]"
                     />
                   </div>
-                  <button
-                    onClick={() => handleMark(item.id, item.status)}
-                    disabled={isLoading}
-                    className="rounded bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
-                  >
-                    Salvar
-                  </button>
+                  {savedId === item.id ? (
+                    <span className="rounded bg-[var(--green-dim)]/30 px-3 py-1 text-xs font-semibold text-[var(--green-bright)]">
+                      Salvo ✓
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleMark(item.id, item.status, true)}
+                      disabled={isLoading}
+                      className="rounded bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+                    >
+                      Salvar
+                    </button>
+                  )}
                 </div>
               )}
             </li>

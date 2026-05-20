@@ -1,57 +1,46 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
-import { type ColumnDef, type FieldDef } from '@/components/admin/crud-client'
 import { createPatrocinador, updatePatrocinador, deletePatrocinador } from './actions'
-import { PatrocinadoresClient } from './PatrocinadoresClient'
-
-interface Patrocinador {
-  id: string
-  nome: string
-  slug: string | null
-  logo_url: string | null
-  cor_marca: string | null
-  cota: string | null
-  contato_nome: string | null
-  contato_email: string | null
-  contato_telefone: string | null
-  ativo: boolean
-  status_label: string
-}
-
-const fields: FieldDef[] = [
-  { name: 'nome', label: 'Nome', type: 'text', required: true, placeholder: 'Itaipava', span: 'half' },
-  { name: 'cota', label: 'Cota', type: 'select', span: 'half', options: [{ value: 'Master', label: 'Master' }, { value: 'Ouro', label: 'Ouro' }, { value: 'Prata', label: 'Prata' }, { value: 'Apoio', label: 'Apoio' }] },
-  { name: 'logo_url', label: 'Logo (URL)', type: 'text', placeholder: 'https://...' },
-  { name: 'cor_marca', label: 'Cor da marca', type: 'color', span: 'half' },
-  { name: 'ativo', label: 'Ativo', type: 'boolean', span: 'half', defaultValue: true },
-  { name: 'contato_nome', label: 'Contato', type: 'text', span: 'half' },
-  { name: 'contato_email', label: 'E-mail', type: 'email', span: 'half' },
-  { name: 'contato_telefone', label: 'Telefone', type: 'text', placeholder: '(00) 00000-0000' },
-  { name: 'slug', label: 'Slug', type: 'text', placeholder: 'itaipava' },
-  { name: 'observacoes', label: 'Observações', type: 'textarea' },
-]
-
-const columns: ColumnDef<Patrocinador>[] = [
-  { key: 'nome', label: 'Patrocinador' },
-  { key: 'cota', label: 'Cota' },
-  { key: 'contato_nome', label: 'Contato' },
-  { key: 'contato_email', label: 'E-mail' },
-  { key: 'status_label', label: 'Status' },
-]
+import { FicharioClient, type PatrocinadorRow, type ConteudoStat } from './FicharioClient'
 
 export default async function PatrocinadoresPage() {
   const supabase = await createClient()
-  const { data } = await supabase.from('patrocinadores').select('id, nome, slug, logo_url, cor_marca, cota, contato_nome, contato_email, contato_telefone, ativo').order('nome')
 
-  const processed = (data ?? []).map((r) => ({
-    ...r,
-    status_label: r.ativo ? 'Ativo' : 'Inativo',
-  })) as Patrocinador[]
+  const [{ data: patData }, { data: contData }] = await Promise.all([
+    supabase
+      .from('patrocinadores')
+      .select('id, nome, slug, logo_url, cor_marca, cota, contato_nome, contato_email, contato_telefone, observacoes, ativo')
+      .order('nome'),
+    supabase
+      .from('conteudos')
+      .select('patrocinador_id, status')
+      .not('patrocinador_id', 'is', null)
+      .not('status', 'in', '(arquivado,cancelado)'),
+  ])
+
+  const patrocinadores = (patData ?? []) as PatrocinadorRow[]
+
+  // Build per-sponsor stats
+  const statsMap = new Map<string, { publicados: number; em_producao: number; total: number }>()
+  for (const row of (contData ?? [])) {
+    const pid = row.patrocinador_id as string
+    if (!statsMap.has(pid)) statsMap.set(pid, { publicados: 0, em_producao: 0, total: 0 })
+    const s = statsMap.get(pid)!
+    s.total++
+    if (row.status === 'publicado') s.publicados++
+    if (['em_andamento', 'pendente', 'pausado', 'em_producao'].includes(row.status)) s.em_producao++
+  }
+
+  const conteudoStats: ConteudoStat[] = Array.from(statsMap.entries()).map(([patrocinador_id, s]) => ({
+    patrocinador_id,
+    ...s,
+  }))
 
   return (
-    <PatrocinadoresClient
-      data={processed}
-      fields={fields}
-      columns={columns}
+    <FicharioClient
+      patrocinadores={patrocinadores}
+      conteudoStats={conteudoStats}
       onCreate={createPatrocinador}
       onUpdate={updatePatrocinador}
       onDelete={deletePatrocinador}

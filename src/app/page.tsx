@@ -211,7 +211,7 @@ export default async function Home() {
         // 6. Patrocinadores
         supabase
           .from('patrocinadores')
-          .select('id, nome, ativo')
+          .select('id, nome, ativo, logo_url')
           .eq('ativo', true),
 
         // 7. Conteudos linked to patrocinadores (for patrocinio card)

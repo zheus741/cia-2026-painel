@@ -91,6 +91,7 @@ export async function createPatrocinador(fd: FormData): Promise<ActionResult> {
     const data = parseFormData(fd, SCHEMA)
     const { error } = await supabase.from('patrocinadores').insert({ ...data, edicao_id })
     if (error) throw error
+    revalidatePath('/admin/patrocinadores')
   })
 }
 
@@ -101,6 +102,7 @@ export async function updatePatrocinador(id: string, fd: FormData): Promise<Acti
     const data = parseFormData(fd, SCHEMA)
     const { error } = await supabase.from('patrocinadores').update(data).eq('id', id)
     if (error) throw error
+    revalidatePath('/admin/patrocinadores')
   })
 }
 
@@ -110,5 +112,6 @@ export async function deletePatrocinador(id: string): Promise<ActionResult> {
     const supabase = createAdminClient()
     const { error } = await supabase.from('patrocinadores').delete().eq('id', id)
     if (error) throw error
+    revalidatePath('/admin/patrocinadores')
   })
 }

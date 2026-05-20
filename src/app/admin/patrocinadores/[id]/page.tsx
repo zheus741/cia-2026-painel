@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, Mail, Phone, User, ExternalLink } from 'lucide-react'
+import { ChevronLeft, Mail, Phone, User, ExternalLink, Pencil } from 'lucide-react'
 import { EscopoClient } from './EscopoClient'
 
 interface Props {
@@ -134,10 +134,10 @@ export default async function PatrocinadorDetailPage({ params }: Props) {
         </div>
 
         <Link
-          href="/admin/patrocinadores"
+          href={`/admin/patrocinadores?edit=${id}`}
           className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
         >
-          <ChevronLeft className="h-3.5 w-3.5" />
+          <Pencil className="h-3.5 w-3.5" />
           Editar dados
         </Link>
       </div>

@@ -43,7 +43,7 @@ interface PipelineStats {
 }
 interface DiaStat { idx: number; total: number; publicados: number; label: string }
 interface CanalStat { canal: string; total: number; publicados: number }
-interface PatrocStat { id: string; nome: string; total: number; publicados: number }
+interface PatrocStat { id: string; nome: string; logo_url: string | null; total: number; publicados: number }
 interface Jogo {
   id: string; equipe_a_nome: string | null; equipe_b_nome: string | null
   inicio: string | null; fim_previsto: string | null; dia_id: string | null
@@ -2128,19 +2128,33 @@ export function TVDisplay({
           ) : patrocStats.length > 0 && (
             /* Patrocínio — fallback before rankings exist */
             <TVCard title="Patrocínio" style={{ flex: 1, minHeight: 0 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {patrocStats.slice(0, 5).map((p) => {
                   const pct = p.total > 0 ? Math.round((p.publicados / p.total) * 100) : 0
                   return (
                     <div key={p.id}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                        <span style={{
-                          fontFamily: FONT_DISPLAY,
-                          fontSize: 11, color: C.creamDim, fontWeight: 600, letterSpacing: '-0.01em',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%',
-                        }}>
-                          {p.nome}
-                        </span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, maxWidth: '60%' }}>
+                          {p.logo_url ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={p.logo_url}
+                              alt={p.nome}
+                              style={{
+                                width: 20, height: 20, borderRadius: 4,
+                                objectFit: 'contain', background: 'white', padding: 2, flexShrink: 0,
+                              }}
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                            />
+                          ) : null}
+                          <span style={{
+                            fontFamily: FONT_DISPLAY,
+                            fontSize: 11, color: C.creamDim, fontWeight: 600, letterSpacing: '-0.01em',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>
+                            {p.nome}
+                          </span>
+                        </div>
                         <span style={{
                           fontFamily: FONT_DISPLAY, fontSize: 12, fontWeight: 800,
                           color: pct >= 70 ? C.green : C.gold, letterSpacing: '-0.03em',

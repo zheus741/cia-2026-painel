@@ -51,6 +51,7 @@ export interface CoordPatrocinador {
   id: string
   nome: string
   ativo: boolean
+  logo_url: string | null
 }
 
 export interface CoordChecklistItem {
@@ -514,51 +515,61 @@ function PatrocinioCard({
           <ul className="space-y-2.5">
             {stats.map((p, i) => (
               <li key={p.id}>
-                <div className="mb-1 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    {p.pct < 50 && p.total > 0 && (
-                      <AlertTriangle style={{ width: 11, height: 11, color: '#A04A2E', flexShrink: 0 }} />
-                    )}
+                <a href={`/admin/patrocinadores/${p.id}`} style={{ display: 'block', textDecoration: 'none' }}>
+                  <div className="mb-1 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {p.logo_url ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={p.logo_url}
+                          alt={p.nome}
+                          style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'contain', background: 'white', padding: 1, flexShrink: 0 }}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                      ) : p.pct < 50 && p.total > 0 ? (
+                        <AlertTriangle style={{ width: 11, height: 11, color: '#A04A2E', flexShrink: 0 }} />
+                      ) : null}
+                      <span style={{
+                        fontSize: 12.5, fontWeight: 600,
+                        color: 'rgba(10,15,11,0.75)',
+                        letterSpacing: '-0.01em',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {p.nome}
+                      </span>
+                    </div>
                     <span style={{
-                      fontSize: 12.5, fontWeight: 600,
-                      color: 'rgba(10,15,11,0.75)',
-                      letterSpacing: '-0.01em',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
+                      fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                      fontSize: 13, fontWeight: 800,
+                      color: '#0A0F0B',
+                      letterSpacing: '-0.02em',
+                      flexShrink: 0,
+                      marginLeft: 8,
                     }}>
-                      {p.nome}
+                      {p.published}<span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11 }}>/{p.total}</span>
                     </span>
                   </div>
-                  <span style={{
-                    fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                    fontSize: 13, fontWeight: 800,
-                    color: '#0A0F0B',
-                    letterSpacing: '-0.02em',
-                    flexShrink: 0,
-                    marginLeft: 8,
-                  }}>
-                    {p.published}<span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11 }}>/{p.total}</span>
-                  </span>
-                </div>
-                <div style={{
-                  height: 4,
-                  borderRadius: 999,
-                  background: 'rgba(70,50,5,0.08)',
-                  overflow: 'hidden',
-                }}>
                   <div style={{
-                    height: '100%',
-                    width: mounted ? `${p.pct}%` : '0%',
-                    background: p.pct >= 70
-                      ? 'linear-gradient(90deg, #2e6b42, #4aa066)'
-                      : p.pct >= 40
-                      ? 'linear-gradient(90deg, #B58812, #E8B82F)'
-                      : 'linear-gradient(90deg, #A04A2E, #C46B4A)',
-                    transition: `width 1s cubic-bezier(0.16, 1, 0.3, 1) ${i * 100}ms`,
+                    height: 4,
                     borderRadius: 999,
-                  }} />
-                </div>
+                    background: 'rgba(70,50,5,0.08)',
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: mounted ? `${p.pct}%` : '0%',
+                      background: p.pct >= 70
+                        ? 'linear-gradient(90deg, #2e6b42, #4aa066)'
+                        : p.pct >= 40
+                        ? 'linear-gradient(90deg, #B58812, #E8B82F)'
+                        : 'linear-gradient(90deg, #A04A2E, #C46B4A)',
+                      transition: `width 1s cubic-bezier(0.16, 1, 0.3, 1) ${i * 100}ms`,
+                      borderRadius: 999,
+                    }} />
+                  </div>
+                </a>
               </li>
             ))}
           </ul>

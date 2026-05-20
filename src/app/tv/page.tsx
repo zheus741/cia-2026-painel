@@ -66,7 +66,7 @@ export default async function TVPage() {
     supabase.from('conteudos')
       .select('id, status, tipo, titulo, dia_id, canal_publicacao, patrocinador_id')
       .not('status', 'in', '(arquivado,cancelado)'),
-    supabase.from('patrocinadores').select('id, nome, ativo').eq('ativo', true),
+    supabase.from('patrocinadores').select('id, nome, ativo, logo_url').eq('ativo', true),
     fetchWeather(),
     // Ranking parcial da competição
     supabase.from('equipes')
@@ -166,11 +166,11 @@ export default async function TVPage() {
     .map(([tipo, counts]) => ({ tipo, ...counts }))
 
   // Patrocínio
-  const patrocinadores = (patrocinadoresRes.data ?? []) as { id: string; nome: string; ativo: boolean }[]
+  const patrocinadores = (patrocinadoresRes.data ?? []) as { id: string; nome: string; ativo: boolean; logo_url: string | null }[]
   const patrocStats = patrocinadores.filter(p => p.ativo).map(p => {
     const list = allConteudos.filter(c => c.patrocinador_id === p.id)
     return {
-      id: p.id, nome: p.nome,
+      id: p.id, nome: p.nome, logo_url: p.logo_url ?? null,
       total: list.length,
       publicados: list.filter(c => c.status === 'publicado').length,
     }

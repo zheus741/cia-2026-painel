@@ -30,6 +30,8 @@ export type Role =
   | 'operador'
   | 'coordenador_esportivo'
   | 'operador_esportivo'
+  | 'operador_fv'
+  | 'lider_fv'
 
 // Helpers de role — use em page.tsx e layouts
 export const ROLES_ADMIN_ONLY     = ['admin'] as const
@@ -95,3 +97,10 @@ export const requireProfile = cache(async (): Promise<CurrentProfile> => {
   if (!profile) redirect('/login')
   return profile
 })
+
+export async function requireCoordAdminOrLiderFV(): Promise<void> {
+  const profile = await getCurrentProfile()
+  if (!profile || !['admin', 'coordenacao', 'lider_fv'].includes(profile.role)) {
+    throw new Error('Sem permissão.')
+  }
+}

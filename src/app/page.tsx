@@ -4,6 +4,7 @@ import { requireProfile } from '@/lib/auth/current-user'
 import { AppShell } from '@/components/app-shell'
 import { HomeClient } from './HomeClient'
 import { HomeEsportivo } from './HomeEsportivo'
+import { HomeFotoVideo } from './HomeFotoVideo'
 import type {
   CoordConteudoHoje,
   CoordJogo,
@@ -77,6 +78,24 @@ export default async function Home() {
         nome={profile.nome}
         role={profile.role}
         isCoordEsportivo={profile.role === 'coordenador_esportivo'}
+        diffDays={diffDays}
+        eventActive={eventActive}
+      />
+    )
+  }
+
+  const isFVRole = profile.role === 'operador_fv' || profile.role === 'lider_fv'
+  if (isFVRole) {
+    const now         = new Date()
+    const diffMs      = EVENT_START.getTime() - now.getTime()
+    const diffDays    = Math.max(0, Math.ceil(diffMs / 86_400_000))
+    const eventActive = now >= EVENT_START && now <= new Date('2026-06-08T00:00:00-03:00')
+    return (
+      <HomeFotoVideo
+        userId={profile.id}
+        nome={profile.nome}
+        role={profile.role}
+        isLider={profile.role === 'lider_fv'}
         diffDays={diffDays}
         eventActive={eventActive}
       />

@@ -26,10 +26,14 @@ type NavGroup = { label: string; items: NavItem[] }
 const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin', coordenacao: 'Coord', lider_area: 'Líder', operador: 'Op',
   coordenador_esportivo: 'Coord. Esp.', operador_esportivo: 'Op. Esp.',
+  operador_fv: 'Op. FV',
+  lider_fv:    'Líder FV',
 }
 const ROLE_COLOR: Record<string, string> = {
   admin: '#2e6b42', coordenacao: '#8a5f06', lider_area: '#2563eb', operador: '#64748b',
   coordenador_esportivo: '#c0392b', operador_esportivo: '#7c3aed',
+  operador_fv: '#7c3aed',
+  lider_fv:    '#6d28d9',
 }
 function getInitials(name: string) {
   return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
@@ -157,11 +161,68 @@ const OP_ESPORTIVO_GROUPS: NavGroup[] = [
 // Nav para coordenacao — tudo menos aba Gestão
 const COORDENACAO_GROUPS: NavGroup[] = ADMIN_GROUPS.filter(g => g.label !== 'Gestão')
 
+// Nav para operador_fv
+const OP_FV_GROUPS: NavGroup[] = [
+  {
+    label: 'Principal',
+    items: [
+      { label: 'Wiki',           href: '/wiki',                    icon: BookOpen },
+      { label: 'Mapa Ao Vivo',   href: '/mapa',                    icon: MapPin },
+      { label: 'Placar Ao Vivo', href: '/placar',                  icon: Radio },
+    ],
+  },
+  {
+    label: 'Esportivo',
+    items: [
+      { label: 'Hub Esportivo',  href: '/esportivo',               icon: Trophy },
+      { label: 'Atléticas',      href: '/atleticas',               icon: Users },
+      { label: 'Chaveamento',    href: '/esportivo/chaveamento',    icon: GitBranch },
+    ],
+  },
+  {
+    label: 'Minha Área',
+    items: [
+      { label: 'Minha Equipe',   href: '/minha-equipe',            icon: Users2 },
+      { label: 'Minha Escala',   href: '/minha-escala',            icon: UserCircle },
+    ],
+  },
+]
+
+// Nav para lider_fv — igual ao operador_fv + Escala FV
+const LIDER_FV_GROUPS: NavGroup[] = [
+  {
+    label: 'Principal',
+    items: [
+      { label: 'Wiki',           href: '/wiki',                    icon: BookOpen },
+      { label: 'Mapa Ao Vivo',   href: '/mapa',                    icon: MapPin },
+      { label: 'Placar Ao Vivo', href: '/placar',                  icon: Radio },
+    ],
+  },
+  {
+    label: 'Esportivo',
+    items: [
+      { label: 'Hub Esportivo',  href: '/esportivo',               icon: Trophy },
+      { label: 'Atléticas',      href: '/atleticas',               icon: Users },
+      { label: 'Chaveamento',    href: '/esportivo/chaveamento',    icon: GitBranch },
+    ],
+  },
+  {
+    label: 'Equipe',
+    items: [
+      { label: 'Escala FV',      href: '/escala-av',               icon: Aperture },
+      { label: 'Minha Equipe',   href: '/minha-equipe',            icon: Users2 },
+      { label: 'Minha Escala',   href: '/minha-escala',            icon: UserCircle },
+    ],
+  },
+]
+
 function getNavGroups(role: string | null | undefined, funcao: string | null | undefined): NavGroup[] {
   if (role === 'admin')                  return ADMIN_GROUPS
   if (role === 'coordenacao')            return COORDENACAO_GROUPS
   if (role === 'coordenador_esportivo')  return COORD_ESPORTIVO_GROUPS
   if (role === 'operador_esportivo')     return OP_ESPORTIVO_GROUPS
+  if (role === 'operador_fv')            return OP_FV_GROUPS
+  if (role === 'lider_fv')              return LIDER_FV_GROUPS
   // lider_area e operador: nav de mídia (baseada em funcao_principal ou role)
   return getMediaGroups(role ?? 'operador')
 }
@@ -202,6 +263,21 @@ function getBottomNavItems(role: string | null | undefined): NavItem[] {
     { label: 'Escala',    href: '/esportivo/escala', icon: ClipboardList },
     { label: 'Atléticas', href: '/atleticas',        icon: Users },
     { label: 'Hub',       href: '/esportivo',        icon: Trophy },
+  ]
+
+  if (role === 'operador_fv') return [
+    home,
+    { label: 'Mapa',     href: '/mapa',      icon: MapPin },
+    { label: 'Hub',      href: '/esportivo', icon: Trophy },
+    { label: 'Placar',   href: '/placar',    icon: Radio },
+    { label: 'Equipe',   href: '/minha-equipe', icon: Users2 },
+  ]
+  if (role === 'lider_fv') return [
+    home,
+    { label: 'Escala FV', href: '/escala-av',  icon: Aperture },
+    { label: 'Hub',       href: '/esportivo',  icon: Trophy },
+    { label: 'Placar',    href: '/placar',     icon: Radio },
+    { label: 'Mapa',      href: '/mapa',       icon: MapPin },
   ]
 
   // lider_area / operador / fallback (mídia)

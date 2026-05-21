@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import {
   BookOpen, MapPin, Radio, Trophy, Users, GitBranch,
-  Aperture, Users2, UserCircle, Calendar, Zap,
+  Aperture, UserCircle, Calendar, Zap,
 } from 'lucide-react'
 
 interface Props {
@@ -161,7 +161,7 @@ export async function HomeFotoVideo({
       {/* ── Hero ─────────────────────────────────────────────── */}
       <div
         className="border-b px-6 py-10"
-        style={{ borderColor: 'var(--border)', background: 'var(--background)' }}
+        style={{ borderColor: 'var(--border)' }}
       >
         <p
           className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em]"
@@ -218,11 +218,11 @@ export async function HomeFotoVideo({
           {/* Publicados */}
           <div
             className="rounded-xl border p-3 text-center"
-            style={{ background: 'rgba(46,107,66,0.06)', borderColor: 'rgba(46,107,66,0.18)' }}
+            style={{ background: 'rgba(46,107,66,0.08)', borderColor: 'rgba(46,107,66,0.22)' }}
           >
             <p
               className="text-2xl font-extrabold tabular-nums"
-              style={{ color: 'var(--green-bright, #4ade80)' }}
+              style={{ color: 'var(--green)' }}
             >
               {stats.publicado}
             </p>
@@ -258,6 +258,9 @@ export async function HomeFotoVideo({
           </Link>
         </div>
       </div>
+
+      {/* ── Linha dourada ──────────────────────────────────────── */}
+      <div className="cia-gold-rule" />
 
       {/* ── Quick access grid ─────────────────────────────────── */}
       <div className="px-6 py-8">

@@ -91,14 +91,36 @@ export default async function Home() {
     const diffDays    = Math.max(0, Math.ceil(diffMs / 86_400_000))
     const eventActive = now >= EVENT_START && now <= new Date('2026-06-08T00:00:00-03:00')
     return (
-      <HomeFotoVideo
-        userId={profile.id}
-        nome={profile.nome}
-        role={profile.role}
-        isLider={profile.role === 'lider_fv'}
-        diffDays={diffDays}
-        eventActive={eventActive}
-      />
+      <AppShell fullWidth>
+        <div className="relative flex flex-1 flex-col overflow-hidden cia-bg">
+          {/* Dot grid */}
+          <div className="cia-dot-grid pointer-events-none absolute inset-0 opacity-100" />
+          {/* Giroscópio watermark */}
+          <div className="pointer-events-none absolute -right-28 -top-28 select-none">
+            <div className="cia-spin-slow cia-pulse-glow">
+              <Image
+                src="/assets/giroscopio.png"
+                alt=""
+                width={480}
+                height={480}
+                style={{
+                  filter: 'invert(1) hue-rotate(100deg) saturate(1.5)',
+                  mixBlendMode: 'screen',
+                  opacity: 0.04,
+                }}
+              />
+            </div>
+          </div>
+          <HomeFotoVideo
+            userId={profile.id}
+            nome={profile.nome}
+            role={profile.role}
+            isLider={profile.role === 'lider_fv'}
+            diffDays={diffDays}
+            eventActive={eventActive}
+          />
+        </div>
+      </AppShell>
     )
   }
 

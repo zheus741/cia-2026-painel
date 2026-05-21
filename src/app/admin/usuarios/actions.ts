@@ -47,6 +47,18 @@ export async function toggleAtivo(userId: string, ativo: boolean) {
   revalidatePath('/admin/usuarios')
 }
 
+export async function updateEmpresaCobertura(userId: string, empresa: string | null) {
+  await requireCoordOrAdmin()
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update({ empresa_cobertura: empresa || null })
+    .eq('id', userId)
+  if (error) throw error
+  revalidatePath('/admin/usuarios')
+  revalidatePath('/escala-av')
+}
+
 // Mantidos por compatibilidade com eventuais referências antigas
 export async function createUsuario() {
   return { ok: false as const, error: 'Use a tela de criar conta para novos membros.' }

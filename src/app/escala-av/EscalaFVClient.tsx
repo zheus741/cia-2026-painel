@@ -20,7 +20,7 @@ interface Turno  {
   briefing_editorial:  string | null
   conteudos_esperados: string | null
 }
-interface Perfil { id: string; nome: string; funcao_principal: string | null }
+interface Perfil { id: string; nome: string; funcao_principal: string | null; empresa_cobertura: string | null }
 
 interface Props {
   dias:      Dia[]
@@ -165,7 +165,7 @@ function TurnoCard({
           <option value="">Não atribuído</option>
           {candidatos.map(p => (
             <option key={p.id} value={p.id}>
-              {p.nome}
+              {p.nome}{p.empresa_cobertura ? ` · ${p.empresa_cobertura}` : ''}
             </option>
           ))}
         </select>
@@ -184,6 +184,27 @@ function TurnoCard({
           </svg>
         )}
       </div>
+
+      {/* Badge empresa do operador atribuído */}
+      {(() => {
+        if (!turno.user_id) return null
+        const op = profiles.find(p => p.id === turno.user_id)
+        if (!op?.empresa_cobertura) return null
+        return (
+          <div className="mt-2 flex items-center gap-1">
+            <span
+              className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+              style={{
+                background:  'rgba(245,158,11,0.10)',
+                borderColor: 'rgba(245,158,11,0.28)',
+                color:       '#b45309',
+              }}
+            >
+              📷 {op.empresa_cobertura}
+            </span>
+          </div>
+        )
+      })()}
     </div>
   )
 }

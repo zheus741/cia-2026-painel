@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import { updateRole, updateFuncao, toggleAtivo, aprovarUsuario, recusarUsuario } from './actions'
+import { updateRole, updateFuncao, toggleAtivo, aprovarUsuario, recusarUsuario, updateEmpresaCobertura } from './actions'
 import { confirmDialog } from '@/components/confirm-dialog'
 import {
   Shield, UserCog, Users, Crown, Power, PowerOff,
@@ -20,11 +20,19 @@ interface Usuario {
   telefone: string | null
   role: string
   funcao_principal: string | null
+  empresa_cobertura: string | null
   foto_url: string | null
   ativo: boolean
   criado_em: string
   aprovado: boolean
 }
+
+const EMPRESAS_COBERTURA = [
+  { value: '',              label: '— sem empresa —' },
+  { value: 'Indie Clicks',  label: '📷 Indie Clicks' },
+]
+
+const FV_ROLES: Role[] = ['operador_fv', 'lider_fv']
 
 const ROLE_META: Record<Role, { label: string; cor: string; icon: typeof Shield }> = {
   admin:                  { label: 'Admin',          cor: 'text-red-600 bg-red-50 border-red-200',              icon: Crown },
@@ -84,6 +92,13 @@ function UsuarioCard({ u, onUpdate }: { u: Usuario; onUpdate: () => void }) {
   function handleFuncao(newFuncao: string) {
     startTransition(async () => {
       await updateFuncao(u.id, newFuncao || null)
+      onUpdate()
+    })
+  }
+
+  function handleEmpresa(newEmpresa: string) {
+    startTransition(async () => {
+      await updateEmpresaCobertura(u.id, newEmpresa || null)
       onUpdate()
     })
   }
@@ -148,6 +163,20 @@ function UsuarioCard({ u, onUpdate }: { u: Usuario; onUpdate: () => void }) {
             <option key={f.value} value={f.value}>{f.label}</option>
           ))}
         </select>
+
+        {/* Empresa de cobertura — só para roles FV */}
+        {FV_ROLES.includes(u.role as Role) && (
+          <select
+            value={u.empresa_cobertura ?? ''}
+            onChange={(e) => handleEmpresa(e.target.value)}
+            disabled={isPending}
+            className="flex-1 min-w-[140px] rounded-lg border border-[var(--border)] bg-[var(--muted)] px-2.5 py-1.5 text-xs text-[var(--foreground)] disabled:opacity-50 cursor-pointer"
+          >
+            {EMPRESAS_COBERTURA.map((e) => (
+              <option key={e.value} value={e.value}>{e.label}</option>
+            ))}
+          </select>
+        )}
 
         {/* Toggle ativo */}
         <button

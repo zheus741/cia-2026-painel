@@ -18,7 +18,7 @@ export default async function EscalaAVPage() {
       .order('inicio'),
     supabase
       .from('profiles')
-      .select('id, nome, funcao_principal')
+      .select('id, nome, funcao_principal, empresa_cobertura')
       .in('funcao_principal', ['foto', 'video'])
       .eq('ativo', true)
       .order('nome'),

@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils'
 import { createTurnoAV, updateTurnoAV, deleteTurnoAV, replicarDiaAV, type TurnoAVPayload } from './actions'
 import { toast } from '@/components/toast'
-import { confirmDialog } from '@/components/confirm-dialog'
 
 // ─── Brand colors Foto vs Vídeo (mantém o decoupling visual histórico) ──────
 // Foto = roxo · Vídeo = teal. Cores fixas pra distinguir mídia (não muda com tema).
@@ -111,6 +110,59 @@ function groupSetores(setores: Setor[]): SetorGroup[] {
   }
 
   return Array.from(map.values())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timeline constants + helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TIMELINE_START = 7    // 07:00
+const TIMELINE_END   = 27   // 03:00+1
+const TOTAL_HOURS    = 20
+const PX_PER_HOUR    = 80
+const TIMELINE_W     = TOTAL_HOURS * PX_PER_HOUR  // 1600px
+const LEFT_COL_W     = 172
+
+const SETOR_ORDER: Record<string, number> = {
+  'PALCO PRINCIPAL':  0,
+  'PALCO ELETRONICO': 1,
+  'PUBLICO NOTURNO':  2,
+  'BASE DA EQUIPE':   3,
+  'PUBLICO ARENA':    4,
+  'PALCO 360':        5,
+  'ESPORTIVO':        6,
+  'SAC':              7,
+}
+
+function getSetorOrder(prefix: string): number {
+  const up = prefix.toUpperCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
+  for (const [key, order] of Object.entries(SETOR_ORDER)) {
+    const normKey = key.normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    if (up.startsWith(normKey)) return order
+  }
+  return 99
+}
+
+function getSPMinutes(iso: string): number {
+  const hhmm = new Date(iso).toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+  })
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}
+
+function turnoLeftPx(inicio: string): number {
+  let min = getSPMinutes(inicio)
+  if (min < TIMELINE_START * 60) min += 24 * 60
+  return Math.max(0, (min - TIMELINE_START * 60) * PX_PER_HOUR / 60)
+}
+
+function turnoWidthPx(inicio: string, fim: string): number {
+  let s = getSPMinutes(inicio)
+  let e = getSPMinutes(fim)
+  if (s < TIMELINE_START * 60) s += 24 * 60
+  if (e <= s) e += 24 * 60
+  return Math.max(40, (e - s) * PX_PER_HOUR / 60)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -939,6 +991,439 @@ function EscalaTable({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TurnoBlock — bloco posicionado na faixa da timeline
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TRACK_H   = 30
+const TRACK_GAP = 4
+const ROW_PAD   = 8
+
+function TurnoBlock({
+  turno, conflitos, onEdit, onDelete,
+}: {
+  turno: TurnoAV
+  conflitos: Set<string>
+  onEdit: (t: TurnoAV) => void
+  onDelete: (id: string) => void
+}) {
+  const isFoto     = turno.funcao === 'foto'
+  const isConflito = conflitos.has(turno.id)
+  const color      = isFoto ? FOTO_COLOR : VIDEO_COLOR
+  const bg         = isFoto ? 'rgba(124,58,237,0.13)' : 'rgba(26,92,92,0.13)'
+  const borderClr  = isFoto ? 'rgba(124,58,237,0.38)' : 'rgba(26,92,92,0.38)'
+
+  const leftPx  = turnoLeftPx(turno.inicio)
+  const rawW    = turnoWidthPx(turno.inicio, turno.fim)
+  const widthPx = Math.min(rawW, TIMELINE_W - leftPx)
+
+  const prioConfig = turno.prioridade
+    ? PRIORIDADE_CONFIG[turno.prioridade as keyof typeof PRIORIDADE_CONFIG]
+    : null
+  const statusCfg = STATUS_CONFIG[(turno.status_escala ?? 'rascunho') as keyof typeof STATUS_CONFIG]
+    ?? STATUS_CONFIG.rascunho
+  const firstName = (turno.user?.nome ?? '?').split(' ')[0]
+
+  return (
+    <div
+      className="group absolute top-0.5 flex cursor-pointer select-none items-center gap-1 overflow-hidden rounded-md border pl-1.5 text-[10px] font-semibold transition-all hover:z-20 hover:shadow-md active:scale-[0.98]"
+      style={{
+        left:        leftPx,
+        width:       Math.max(40, widthPx),
+        height:      TRACK_H - 2,
+        background:  isConflito ? 'rgba(239,68,68,0.12)' : bg,
+        borderColor: isConflito ? 'rgba(239,68,68,0.50)' : borderClr,
+        color:       isConflito ? '#dc2626' : color,
+      }}
+      onClick={() => onEdit(turno)}
+      title={`${turno.user?.nome ?? '?'} · ${fmtHora(turno.inicio)}–${fmtHora(turno.fim)}${turno.parceiro ? ` · ${turno.parceiro.nome}` : ''}`}
+    >
+      <span
+        className="h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ background: isConflito ? '#ef4444' : statusCfg.text }}
+      />
+      {prioConfig && (
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: prioConfig.dot }} />
+      )}
+      <span className="flex-1 truncate leading-none">{firstName}</span>
+      <span className="hidden shrink-0 tabular-nums text-[8px] opacity-60 group-hover:inline">
+        {fmtHora(turno.inicio)}
+      </span>
+      {turno.parceiro && (
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ background: turno.parceiro.cor_hex }}
+          title={turno.parceiro.nome}
+        />
+      )}
+      <button
+        className="absolute right-0 top-0 hidden h-full w-5 items-center justify-center rounded-r-md bg-red-500/80 group-hover:flex"
+        onClick={(e) => { e.stopPropagation(); onDelete(turno.id) }}
+        title="Remover"
+      >
+        <Trash2 className="h-2.5 w-2.5 text-white" />
+      </button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TimelineView — visão principal de linha do tempo
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TimelineView({
+  setores,
+  turnosPorSetor,
+  setoresComEvento,
+  conflitos,
+  onAdd,
+  onEdit,
+  onDelete,
+}: {
+  setores:          Setor[]
+  turnosPorSetor:   Map<string, TurnoAV[]>
+  setoresComEvento: Set<string>
+  conflitos:        Set<string>
+  onAdd:    (funcao: 'foto' | 'video', setorId: string) => void
+  onEdit:   (turno: TurnoAV) => void
+  onDelete: (id: string) => void
+}) {
+  const groups = React.useMemo(() => {
+    const raw = groupSetores(setores)
+    return [...raw].sort((a, b) => getSetorOrder(a.prefix) - getSetorOrder(b.prefix))
+  }, [setores])
+
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set())
+
+  function toggleGroup(prefix: string) {
+    setCollapsed(prev => {
+      const next = new Set(prev)
+      if (next.has(prefix)) next.delete(prefix)
+      else next.add(prefix)
+      return next
+    })
+  }
+
+  const activeGroups = groups.filter(g =>
+    g.items.some(({ setor }) => {
+      const ts = turnosPorSetor.get(setor.id) ?? []
+      return setoresComEvento.has(setor.id) || ts.length > 0
+    })
+  )
+
+  if (activeGroups.length === 0) {
+    return (
+      <div className="flex h-40 items-center justify-center text-sm text-[var(--muted-foreground)]/50">
+        Sem setores com eventos neste dia.
+      </div>
+    )
+  }
+
+  // Régua de horas
+  const hours: number[] = []
+  for (let h = TIMELINE_START; h <= TIMELINE_END; h++) {
+    hours.push(h)
+  }
+
+  // Altura de cada setor na timeline: 2 faixas + gaps + padding
+  const ROW_H = ROW_PAD * 2 + TRACK_H * 2 + TRACK_GAP
+
+  return (
+    <div className="overflow-x-auto">
+      <div style={{ minWidth: LEFT_COL_W + TIMELINE_W + 1 }}>
+
+        {/* ── Régua de horas ── */}
+        <div
+          className="sticky top-0 z-20 flex border-b"
+          style={{ background: 'var(--card)', borderColor: 'rgba(46,107,66,0.12)' }}
+        >
+          {/* Coluna esquerda vazia */}
+          <div
+            className="sticky left-0 z-20 shrink-0 border-r"
+            style={{
+              width: LEFT_COL_W,
+              background: 'var(--card)',
+              borderColor: 'rgba(46,107,66,0.12)',
+            }}
+          />
+          {/* Marcadores de hora */}
+          <div className="relative" style={{ width: TIMELINE_W, height: 28 }}>
+            {hours.map(h => {
+              const leftPx = (h - TIMELINE_START) * PX_PER_HOUR
+              const label  = h >= 24 ? `${String(h - 24).padStart(2, '0')}h` : `${String(h).padStart(2, '0')}h`
+              return (
+                <div
+                  key={h}
+                  className="absolute top-0 flex h-full items-center"
+                  style={{ left: leftPx }}
+                >
+                  <span
+                    className="pl-1 text-[9px] font-bold tabular-nums"
+                    style={{ color: 'var(--muted-foreground)', opacity: 0.55 }}
+                  >
+                    {label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Grupos de setores ── */}
+        {activeGroups.map((group, gIdx) => {
+          const isCollapsed = collapsed.has(group.prefix)
+          const isSolo      = group.items.length === 1 && group.items[0].suffix === null
+
+          const activeItems = group.items.filter(({ setor }) => {
+            const ts = turnosPorSetor.get(setor.id) ?? []
+            return setoresComEvento.has(setor.id) || ts.length > 0
+          })
+
+          if (activeItems.length === 0) return null
+
+          return (
+            <div key={group.prefix}>
+
+              {/* ── Header colapsável do grupo (só quando multi-setor) ── */}
+              {!isSolo && (
+                <div
+                  className="flex items-center border-b"
+                  style={{
+                    background:   gIdx % 2 === 0 ? 'rgba(46,107,66,0.04)' : 'rgba(26,92,92,0.03)',
+                    borderColor:  'rgba(46,107,66,0.10)',
+                    borderTop:    gIdx > 0 ? '2px solid rgba(46,107,66,0.14)' : undefined,
+                  }}
+                >
+                  <button
+                    onClick={() => toggleGroup(group.prefix)}
+                    className="sticky left-0 z-10 flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-[rgba(46,107,66,0.06)]"
+                    style={{
+                      width: LEFT_COL_W,
+                      background: gIdx % 2 === 0 ? 'rgba(46,107,66,0.04)' : 'rgba(26,92,92,0.03)',
+                    }}
+                  >
+                    {isCollapsed
+                      ? <ChevronRight className="h-3 w-3 shrink-0 text-[var(--muted-foreground)]" />
+                      : <ChevronDown  className="h-3 w-3 shrink-0 text-[var(--muted-foreground)]" />
+                    }
+                    <span className="truncate text-[10px] font-bold tracking-[0.10em] text-[var(--foreground)]">
+                      {group.prefix}
+                    </span>
+                    <span
+                      className="ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-bold tabular-nums"
+                      style={{ background: 'rgba(46,107,66,0.12)', color: '#2e6b42' }}
+                    >
+                      {activeItems.length}
+                    </span>
+                  </button>
+                  {/* Linha vazia ocupando o resto da régua */}
+                  <div style={{ flex: 1 }} />
+                </div>
+              )}
+
+              {/* ── Linhas de setor ── */}
+              {!isCollapsed && activeItems.map(({ setor, suffix }, rowIdx) => {
+                const ts         = turnosPorSetor.get(setor.id) ?? []
+                const fotoTs     = ts.filter(t => t.funcao === 'foto')
+                const videoTs    = ts.filter(t => t.funcao === 'video')
+                const temEvento  = setoresComEvento.has(setor.id)
+                const faltaFoto  = temEvento && fotoTs.length === 0
+                const faltaVideo = temEvento && videoTs.length === 0
+                const isLast     = rowIdx === activeItems.length - 1
+
+                const displayName = isSolo
+                  ? setor.nome
+                  : suffix
+                  ? `${group.prefix} ${suffix}`
+                  : setor.nome
+
+                return (
+                  <div
+                    key={setor.id}
+                    className="flex"
+                    style={{
+                      borderBottom: isLast && !isSolo ? undefined : '1px solid rgba(46,107,66,0.07)',
+                      minHeight: ROW_H,
+                    }}
+                  >
+                    {/* ── Coluna esquerda sticky ── */}
+                    <div
+                      className="sticky left-0 z-10 shrink-0 border-r"
+                      style={{
+                        width:       LEFT_COL_W,
+                        background:  rowIdx % 2 === 0 ? 'var(--card)' : 'color-mix(in srgb, var(--card) 98%, #2e6b42)',
+                        borderColor: 'rgba(46,107,66,0.12)',
+                        padding:     `${ROW_PAD}px 8px`,
+                        display:     'flex',
+                        alignItems:  'center',
+                        gap:         6,
+                      }}
+                    >
+                      {/* Indicadores foto/vídeo */}
+                      <div className="flex shrink-0 flex-col gap-0.5">
+                        <span style={{ fontSize: 8, opacity: fotoTs.length > 0 ? 1 : 0.2 }}>📸</span>
+                        <span style={{ fontSize: 8, opacity: videoTs.length > 0 ? 1 : 0.2 }}>🎬</span>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[10px] font-semibold leading-tight text-[var(--foreground)]">
+                          {displayName}
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-1">
+                          {setor.tem_wifi && <Wifi className="h-2 w-2 text-[var(--green-bright)]" />}
+                          {setor.alimentacao && setor.alimentacao !== 'nenhuma' && (
+                            <UtensilsCrossed className="h-2 w-2" style={{ color: '#b07a0a' }} />
+                          )}
+                          {setor.maps_url && (
+                            <a href={setor.maps_url} target="_blank" rel="noopener noreferrer">
+                              <MapPin className="h-2 w-2 text-[var(--muted-foreground)]/40 hover:text-[var(--accent)]" />
+                            </a>
+                          )}
+                          {setor.notas_acesso && (
+                            <span className="text-[7px] text-amber-500">⚠️</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Área da timeline ── */}
+                    <div
+                      className="relative flex-1 flex-col"
+                      style={{
+                        width:   TIMELINE_W,
+                        padding: `${ROW_PAD}px 0`,
+                        background: rowIdx % 2 === 0 ? 'transparent' : 'rgba(46,107,66,0.01)',
+                      }}
+                    >
+                      {/* Grid de horas verticais */}
+                      {hours.map(h => (
+                        <div
+                          key={h}
+                          className="pointer-events-none absolute inset-y-0"
+                          style={{
+                            left:        (h - TIMELINE_START) * PX_PER_HOUR,
+                            width:       1,
+                            background:  'rgba(46,107,66,0.07)',
+                          }}
+                        />
+                      ))}
+
+                      {/* ── Faixa FOTO ── */}
+                      <TimelineTrack
+                        funcao="foto"
+                        turnos={fotoTs}
+                        temEvento={temEvento}
+                        falta={faltaFoto}
+                        conflitos={conflitos}
+                        onAdd={() => onAdd('foto', setor.id)}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                      />
+
+                      {/* Espaço entre faixas */}
+                      <div style={{ height: TRACK_GAP }} />
+
+                      {/* ── Faixa VÍDEO ── */}
+                      <TimelineTrack
+                        funcao="video"
+                        turnos={videoTs}
+                        temEvento={temEvento}
+                        falta={faltaVideo}
+                        conflitos={conflitos}
+                        onAdd={() => onAdd('video', setor.id)}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TimelineTrack — faixa única (foto ou vídeo) dentro de um setor
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TimelineTrack({
+  funcao, turnos, temEvento, falta, conflitos, onAdd, onEdit, onDelete,
+}: {
+  funcao:     'foto' | 'video'
+  turnos:     TurnoAV[]
+  temEvento:  boolean
+  falta:      boolean
+  conflitos:  Set<string>
+  onAdd:      () => void
+  onEdit:     (t: TurnoAV) => void
+  onDelete:   (id: string) => void
+}) {
+  const isFoto = funcao === 'foto'
+  const color  = isFoto ? FOTO_COLOR : VIDEO_COLOR
+  const label  = isFoto ? 'F' : 'V'
+
+  const trackBg = falta
+    ? 'rgba(239,68,68,0.05)'
+    : isFoto
+    ? 'rgba(124,58,237,0.04)'
+    : 'rgba(26,92,92,0.04)'
+
+  const trackBorder = falta
+    ? '1px dashed rgba(239,68,68,0.35)'
+    : isFoto
+    ? '1px solid rgba(124,58,237,0.08)'
+    : '1px solid rgba(26,92,92,0.08)'
+
+  return (
+    <div
+      className="group/track relative"
+      style={{
+        height:     TRACK_H,
+        width:      TIMELINE_W,
+        background: trackBg,
+        border:     trackBorder,
+        borderRadius: 4,
+        overflow:   'hidden',
+      }}
+    >
+      {/* Label "F" / "V" discreto */}
+      <span
+        className="pointer-events-none absolute left-1 top-1/2 -translate-y-1/2 text-[8px] font-black leading-none select-none"
+        style={{ color, opacity: 0.30 }}
+      >
+        {label}
+      </span>
+
+      {/* Botão + quando vazio e em hover */}
+      {turnos.length === 0 && (
+        <button
+          onClick={onAdd}
+          className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover/track:opacity-100"
+          style={{ color }}
+          title={`Adicionar turno de ${funcao}`}
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      )}
+
+      {/* Blocos de turnos */}
+      {turnos.map(turno => (
+        <TurnoBlock
+          key={turno.id}
+          turno={turno}
+          conflitos={conflitos}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // EscalaAVGrid — componente principal
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -960,6 +1445,7 @@ export function EscalaAVGrid({
   const [filterFuncao, setFilterFuncao] = React.useState<'all' | 'foto' | 'video'>('all')
   const [searchQuery,  setSearchQuery]  = React.useState('')
   const [replicarOpen, setReplicarOpen] = React.useState(false)
+  const [viewMode,     setViewMode]     = React.useState<'timeline' | 'tabela'>('timeline')
   const [dialog, setDialog] = React.useState<{
     open: boolean
     defaultFuncao: 'foto' | 'video'
@@ -1185,6 +1671,24 @@ export function EscalaAVGrid({
               />
             </div>
 
+            {/* Toggle de visão */}
+            <div className="flex items-center gap-0.5 rounded-full border border-[var(--border)] bg-[var(--card)] p-0.5">
+              {(['timeline', 'tabela'] as const).map(v => (
+                <button
+                  key={v}
+                  onClick={() => setViewMode(v)}
+                  className={cn(
+                    'rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-all',
+                    viewMode === v
+                      ? 'bg-[var(--muted)] shadow-sm text-[var(--foreground)]'
+                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]',
+                  )}
+                >
+                  {v === 'timeline' ? '⏱ Linha' : '⊞ Tabela'}
+                </button>
+              ))}
+            </div>
+
             {/* Replicar dia */}
             {dias.length > 1 && (
               <button
@@ -1218,20 +1722,32 @@ export function EscalaAVGrid({
         </div>
       </div>
 
-      {/* ── Tabela de escala ── */}
+      {/* ── Tabela / Timeline de escala ── */}
       <div
         className="rounded-2xl border border-[var(--border)] overflow-hidden"
         style={{ background: 'var(--card)' }}
       >
-        <EscalaTable
-          setores={setores}
-          turnosPorSetor={turnosPorSetor}
-          setoresComEvento={setoresComEvento}
-          conflitos={conflitos}
-          onAdd={(funcao, setorId) => setDialog({ open: true, defaultFuncao: funcao, defaultSetorId: setorId })}
-          onEdit={t => setDialog({ open: true, defaultFuncao: t.funcao as 'foto' | 'video', defaultSetorId: t.setor_id ?? undefined, editing: t })}
-          onDelete={id => setDeleteConfirm(id)}
-        />
+        {viewMode === 'tabela' ? (
+          <EscalaTable
+            setores={setores}
+            turnosPorSetor={turnosPorSetor}
+            setoresComEvento={setoresComEvento}
+            conflitos={conflitos}
+            onAdd={(funcao, setorId) => setDialog({ open: true, defaultFuncao: funcao, defaultSetorId: setorId })}
+            onEdit={t => setDialog({ open: true, defaultFuncao: t.funcao as 'foto' | 'video', defaultSetorId: t.setor_id ?? undefined, editing: t })}
+            onDelete={id => setDeleteConfirm(id)}
+          />
+        ) : (
+          <TimelineView
+            setores={setores}
+            turnosPorSetor={turnosPorSetor}
+            setoresComEvento={setoresComEvento}
+            conflitos={conflitos}
+            onAdd={(funcao, setorId) => setDialog({ open: true, defaultFuncao: funcao, defaultSetorId: setorId })}
+            onEdit={t => setDialog({ open: true, defaultFuncao: t.funcao as 'foto' | 'video', defaultSetorId: t.setor_id ?? undefined, editing: t })}
+            onDelete={id => setDeleteConfirm(id)}
+          />
+        )}
       </div>
 
       {/* Replicar dia dialog */}

@@ -10,7 +10,7 @@ import {
   Clock, CheckCircle2, X, Loader2, AlertCircle,
 } from 'lucide-react'
 
-type Role = 'admin' | 'coordenacao' | 'lider_area' | 'operador' | 'coordenador_esportivo' | 'operador_esportivo'
+type Role = 'admin' | 'coordenacao' | 'lider_area' | 'operador' | 'coordenador_esportivo' | 'operador_esportivo' | 'operador_fv' | 'lider_fv'
 type Funcao = string | null
 
 interface Usuario {
@@ -31,8 +31,10 @@ const ROLE_META: Record<Role, { label: string; cor: string; icon: typeof Shield 
   coordenacao:            { label: 'Coordenação',    cor: 'text-yellow-700 bg-yellow-50 border-yellow-200',     icon: Shield },
   lider_area:             { label: 'Líder',          cor: 'text-purple-700 bg-purple-50 border-purple-200',     icon: UserCog },
   operador:               { label: 'Operador',       cor: 'text-[var(--green-bright)] bg-[var(--green-dim)]/30 border-[var(--green-dim)]/40', icon: Users },
-  coordenador_esportivo:  { label: 'Coord. Esport.', cor: 'text-blue-700 bg-blue-50 border-blue-200',           icon: Shield },
-  operador_esportivo:     { label: 'Op. Esportivo',  cor: 'text-sky-700 bg-sky-50 border-sky-200',              icon: Users },
+  coordenador_esportivo:  { label: 'Coord. Esport.', cor: 'text-blue-700 bg-blue-50 border-blue-200',                         icon: Shield },
+  operador_esportivo:     { label: 'Op. Esportivo',  cor: 'text-sky-700 bg-sky-50 border-sky-200',                              icon: Users },
+  operador_fv:            { label: 'Op. FV',         cor: 'text-violet-700 bg-violet-50 border-violet-200',                     icon: Users },
+  lider_fv:               { label: 'Líder FV',       cor: 'text-purple-700 bg-purple-100 border-purple-300',                    icon: UserCog },
 }
 
 const FUNCOES = [
@@ -131,6 +133,8 @@ function UsuarioCard({ u, onUpdate }: { u: Usuario; onUpdate: () => void }) {
           <option value="operador">Operador</option>
           <option value="coordenador_esportivo">Coord. Esportivo</option>
           <option value="operador_esportivo">Op. Esportivo</option>
+          <option value="lider_fv">Líder FV</option>
+          <option value="operador_fv">Operador FV</option>
         </select>
 
         {/* Trocar função */}
@@ -226,6 +230,8 @@ function AprovacaoDialog({ user, onClose, onApproved }: {
             >
               <option value="operador">Operador</option>
               <option value="lider_area">Líder de área</option>
+              <option value="operador_fv">Operador FV</option>
+              <option value="lider_fv">Líder FV</option>
               <option value="coordenacao">Coordenação</option>
               <option value="operador_esportivo">Op. Esportivo</option>
               <option value="coordenador_esportivo">Coord. Esportivo</option>
@@ -375,6 +381,8 @@ export function UsuariosClient({ usuarios }: { usuarios: Usuario[] }) {
     operador:              aprovados.filter((u) => u.role === 'operador').length,
     coordenador_esportivo: aprovados.filter((u) => u.role === 'coordenador_esportivo').length,
     operador_esportivo:    aprovados.filter((u) => u.role === 'operador_esportivo').length,
+    operador_fv:           aprovados.filter((u) => u.role === 'operador_fv').length,
+    lider_fv:              aprovados.filter((u) => u.role === 'lider_fv').length,
   }
 
   return (

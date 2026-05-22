@@ -330,19 +330,6 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
         </div>
       )}
 
-      {isAoVivo && !isTeste && (
-        <div className="absolute right-3 top-3 flex items-center gap-1.5">
-          <Radio className="h-3 w-3 text-[var(--green-bright)] animate-pulse" />
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--green-bright)]">Ao vivo</span>
-        </div>
-      )}
-      {isAoVivo && isTeste && (
-        <div className="absolute left-3 top-3 flex items-center gap-1.5">
-          <Radio className="h-3 w-3 text-amber-400 animate-pulse" />
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">Ao vivo · Teste</span>
-        </div>
-      )}
-
       {/* Pulse de update remoto */}
       {recentlyChanged && (
         <div
@@ -450,140 +437,212 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
         </div>
       </div>
 
-      {/* Placar — dramaticamente maior pra ao vivo */}
-      <div className={`relative grid items-stretch gap-2 ${isAoVivo ? 'grid-cols-[1fr_auto_1fr]' : 'grid-cols-[1fr_auto_1fr]'}`}>
+      {/* Placar — scoreboard de transmissão "CIA Broadcast" */}
+      {(() => {
+        const showScore = isAoVivo || isEncerrado
+        const nomeA = jogo.equipe_a_nome ?? '—'
+        const nomeB = jogo.equipe_b_nome ?? '—'
+        const statusLabel = hasWO
+          ? 'W.O.'
+          : isAoVivo
+          ? 'AO VIVO'
+          : isEncerrado
+          ? 'ENCERRADO'
+          : isCancelado
+          ? 'CANCELADO'
+          : jogo.inicio
+          ? fmtTime(jogo.inicio)
+          : 'A DEFINIR'
+        const scoreColor = isAoVivo ? 'var(--foreground)' : 'var(--muted-foreground)'
 
-        {/* Equipe A */}
-        <div className="relative flex flex-col items-center gap-2 pl-3">
-          <span aria-hidden className="absolute left-0 top-0 bottom-0 w-[4px] rounded-full" style={{ background: accentA }} />
-          <TeamName eq={jogo.equipe_a} fallback={jogo.equipe_a_nome} accent={accentA} loserByWO={aPerdeuWO} />
-          {(isAoVivo || isEncerrado) && (
-            <>
-              {aPerdeuWO ? (
-                <span className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-500">
-                  W.O.
-                </span>
-              ) : (
-                <div className="flex flex-col items-center gap-1.5">
-                  <div className="flex items-center gap-2">
-                    {canEdit && isAoVivo && !hasWO && (
-                      <button
-                        onClick={() => adjustScore('a', -1)}
-                        disabled={isPending || placarA === 0}
-                        className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--border)] text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/20 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
-                        aria-label="Diminuir placar"
-                      >
-                        <Minus className="h-5 w-5" />
-                      </button>
-                    )}
-                    <span
-                      className="tabular-nums font-extrabold leading-none"
-                      style={{
-                        fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                        fontSize: isAoVivo ? 'clamp(48px, 6vw, 68px)' : '32px',
-                        color: isAoVivo ? 'var(--foreground)' : 'var(--muted-foreground)',
-                        letterSpacing: '-0.04em',
-                        minWidth: '1ch',
-                        textAlign: 'center',
-                      }}
-                    >
-                      {placarA}
-                    </span>
-                    {canEdit && isAoVivo && !hasWO && (
-                      <button
-                        onClick={() => adjustScore('a', 1)}
-                        disabled={isPending}
-                        className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/30 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
-                        aria-label="Aumentar placar"
-                      >
-                        <Plus className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
-                  {/* Sets ganhos (quando modalidade usa set_ganho) */}
-                  {eventoTipos.includes('set_ganho') && (
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-[var(--muted)]/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] border border-[var(--border)]">
-                      Sets <span className="tabular-nums text-[var(--foreground)] font-extrabold text-[12px]">{setsA}</span>
-                    </span>
-                  )}
+        return (
+          <div className={`relative ${isCancelado ? 'opacity-55' : ''}`}>
+            {/* Pílula de status */}
+            <div className="mb-2 flex justify-center">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] ${
+                  hasWO ? 'text-red-400' : 'text-white'
+                }`}
+                style={{ background: 'var(--ink-deep)', border: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                {isAoVivo && !hasWO && (
+                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" aria-hidden />
+                )}
+                {statusLabel}
+              </span>
+            </div>
+
+            {/* Barra do scoreboard */}
+            <div
+              className="relative flex items-stretch overflow-hidden rounded-xl"
+              style={{ background: 'var(--ink-deep)', minHeight: isAoVivo ? 96 : 72 }}
+            >
+              {/* Lâmina Equipe A */}
+              <div
+                className="relative flex min-w-0 flex-1 items-center"
+                style={{ background: accentA, transform: 'skewX(-9deg)', marginLeft: -14 }}
+              >
+                <div
+                  className="flex min-w-0 flex-1 items-center justify-center px-4 md:px-5"
+                  style={{ transform: 'skewX(9deg)' }}
+                >
+                  <span className="min-w-0 truncate text-center text-xs font-extrabold uppercase tracking-wide text-white md:text-sm">
+                    {nomeA}
+                  </span>
                 </div>
-              )}
-            </>
-          )}
-        </div>
+              </div>
 
-        {/* VS / × — centralizado entre as equipes */}
-        <div
-          className="flex shrink-0 items-center justify-center font-extrabold text-[var(--muted-foreground)]/30"
-          style={{
-            fontSize: isAoVivo ? 28 : 18,
-            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-            letterSpacing: '-0.05em',
-            paddingTop: isAoVivo && (isAoVivo || isEncerrado) ? 28 : 0,
-          }}
-        >
-          ×
-        </div>
+              {/* Painel placar A */}
+              <div className="relative z-10 flex shrink-0 flex-col items-center justify-center gap-1 px-2 md:px-3">
+                {showScore ? (
+                  <>
+                    {aPerdeuWO ? (
+                      <span className="text-base font-extrabold uppercase tracking-wider text-red-400">
+                        W.O.
+                      </span>
+                    ) : (
+                      <span
+                        className="tabular-nums font-extrabold leading-none"
+                        style={{
+                          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                          fontSize: 'clamp(40px, 6vw, 64px)',
+                          letterSpacing: '-0.04em',
+                          color: scoreColor,
+                          textDecoration: isCancelado ? 'line-through' : 'none',
+                        }}
+                      >
+                        {placarA}
+                      </span>
+                    )}
+                    {eventoTipos.includes('set_ganho') && !aPerdeuWO && (
+                      <span className="rounded-sm bg-white/8 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+                        Sets <span className="tabular-nums font-extrabold text-white">{setsA}</span>
+                      </span>
+                    )}
+                    {canEdit && isAoVivo && !hasWO && !aPerdeuWO && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => adjustScore('a', -1)}
+                          disabled={isPending || placarA === 0}
+                          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-white/70 transition-all hover:border-[var(--green-bright)] hover:text-[var(--green-bright)] active:scale-95 disabled:opacity-25"
+                          aria-label="Diminuir placar"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => adjustScore('a', 1)}
+                          disabled={isPending}
+                          className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--green-bright)]/40 bg-[var(--green-dim)]/25 text-[var(--green-bright)] transition-all hover:border-[var(--green-bright)] hover:bg-[var(--green-dim)]/45 active:scale-95 disabled:opacity-25"
+                          aria-label="Aumentar placar"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-sm font-extrabold uppercase tracking-wider text-white/40">vs</span>
+                )}
+              </div>
 
-        {/* Equipe B */}
-        <div className="relative flex flex-col items-center gap-2 pr-3">
-          <span aria-hidden className="absolute right-0 top-0 bottom-0 w-[4px] rounded-full" style={{ background: accentB }} />
-          <TeamName eq={jogo.equipe_b} fallback={jogo.equipe_b_nome} accent={accentB} loserByWO={bPerdeuWO} />
-          {(isAoVivo || isEncerrado) && (
-            <>
-              {bPerdeuWO ? (
-                <span className="inline-flex items-center rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-500">
-                  W.O.
+              {/* Cunha dourada central */}
+              <div className="relative z-20 flex shrink-0 items-center justify-center self-stretch">
+                <span
+                  aria-hidden
+                  className="absolute h-full w-7"
+                  style={{ background: 'var(--gold)', transform: 'skewX(-9deg)' }}
+                />
+                <span
+                  className="relative font-extrabold leading-none text-[var(--ink-deep)]"
+                  style={{ fontSize: isAoVivo ? 18 : 15 }}
+                >
+                  {showScore && !hasWO ? '×' : ''}
                 </span>
-              ) : (
-                <div className="flex flex-col items-center gap-1.5">
-                  <div className="flex items-center gap-2">
-                    {canEdit && isAoVivo && !hasWO && (
-                      <button
-                        onClick={() => adjustScore('b', -1)}
-                        disabled={isPending || placarB === 0}
-                        className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--border)] text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/20 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
-                        aria-label="Diminuir placar"
+              </div>
+
+              {/* Painel placar B */}
+              <div className="relative z-10 flex shrink-0 flex-col items-center justify-center gap-1 px-2 md:px-3">
+                {showScore ? (
+                  <>
+                    {bPerdeuWO ? (
+                      <span className="text-base font-extrabold uppercase tracking-wider text-red-400">
+                        W.O.
+                      </span>
+                    ) : (
+                      <span
+                        className="tabular-nums font-extrabold leading-none"
+                        style={{
+                          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                          fontSize: 'clamp(40px, 6vw, 64px)',
+                          letterSpacing: '-0.04em',
+                          color: scoreColor,
+                          textDecoration: isCancelado ? 'line-through' : 'none',
+                        }}
                       >
-                        <Minus className="h-5 w-5" />
-                      </button>
+                        {placarB}
+                      </span>
                     )}
-                    <span
-                      className="tabular-nums font-extrabold leading-none"
-                      style={{
-                        fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                        fontSize: isAoVivo ? 'clamp(48px, 6vw, 68px)' : '32px',
-                        color: isAoVivo ? 'var(--foreground)' : 'var(--muted-foreground)',
-                        letterSpacing: '-0.04em',
-                        minWidth: '1ch',
-                        textAlign: 'center',
-                      }}
-                    >
-                      {placarB}
-                    </span>
-                    {canEdit && isAoVivo && !hasWO && (
-                      <button
-                        onClick={() => adjustScore('b', 1)}
-                        disabled={isPending}
-                        className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 text-[var(--green-bright)] transition-all hover:border-[var(--green-bright)] hover:scale-110 hover:bg-[var(--green-dim)]/30 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
-                        aria-label="Aumentar placar"
-                      >
-                        <Plus className="h-5 w-5" />
-                      </button>
+                    {eventoTipos.includes('set_ganho') && !bPerdeuWO && (
+                      <span className="rounded-sm bg-white/8 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+                        Sets <span className="tabular-nums font-extrabold text-white">{setsB}</span>
+                      </span>
                     )}
-                  </div>
-                  {/* Sets ganhos (quando modalidade usa set_ganho) */}
-                  {eventoTipos.includes('set_ganho') && (
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-[var(--muted)]/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)] border border-[var(--border)]">
-                      Sets <span className="tabular-nums text-[var(--foreground)] font-extrabold text-[12px]">{setsB}</span>
-                    </span>
-                  )}
+                    {canEdit && isAoVivo && !hasWO && !bPerdeuWO && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => adjustScore('b', -1)}
+                          disabled={isPending || placarB === 0}
+                          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-white/70 transition-all hover:border-[var(--green-bright)] hover:text-[var(--green-bright)] active:scale-95 disabled:opacity-25"
+                          aria-label="Diminuir placar"
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => adjustScore('b', 1)}
+                          disabled={isPending}
+                          className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--green-bright)]/40 bg-[var(--green-dim)]/25 text-[var(--green-bright)] transition-all hover:border-[var(--green-bright)] hover:bg-[var(--green-dim)]/45 active:scale-95 disabled:opacity-25"
+                          aria-label="Aumentar placar"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-sm font-extrabold uppercase tracking-wider text-white/40">
+                    {jogo.inicio ? fmtTime(jogo.inicio) : '—'}
+                  </span>
+                )}
+              </div>
+
+              {/* Lâmina Equipe B */}
+              <div
+                className="relative flex min-w-0 flex-1 items-center"
+                style={{ background: accentB, transform: 'skewX(-9deg)', marginRight: -14 }}
+              >
+                <div
+                  className="flex min-w-0 flex-1 items-center justify-center px-4 md:px-5"
+                  style={{ transform: 'skewX(9deg)' }}
+                >
+                  <span className="min-w-0 truncate text-center text-xs font-extrabold uppercase tracking-wide text-white md:text-sm">
+                    {nomeB}
+                  </span>
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+              </div>
+            </div>
+
+            {/* Linkagem das equipes (slug / universidade) abaixo da barra */}
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="flex justify-center">
+                <TeamName eq={jogo.equipe_a} fallback={jogo.equipe_a_nome} accent={accentA} loserByWO={aPerdeuWO} />
+              </div>
+              <div className="flex justify-center">
+                <TeamName eq={jogo.equipe_b} fallback={jogo.equipe_b_nome} accent={accentB} loserByWO={bPerdeuWO} />
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Aviso: equipe sem vínculo */}
       {(!jogo.equipe_a_id || !jogo.equipe_b_id) && jogo.equipe_a_nome && jogo.equipe_b_nome && (

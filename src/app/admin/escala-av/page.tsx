@@ -44,10 +44,10 @@ export default async function EscalaAVPage() {
       .eq('ativo', true)
       .order('nome'),
 
-    // Todos os perfis (leve) — para resolver o nome do colaborador do turno
+    // Todos os perfis (leve) — para resolver o colaborador do turno
     supabase
       .from('profiles')
-      .select('id, nome, funcao_principal'),
+      .select('id, nome, funcao_principal, foto_url'),
 
     // Turnos SEM embed — turnos tem 2 FKs pra profiles (user_id + lider_area_id),
     // o que torna o embed ambíguo e quebra a query. Resolvemos os joins em JS.
@@ -64,7 +64,9 @@ export default async function EscalaAVPage() {
   // ── Resolve joins em JS (zero dependência de embed do PostgREST) ───────────
   const setorNome = new Map((setores ?? []).map(s => [s.id, s.nome as string]))
   const profMap   = new Map(
-    (profilesAll ?? []).map(p => [p.id, p as { id: string; nome: string; funcao_principal: string | null }]),
+    (profilesAll ?? []).map(p => [p.id, p as {
+      id: string; nome: string; funcao_principal: string | null; foto_url: string | null
+    }]),
   )
   const parcMap   = new Map(
     (parceiros ?? []).map(p => [p.id, p as { nome: string; cor_hex: string }]),
@@ -83,7 +85,9 @@ export default async function EscalaAVPage() {
       status_escala: t.status_escala,
       parceiro_id:   t.parceiro_id,
       setor:    t.setor_id && setorNome.has(t.setor_id) ? { nome: setorNome.get(t.setor_id)! } : null,
-      user:     prof ? { id: prof.id, nome: prof.nome, funcao_principal: prof.funcao_principal } : null,
+      user:     prof
+        ? { id: prof.id, nome: prof.nome, funcao_principal: prof.funcao_principal, foto_url: prof.foto_url }
+        : null,
       parceiro: parc ? { nome: parc.nome, cor_hex: parc.cor_hex } : null,
     }
   })

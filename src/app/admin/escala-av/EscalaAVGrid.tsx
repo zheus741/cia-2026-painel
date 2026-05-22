@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Plus, Trash2, Loader2, AlertCircle, Camera, Video,
@@ -40,7 +41,7 @@ export interface TurnoAV {
   funcao: string; user_id: string | null
   prioridade: string | null; status_escala: string | null; parceiro_id: string | null
   setor: { nome: string } | null
-  user: { id: string; nome: string; funcao_principal: string | null } | null
+  user: { id: string; nome: string; funcao_principal: string | null; foto_url: string | null } | null
   parceiro: { nome: string; cor_hex: string } | null
 }
 
@@ -437,6 +438,42 @@ function ReplicarDialog({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CellAvatar — avatar circular do colaborador (foto ou iniciais)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CellAvatar({
+  nome, fotoUrl, cor,
+}: {
+  nome: string | null
+  fotoUrl: string | null
+  cor: string
+}) {
+  const iniciais = (nome ?? '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(w => w[0] ?? '')
+    .join('')
+    .toUpperCase() || '?'
+
+  if (fotoUrl) {
+    return (
+      <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--border)]">
+        <Image src={fotoUrl} alt={nome ?? ''} fill sizes="28px" className="object-cover" />
+      </div>
+    )
+  }
+  return (
+    <div
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+      style={{ background: `${cor}1f`, color: cor }}
+    >
+      {iniciais}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CoberturaCell — célula de uma função (foto OU vídeo) num setor
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -452,15 +489,15 @@ function CoberturaCell({
 }) {
   const cor = funcao === 'foto' ? FOTO_COLOR : VIDEO_COLOR
 
-  // Vazio: setor com evento e sem cobertura → lacuna vermelha
+  // Vazio: setor com evento e sem cobertura → lacuna vermelha discreta
   if (!turno) {
     return (
       <button
         onClick={onAdd}
         className="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg border border-dashed text-[11px] font-medium transition-all hover:border-solid"
         style={{
-          borderColor: temEvento ? 'rgba(239,68,68,0.45)' : `${cor}33`,
-          background:  temEvento ? 'rgba(239,68,68,0.05)' : 'transparent',
+          borderColor: temEvento ? 'rgba(239,68,68,0.40)' : `${cor}2e`,
+          background:  temEvento ? 'rgba(239,68,68,0.04)' : 'transparent',
           color:       temEvento ? '#dc2626' : `${cor}99`,
         }}
         aria-label={`Designar ${funcao}`}
@@ -481,49 +518,45 @@ function CoberturaCell({
       tabIndex={0}
       onClick={() => onEdit(turno)}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEdit(turno) } }}
-      className="group relative flex min-h-[44px] cursor-pointer flex-col gap-1 rounded-lg border px-2.5 py-1.5 transition-all hover:shadow-sm"
+      title={`Prioridade ${prioCfg.label}`}
+      className="group relative flex min-h-[44px] cursor-pointer items-center gap-2.5 rounded-lg border border-l-[3px] px-2.5 py-1.5 transition-all hover:shadow-sm"
       style={{
-        borderColor: `${cor}33`,
-        background:  `${cor}0a`,
+        borderColor:     'var(--border)',
+        borderLeftColor: prioCfg.dot,
+        background:      'var(--card)',
       }}
     >
-      {/* Empresa badge + prioridade */}
-      <div className="flex items-center gap-1.5">
-        <span
-          className="h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{ background: prioCfg.dot }}
-          title={`Prioridade ${prioCfg.label}`}
-        />
-        {turno.parceiro ? (
-          <span
-            className="truncate rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-            style={{
-              background: `${turno.parceiro.cor_hex}1a`,
-              color:      turno.parceiro.cor_hex,
-            }}
-          >
+      <CellAvatar
+        nome={turno.user?.nome ?? null}
+        fotoUrl={turno.user?.foto_url ?? null}
+        cor={cor}
+      />
+
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            'truncate text-[12px] font-semibold leading-tight',
+            semColab ? 'italic text-[var(--muted-foreground)]/70' : 'text-[var(--foreground)]',
+          )}
+        >
+          {turno.user?.nome ?? 'Sem colaborador'}
+        </p>
+        {turno.parceiro && (
+          <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-[var(--muted-foreground)]">
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ background: turno.parceiro.cor_hex }}
+            />
             {turno.parceiro.nome}
-          </span>
-        ) : (
-          <span className="text-[9px] text-[var(--muted-foreground)]/50">sem empresa</span>
+          </p>
         )}
       </div>
-
-      {/* Colaborador */}
-      <span
-        className={cn(
-          'truncate text-[11px] font-semibold',
-          semColab ? 'italic text-[var(--muted-foreground)]/60' : 'text-[var(--foreground)]',
-        )}
-      >
-        {turno.user?.nome ?? '— sem colaborador —'}
-      </span>
 
       {/* Remover (hover) */}
       <button
         onClick={e => { e.stopPropagation(); onDelete(turno) }}
         aria-label="Remover designação"
-        className="absolute right-1 top-1 hidden h-7 w-7 items-center justify-center rounded-md bg-[var(--card)] shadow-sm hover:bg-red-50 hover:text-red-500 group-hover:flex"
+        className="absolute right-1.5 top-1/2 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md bg-[var(--card)] shadow-sm hover:bg-red-50 hover:text-red-500 group-hover:flex"
         style={{ border: '1px solid var(--border)' }}
       >
         <Trash2 className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />

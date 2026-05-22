@@ -11,16 +11,12 @@ import {
 import { enviarNotif } from '@/lib/notif'
 
 export interface TurnoAVPayload {
-  dia_id:               string
-  setor_id?:            string | null
-  funcao:               'foto' | 'video'
-  parceiro_id?:         string | null
-  user_id?:             string | null
-  inicio:               string   // ISO timestamp
-  fim:                  string   // ISO timestamp
-  prioridade?:          'alta' | 'media' | 'baixa'
-  briefing_editorial?:  string | null
-  conteudos_esperados?: string | null
+  dia_id:       string
+  setor_id?:    string | null
+  funcao:       'foto' | 'video'
+  parceiro_id?: string | null
+  user_id?:     string | null
+  prioridade?:  'alta' | 'media' | 'baixa'
 }
 
 export async function createTurnoAV(payload: TurnoAVPayload): Promise<ActionResult> {
@@ -31,32 +27,25 @@ export async function createTurnoAV(payload: TurnoAVPayload): Promise<ActionResu
 
     const { error } = await supabase.from('turnos').insert({
       edicao_id,
-      dia_id:              payload.dia_id,
-      setor_id:            payload.setor_id ?? null,
-      funcao:              payload.funcao,
-      parceiro_id:         payload.parceiro_id ?? null,
-      user_id:             payload.user_id ?? null,
-      inicio:              payload.inicio,
-      fim:                 payload.fim,
-      prioridade:          payload.prioridade ?? 'media',
-      briefing_editorial:  payload.briefing_editorial ?? null,
-      conteudos_esperados: payload.conteudos_esperados ?? null,
-      status_escala:       'rascunho',
-      is_roaming:          false,
+      dia_id:        payload.dia_id,
+      setor_id:      payload.setor_id ?? null,
+      funcao:        payload.funcao,
+      parceiro_id:   payload.parceiro_id ?? null,
+      user_id:       payload.user_id ?? null,
+      prioridade:    payload.prioridade ?? 'media',
+      status_escala: 'rascunho',
+      is_roaming:    false,
     })
     if (error) throw error
 
     revalidatePath('/admin/escala-av')
 
-    // Notifica o usuário se já foi atribuído na criação
     if (payload.user_id) {
       const funcao = payload.funcao.charAt(0).toUpperCase() + payload.funcao.slice(1)
-      const inicio = new Date(payload.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
-      const fim    = new Date(payload.fim).toLocaleTimeString('pt-BR',    { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
       await enviarNotif({
         userId: payload.user_id,
-        titulo: `📅 Turno agendado — ${funcao}`,
-        corpo:  `${inicio}–${fim} · Confira sua escala para detalhes.`,
+        titulo: `📅 Você foi escalado — ${funcao}`,
+        corpo:  'Confira sua escala para ver o setor.',
         tipo:   'escala',
         link:   '/minha-escala',
       })
@@ -72,10 +61,10 @@ export async function updateTurnoAV(
     await requireCoordOrAdmin()
     const supabase = await createClient()
 
-    // Busca user_id anterior para detectar nova atribuição
+    // Estado anterior — detecta nova atribuição de colaborador
     const { data: antes } = await supabase
       .from('turnos')
-      .select('user_id, funcao, inicio, fim')
+      .select('user_id, funcao')
       .eq('id', id)
       .maybeSingle()
 
@@ -84,18 +73,14 @@ export async function updateTurnoAV(
 
     revalidatePath('/admin/escala-av')
 
-    // Notifica se um novo usuário foi atribuído
     const novoUserId = payload.user_id
     if (novoUserId && novoUserId !== (antes?.user_id as string | null)) {
-      const funcao   = ((payload.funcao ?? antes?.funcao) as string ?? '').replace(/^./, c => c.toUpperCase())
-      const inicioTs = (payload.inicio ?? antes?.inicio) as string | undefined
-      const fimTs    = (payload.fim    ?? antes?.fim)    as string | undefined
-      const inicio   = inicioTs ? new Date(inicioTs).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : ''
-      const fim      = fimTs    ? new Date(fimTs).toLocaleTimeString('pt-BR',    { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : ''
+      const funcao = String(payload.funcao ?? antes?.funcao ?? '')
+        .replace(/^./, c => c.toUpperCase())
       await enviarNotif({
         userId: novoUserId,
-        titulo: `📅 Você foi escalado — ${funcao}`,
-        corpo:  `${inicio}–${fim} · Confira sua escala para detalhes.`,
+        titulo: `📅 Você foi escalado — ${funcao || 'Foto/Vídeo'}`,
+        corpo:  'Confira sua escala para ver o setor.',
         tipo:   'escala',
         link:   '/minha-escala',
       })
@@ -141,7 +126,6 @@ export async function updateStatusEscala(
         .update({ status_escala: status })
         .eq('id', turnoId))
     } else {
-      // colaborador só edita o próprio turno
       ;({ error } = await supabase
         .from('turnos')
         .update({ status_escala: status })
@@ -149,13 +133,15 @@ export async function updateStatusEscala(
         .eq('user_id', user.id))
     }
     if (error) throw error
+
+    revalidatePath('/admin/escala-av')
   })
 }
 
 /**
  * Replica todos os turnos de UM dia para OUTRO dia.
- * Preserva: setor, função, parceiro, user, horários (mesmo HH:MM), prioridade, briefing.
- * Não duplica turnos que já existem no dia destino (mesmo setor + função + horário).
+ * Preserva: setor, função, parceiro, colaborador, prioridade.
+ * Não duplica turnos que já existem no destino (mesmo setor + função).
  */
 export async function replicarDiaAV(
   diaOrigemId: string,
@@ -170,10 +156,9 @@ export async function replicarDiaAV(
       throw new Error('Dia origem e destino são iguais.')
     }
 
-    // Busca turnos do dia origem
     const { data: turnosOrigem, error: errOrigem } = await supabase
       .from('turnos')
-      .select('setor_id, funcao, parceiro_id, user_id, inicio, fim, prioridade, briefing_editorial, conteudos_esperados')
+      .select('setor_id, funcao, parceiro_id, user_id, prioridade')
       .eq('dia_id', diaOrigemId)
       .in('funcao', ['foto', 'video'])
     if (errOrigem) throw errOrigem
@@ -181,59 +166,32 @@ export async function replicarDiaAV(
       return { criados: 0, pulados: 0 }
     }
 
-    // Busca data do dia destino pra recalcular timestamps
-    const { data: diaDestino, error: errDia } = await supabase
-      .from('dias_evento')
-      .select('id, data')
-      .eq('id', diaDestinoId)
-      .single()
-    if (errDia || !diaDestino) throw new Error('Dia destino não encontrado.')
-
-    // Busca turnos existentes no destino pra evitar duplicação
     const { data: turnosDestino } = await supabase
       .from('turnos')
-      .select('setor_id, funcao, inicio')
+      .select('setor_id, funcao')
       .eq('dia_id', diaDestinoId)
       .in('funcao', ['foto', 'video'])
 
     const existentes = new Set(
-      (turnosDestino ?? []).map(t => `${t.setor_id}::${t.funcao}::${t.inicio?.slice(11, 16)}`),
+      (turnosDestino ?? []).map(t => `${t.setor_id}::${t.funcao}`),
     )
-
-    // Helper pra ajustar timestamp pro novo dia
-    function rebuildTs(originalIso: string, novaData: string): string {
-      const original = new Date(originalIso)
-      const hh = original.getUTCHours().toString().padStart(2, '0')
-      const mm = original.getUTCMinutes().toString().padStart(2, '0')
-      const d = new Date(`${novaData}T00:00:00`)
-      d.setUTCHours(parseInt(hh), parseInt(mm), 0, 0)
-      return d.toISOString()
-    }
 
     const inserts: Array<Record<string, unknown>> = []
     let pulados = 0
 
     for (const t of turnosOrigem) {
-      const hhmmInicio = t.inicio?.slice(11, 16) ?? '08:00'
-      const key = `${t.setor_id}::${t.funcao}::${hhmmInicio}`
-      if (existentes.has(key)) {
-        pulados++
-        continue
-      }
+      const key = `${t.setor_id}::${t.funcao}`
+      if (existentes.has(key)) { pulados++; continue }
       inserts.push({
         edicao_id,
-        dia_id:              diaDestinoId,
-        setor_id:            t.setor_id,
-        funcao:              t.funcao,
-        parceiro_id:         t.parceiro_id,
-        user_id:             t.user_id,
-        inicio:              t.inicio  ? rebuildTs(t.inicio, diaDestino.data) : null,
-        fim:                 t.fim     ? rebuildTs(t.fim,    diaDestino.data) : null,
-        prioridade:          t.prioridade ?? 'media',
-        briefing_editorial:  t.briefing_editorial,
-        conteudos_esperados: t.conteudos_esperados,
-        status_escala:       'rascunho',
-        is_roaming:          false,
+        dia_id:        diaDestinoId,
+        setor_id:      t.setor_id,
+        funcao:        t.funcao,
+        parceiro_id:   t.parceiro_id,
+        user_id:       t.user_id,
+        prioridade:    t.prioridade ?? 'media',
+        status_escala: 'rascunho',
+        is_roaming:    false,
       })
     }
 
@@ -242,6 +200,7 @@ export async function replicarDiaAV(
       if (errIns) throw errIns
     }
 
+    revalidatePath('/admin/escala-av')
     return { criados: inserts.length, pulados }
   })
 }
@@ -261,5 +220,6 @@ export async function updateSetorVenue(
     const supabase = await createClient()
     const { error } = await supabase.from('setores').update(payload).eq('id', setorId)
     if (error) throw error
+    revalidatePath('/admin/escala-av')
   })
 }

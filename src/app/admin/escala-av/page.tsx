@@ -6,12 +6,7 @@ import { PageHeader } from '@/components/page-header'
 
 export const dynamic = 'force-dynamic'
 
-export default async function EscalaAVPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ dia?: string }>
-}) {
-  const { dia: diaParam } = await searchParams
+export default async function EscalaAVPage() {
   const supabase = await createClient()
 
   const [
@@ -31,7 +26,7 @@ export default async function EscalaAVPage({
 
     supabase
       .from('setores')
-      .select('id, nome, tipo, tem_wifi, tem_ponto_apoio, alimentacao, maps_url, notas_acesso')
+      .select('id, nome, tipo, nucleo, tem_wifi, tem_ponto_apoio, alimentacao, maps_url, notas_acesso')
       .order('nome'),
 
     supabase
@@ -40,44 +35,32 @@ export default async function EscalaAVPage({
       .eq('ativo', true)
       .order('nome'),
 
+    // Colaboradores = operadores e líderes de Foto/Vídeo
     supabase
       .from('profiles')
-      .select('id, nome, funcao_principal, parceiro_id')
+      .select('id, nome, funcao_principal, empresa_cobertura, role')
+      .in('role', ['operador_fv', 'lider_fv'])
       .eq('ativo', true)
-      .in('funcao_principal', ['foto', 'video'])
       .order('nome'),
 
     supabase
       .from('turnos')
       .select(`
-        id, dia_id, setor_id, funcao, inicio, fim, user_id, is_roaming,
-        prioridade, briefing_editorial, conteudos_esperados, status_escala, parceiro_id,
+        id, dia_id, setor_id, funcao, user_id, prioridade, status_escala, parceiro_id,
         setor:setores(nome),
         user:profiles(id, nome, funcao_principal),
         parceiro:parceiros(nome, cor_hex)
       `)
-      .in('funcao', ['foto', 'video'])
-      .order('inicio'),
+      .in('funcao', ['foto', 'video']),
 
-    supabase
-      .from('jogos')
-      .select('dia_id, setor_id')
-      .not('setor_id', 'is', null),
-
-    supabase
-      .from('shows')
-      .select('dia_id, setor_id')
-      .not('setor_id', 'is', null),
-
-    supabase
-      .from('festas')
-      .select('dia_id, setor_id')
-      .not('setor_id', 'is', null),
+    supabase.from('jogos').select('dia_id, setor_id').not('setor_id', 'is', null),
+    supabase.from('shows').select('dia_id, setor_id').not('setor_id', 'is', null),
+    supabase.from('festas').select('dia_id, setor_id').not('setor_id', 'is', null),
   ])
 
   const eventosSetores = [
-    ...(jogosSetores ?? []),
-    ...(showsSetores ?? []),
+    ...(jogosSetores  ?? []),
+    ...(showsSetores  ?? []),
     ...(festasSetores ?? []),
   ] as { dia_id: string; setor_id: string }[]
 
@@ -86,7 +69,7 @@ export default async function EscalaAVPage({
       <PageHeader
         eyebrow="Operacional · Mídia"
         title="Escala Foto & Vídeo"
-        subtitle="Distribua fotógrafos e videomakers por setor e dia. O colaborador é notificado ao ser escalado."
+        subtitle="Cobertura por setor — núcleos esportivo e festivo. O colaborador é notificado ao ser escalado."
       />
 
       <EscalaAVGrid
@@ -96,7 +79,6 @@ export default async function EscalaAVPage({
         profiles={(profiles ?? []) as ProfileAV[]}
         turnos={(turnos ?? []) as unknown as TurnoAV[]}
         eventosSetores={eventosSetores}
-        initialDiaId={diaParam}
       />
     </PageContainer>
   )

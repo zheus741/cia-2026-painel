@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2, X, ChevronDown, Crown } from 'lucide-react'
-import { setJogoAoVivo, encerrarJogo, atualizarPlacar, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento } from './actions'
+import { setJogoAoVivo, encerrarJogo, atualizarPlacar, lancarResultado, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 
@@ -211,6 +211,9 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
 }) {
   const [isPending, startTransition] = useTransition()
   const [woMode, setWoMode] = useState(false)
+  const [resultadoMode, setResultadoMode] = useState(false)
+  const [resA, setResA] = useState('')
+  const [resB, setResB] = useState('')
   const [eventos, setEventos] = useState<EventoJogo[]>([])
 
   const placarA = jogo.placar_a ?? 0
@@ -298,6 +301,15 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   function handleEncerrar() {
     onLocalUpdate(jogo.id, { status: 'encerrado' })
     startTransition(async () => { await encerrarJogo(jogo.id) })
+  }
+
+  // Lançar resultado direto — quadra sem operador ao vivo
+  function handleLancarResultado() {
+    const a = Math.max(0, parseInt(resA, 10) || 0)
+    const b = Math.max(0, parseInt(resB, 10) || 0)
+    onLocalUpdate(jogo.id, { placar_a: a, placar_b: b, status: 'encerrado' })
+    setResultadoMode(false)
+    startTransition(async () => { await lancarResultado(jogo.id, a, b) })
   }
 
   function handleCancelar() {
@@ -491,7 +503,8 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
           : jogo.inicio
           ? fmtTime(jogo.inicio)
           : 'A DEFINIR'
-        const scoreColor = isAoVivo ? 'var(--foreground)' : 'var(--muted-foreground)'
+        // Barra é escura (--ink-deep) → número precisa ser claro
+        const scoreColor = isAoVivo ? '#ffffff' : 'rgba(255,255,255,0.6)'
 
         return (
           <div className={`relative ${isCancelado ? 'opacity-55' : ''}`}>
@@ -898,18 +911,82 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
         </div>
       )}
 
-      {/* Ações */}
-      {canEdit && !isEncerrado && !isCancelado && !woMode && (
-        <div className="mt-4 flex gap-2">
-          {isAgendado && (
+      {/* Lançar resultado direto — quadra sem operador ao vivo */}
+      {canEdit && isAgendado && !isCancelado && !woMode && resultadoMode && (
+        <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
+          <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+            Lançar resultado final
+          </p>
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <label className="mb-1 block truncate text-[10px] font-semibold text-[var(--muted-foreground)]">
+                {jogo.equipe_a_nome ?? 'Equipe A'}
+              </label>
+              <input
+                type="number" min={0} inputMode="numeric"
+                value={resA}
+                onChange={e => setResA(e.target.value)}
+                placeholder="0"
+                className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-center text-lg font-extrabold tabular-nums focus:border-[var(--green-bright)] focus:outline-none"
+              />
+            </div>
+            <span className="pb-2.5 text-sm font-bold text-[var(--muted-foreground)]">×</span>
+            <div className="min-w-0 flex-1">
+              <label className="mb-1 block truncate text-[10px] font-semibold text-[var(--muted-foreground)]">
+                {jogo.equipe_b_nome ?? 'Equipe B'}
+              </label>
+              <input
+                type="number" min={0} inputMode="numeric"
+                value={resB}
+                onChange={e => setResB(e.target.value)}
+                placeholder="0"
+                className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-center text-lg font-extrabold tabular-nums focus:border-[var(--green-bright)] focus:outline-none"
+              />
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2">
             <button
-              onClick={handleAoVivo}
+              onClick={() => { setResultadoMode(false); setResA(''); setResB('') }}
               disabled={isPending}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--green-dim)] py-2 text-xs font-semibold text-[var(--green-bright)] transition-colors hover:bg-[var(--green)] hover:text-black disabled:opacity-40"
+              className="flex-1 rounded-lg border border-[var(--border)] py-2 text-xs font-semibold text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)] disabled:opacity-40"
             >
-              <Radio className="h-3.5 w-3.5" />
-              Iniciar
+              Cancelar
             </button>
+            <button
+              onClick={handleLancarResultado}
+              disabled={isPending}
+              className="flex flex-[2] items-center justify-center gap-1.5 rounded-lg bg-[var(--green)] py-2 text-xs font-bold text-white transition-colors hover:opacity-90 disabled:opacity-40"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Salvar resultado
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Ações */}
+      {canEdit && !isEncerrado && !isCancelado && !woMode && !resultadoMode && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {isAgendado && (
+            <>
+              <button
+                onClick={handleAoVivo}
+                disabled={isPending}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[var(--green-dim)] py-2 text-xs font-semibold text-[var(--green-bright)] transition-colors hover:bg-[var(--green)] hover:text-black disabled:opacity-40"
+              >
+                <Radio className="h-3.5 w-3.5" />
+                Ao vivo
+              </button>
+              <button
+                onClick={() => { setResultadoMode(true); setResA(''); setResB('') }}
+                disabled={isPending}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--gold)]/45 bg-[var(--gold)]/10 py-2 text-xs font-semibold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20 disabled:opacity-40"
+                title="Registrar só o placar final, sem cobertura ao vivo"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Lançar resultado
+              </button>
+            </>
           )}
           {isAoVivo && (
             <button

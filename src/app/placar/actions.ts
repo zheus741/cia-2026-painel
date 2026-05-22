@@ -59,6 +59,37 @@ export async function atualizarPlacar(
   })
 }
 
+/**
+ * Lança o resultado final direto: define placar e encerra o jogo numa só ação.
+ * Para quadras sem operador ao vivo — a coord só registra o placar final.
+ */
+export async function lancarResultado(
+  id: string,
+  placar_a: number,
+  placar_b: number,
+): Promise<ActionResult> {
+  return safe(async () => {
+    await requireCoordOrAdmin()
+    const supabase = await createClient()
+    const { error } = await supabase
+      .from('jogos')
+      .update({ placar_a, placar_b, status: 'encerrado' })
+      .eq('id', id)
+    if (error) throw error
+    // Propaga vencedor na chave — igual ao encerrarJogo
+    try {
+      const result = await propagarVencedorNaChave(id)
+      if (!result.ok) {
+        console.warn('[lancarResultado] propagação falhou:', result.reason, { jogoId: id })
+      }
+    } catch (err) {
+      console.error('[lancarResultado] erro inesperado na propagação:', err)
+    }
+    revalidatePath('/placar')
+    revalidatePath('/esportivo/chaveamento')
+  })
+}
+
 export async function cancelarJogo(id: string): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()

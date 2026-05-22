@@ -30,7 +30,8 @@ const ESTAGIO_LABEL: Record<string, string> = {
   aprovacao_coord: 'Aprov. Coord', aprovacao_patro: 'Aprov. Patro', publicacao: 'Publicação',
 }
 
-function fmtTime(ts: string) {
+function fmtTime(ts: string | null) {
+  if (!ts) return ''
   return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
 }
 
@@ -175,9 +176,11 @@ export default async function MinhaEscalaPage() {
                         <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" />
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="tabular-nums text-sm font-semibold">
-                              {fmtTime(t.inicio)}–{fmtTime(t.fim)}
-                            </span>
+                            {(t.inicio || t.fim) && (
+                              <span className="tabular-nums text-sm font-semibold">
+                                {fmtTime(t.inicio)}–{fmtTime(t.fim)}
+                              </span>
+                            )}
                             <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${FUNCAO_COLOR[t.funcao] ?? 'bg-[var(--muted)] text-[var(--muted-foreground)]'}`}>
                               {FUNCAO_LABEL[t.funcao] ?? t.funcao}
                             </span>

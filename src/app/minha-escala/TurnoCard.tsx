@@ -23,8 +23,8 @@ const PRIORIDADE_CONFIG = {
 export interface TurnoCardData {
   id:                  string
   funcao:              string
-  inicio:              string
-  fim:                 string
+  inicio:              string | null
+  fim:                 string | null
   is_roaming:          boolean
   observacoes:         string | null
   prioridade:          string | null
@@ -55,7 +55,8 @@ export function TurnoCard({ turno }: { turno: TurnoCardData }) {
   const stCfg   = STATUS_CONFIG[status] ?? STATUS_CONFIG.rascunho
   const prio    = (turno.prioridade ?? 'media') as keyof typeof PRIORIDADE_CONFIG
   const prioCfg = PRIORIDADE_CONFIG[prio] ?? PRIORIDADE_CONFIG.media
-  const dur     = durMin(turno.inicio, turno.fim)
+  const temHorario = !!(turno.inicio && turno.fim)
+  const dur     = temHorario ? durMin(turno.inicio!, turno.fim!) : 0
 
   function changeStatus(next: 'confirmado' | 'em_campo' | 'finalizado') {
     startTransition(async () => {
@@ -79,27 +80,38 @@ export function TurnoCard({ turno }: { turno: TurnoCardData }) {
         borderColor: 'rgba(46,107,66,0.12)',
       }}
     >
-      {/* ── Cabeçalho: horário + status ── */}
+      {/* ── Cabeçalho: horário (se houver) + status ── */}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <span
-            className="tabular-nums text-xl font-bold"
-            style={{ fontFamily: 'Orbitron, monospace', color: 'var(--foreground)' }}
-          >
-            {fmtTime(turno.inicio)}
-          </span>
-          <span className="mx-1.5 text-sm text-[var(--muted-foreground)]">–</span>
-          <span
-            className="tabular-nums text-xl font-bold"
-            style={{ fontFamily: 'Orbitron, monospace', color: 'var(--foreground)' }}
-          >
-            {fmtTime(turno.fim)}
-          </span>
-          <span className="ml-2 text-xs text-[var(--muted-foreground)]">
-            ({dur < 60
-              ? `${dur}min`
-              : `${Math.floor(dur / 60)}h${dur % 60 > 0 ? `${dur % 60}m` : ''}`})
-          </span>
+          {temHorario ? (
+            <>
+              <span
+                className="tabular-nums text-xl font-bold"
+                style={{ fontFamily: 'Orbitron, monospace', color: 'var(--foreground)' }}
+              >
+                {fmtTime(turno.inicio!)}
+              </span>
+              <span className="mx-1.5 text-sm text-[var(--muted-foreground)]">–</span>
+              <span
+                className="tabular-nums text-xl font-bold"
+                style={{ fontFamily: 'Orbitron, monospace', color: 'var(--foreground)' }}
+              >
+                {fmtTime(turno.fim!)}
+              </span>
+              <span className="ml-2 text-xs text-[var(--muted-foreground)]">
+                ({dur < 60
+                  ? `${dur}min`
+                  : `${Math.floor(dur / 60)}h${dur % 60 > 0 ? `${dur % 60}m` : ''}`})
+              </span>
+            </>
+          ) : (
+            <span
+              className="text-base font-bold"
+              style={{ fontFamily: 'Orbitron, monospace', color: 'var(--foreground)' }}
+            >
+              {turno.setor?.nome ?? 'Turno designado'}
+            </span>
+          )}
         </div>
 
         {/* Status badge */}

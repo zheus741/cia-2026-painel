@@ -194,18 +194,14 @@ export default async function Home() {
   let analyticsAtleticas:     { nome: string; jogos: number; coberta: boolean }[]                                     = []
 
   {
-    // Resolve dia_id for today (Sao Paulo). Fall back to first event day if not found.
-    const { data: diasAll } = await supabase
-      .from('dias_evento')
-      .select('id, data')
-      .order('data')
-
-    const diasList = (diasAll ?? []) as { id: string; data: string }[]
+    // Resolve dia_id for today (Sao Paulo) — reaproveita diasRes, sem nova query.
+    const diasList = (diasRes.data ?? []) as { id: string; data: string }[]
     const todayDia = diasList.find(d => d.data === todaySP) ?? diasList[0] ?? null
     const diaId    = todayDia?.id ?? null
     coordDiaAtualId = diaId
 
     if (diaId) {
+      // PERF: tudo num único Promise.all — 13 queries paralelas, 1 round-trip.
       const [
         contHojeRes,
         jogosRes,
@@ -217,6 +213,9 @@ export default async function Home() {
         ckItensRes,
         turnosCoberturaAVRes,
         youtubeSetoresRes,
+        profilesRes,
+        ckInstsComJogoRes,
+        modalidadesRes,
       ] = await Promise.all([
         // 1. Conteudos today by canal + status
         supabase
@@ -262,18 +261,11 @@ export default async function Home() {
           .not('patrocinador_id', 'is', null)
           .not('status', 'in', '(arquivado,cancelado)'),
 
-        // 8. Checklist items (all instancias for today's dia_id)
+        // 8. Checklist items do dia — inner join, 1 round-trip (sem await aninhado)
         supabase
           .from('checklist_itens')
-          .select('id, status')
-          .in(
-            'instancia_id',
-            await supabase
-              .from('checklist_instancias')
-              .select('id')
-              .eq('dia_id', diaId)
-              .then(r => (r.data ?? []).map((ci: { id: string }) => ci.id)),
-          ),
+          .select('id, status, checklist_instancias!inner(dia_id)')
+          .eq('checklist_instancias.dia_id', diaId),
 
         // 9. Turnos foto/video (todos os dias) — para indicadores de cobertura
         supabase
@@ -287,6 +279,15 @@ export default async function Home() {
           .from('setores')
           .select('id')
           .eq('tem_youtube_live', true),
+
+        // 11. Perfis — ranking de produtividade
+        supabase.from('profiles').select('id, nome, funcao_principal').order('nome'),
+
+        // 12. Checklist instancias de hoje com jogo_id — lacunas de cobertura
+        supabase.from('checklist_instancias').select('jogo_id').eq('dia_id', diaId).not('jogo_id', 'is', null),
+
+        // 13. Modalidades — label dos jogos
+        supabase.from('modalidades').select('id, nome'),
       ])
 
       coordConteudosHoje      = (contHojeRes.data   ?? []) as CoordConteudoHoje[]
@@ -296,20 +297,12 @@ export default async function Home() {
       coordTurnosHoje         = (turnosRes.data      ?? []) as CoordTurnoCount[]
       coordPatrocinadores     = (patrocinadoresRes.data ?? []) as CoordPatrocinador[]
       coordConteudosPorPatroc = (contPatrocRes.data  ?? []) as { patrocinador_id: string | null; status: string }[]
-      coordChecklistItens     = (ckItensRes.data     ?? []) as { id: string; status: string }[]
+      coordChecklistItens     = ((ckItensRes.data ?? []) as { id: string; status: string }[])
+        .map(i => ({ id: i.id, status: i.status }))
       coordTurnosCoberturaAV  = (turnosCoberturaAVRes.data ?? []) as { setor_id: string; funcao: string; dia_id: string }[]
       coordYoutubeSetorIds    = ((youtubeSetoresRes.data ?? []) as { id: string }[]).map(s => s.id)
 
-      // ── Analytics queries (paralelas) ────────────────────────────────────
-      const [profilesRes, ckInstsComJogoRes, modalidadesRes] = await Promise.all([
-        // Perfis para ranking de produtividade
-        supabase.from('profiles').select('id, nome, funcao_principal').order('nome'),
-        // Checklist instancias de hoje com jogo_id (para lacunas)
-        supabase.from('checklist_instancias').select('jogo_id').eq('dia_id', diaId).not('jogo_id', 'is', null),
-        // Modalidades para label dos jogos
-        supabase.from('modalidades').select('id, nome'),
-      ])
-
+      // ── Analytics (dados já vieram no Promise.all acima) ─────────────────
       const profilesList = (profilesRes.data ?? []) as { id: string; nome: string; funcao_principal: string | null }[]
       const profilesMap  = new Map(profilesList.map(p => [p.id, p]))
       const modalMap     = new Map(((modalidadesRes.data ?? []) as { id: string; nome: string }[]).map(m => [m.id, m.nome]))

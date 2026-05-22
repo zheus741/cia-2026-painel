@@ -1,12 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { EscalaAVGrid } from './EscalaAVGrid'
-
-export const dynamic = 'force-dynamic'
 import type { Dia, Setor, Parceiro, ProfileAV, TurnoAV } from './EscalaAVGrid'
 import { PageContainer } from '@/components/page-container'
 import { PageHeader } from '@/components/page-header'
 
-export default async function EscalaAVPage() {
+export const dynamic = 'force-dynamic'
+
+export default async function EscalaAVPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dia?: string }>
+}) {
+  const { dia: diaParam } = await searchParams
   const supabase = await createClient()
 
   const [
@@ -91,6 +96,7 @@ export default async function EscalaAVPage() {
         profiles={(profiles ?? []) as ProfileAV[]}
         turnos={(turnos ?? []) as unknown as TurnoAV[]}
         eventosSetores={eventosSetores}
+        initialDiaId={diaParam}
       />
     </PageContainer>
   )

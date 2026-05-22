@@ -186,7 +186,6 @@ function TurnoDialog({
   open, onClose, dia, setores, parceiros, profiles,
   defaultFuncao, defaultSetorId, editing,
 }: TurnoDialogProps) {
-  const router  = useRouter()
   const [loading, setLoading] = React.useState(false)
   const [error,   setError]   = React.useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = React.useState(false)
@@ -259,18 +258,18 @@ function TurnoDialog({
         ? await updateTurnoAV(editing.id, payload)
         : await createTurnoAV(payload)
 
-      if (!res.ok) { setError(res.error ?? 'Erro ao salvar.'); return }
+      if (!res.ok) { setError(res.error ?? 'Erro ao salvar.'); setLoading(false); return }
 
       toast.success(editing ? 'Turno atualizado' : 'Turno criado', {
         description: colabSel
           ? `${colabSel.nome.split(' ')[0]} foi notificado.`
           : 'Slot aberto — designe o operador depois.',
       })
-      router.refresh()
       onClose()
+      // Reload completo — garante que o turno aparece na grade (preserva o dia)
+      window.location.assign(`/admin/escala-av?dia=${dia.id}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro inesperado.')
-    } finally {
       setLoading(false)
     }
   }
@@ -1493,14 +1492,19 @@ interface EscalaAVGridProps {
   profiles:       ProfileAV[]
   turnos:         TurnoAV[]
   eventosSetores: { dia_id: string; setor_id: string }[]
+  initialDiaId?:  string
 }
 
 export function EscalaAVGrid({
-  dias, setores, parceiros, profiles, turnos, eventosSetores,
+  dias, setores, parceiros, profiles, turnos, eventosSetores, initialDiaId,
 }: EscalaAVGridProps) {
   const router = useRouter()
 
-  const [activeDiaIdx, setActiveDiaIdx] = React.useState(0)
+  const [activeDiaIdx, setActiveDiaIdx] = React.useState(() => {
+    if (!initialDiaId) return 0
+    const i = dias.findIndex(d => d.id === initialDiaId)
+    return i >= 0 ? i : 0
+  })
   const [filterFuncao, setFilterFuncao] = React.useState<'all' | 'foto' | 'video'>('all')
   const [searchQuery,  setSearchQuery]  = React.useState('')
   const [replicarOpen, setReplicarOpen] = React.useState(false)
@@ -1595,10 +1599,15 @@ export function EscalaAVGrid({
   async function handleDelete() {
     if (!deleteConfirm) return
     setDeleting(true)
-    await deleteTurnoAV(deleteConfirm)
-    setDeleting(false)
-    setDeleteConfirm(null)
-    router.refresh()
+    const res = await deleteTurnoAV(deleteConfirm)
+    if (!res.ok) {
+      setDeleting(false)
+      setDeleteConfirm(null)
+      toast.error('Falha ao remover turno', { description: res.error })
+      return
+    }
+    // Reload completo — garante dados frescos (preserva o dia via URL)
+    window.location.assign(`/admin/escala-av?dia=${dia.id}`)
   }
 
   if (!dia) {
@@ -1621,7 +1630,10 @@ export function EscalaAVGrid({
           return (
             <button
               key={d.id}
-              onClick={() => setActiveDiaIdx(i)}
+              onClick={() => {
+                setActiveDiaIdx(i)
+                router.replace(`/admin/escala-av?dia=${d.id}`, { scroll: false })
+              }}
               className={cn(
                 'group relative overflow-hidden rounded-xl border p-3.5 text-left transition-all',
                 isAtivo
@@ -1823,8 +1835,8 @@ export function EscalaAVGrid({
               toast.success(
                 `Escala replicada · ${r.data.criados} criados${r.data.pulados > 0 ? ` · ${r.data.pulados} pulados (duplicatas)` : ''}`,
               )
-              router.refresh()
               setReplicarOpen(false)
+              window.location.assign(`/admin/escala-av?dia=${dia.id}`)
             } else {
               toast.error('Falha ao replicar dia', { description: r.error })
             }

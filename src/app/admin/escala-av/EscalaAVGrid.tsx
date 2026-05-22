@@ -228,8 +228,6 @@ function TurnoDialog({
   )
 
   async function submit() {
-    if (!userId) { setError('Selecione um colaborador.'); return }
-
     setLoading(true)
     setError(null)
     try {

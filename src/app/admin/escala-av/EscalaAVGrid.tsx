@@ -6,6 +6,7 @@ import {
   Plus, Pencil, Trash2, Loader2, AlertCircle, Wifi,
   UtensilsCrossed, MapPin, Camera, Video, ChevronDown, ChevronRight,
   Search, AlertTriangle, Sun, Sunset, Moon, Copy, Download,
+  Bell, Building2, User, SlidersHorizontal,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -166,7 +167,7 @@ function turnoWidthPx(inicio: string, fim: string): number {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TurnoDialog — criar / editar turno (unchanged)
+// TurnoDialog — criar / editar turno (prático: foco em empresa + colaborador)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface TurnoDialogProps {
@@ -188,6 +189,7 @@ function TurnoDialog({
   const router  = useRouter()
   const [loading, setLoading] = React.useState(false)
   const [error,   setError]   = React.useState<string | null>(null)
+  const [showAdvanced, setShowAdvanced] = React.useState(false)
 
   const [funcao,    setFuncao]    = React.useState<'foto' | 'video'>(editing?.funcao as 'foto' | 'video' ?? defaultFuncao)
   const [setorId,   setSetorId]   = React.useState(editing?.setor_id ?? defaultSetorId ?? '')
@@ -211,6 +213,12 @@ function TurnoDialog({
       setPrioridade((editing?.prioridade as 'alta' | 'media' | 'baixa') ?? 'media')
       setBriefing(editing?.briefing_editorial ?? '')
       setConteudos(editing?.conteudos_esperados ?? '')
+      // Auto-expande opções avançadas se o turno já tem dados nelas
+      setShowAdvanced(!!(
+        editing?.briefing_editorial ||
+        editing?.conteudos_esperados ||
+        (editing?.prioridade && editing.prioridade !== 'media')
+      ))
       if (editing) {
         setHoraInicio(new Date(editing.inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }))
         setHoraFim(new Date(editing.fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }))
@@ -226,6 +234,8 @@ function TurnoDialog({
          p.funcao_principal === 'foto' ||
          p.funcao_principal === 'video'
   )
+  const funcCor   = funcao === 'foto' ? FOTO_COLOR : VIDEO_COLOR
+  const colabSel  = profiles.find(p => p.id === userId) ?? null
 
   async function submit() {
     setLoading(true)
@@ -250,6 +260,12 @@ function TurnoDialog({
         : await createTurnoAV(payload)
 
       if (!res.ok) { setError(res.error ?? 'Erro ao salvar.'); return }
+
+      toast.success(editing ? 'Turno atualizado' : 'Turno criado', {
+        description: colabSel
+          ? `${colabSel.nome.split(' ')[0]} foi notificado.`
+          : 'Slot aberto — designe o operador depois.',
+      })
       router.refresh()
       onClose()
     } catch (e) {
@@ -270,50 +286,65 @@ function TurnoDialog({
 
         <div className="space-y-4">
 
-          {/* Setor */}
-          <div>
-            <Label className="mb-1.5 block text-xs">Setor</Label>
-            <Select value={setorId} onValueChange={setSetorId}>
-              <SelectTrigger className="h-10 text-sm">
-                <SelectValue placeholder="— selecione o setor —" />
-              </SelectTrigger>
-              <SelectContent>
-                {setores.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+          {/* ── Contexto: Setor + Função ───────────────────────── */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-xs">Setor / Praça</Label>
+              <Select value={setorId} onValueChange={setSetorId}>
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue placeholder="— selecione —" />
+                </SelectTrigger>
+                <SelectContent>
+                  {setores.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs">Função</Label>
+              <div className="flex gap-2">
+                {(['foto', 'video'] as const).map(f => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => { setFuncao(f); setUserId(''); setParceiro('') }}
+                    className={cn(
+                      'flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition-all',
+                      funcao === f
+                        ? f === 'foto'
+                          ? 'border-purple-400 bg-purple-50 text-purple-700'
+                          : 'border-teal-400 bg-teal-50 text-teal-700'
+                        : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]',
+                    )}
+                  >
+                    {f === 'foto' ? <Camera className="h-3.5 w-3.5" /> : <Video className="h-3.5 w-3.5" />}
+                    {f === 'foto' ? 'Foto' : 'Vídeo'}
+                  </button>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Função FOTO / VÍDEO */}
-          <div>
-            <Label className="mb-1.5 block text-xs">Função</Label>
-            <div className="flex gap-2">
-              {(['foto', 'video'] as const).map(f => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => { setFuncao(f); setUserId('') }}
-                  className={cn(
-                    'flex flex-1 items-center justify-center gap-2 rounded-lg border py-2 text-sm font-semibold transition-all',
-                    funcao === f
-                      ? f === 'foto'
-                        ? 'border-purple-400 bg-purple-50 text-purple-700'
-                        : 'border-teal-400 bg-teal-50 text-teal-700'
-                      : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]',
-                  )}
-                >
-                  {f === 'foto' ? <Camera className="h-4 w-4" /> : <Video className="h-4 w-4" />}
-                  {f.charAt(0).toUpperCase() + f.slice(1)}
-                </button>
-              ))}
+              </div>
             </div>
           </div>
 
-          {/* Parceiro + Colaborador */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1.5 block text-xs">Empresa / Parceiro</Label>
+          {/* ── Designação: o que importa ──────────────────────── */}
+          <div
+            className="rounded-xl border-2 p-3.5"
+            style={{ borderColor: `${funcCor}33`, background: `${funcCor}08` }}
+          >
+            <p
+              className="mb-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em]"
+              style={{ color: funcCor }}
+            >
+              <Bell className="h-3 w-3" />
+              Designação
+            </p>
+
+            {/* Empresa */}
+            <div className="mb-3">
+              <Label className="mb-1.5 flex items-center gap-1 text-xs">
+                <Building2 className="h-3 w-3 text-[var(--muted-foreground)]" />
+                Empresa / Parceiro
+              </Label>
               <Select value={parceiro} onValueChange={setParceiro}>
                 <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder="— empresa —" />
@@ -336,8 +367,13 @@ function TurnoDialog({
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Colaborador */}
             <div>
-              <Label className="mb-1.5 block text-xs">Colaborador</Label>
+              <Label className="mb-1.5 flex items-center gap-1 text-xs">
+                <User className="h-3 w-3 text-[var(--muted-foreground)]" />
+                Colaborador
+              </Label>
               <Select value={userId} onValueChange={setUserId}>
                 <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder="— pessoa —" />
@@ -348,14 +384,18 @@ function TurnoDialog({
                   ))}
                 </SelectContent>
               </Select>
+              <p className="mt-1.5 flex items-center gap-1 text-[10px] text-[var(--muted-foreground)]">
+                <Bell className="h-2.5 w-2.5" />
+                {colabSel
+                  ? `${colabSel.nome.split(' ')[0]} recebe notificação ao salvar.`
+                  : 'Sem colaborador: vira slot aberto pra designar depois.'}
+              </p>
             </div>
           </div>
 
-          {/* Horário */}
+          {/* ── Horário ────────────────────────────────────────── */}
           <div>
             <Label className="mb-1.5 block text-xs">Horário</Label>
-
-            {/* Templates rápidos */}
             <div className="mb-2 flex flex-wrap gap-1.5">
               {[
                 { label: 'Manhã',    ini: '07:30', fim: '13:00', Icon: Sun     },
@@ -382,7 +422,6 @@ function TurnoDialog({
                 )
               })}
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="mb-1 block text-[10px] uppercase tracking-wider text-[var(--muted-foreground)]/70">Início</Label>
@@ -405,56 +444,78 @@ function TurnoDialog({
             </div>
           </div>
 
-          {/* Prioridade */}
-          <div>
-            <Label className="mb-1.5 block text-xs">Prioridade editorial</Label>
-            <div className="flex gap-2">
-              {(['alta', 'media', 'baixa'] as const).map(p => {
-                const cfg = PRIORIDADE_CONFIG[p]
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPrioridade(p)}
-                    className="flex-1 rounded-lg border py-1.5 text-xs font-semibold transition-all"
-                    style={{
-                      background:  prioridade === p ? cfg.bg    : 'transparent',
-                      borderColor: prioridade === p ? cfg.dot   : 'rgba(46,107,66,0.15)',
-                      color:       prioridade === p ? cfg.text  : 'rgba(46,107,66,0.45)',
-                    }}
-                  >
-                    {cfg.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          {/* ── Mais opções (recolhível) ───────────────────────── */}
+          <div className="rounded-lg border border-[var(--border)]">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(v => !v)}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-xs font-semibold text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Mais opções
+              <span className="text-[10px] font-normal text-[var(--muted-foreground)]/60">
+                prioridade · briefing · conteúdos
+              </span>
+              {showAdvanced
+                ? <ChevronDown  className="ml-auto h-3.5 w-3.5" />
+                : <ChevronRight className="ml-auto h-3.5 w-3.5" />}
+            </button>
 
-          {/* Briefing */}
-          <div>
-            <Label className="mb-1.5 block text-xs">Briefing editorial</Label>
-            <textarea
-              rows={2}
-              value={briefing}
-              onChange={e => setBriefing(e.target.value)}
-              placeholder='Ex: "Estreia de vôlei de praia — captar abertura e comemoração"'
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
-            />
-          </div>
+            {showAdvanced && (
+              <div className="space-y-4 border-t border-[var(--border)] p-3">
+                {/* Prioridade */}
+                <div>
+                  <Label className="mb-1.5 block text-xs">Prioridade editorial</Label>
+                  <div className="flex gap-2">
+                    {(['alta', 'media', 'baixa'] as const).map(p => {
+                      const cfg = PRIORIDADE_CONFIG[p]
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPrioridade(p)}
+                          className="flex-1 rounded-lg border py-1.5 text-xs font-semibold transition-all"
+                          style={{
+                            background:  prioridade === p ? cfg.bg    : 'transparent',
+                            borderColor: prioridade === p ? cfg.dot   : 'rgba(46,107,66,0.15)',
+                            color:       prioridade === p ? cfg.text  : 'rgba(46,107,66,0.45)',
+                          }}
+                        >
+                          {cfg.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
 
-          {/* Conteúdos esperados */}
-          <div>
-            <Label className="mb-1.5 block text-xs">
-              Conteúdos esperados{' '}
-              <span className="text-[var(--muted-foreground)] font-normal">(opcional)</span>
-            </Label>
-            <input
-              type="text"
-              value={conteudos}
-              onChange={e => setConteudos(e.target.value)}
-              placeholder='Ex: "1 reels + 5 stories + 3 cards de placar"'
-              className="h-8 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs"
-            />
+                {/* Briefing */}
+                <div>
+                  <Label className="mb-1.5 block text-xs">Briefing editorial</Label>
+                  <textarea
+                    rows={2}
+                    value={briefing}
+                    onChange={e => setBriefing(e.target.value)}
+                    placeholder='Ex: "Estreia de vôlei de praia — captar abertura e comemoração"'
+                    className="w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                  />
+                </div>
+
+                {/* Conteúdos esperados */}
+                <div>
+                  <Label className="mb-1.5 block text-xs">
+                    Conteúdos esperados{' '}
+                    <span className="text-[var(--muted-foreground)] font-normal">(opcional)</span>
+                  </Label>
+                  <input
+                    type="text"
+                    value={conteudos}
+                    onChange={e => setConteudos(e.target.value)}
+                    placeholder='Ex: "1 reels + 5 stories + 3 cards de placar"'
+                    className="h-8 w-full rounded-md border border-[var(--border)] bg-[var(--background)] px-3 text-xs"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {error && (
@@ -469,7 +530,7 @@ function TurnoDialog({
           <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
           <Button size="sm" onClick={submit} disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {editing ? 'Salvar' : 'Adicionar'}
+            {editing ? 'Salvar' : 'Criar turno'}
           </Button>
         </DialogFooter>
       </DialogContent>

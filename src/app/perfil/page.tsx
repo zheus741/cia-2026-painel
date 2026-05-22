@@ -14,7 +14,7 @@ export default async function PerfilPage() {
   const supabase = await createClient()
 
   // ── Fetch personal data in parallel ──────────────────────────────────────
-  const [turnosRes, conteudosRes] = await Promise.all([
+  const [turnosRes, conteudosRes, profilesRes] = await Promise.all([
     // All turnos assigned to this user (all event days)
     supabase
       .from('turnos')
@@ -27,15 +27,24 @@ export default async function PerfilPage() {
       .from('conteudos')
       .select(`
         id, titulo, tipo, status, prioridade, horario_previsto,
+        briefing, canal_publicacao,
         responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
+        patrocinador_id, jogo_id, show_id, festa_id,
         dia:dias_evento(nome_dia, data),
-        setor:setores(nome)
+        setor:setores(nome),
+        patrocinador:patrocinadores(nome),
+        jogo:jogos(equipe_a_nome, equipe_b_nome),
+        show:shows(nome),
+        festa:festas(nome)
       `)
       .or(
         `responsavel_captacao_id.eq.${user.id},responsavel_design_id.eq.${user.id},responsavel_edicao_id.eq.${user.id}`
       )
       .not('status', 'in', '(arquivado,cancelado)')
       .order('prioridade'),
+
+    // Lightweight profiles list to resolve responsável names
+    supabase.from('profiles').select('id, nome, foto_url'),
   ])
 
   type RawTurno = {
@@ -47,12 +56,20 @@ export default async function PerfilPage() {
   type RawConteudo = {
     id: string; titulo: string; tipo: string; status: string; prioridade: number
     horario_previsto: string | null
+    briefing: string | null
+    canal_publicacao: string | null
     responsavel_captacao_id: string | null
     responsavel_design_id: string | null
     responsavel_edicao_id: string | null
     dia: { nome_dia: string; data: string } | { nome_dia: string; data: string }[] | null
     setor: { nome: string } | { nome: string }[] | null
+    patrocinador: { nome: string } | { nome: string }[] | null
+    jogo: { equipe_a_nome: string; equipe_b_nome: string } | { equipe_a_nome: string; equipe_b_nome: string }[] | null
+    show: { nome: string } | { nome: string }[] | null
+    festa: { nome: string } | { nome: string }[] | null
   }
+
+  type RawProfile = { id: string; nome: string; foto_url: string | null }
 
   const arr = <T,>(v: T | T[] | null | undefined): T | null =>
     Array.isArray(v) ? (v[0] ?? null) : v ?? null
@@ -63,17 +80,46 @@ export default async function PerfilPage() {
     setor: arr((t as RawTurno).setor),
   }))
 
-  const conteudos = (conteudosRes.data ?? []).map((c) => ({
-    ...(c as RawConteudo),
-    dia:   arr((c as RawConteudo).dia),
-    setor: arr((c as RawConteudo).setor),
-    // compute which roles this user has on this content
-    myRoles: [
-      (c as RawConteudo).responsavel_captacao_id === user.id ? 'captacao' : null,
-      (c as RawConteudo).responsavel_design_id   === user.id ? 'design'   : null,
-      (c as RawConteudo).responsavel_edicao_id   === user.id ? 'edicao'   : null,
-    ].filter(Boolean) as string[],
-  }))
+  // Map de profiles para resolver responsáveis (conteudos tem 3 FKs p/ profiles)
+  const profilesMap = new Map(
+    (profilesRes.data ?? []).map((p) => {
+      const rp = p as RawProfile
+      return [rp.id, { nome: rp.nome, foto_url: rp.foto_url }]
+    }),
+  )
+
+  const conteudos = (conteudosRes.data ?? []).map((raw) => {
+    const c = raw as RawConteudo
+    const jogo = arr(c.jogo)
+    const show = arr(c.show)
+    const festa = arr(c.festa)
+    const vinculadoA = jogo
+      ? `${jogo.equipe_a_nome} × ${jogo.equipe_b_nome}`
+      : show?.nome ?? festa?.nome ?? null
+    return {
+      id: c.id,
+      titulo: c.titulo,
+      tipo: c.tipo,
+      status: c.status,
+      prioridade: c.prioridade,
+      horario_previsto: c.horario_previsto,
+      briefing: c.briefing,
+      canal: c.canal_publicacao,
+      dia:   arr(c.dia),
+      setor: arr(c.setor),
+      patrocinador: arr(c.patrocinador),
+      vinculadoA,
+      captacao: c.responsavel_captacao_id ? profilesMap.get(c.responsavel_captacao_id) ?? null : null,
+      design:   c.responsavel_design_id   ? profilesMap.get(c.responsavel_design_id)   ?? null : null,
+      edicao:   c.responsavel_edicao_id   ? profilesMap.get(c.responsavel_edicao_id)   ?? null : null,
+      // compute which roles this user has on this content
+      myRoles: [
+        c.responsavel_captacao_id === user.id ? 'captacao' : null,
+        c.responsavel_design_id   === user.id ? 'design'   : null,
+        c.responsavel_edicao_id   === user.id ? 'edicao'   : null,
+      ].filter(Boolean) as string[],
+    }
+  })
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden cia-bg">

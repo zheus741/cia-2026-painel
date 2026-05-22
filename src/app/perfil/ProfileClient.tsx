@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { ConteudoDetalheModal } from './ConteudoDetalheModal'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -105,6 +106,11 @@ interface Turno {
   setor: { nome: string } | null
 }
 
+interface Pessoa {
+  nome: string
+  foto_url: string | null
+}
+
 interface Conteudo {
   id: string
   titulo: string
@@ -112,9 +118,16 @@ interface Conteudo {
   status: string
   prioridade: number
   horario_previsto: string | null
+  briefing: string | null
+  canal: string | null
   myRoles: string[]
   dia:   { nome_dia: string; data: string } | null
   setor: { nome: string } | null
+  patrocinador: { nome: string } | null
+  vinculadoA: string | null
+  captacao: Pessoa | null
+  design:   Pessoa | null
+  edicao:   Pessoa | null
 }
 
 interface Props {
@@ -307,6 +320,8 @@ function SectionHeading({ title, count }: { title: string; count?: number }) {
 
 export function ProfileClient({ userId, profile, turnos, conteudos }: Props) {
   const [fotoUrl, setFotoUrl] = useState(profile.foto_url)
+  const [conteudoSel, setConteudoSel] = useState<Conteudo | null>(null)
+  const isFV = profile.role === 'operador_fv' || profile.role === 'lider_fv'
 
   // ── KPI computation ─────────────────────────────────────────────────────────
   const total      = conteudos.length
@@ -510,8 +525,21 @@ export function ProfileClient({ userId, profile, turnos, conteudos }: Props) {
                 const statusCfg = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.rascunho
                 const tipos     = parseTipos(c.tipo)
                 return (
-                  <div key={c.id} style={{
+                  <div
+                    key={c.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setConteudoSel(c)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setConteudoSel(c)
+                      }
+                    }}
+                    className="cursor-pointer hover:brightness-[0.98]"
+                    style={{
                     display: 'flex', gap: 12, alignItems: 'flex-start',
+                    minHeight: 44,
                     background: 'var(--card)',
                     border: '1px solid rgba(10,15,11,0.07)',
                     borderLeft: `3px solid ${
@@ -594,17 +622,22 @@ export function ProfileClient({ userId, profile, turnos, conteudos }: Props) {
                 )
               })}
 
-              <Link
-                href="/conteudos"
-                className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] py-3 text-xs font-semibold text-[var(--muted-foreground)] transition-all hover:border-[var(--green-dim)] hover:text-[var(--green-bright)]"
-              >
-                Ver todos no kanban
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
+              {!isFV && (
+                <Link
+                  href="/conteudos"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] py-3 text-xs font-semibold text-[var(--muted-foreground)] transition-all hover:border-[var(--green-dim)] hover:text-[var(--green-bright)]"
+                >
+                  Ver todos no kanban
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Modal read-only de detalhe do conteúdo ──────────────────────────── */}
+      <ConteudoDetalheModal conteudo={conteudoSel} onClose={() => setConteudoSel(null)} />
 
       {/* ── Footer note ──────────────────────────────────────────────────────── */}
       <p className="mt-12 text-center text-[11px] text-[var(--muted-foreground)]/50">

@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentProfile } from '@/lib/auth/current-user'
 import { getCachedDias, getCachedSetores, getCachedPatrocinadores, getCachedPerfis } from '@/lib/cache/lookups'
@@ -18,6 +19,12 @@ export default async function ConteudosPage({
   // PERF: getCurrentProfile() é cacheado por request — uma única chamada a
   // auth.getUser() + profile fetch (~240ms total em vez de 480ms).
   const profile = await getCurrentProfile()
+
+  // Roles FV não têm acesso ao kanban completo — usam "Meus conteúdos" no perfil
+  if (profile?.role === 'operador_fv' || profile?.role === 'lider_fv') {
+    redirect('/perfil')
+  }
+
   const supabase = await createClient()
 
   // ?dia=<uuid> → filtra server-side, reduz carga da query pesada em ~4x no D-Day

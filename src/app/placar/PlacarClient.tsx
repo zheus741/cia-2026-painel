@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2, X, ChevronDown, Crown } from 'lucide-react'
-import { setJogoAoVivo, encerrarJogo, atualizarPlacar, lancarResultado, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento } from './actions'
+import { setJogoAoVivo, encerrarJogo, atualizarPlacar, lancarResultado, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento, fecharSet } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 
@@ -79,6 +79,40 @@ const EVENTOS_CONFIG: Record<string, EventoCfg> = {
   penalti:         { label: 'Pênalti',     icon: '🥅',  cor: '#f59e0b' },
   // Estratégicos
   timeout:         { label: 'Timeout',     icon: '⏱️',  cor: '#3b82f6' },
+}
+
+// ── Modalidades com SET (vôlei / vôlei de praia / peteca) ────────────────────
+
+interface SetConfig {
+  /** pontos pra fechar o 1º/2º set */
+  normal: number
+  /** pontos pra fechar o tie-break (último set) */
+  tiebreak: number
+}
+
+// Chave = nome da modalidade normalizado (lowercase, sem acento).
+const SET_CONFIG: Record<string, SetConfig> = {
+  voleibol:        { normal: 25, tiebreak: 15 },
+  volei:           { normal: 25, tiebreak: 15 },
+  'volei de praia': { normal: 21, tiebreak: 15 },
+  peteca:          { normal: 21, tiebreak: 15 },
+}
+
+/** Remove acentos e baixa pra lowercase — pra casar nomes de modalidade. */
+function normalizarNome(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+}
+
+/** Retorna a config de set da modalidade, ou null se não for esporte de set. */
+function getSetConfig(modalidadeNome: string | null | undefined): SetConfig | null {
+  if (!modalidadeNome) return null
+  const n = normalizarNome(modalidadeNome)
+  if (SET_CONFIG[n]) return SET_CONFIG[n]
+  // Tolerância: "vôlei de praia" pode vir com variações; testa por inclusão.
+  if (n.includes('praia') && (n.includes('volei') || n.includes('vole'))) return SET_CONFIG['volei de praia']
+  if (n.includes('volei') || n.includes('voleibol') || n.includes('vole')) return SET_CONFIG['voleibol']
+  if (n.includes('peteca')) return SET_CONFIG['peteca']
+  return null
 }
 
 function getEventosTipos(modalidadeNome: string | null): string[] {
@@ -340,6 +374,35 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   const isAgendado  = jogo.status === 'agendado'
   const isTeste     = !!jogo.teste
   const eventoTipos = getEventosTipos(jogo.modalidade?.nome ?? null)
+
+  // ── Estado do SET (vôlei / vôlei de praia / peteca) ───────────────────────
+  const setConfig    = getSetConfig(jogo.modalidade?.nome)
+  const isEsporteSet = !!setConfig
+  // Final da 1ª Divisão = melhor de 5; demais casos = melhor de 3.
+  const faseRaw      = (jogo.fase ?? '').toLowerCase()
+  const divRaw       = (jogo.divisao ?? '').toLowerCase()
+  const isFinal      = faseRaw.includes('final')
+  const isPrimeiraDiv = divRaw.includes('1')
+  const melhorDe       = isFinal && isPrimeiraDiv ? 5 : 3
+  const setsParaVencer = Math.ceil(melhorDe / 2)
+  const setAtual       = setsA + setsB + 1
+  const isTiebreak     = setAtual >= melhorDe
+  const alvoSet        = setConfig
+    ? (isTiebreak ? setConfig.tiebreak : setConfig.normal)
+    : 0
+  const partidaDecidida = setsA >= setsParaVencer || setsB >= setsParaVencer
+  // Set point: pontos >= alvo-1 e lidera por >= 1.
+  const aEmSetPoint = isEsporteSet && placarA >= alvoSet - 1 && placarA - placarB >= 1
+  const bEmSetPoint = isEsporteSet && placarB >= alvoSet - 1 && placarB - placarA >= 1
+  const equipeSetPoint: 'a' | 'b' | null = aEmSetPoint ? 'a' : bEmSetPoint ? 'b' : null
+
+  function handleFecharSet() {
+    if (placarA === placarB) return
+    const vencedor: 'a' | 'b' = placarA > placarB ? 'a' : 'b'
+    onLocalUpdate(jogo.id, { placar_a: 0, placar_b: 0 })
+    startTransition(async () => { await fecharSet(jogo.id, vencedor) })
+  }
+
   // W.O. state derivado
   const hasWO       = !!jogo.wo
   const aPerdeuWO   = jogo.wo === 'a' || jogo.wo === 'duplo'
@@ -613,6 +676,66 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
                 <TeamBlade logoUrl={jogo.equipe_b?.logo_url} nome={nomeB} big={isAoVivo} />
               </div>
             </div>
+
+            {/* Painel de SET — vôlei / vôlei de praia / peteca, ao vivo */}
+            {isEsporteSet && isAoVivo && !hasWO && !isCancelado && (
+              <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+                {/* Cabeçalho: set atual + alvo + placar de sets */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+                    Set {setAtual} · até {alvoSet} pts
+                    {isTiebreak && (
+                      <span className="ml-1.5 rounded px-1 py-0.5 text-[8px] font-extrabold tracking-[0.1em] text-[var(--gold)]" style={{ background: 'color-mix(in srgb, var(--gold) 14%, transparent)' }}>
+                        TIE-BREAK
+                      </span>
+                    )}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 tabular-nums text-sm font-extrabold text-[var(--foreground)]">
+                    {setsA} <span className="text-[var(--muted-foreground)]/50">—</span> {setsB}
+                  </span>
+                </div>
+
+                {/* Selo de set point */}
+                {equipeSetPoint && (
+                  <div
+                    className="mt-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[9px] font-extrabold uppercase tracking-[0.12em] text-[var(--gold)]"
+                    style={{
+                      background: 'color-mix(in srgb, var(--gold) 14%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--gold) 40%, transparent)',
+                    }}
+                  >
+                    Set point — {(equipeSetPoint === 'a' ? jogo.equipe_a_nome : jogo.equipe_b_nome) ?? (equipeSetPoint === 'a' ? 'Equipe A' : 'Equipe B')}
+                  </div>
+                )}
+
+                {/* Botão Fechar set */}
+                {canEdit && (
+                  <button
+                    onClick={handleFecharSet}
+                    disabled={isPending || placarA === placarB}
+                    className={`mt-2 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-bold uppercase tracking-wider transition-all disabled:cursor-not-allowed disabled:opacity-35 ${
+                      equipeSetPoint ? 'animate-pulse' : ''
+                    }`}
+                    style={
+                      equipeSetPoint
+                        ? { background: 'var(--gold)', color: 'var(--ink-deep)', border: '1px solid var(--gold)' }
+                        : { background: 'var(--card)', color: 'var(--foreground)', border: '1px solid var(--border)' }
+                    }
+                    title={placarA === placarB ? 'Placar empatado — defina um líder antes de fechar o set' : 'Registra o set ganho e zera os pontos'}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Fechar set
+                  </button>
+                )}
+
+                {/* Aviso de partida decidida */}
+                {partidaDecidida && (
+                  <p className="mt-2 text-[10px] font-semibold leading-snug text-[var(--green-bright)]">
+                    Partida decidida — encerre o jogo.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Linha de controle — botões +/- de placar, fora da barra broadcast */}
             {canEdit && isAoVivo && !hasWO && (

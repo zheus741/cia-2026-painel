@@ -233,6 +233,30 @@ export async function registrarEvento(
 }
 
 /**
+ * Fecha um set (vôlei / vôlei de praia / peteca): registra o set_ganho
+ * para o vencedor E zera o placar de pontos pro próximo set.
+ */
+export async function fecharSet(
+  jogoId: string,
+  vencedor: 'a' | 'b',
+): Promise<ActionResult> {
+  return safe(async () => {
+    await requireCoordOrAdmin()
+    const supabase = await createClient()
+    const { error: evErr } = await supabase
+      .from('eventos_jogo')
+      .insert({ jogo_id: jogoId, tipo: 'set_ganho', equipe: vencedor })
+    if (evErr) throw evErr
+    const { error: plErr } = await supabase
+      .from('jogos')
+      .update({ placar_a: 0, placar_b: 0 })
+      .eq('id', jogoId)
+    if (plErr) throw plErr
+    revalidatePath('/placar')
+  })
+}
+
+/**
  * Remove um evento de jogo — para corrigir registro errado.
  * Nota: não reverte o placar automaticamente (use os botões +/- para isso).
  */

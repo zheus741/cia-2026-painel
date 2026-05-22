@@ -27,15 +27,15 @@ export default async function PlacarPage() {
         placar_a, placar_b, status, wo, inicio, dia_id, setor_id, divisao, fase, categoria, teste,
         modalidade:modalidades(nome, icone),
         setor:setores(nome),
-        equipe_a:equipe_a_id(slug, divisao, conferencia, cor_primaria, universidade),
-        equipe_b:equipe_b_id(slug, divisao, conferencia, cor_primaria, universidade)
+        equipe_a:equipe_a_id(slug, divisao, conferencia, cor_primaria, universidade, logo_url),
+        equipe_b:equipe_b_id(slug, divisao, conferencia, cor_primaria, universidade, logo_url)
       `)
       .order('inicio', { ascending: true, nullsFirst: false }),
   ])
 
   const dias = (diasDB?.length ? diasDB : DIAS_FIXOS) as { id: string; nome_dia: string; data: string }[]
 
-  type EquipeRef = { slug: string; divisao: string | null; conferencia: string | null; cor_primaria: string | null; universidade: string | null }
+  type EquipeRef = { slug: string; divisao: string | null; conferencia: string | null; cor_primaria: string | null; universidade: string | null; logo_url: string | null }
   type Jogo = {
     id: string
     equipe_a_id: string | null; equipe_b_id: string | null

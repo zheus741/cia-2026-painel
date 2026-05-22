@@ -548,7 +548,7 @@ export function EsportivoClient({
       .channel('esportivo-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos' }, () => {
         if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
-        refreshTimerRef.current = setTimeout(() => { router.refresh() }, 1200)
+        refreshTimerRef.current = setTimeout(() => { router.refresh() }, 3000)
       })
       .subscribe(status => { setLiveSync(status === 'SUBSCRIBED') })
     return () => {

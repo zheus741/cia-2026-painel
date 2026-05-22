@@ -13,8 +13,9 @@ export default async function EscalaAVPage() {
     { data: dias },
     { data: setores },
     { data: parceiros },
-    { data: profiles },
-    { data: turnos },
+    { data: profilesFV },
+    { data: profilesAll },
+    { data: turnosRaw },
     { data: jogosSetores },
     { data: showsSetores },
     { data: festasSetores },
@@ -35,7 +36,7 @@ export default async function EscalaAVPage() {
       .eq('ativo', true)
       .order('nome'),
 
-    // Colaboradores = operadores e líderes de Foto/Vídeo
+    // Colaboradores = operadores e líderes de Foto/Vídeo (dropdown do dialog)
     supabase
       .from('profiles')
       .select('id, nome, funcao_principal, empresa_cobertura, role')
@@ -43,20 +44,49 @@ export default async function EscalaAVPage() {
       .eq('ativo', true)
       .order('nome'),
 
+    // Todos os perfis (leve) — para resolver o nome do colaborador do turno
+    supabase
+      .from('profiles')
+      .select('id, nome, funcao_principal'),
+
+    // Turnos SEM embed — turnos tem 2 FKs pra profiles (user_id + lider_area_id),
+    // o que torna o embed ambíguo e quebra a query. Resolvemos os joins em JS.
     supabase
       .from('turnos')
-      .select(`
-        id, dia_id, setor_id, funcao, user_id, prioridade, status_escala, parceiro_id,
-        setor:setores(nome),
-        user:profiles(id, nome, funcao_principal),
-        parceiro:parceiros(nome, cor_hex)
-      `)
+      .select('id, dia_id, setor_id, funcao, user_id, prioridade, status_escala, parceiro_id')
       .in('funcao', ['foto', 'video']),
 
     supabase.from('jogos').select('dia_id, setor_id').not('setor_id', 'is', null),
     supabase.from('shows').select('dia_id, setor_id').not('setor_id', 'is', null),
     supabase.from('festas').select('dia_id, setor_id').not('setor_id', 'is', null),
   ])
+
+  // ── Resolve joins em JS (zero dependência de embed do PostgREST) ───────────
+  const setorNome = new Map((setores ?? []).map(s => [s.id, s.nome as string]))
+  const profMap   = new Map(
+    (profilesAll ?? []).map(p => [p.id, p as { id: string; nome: string; funcao_principal: string | null }]),
+  )
+  const parcMap   = new Map(
+    (parceiros ?? []).map(p => [p.id, p as { nome: string; cor_hex: string }]),
+  )
+
+  const turnos: TurnoAV[] = (turnosRaw ?? []).map(t => {
+    const prof = t.user_id ? profMap.get(t.user_id) : undefined
+    const parc = t.parceiro_id ? parcMap.get(t.parceiro_id) : undefined
+    return {
+      id:            t.id,
+      dia_id:        t.dia_id,
+      setor_id:      t.setor_id,
+      funcao:        t.funcao,
+      user_id:       t.user_id,
+      prioridade:    t.prioridade,
+      status_escala: t.status_escala,
+      parceiro_id:   t.parceiro_id,
+      setor:    t.setor_id && setorNome.has(t.setor_id) ? { nome: setorNome.get(t.setor_id)! } : null,
+      user:     prof ? { id: prof.id, nome: prof.nome, funcao_principal: prof.funcao_principal } : null,
+      parceiro: parc ? { nome: parc.nome, cor_hex: parc.cor_hex } : null,
+    }
+  })
 
   const eventosSetores = [
     ...(jogosSetores  ?? []),
@@ -76,8 +106,8 @@ export default async function EscalaAVPage() {
         dias={(dias ?? []) as Dia[]}
         setores={(setores ?? []) as Setor[]}
         parceiros={(parceiros ?? []) as Parceiro[]}
-        profiles={(profiles ?? []) as ProfileAV[]}
-        turnos={(turnos ?? []) as unknown as TurnoAV[]}
+        profiles={(profilesFV ?? []) as ProfileAV[]}
+        turnos={turnos}
         eventosSetores={eventosSetores}
       />
     </PageContainer>

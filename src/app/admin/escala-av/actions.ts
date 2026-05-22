@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   requireCoordOrAdmin,
   requireEdicaoAtivaId,
@@ -119,22 +120,17 @@ export async function updateStatusEscala(
       profile?.role === 'coordenacao' ||
       profile?.role === 'lider_area'
 
-    let error
-    if (isCoord) {
-      ;({ error } = await supabase
-        .from('turnos')
-        .update({ status_escala: status })
-        .eq('id', turnoId))
-    } else {
-      ;({ error } = await supabase
-        .from('turnos')
-        .update({ status_escala: status })
-        .eq('id', turnoId)
-        .eq('user_id', user.id))
-    }
+    // Admin client p/ a escrita: a RLS de turnos só permite coord/admin,
+    // mas o colaborador precisa marcar status do PRÓPRIO turno. O escopo
+    // (.eq('user_id', user.id)) garante que ele só altera o que é dele.
+    const db = createAdminClient()
+    let q = db.from('turnos').update({ status_escala: status }).eq('id', turnoId)
+    if (!isCoord) q = q.eq('user_id', user.id)
+    const { error } = await q
     if (error) throw error
 
     revalidatePath('/admin/escala-av')
+    revalidatePath('/minha-escala')
   })
 }
 

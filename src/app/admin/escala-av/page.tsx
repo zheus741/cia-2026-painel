@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { EscalaAVGrid } from './EscalaAVGrid'
+
+export const dynamic = 'force-dynamic'
 import type { Dia, Setor, Parceiro, ProfileAV, TurnoAV } from './EscalaAVGrid'
 import { PageContainer } from '@/components/page-container'
 import { PageHeader } from '@/components/page-header'

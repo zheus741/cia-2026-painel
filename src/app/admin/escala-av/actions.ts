@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import {
   requireCoordOrAdmin,
@@ -45,6 +46,8 @@ export async function createTurnoAV(payload: TurnoAVPayload): Promise<ActionResu
     })
     if (error) throw error
 
+    revalidatePath('/admin/escala-av')
+
     // Notifica o usuário se já foi atribuído na criação
     if (payload.user_id) {
       const funcao = payload.funcao.charAt(0).toUpperCase() + payload.funcao.slice(1)
@@ -79,6 +82,8 @@ export async function updateTurnoAV(
     const { error } = await supabase.from('turnos').update(payload).eq('id', id)
     if (error) throw error
 
+    revalidatePath('/admin/escala-av')
+
     // Notifica se um novo usuário foi atribuído
     const novoUserId = payload.user_id
     if (novoUserId && novoUserId !== (antes?.user_id as string | null)) {
@@ -104,6 +109,8 @@ export async function deleteTurnoAV(id: string): Promise<ActionResult> {
     const supabase = await createClient()
     const { error } = await supabase.from('turnos').delete().eq('id', id)
     if (error) throw error
+
+    revalidatePath('/admin/escala-av')
   })
 }
 

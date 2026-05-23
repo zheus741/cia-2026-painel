@@ -88,6 +88,8 @@ interface SetConfig {
   normal: number
   /** pontos pra fechar o tie-break (último set) */
   tiebreak: number
+  /** Cap opcional do set normal (Peteca: empate 20×20 → vai até 25 no máximo) */
+  capNormal?: number
 }
 
 // Chave = nome da modalidade normalizado (lowercase, sem acento).
@@ -95,7 +97,14 @@ const SET_CONFIG: Record<string, SetConfig> = {
   voleibol:        { normal: 25, tiebreak: 15 },
   volei:           { normal: 25, tiebreak: 15 },
   'volei de praia': { normal: 21, tiebreak: 15 },
-  peteca:          { normal: 21, tiebreak: 15 },
+  peteca:          { normal: 21, tiebreak: 15, capNormal: 25 },
+}
+
+/** Decide se o set acabou com base na pontuação: alvo + 2 de vantagem, ou cap atingido. */
+function isSetWon(a: number, b: number, target: number, cap?: number): boolean {
+  const max = Math.max(a, b)
+  if (cap !== undefined && max >= cap) return true
+  return max >= target && Math.abs(a - b) >= 2
 }
 
 /** Remove acentos e baixa pra lowercase — pra casar nomes de modalidade. */
@@ -322,6 +331,21 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
     const na = team === 'a' ? Math.max(0, placarA + delta) : placarA
     const nb = team === 'b' ? Math.max(0, placarB + delta) : placarB
     onLocalUpdate(jogo.id, { placar_a: na, placar_b: nb })
+
+    // Auto-fecha o set quando a pontuação atinge a condição de vitória
+    // (vôlei/vôlei de praia/peteca). Só dispara em +1, sem partida decidida.
+    if (
+      isEsporteSet && delta > 0 && !partidaDecidida &&
+      isSetWon(na, nb, alvoSet, capAtual)
+    ) {
+      const vencedor: 'a' | 'b' = na > nb ? 'a' : 'b'
+      // Mostra o placar de fechamento por 900ms, depois zera localmente
+      // (o fecharSet também zera no banco)
+      setTimeout(() => onLocalUpdate(jogo.id, { placar_a: 0, placar_b: 0 }), 900)
+      fecharSetLocal(vencedor)
+      return
+    }
+
     startTransition(async () => {
       await atualizarPlacar(jogo.id, na, nb)
     })
@@ -390,17 +414,43 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   const alvoSet        = setConfig
     ? (isTiebreak ? setConfig.tiebreak : setConfig.normal)
     : 0
+  // Cap do set normal (Peteca tem 25 no 1º/2º set; tie-break não tem cap)
+  const capAtual = setConfig && !isTiebreak ? setConfig.capNormal : undefined
   const partidaDecidida = setsA >= setsParaVencer || setsB >= setsParaVencer
   // Set point: pontos >= alvo-1 e lidera por >= 1.
   const aEmSetPoint = isEsporteSet && placarA >= alvoSet - 1 && placarA - placarB >= 1
   const bEmSetPoint = isEsporteSet && placarB >= alvoSet - 1 && placarB - placarA >= 1
   const equipeSetPoint: 'a' | 'b' | null = aEmSetPoint ? 'a' : bEmSetPoint ? 'b' : null
 
+  // Fecha set + adiciona o set_ganho otimisticamente nos eventos locais
+  // (assim setsA/setsB incrementam na hora, sem esperar refetch).
+  function fecharSetLocal(vencedor: 'a' | 'b') {
+    const tempEv: EventoJogo = {
+      id: `temp-${Date.now()}`,
+      jogo_id: jogo.id,
+      tipo: 'set_ganho',
+      equipe: vencedor,
+      minuto: null,
+      criado_em: new Date().toISOString(),
+    }
+    setEventos(prev => [...prev, tempEv])
+    startTransition(async () => {
+      await fecharSet(jogo.id, vencedor)
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('eventos_jogo')
+        .select('*')
+        .eq('jogo_id', jogo.id)
+        .order('criado_em')
+      setEventos(data ?? [])
+    })
+  }
+
   function handleFecharSet() {
     if (placarA === placarB) return
     const vencedor: 'a' | 'b' = placarA > placarB ? 'a' : 'b'
     onLocalUpdate(jogo.id, { placar_a: 0, placar_b: 0 })
-    startTransition(async () => { await fecharSet(jogo.id, vencedor) })
+    fecharSetLocal(vencedor)
   }
 
   // W.O. state derivado

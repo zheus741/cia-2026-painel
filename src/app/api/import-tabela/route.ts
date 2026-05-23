@@ -37,6 +37,20 @@ const WEEKDAY_PT: Record<number, string> = {
   4: 'Quinta',  5: 'Sexta',  6: 'Sábado',
 }
 
+// Normaliza valores da coluna DIV: abreviações de conferências → nome
+// canônico (ALLURA/KAZURA/CYBER CITY/ESPETÁCULO/ELDORADO/ATHEMPURA/URAH/
+// RANACH). Divisões reais (1ª, 2ª) ou valores desconhecidos passam direto.
+function normalizarDivisao(raw: string): string {
+  const v = raw.trim()
+  const u = v.toUpperCase()
+  if (u === 'CYBERC' || u === 'CYBERCOTY' || u === 'CYBER' || u === 'CYBER CITY') return 'CYBER CITY'
+  if (u === 'ATHEMP' || u === 'ATHEMPURA') return 'ATHEMPURA'
+  if (u === 'ELDORA' || u === 'ELDORADO') return 'ELDORADO'
+  if (u === 'ESPETA' || u === 'ESPETÁ' || u === 'ESPETACULO' || u === 'ESPETÁCULO') return 'ESPETÁCULO'
+  if (u === 'ALLURA' || u === 'KAZURA' || u === 'URAH' || u === 'RANACH') return u
+  return v
+}
+
 // ── Parsing helpers ────────────────────────────────────────────────────────────
 
 function toSlug(s: string): string {
@@ -199,7 +213,7 @@ function parseSheet0(
         sport:    currentSport,
         date_str,
         hora,
-        divisao:  div  ? String(div).trim()  : '',
+        divisao:  div  ? normalizarDivisao(String(div))  : '',
         mod_code: modCode,
         quadra:   quad ? String(quad).trim() : '',
         equipe_a: tA.trim(),
@@ -277,7 +291,7 @@ function parseSheetAdiantados(ws: XLSX.WorkSheet, ano: number): ParsedGame[] {
         sport:    info.nome,
         date_str,
         hora,
-        divisao:  divRaw ? String(divRaw).trim() : '',
+        divisao:  divRaw ? normalizarDivisao(String(divRaw)) : '',
         mod_code: modCode,
         quadra,
         equipe_a,

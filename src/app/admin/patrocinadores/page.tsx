@@ -1,13 +1,15 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
+import { requireProfile } from '@/lib/auth/current-user'
 import { createPatrocinador, updatePatrocinador, deletePatrocinador } from './actions'
 import { FicharioClient, type PatrocinadorRow, type ConteudoStat } from './FicharioClient'
 
 export default async function PatrocinadoresPage() {
   const supabase = await createClient()
 
-  const [{ data: patData }, { data: contData }] = await Promise.all([
+  const [profile, { data: patData }, { data: contData }] = await Promise.all([
+    requireProfile(),
     supabase
       .from('patrocinadores')
       .select('id, nome, slug, logo_url, cor_marca, cota, contato_nome, contato_email, contato_telefone, observacoes, ativo')
@@ -20,6 +22,7 @@ export default async function PatrocinadoresPage() {
   ])
 
   const patrocinadores = (patData ?? []) as PatrocinadorRow[]
+  const canEdit = ['admin', 'coordenacao'].includes(profile.role)
 
   // Build per-sponsor stats
   const statsMap = new Map<string, { publicados: number; em_producao: number; total: number }>()
@@ -44,6 +47,7 @@ export default async function PatrocinadoresPage() {
       onCreate={createPatrocinador}
       onUpdate={updatePatrocinador}
       onDelete={deletePatrocinador}
+      canEdit={canEdit}
     />
   )
 }

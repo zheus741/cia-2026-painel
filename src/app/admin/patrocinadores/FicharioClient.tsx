@@ -54,6 +54,8 @@ interface Props {
   onCreate: (fd: FormData) => Promise<{ ok: boolean; error?: string }>
   onUpdate: (id: string, fd: FormData) => Promise<{ ok: boolean; error?: string }>
   onDelete: (id: string) => Promise<{ ok: boolean; error?: string }>
+  /** Se false, oculta botões de criação/edição/exclusão (somente leitura) */
+  canEdit?: boolean
 }
 
 // ── Cota config ───────────────────────────────────────────────────────────────
@@ -363,12 +365,14 @@ function FichaCard({
   p,
   stat,
   cotaCfg,
+  canEdit,
   onEdit,
   onDelete,
 }: {
   p: PatrocinadorRow
   stat: ConteudoStat | undefined
   cotaCfg: typeof COTA_CFG[string]
+  canEdit: boolean
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -381,7 +385,23 @@ function FichaCard({
     >
       {/* Header row */}
       <div className="flex items-start gap-3">
-        <LogoButton p={p} cor={cotaCfg.border} />
+        {canEdit ? (
+          <LogoButton p={p} cor={cotaCfg.border} />
+        ) : (
+          <div
+            className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-white"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            {p.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={p.logo_url} alt={p.nome} className="h-full w-full object-contain p-1.5" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+            ) : (
+              <span className="text-base font-bold uppercase tracking-wider" style={{ color: cotaCfg.border }}>
+                {p.nome.slice(0, 2)}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start gap-1.5">
@@ -483,22 +503,26 @@ function FichaCard({
           <Eye className="h-3.5 w-3.5" />
           Ficha
         </Link>
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label="Editar"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label="Excluir"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] transition-colors hover:bg-red-500/10 hover:text-red-400"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        {canEdit && (
+          <>
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label="Editar"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              aria-label="Excluir"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--muted-foreground)] transition-colors hover:bg-red-500/10 hover:text-red-400"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
       </div>
     </article>
   )
@@ -510,6 +534,7 @@ function CotaSection({
   cota,
   patrocinadores,
   conteudoStats,
+  canEdit,
   onEdit,
   onDelete,
   onAddNew,
@@ -517,6 +542,7 @@ function CotaSection({
   cota: string
   patrocinadores: PatrocinadorRow[]
   conteudoStats: ConteudoStat[]
+  canEdit: boolean
   onEdit: (p: PatrocinadorRow) => void
   onDelete: (p: PatrocinadorRow) => void
   onAddNew: () => void
@@ -552,13 +578,15 @@ function CotaSection({
         patrocinadores.length === 0 ? (
           <div className="mb-6 flex items-center gap-3 rounded-xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted-foreground)]">
             <span>Nenhum patrocinador nesta cota.</span>
-            <button
-              type="button"
-              onClick={onAddNew}
-              className="ml-auto text-xs font-semibold text-[var(--accent)] hover:underline"
-            >
-              + Adicionar
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={onAddNew}
+                className="ml-auto text-xs font-semibold text-[var(--accent)] hover:underline"
+              >
+                + Adicionar
+              </button>
+            )}
           </div>
         ) : (
           <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -568,6 +596,7 @@ function CotaSection({
                 p={p}
                 stat={statsMap.get(p.id)}
                 cotaCfg={cfg}
+                canEdit={canEdit}
                 onEdit={() => onEdit(p)}
                 onDelete={() => onDelete(p)}
               />
@@ -644,6 +673,7 @@ export function FicharioClient({
   onCreate,
   onUpdate,
   onDelete,
+  canEdit = true,
 }: Props) {
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -690,15 +720,17 @@ export function FicharioClient({
             Cadastre cada patrocinador. Escopo de entregas gerenciado dentro de cada ficha.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => openCreate()}
-          disabled={deletePending}
-          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-        >
-          <Plus className="h-4 w-4" />
-          Novo patrocinador
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => openCreate()}
+            disabled={deletePending}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            <Plus className="h-4 w-4" />
+            Novo patrocinador
+          </button>
+        )}
       </div>
 
       {/* Summary */}
@@ -711,6 +743,7 @@ export function FicharioClient({
           cota={cota}
           patrocinadores={grouped[cota] ?? []}
           conteudoStats={conteudoStats}
+          canEdit={canEdit}
           onEdit={openEdit}
           onDelete={handleDelete}
           onAddNew={() => openCreate(cota)}
@@ -723,20 +756,23 @@ export function FicharioClient({
           cota="Apoio"
           patrocinadores={uncategorized}
           conteudoStats={conteudoStats}
+          canEdit={canEdit}
           onEdit={openEdit}
           onDelete={handleDelete}
           onAddNew={() => openCreate()}
         />
       )}
 
-      {/* Form dialog */}
-      <PatrocinadorFormDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        editing={editing}
-        onCreate={onCreate}
-        onUpdate={onUpdate}
-      />
+      {/* Form dialog — apenas para quem pode editar */}
+      {canEdit && (
+        <PatrocinadorFormDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          editing={editing}
+          onCreate={onCreate}
+          onUpdate={onUpdate}
+        />
+      )}
     </div>
   )
 }

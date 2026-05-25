@@ -103,7 +103,8 @@ function getMediaGroups(role: string): NavGroup[] {
         { label: 'Agenda',        href: '/agenda',       icon: LayoutList },
         { label: 'Pautas',        href: '/pautas',       icon: Lightbulb },
         { label: 'Conteúdos',     href: '/conteudos',    icon: Camera },
-        { label: 'Mapa Ao Vivo',  href: '/mapa',         icon: MapPin },
+        { label: 'Mapa Ao Vivo',  href: '/mapa',                   icon: MapPin },
+      { label: 'Patrocinadores', href: '/admin/patrocinadores',  icon: Heart },
       ],
     },
     {
@@ -158,8 +159,17 @@ const OP_ESPORTIVO_GROUPS: NavGroup[] = [
   },
 ]
 
-// Nav para coordenacao — tudo menos aba Gestão
-const COORDENACAO_GROUPS: NavGroup[] = ADMIN_GROUPS.filter(g => g.label !== 'Gestão')
+// Nav para coordenacao — tudo menos aba Gestão completa;
+// mantém Patrocinadores em modo somente leitura
+const COORDENACAO_GROUPS: NavGroup[] = [
+  ...ADMIN_GROUPS.filter(g => g.label !== 'Gestão'),
+  {
+    label: 'Gestão',
+    items: [
+      { label: 'Patrocinadores', href: '/admin/patrocinadores', icon: Heart },
+    ],
+  },
+]
 
 // Nav para operador_fv
 const OP_FV_GROUPS: NavGroup[] = [

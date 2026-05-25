@@ -402,7 +402,11 @@ export default async function Home() {
   const diasSorted = (diasRes.data ?? []) as { id: string; data: string }[]
   // Sort by data just in case
   diasSorted.sort((a, b) => a.data.localeCompare(b.data))
-  const diaMap = new Map(diasSorted.map((d, i) => [d.id, i + 1]))
+  // diaMap pro heatmap: SÓ os 4 dias do evento (04-07/06), pra alinhar com os
+  // índices 1-4 que o componente renderiza. Outros dias (ex: adiantados
+  // importados — 30/05 a 03/06) ficam fora do mapeamento.
+  const diasEvento = diasSorted.filter(d => d.data >= '2026-06-04' && d.data <= '2026-06-07')
+  const diaMap = new Map(diasEvento.map((d, i) => [d.id, i + 1]))
 
   const heatAccum = new Map<string, number>()
   for (const c of allConteudos) {

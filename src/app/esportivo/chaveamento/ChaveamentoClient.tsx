@@ -11,6 +11,7 @@ import { recalcularChaveAction } from '@/app/placar/actions'
 import { upsertChaveConfig } from './actions'
 import { toast } from '@/components/toast'
 import { confirmDialog } from '@/components/confirm-dialog'
+import { canonTeamName } from '@/lib/chaveamento/bracket-builder'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -730,6 +731,69 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                   </div>
                 </div>
               )}
+            </div>
+          )
+        })()}
+
+        {/* ─── Diagnóstico de correspondência seeds × jogos ─── */}
+        {config && (() => {
+          // Canonicalize cada seed
+          const seedCanons = config.seeds.map(s => ({ raw: s, canon: canonTeamName(s) }))
+          // Reúne todos os nomes de equipes dos jogos desta chave
+          const jogoTeamCanons = new Set<string>()
+          for (const j of jogosChave) {
+            if (j.equipe_a_nome) jogoTeamCanons.add(canonTeamName(j.equipe_a_nome))
+            if (j.equipe_b_nome) jogoTeamCanons.add(canonTeamName(j.equipe_b_nome))
+          }
+          const seedCanonSet = new Set(seedCanons.map(s => s.canon))
+
+          // Seeds que NÃO aparecem em nenhum jogo → provável mismatch de nome
+          const unmatchedSeeds = seedCanons.filter(s => !jogoTeamCanons.has(s.canon))
+          // Times nos jogos que NÃO aparecem em nenhuma seed
+          const orphanTeams = [...jogoTeamCanons].filter(t => !seedCanonSet.has(t)).sort()
+
+          if (unmatchedSeeds.length === 0) return null  // tudo certo — não mostra nada
+
+          return (
+            <div className="rounded-2xl border border-amber-500/35 bg-amber-500/5 p-4 text-[11px]">
+              <p className="mb-3 flex items-center gap-2 font-bold uppercase tracking-widest text-amber-600">
+                <span className="text-base">⚠</span>
+                {unmatchedSeeds.length} seed(s) sem jogo correspondente — nomes divergem entre chave_config e planilha
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* Seeds sem match */}
+                <div>
+                  <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.20em] text-amber-700/70">
+                    Seeds não encontradas nos jogos ({unmatchedSeeds.length})
+                  </p>
+                  <ul className="space-y-0.5">
+                    {unmatchedSeeds.map((s, i) => (
+                      <li key={i} className="font-mono text-amber-700/90">
+                        ✗ {s.raw}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Times nos jogos que sobram */}
+                {orphanTeams.length > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.20em] text-[var(--muted-foreground)]/55">
+                      Times nos jogos sem seed ({orphanTeams.length})
+                    </p>
+                    <ul className="space-y-0.5">
+                      {orphanTeams.map((t, i) => (
+                        <li key={i} className="font-mono text-[var(--muted-foreground)]/80">
+                          ? {t}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <p className="mt-3 text-[10px] text-amber-700/60">
+                Corrija editando as seeds acima (botão "Editar seeds") para usar os mesmos nomes que aparecem na planilha importada.
+              </p>
             </div>
           )
         })()}

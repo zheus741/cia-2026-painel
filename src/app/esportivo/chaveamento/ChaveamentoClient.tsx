@@ -11,7 +11,7 @@ import { recalcularChaveAction } from '@/app/placar/actions'
 import { upsertChaveConfig } from './actions'
 import { toast } from '@/components/toast'
 import { confirmDialog } from '@/components/confirm-dialog'
-import { canonTeamName } from '@/lib/chaveamento/bracket-builder'
+import { buildGames, canonTeamName } from '@/lib/chaveamento/bracket-builder'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -574,20 +574,60 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
           const capModalidadeId = jogosChave[0]?.modalidade_id ?? ''
           if (!capModalidadeId) return null
 
-          // Auto-sugestão de seeds: times únicos dos jogos de oitavas (ou quartas, se não há oitavas)
-          const oitavasJogos = jogosChave.filter(j => j.fase === 'oitavas')
-          const fontJogos    = oitavasJogos.length > 0 ? oitavasJogos : jogosChave
-          const suggestedTeams = Array.from(new Set(
-            fontJogos.flatMap(j => [j.equipe_a_nome, j.equipe_b_nome]).filter(Boolean) as string[]
-          )).sort()
-
           // num_teams auto: em single elimination, num_games = num_teams - 1
           const suggestedNumTeams = jogosChave.length + 1
+
+          // Todos os times únicos (pra exibir no editor manual)
+          const allTeams = Array.from(new Set(
+            jogosChave.flatMap(j => [j.equipe_a_nome, j.equipe_b_nome]).filter(Boolean) as string[]
+          )).sort()
+
+          // ── Seeds inferidas pelos pares reais de jogo ──────────────────────────
+          // Lógica: cada slot de oitava (Q1sup, Q1inf, Q4sup...) recebe o par
+          // equipe_a/equipe_b do jogo correspondente (ordenado por horário).
+          // Assim enrich() encontra 100% dos jogos sem precisar conhecer a seeding
+          // oficial. O usuário pode reordenar depois via "Editar seeds" se quiser
+          // ajustar quem enfrenta quem nas quartas.
+          function buildSeedsFromGamePairs(numTeams: number): string[] {
+            const bracketGames  = buildGames(numTeams)
+            // Slots de oitava em ordem canônica (JOGO 1→8)
+            const oitavasSlots  = bracketGames
+              .filter(g => g.round === 'oitava')
+              .sort((a, b) => a.num - b.num)
+
+            // Jogos reais, ordenados por horário (melhor aproximação da ordem oficial)
+            const jogosOrdenados = [...jogosChave]
+              .filter(j => j.equipe_a_nome && j.equipe_b_nome)
+              .sort((a, b) => {
+                if (!a.inicio && !b.inicio) return 0
+                if (!a.inicio) return 1
+                if (!b.inicio) return -1
+                return new Date(a.inicio).getTime() - new Date(b.inicio).getTime()
+              })
+
+            const seeds = new Array(numTeams).fill('')
+
+            // Para cada slot de oitava, atribui o par do jogo correspondente
+            oitavasSlots.forEach((slot, i) => {
+              const jogo = jogosOrdenados[i]
+              if (!jogo) return
+              const posA = slot.slots[0].pos
+              const posB = slot.slots[1].pos
+              if (posA !== undefined) seeds[posA - 1] = jogo.equipe_a_nome!
+              if (posB !== undefined) seeds[posB - 1] = jogo.equipe_b_nome!
+            })
+
+            // Preenche posições restantes (sem jogo direto) com string vazia — serão
+            // preenchidas pela propagação de vencedores nas rodadas seguintes
+            return seeds
+          }
 
           function openEditor() {
             if (!config) {
               setConfigEditorNumTeams(String(suggestedNumTeams))
-              setConfigEditorSeeds(suggestedTeams.join('\n'))
+              // Editor mostra seeds inferidas (para revisão), não alfabéticas
+              const inferred = buildSeedsFromGamePairs(suggestedNumTeams)
+              setConfigEditorSeeds(inferred.filter(Boolean).join('\n'))
             } else {
               setConfigEditorNumTeams(String(config.num_teams))
               setConfigEditorSeeds(config.seeds.join('\n'))
@@ -595,11 +635,13 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
             setShowConfigEditor(true)
           }
 
-          // Auto-configurar: salva imediatamente com os times dos jogos, sem abrir editor.
-          // Seeds em ordem alfabética (não ordem de seeding) — basta pro bracket mostrar.
-          // Usuário pode refinar depois via "Editar seeds".
+          // Auto-configurar: infere seeds pelos pares reais de jogo (ordem por horário).
+          // Todos os jogos de oitava serão encontrados corretamente no bracket.
           function handleAutoConfig() {
-            if (suggestedTeams.length < 2) return
+            if (allTeams.length < 2) return
+            const inferredSeeds = buildSeedsFromGamePairs(suggestedNumTeams)
+              .filter(Boolean)
+            if (inferredSeeds.length < 2) return
             const capCategoria = chaveAberta!.categoria
             const capDivisao   = chaveAberta!.divisao
             const capSlug      = chaveAberta!.modalidade
@@ -609,13 +651,13 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                 capCategoria,
                 capDivisao,
                 suggestedNumTeams,
-                suggestedTeams,
+                inferredSeeds,
                 capSlug,
               )
               if (result.ok) {
                 toast.success('Chave auto-configurada!', {
-                  description: `${suggestedTeams.length} equipes detectadas dos jogos · ajuste a ordem de seed se necessário`,
-                  duration: 6000,
+                  description: `${inferredSeeds.length} equipes mapeadas pelos pares de jogo`,
+                  duration: 5000,
                 })
               } else {
                 toast.error('Falha ao auto-configurar', { description: result.error })
@@ -683,8 +725,8 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                           Seeds não configuradas — propagação automática desativada
                         </p>
                         <p className="text-[11px] text-amber-700/80">
-                          {suggestedTeams.length >= 2
-                            ? `${suggestedTeams.length} equipes detectadas nos jogos — clique em Auto-configurar para gerar o bracket.`
+                          {allTeams.length >= 2
+                            ? `${allTeams.length} equipes detectadas nos jogos — clique em Auto-configurar para gerar o bracket.`
                             : 'Defina as seeds para que o vencedor de cada jogo avance automaticamente na chave.'}
                         </p>
                       </>
@@ -697,11 +739,11 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                   {/* Auto-configurar: só aparece quando não há config E há equipes nos jogos */}
-                  {!config && suggestedTeams.length >= 2 && !showConfigEditor && (
+                  {!config && allTeams.length >= 2 && !showConfigEditor && (
                     <button
                       onClick={handleAutoConfig}
                       disabled={isSavingConfig}
-                      title={`Configura automaticamente com ${suggestedTeams.length} equipes detectadas dos jogos`}
+                      title={`Configura automaticamente com ${allTeams.length} equipes detectadas dos jogos`}
                       className="inline-flex items-center gap-1.5 rounded-full border border-[var(--green-bright)]/50 bg-[var(--green-dim)]/20 px-3 py-1.5 text-[11px] font-bold text-[var(--green-bright)] transition-all hover:bg-[var(--green-dim)]/35 disabled:opacity-50"
                     >
                       <Zap className="h-3 w-3" />
@@ -755,12 +797,12 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                       <textarea
                         value={configEditorSeeds}
                         onChange={e => setConfigEditorSeeds(e.target.value)}
-                        rows={Math.max(6, suggestedTeams.length)}
-                        placeholder={suggestedTeams.slice(0, 3).join('\n') + '\n...'}
+                        rows={Math.max(6, allTeams.length)}
+                        placeholder={allTeams.slice(0, 3).join('\n') + '\n...'}
                         className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm font-mono text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/35 focus:border-[var(--green-bright)]/60 focus:outline-none resize-y min-h-[120px]"
                       />
                       <p className="mt-1 text-[10px] text-[var(--muted-foreground)]/55">
-                        {configEditorSeeds.split('\n').filter(s => s.trim()).length} seeds · sugeridas de {suggestedTeams.length} times nos jogos
+                        {configEditorSeeds.split('\n').filter(s => s.trim()).length} seeds · {allTeams.length} times nos jogos
                       </p>
                     </div>
                   </div>

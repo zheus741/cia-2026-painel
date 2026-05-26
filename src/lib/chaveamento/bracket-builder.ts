@@ -208,3 +208,36 @@ export function canonTeamName(s: string | null | undefined): string {
   const n = normTeamName(s)
   return ALIASES[n] ?? n
 }
+
+/**
+ * Match fuzzy entre nomes de atléticas:
+ *
+ * Fallback quando o canonical exato não bate. Cobre o caso de abreviação
+ * vs nome completo com mesma instituição:
+ *   'ENG UFMG'       ↔ 'ENGENHARIA UFMG'     → ✓ (ENG é prefixo de ENGENHARIA, UFMG = UFMG)
+ *   'MED UFU'        ↔ 'MEDICINA UFU'         → ✓
+ *   'VOLE MASC UFTM' ↔ 'VOLEA MASCULINO UFTM' → ✓ (parcial no sufixo)
+ *
+ * Regras (sobre strings já canônicas):
+ *  1. Se uma das strings está contida na outra → match
+ *  2. Última palavra (sigla da instituição) idêntica
+ *     + primeira palavra: uma é prefixo da outra (mín. 3 chars)
+ */
+export function fuzzyMatchTeam(a: string, b: string): boolean {
+  if (!a || !b) return false
+  if (a === b) return true
+  // containment (ex: 'MEDICINA UFMG' contém 'MED UFMG'? não — mas 'ENG' está em 'ENGENHARIA UFMG'? parcialmente)
+  if (a.includes(b) || b.includes(a)) return true
+  const wa = a.split(' ')
+  const wb = b.split(' ')
+  // Sufixo (sigla da universidade) deve ser idêntico
+  const sufA = wa[wa.length - 1]
+  const sufB = wb[wb.length - 1]
+  if (sufA !== sufB) return false
+  // Prefixo: uma é prefixo da outra (mínimo 3 chars pra evitar falso-positivo)
+  const preA = wa[0]
+  const preB = wb[0]
+  const minLen = Math.min(preA.length, preB.length)
+  if (minLen < 3) return false
+  return preA.startsWith(preB) || preB.startsWith(preA)
+}

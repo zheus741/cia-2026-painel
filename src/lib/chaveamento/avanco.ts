@@ -20,6 +20,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   buildGames,
   canonTeamName,
+  fuzzyMatchTeam,
   type BracketGame,
   type BracketSlot,
 } from './bracket-builder'
@@ -153,13 +154,23 @@ function findLogicalGameForDb(
     if ((matchA || matchB) && candidatesByPhase.length === 1) return candidate
   }
 
-  // Fallback restrito: match com pelo menos UM nome
+  // Fallback restrito: match com pelo menos UM nome (exato)
   for (const candidate of candidatesByPhase) {
     const expected = getExpectedNames(candidate.id, bracketGames, configSeeds)
     if ((nameA && expected.has(nameA)) || (nameB && expected.has(nameB))) {
       return candidate
     }
   }
+
+  // Fallback fuzzy: abreviação vs nome completo (ENG UFMG ↔ ENGENHARIA UFMG)
+  for (const candidate of candidatesByPhase) {
+    const expected = getExpectedNames(candidate.id, bracketGames, configSeeds)
+    const fuzzyA = nameA && [...expected].some(e => fuzzyMatchTeam(nameA, e))
+    const fuzzyB = nameB && [...expected].some(e => fuzzyMatchTeam(nameB, e))
+    if (fuzzyA && fuzzyB) return candidate
+    if ((fuzzyA || fuzzyB) && candidatesByPhase.length === 1) return candidate
+  }
+
   return null
 }
 

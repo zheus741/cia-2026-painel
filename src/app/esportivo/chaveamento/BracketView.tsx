@@ -14,6 +14,7 @@ import type { JogoChave, ChaveConfig } from './ChaveamentoClient'
 import {
   buildGames,
   canonTeamName,
+  fuzzyMatchTeam,
   type BracketGame,
   type BracketSlot,
 } from '@/lib/chaveamento/bracket-builder'
@@ -219,21 +220,47 @@ function rslot(slot: BracketSlot, seeds: string[]): RSlot {
 }
 
 function enrich(games: BracketGame[], seeds: string[], jogos: JogoChave[]): EGame[] {
+  // Rastreia quais jogo-ids já foram atribuídos pra evitar duplicatas
+  const used = new Set<string>()
+
   return games.map(g => {
     const sA = rslot(g.slots[0], seeds)
     const sB = rslot(g.slots[1], seeds)
     let jogo: JogoChave | null = null
+
+    const match2 = (ja: string, jb: string, cA: string, cB: string) =>
+      (ja === cA && jb === cB) || (ja === cB && jb === cA)
+    const fuzzy2 = (ja: string, jb: string, cA: string, cB: string) =>
+      (fuzzyMatchTeam(ja, cA) && fuzzyMatchTeam(jb, cB)) ||
+      (fuzzyMatchTeam(ja, cB) && fuzzyMatchTeam(jb, cA))
+
     if (sA.canon && sB.canon) {
+      // 1ª tentativa: match exato em ambos os times
       jogo = jogos.find(j => {
+        if (used.has(j.id)) return false
         const ja = canonTeamName(j.equipe_a_nome), jb = canonTeamName(j.equipe_b_nome)
-        return (ja === sA.canon && jb === sB.canon) || (ja === sB.canon && jb === sA.canon)
+        return match2(ja, jb, sA.canon!, sB.canon!)
       }) ?? null
+
+      // 2ª tentativa: fuzzy (ENG UFMG ↔ ENGENHARIA UFMG, etc.)
+      if (!jogo) {
+        jogo = jogos.find(j => {
+          if (used.has(j.id)) return false
+          const ja = canonTeamName(j.equipe_a_nome), jb = canonTeamName(j.equipe_b_nome)
+          return fuzzy2(ja, jb, sA.canon!, sB.canon!)
+        }) ?? null
+      }
     } else if (sA.canon) {
+      // Slot propagado (só um time conhecido, ex: quartas/semi antes de terminar oitavas)
       jogo = jogos.find(j => {
+        if (used.has(j.id)) return false
         const ja = canonTeamName(j.equipe_a_nome), jb = canonTeamName(j.equipe_b_nome)
-        return ja === sA.canon || jb === sA.canon
+        return ja === sA.canon || jb === sA.canon ||
+               fuzzyMatchTeam(ja, sA.canon!) || fuzzyMatchTeam(jb, sA.canon!)
       }) ?? null
     }
+
+    if (jogo) used.add(jogo.id)
     return { bg: g, sA, sB, jogo }
   })
 }

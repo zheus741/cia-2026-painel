@@ -48,7 +48,11 @@ const STATUS_BORDER: Record<string, string> = {
 
 function fmt(d: string | null | undefined) {
   if (!d) return null
-  return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  // Evita shift de timezone: ISO date sem hora é parseado como UTC midnight,
+  // o que no horário de Brasília (UTC-3) retrocede 1 dia.
+  // Instanciar com (ano, mês, dia) usa o horário local.
+  const [year, month, day] = d.split('T')[0].split('-').map(Number)
+  return new Date(year, month - 1, day).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 }
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────

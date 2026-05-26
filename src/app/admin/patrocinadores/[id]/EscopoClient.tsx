@@ -54,11 +54,12 @@ function fmt(d: string | null | undefined) {
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 
 function StatusBadge({
-  status, itemId, onStatusChange,
+  status, itemId, onStatusChange, canEdit = true,
 }: {
   status: string
   itemId: string
   onStatusChange: (id: string, s: string) => void
+  canEdit?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -72,6 +73,18 @@ function StatusBadge({
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
+
+  // Readonly: badge estático sem dropdown
+  if (!canEdit) {
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${meta.bg} ${meta.text} border-current/20`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+        {meta.label}
+      </span>
+    )
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -331,9 +344,11 @@ export interface EscopoItem {
 interface Props {
   patrocinadorId: string
   items: EscopoItem[]
+  /** Controla se mostra controles de edição (add, delete, mudar status). Default true. */
+  canEdit?: boolean
 }
 
-export function EscopoClient({ patrocinadorId, items: initial }: Props) {
+export function EscopoClient({ patrocinadorId, items: initial, canEdit = true }: Props) {
   const [items, setItems] = useState(initial)
   const [showAdd, setShowAdd] = useState(false)
   const [isPending, startT] = useTransition()
@@ -412,7 +427,9 @@ export function EscopoClient({ patrocinadorId, items: initial }: Props) {
             <FileText className="h-5 w-5 text-[var(--muted-foreground)]/40" />
           </div>
           <p className="text-sm font-medium text-[var(--muted-foreground)]">Nenhuma entrega cadastrada</p>
-          <p className="mt-1 text-xs text-[var(--muted-foreground)]/60">Adicione o escopo contratado abaixo</p>
+          {canEdit && (
+            <p className="mt-1 text-xs text-[var(--muted-foreground)]/60">Adicione o escopo contratado abaixo</p>
+          )}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -482,11 +499,14 @@ export function EscopoClient({ patrocinadorId, items: initial }: Props) {
                       status={item.status}
                       itemId={item.id}
                       onStatusChange={handleStatusChange}
+                      canEdit={canEdit}
                     />
-                    <DeleteButton
-                      onConfirm={() => handleDelete(item.id)}
-                      disabled={isPending}
-                    />
+                    {canEdit && (
+                      <DeleteButton
+                        onConfirm={() => handleDelete(item.id)}
+                        disabled={isPending}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -495,22 +515,26 @@ export function EscopoClient({ patrocinadorId, items: initial }: Props) {
         </div>
       )}
 
-      {/* ── Botão adicionar ───────────────────────────────────────── */}
-      <button
-        type="button"
-        onClick={() => setShowAdd(true)}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] py-3 text-xs font-medium text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)]/40 hover:bg-[var(--green-dim)]/5 hover:text-[var(--green-bright)]"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Adicionar entrega
-      </button>
+      {/* ── Botão adicionar (só pra quem pode editar) ─────────────── */}
+      {canEdit && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowAdd(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] py-3 text-xs font-medium text-[var(--muted-foreground)] transition-all hover:border-[var(--green-bright)]/40 hover:bg-[var(--green-dim)]/5 hover:text-[var(--green-bright)]"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Adicionar entrega
+          </button>
 
-      <AddDialog
-        open={showAdd}
-        onOpenChange={setShowAdd}
-        patrocinadorId={patrocinadorId}
-        onAdd={item => setItems(prev => [...prev, item])}
-      />
+          <AddDialog
+            open={showAdd}
+            onOpenChange={setShowAdd}
+            patrocinadorId={patrocinadorId}
+            onAdd={item => setItems(prev => [...prev, item])}
+          />
+        </>
+      )}
     </div>
   )
 }

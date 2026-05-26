@@ -103,8 +103,8 @@ function getMediaGroups(role: string): NavGroup[] {
         { label: 'Agenda',        href: '/agenda',       icon: LayoutList },
         { label: 'Pautas',        href: '/pautas',       icon: Lightbulb },
         { label: 'Conteúdos',     href: '/conteudos',    icon: Camera },
-        { label: 'Mapa Ao Vivo',  href: '/mapa',                   icon: MapPin },
-      { label: 'Patrocinadores', href: '/admin/patrocinadores',  icon: Heart },
+        { label: 'Mapa Ao Vivo',  href: '/mapa',         icon: MapPin },
+        { label: 'Patrocinadores', href: '/patrocinadores', icon: Heart },
       ],
     },
     {
@@ -137,6 +137,12 @@ const COORD_ESPORTIVO_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: 'Consulta',
+    items: [
+      { label: 'Patrocinadores', href: '/patrocinadores', icon: Heart },
+    ],
+  },
+  {
     label: 'Ferramentas',
     items: [
       { label: 'Importar Tabela', href: '/esportivo/importar', icon: FileSpreadsheet },
@@ -155,6 +161,12 @@ const OP_ESPORTIVO_GROUPS: NavGroup[] = [
       { label: 'Placar Ao Vivo', href: '/placar',            icon: Radio },
       { label: 'Liga Super 8',   href: '/esportivo/super-8', icon: Trophy },
       { label: 'Minha Escala',   href: '/esportivo/escala',  icon: ClipboardList },
+    ],
+  },
+  {
+    label: 'Consulta',
+    items: [
+      { label: 'Patrocinadores', href: '/patrocinadores', icon: Heart },
     ],
   },
 ]
@@ -179,6 +191,7 @@ const OP_FV_GROUPS: NavGroup[] = [
       { label: 'Wiki',           href: '/wiki',                    icon: BookOpen },
       { label: 'Mapa Ao Vivo',   href: '/mapa',                    icon: MapPin },
       { label: 'Placar Ao Vivo', href: '/placar',                  icon: Radio },
+      { label: 'Patrocinadores', href: '/patrocinadores',          icon: Heart },
     ],
   },
   {
@@ -206,6 +219,7 @@ const LIDER_FV_GROUPS: NavGroup[] = [
       { label: 'Wiki',           href: '/wiki',                    icon: BookOpen },
       { label: 'Mapa Ao Vivo',   href: '/mapa',                    icon: MapPin },
       { label: 'Placar Ao Vivo', href: '/placar',                  icon: Radio },
+      { label: 'Patrocinadores', href: '/patrocinadores',          icon: Heart },
     ],
   },
   {

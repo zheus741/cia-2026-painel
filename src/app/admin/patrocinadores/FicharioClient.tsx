@@ -56,6 +56,8 @@ interface Props {
   onDelete: (id: string) => Promise<{ ok: boolean; error?: string }>
   /** Se false, oculta botões de criação/edição/exclusão (somente leitura) */
   canEdit?: boolean
+  /** Build de URL pra ficha individual. Default: /admin/patrocinadores/{id} */
+  detailHref?: (id: string) => string
 }
 
 // ── Cota config ───────────────────────────────────────────────────────────────
@@ -368,6 +370,7 @@ function FichaCard({
   canEdit,
   onEdit,
   onDelete,
+  detailHref,
 }: {
   p: PatrocinadorRow
   stat: ConteudoStat | undefined
@@ -375,6 +378,7 @@ function FichaCard({
   canEdit: boolean
   onEdit: () => void
   onDelete: () => void
+  detailHref: (id: string) => string
 }) {
   const pct = stat && stat.total > 0 ? Math.round((stat.publicados / stat.total) * 100) : 0
 
@@ -497,7 +501,7 @@ function FichaCard({
       {/* Actions */}
       <div className="mt-auto flex items-center justify-end gap-1 border-t border-[var(--border)]/40 pt-2">
         <Link
-          href={`/admin/patrocinadores/${p.id}`}
+          href={detailHref(p.id)}
           className="flex h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
         >
           <Eye className="h-3.5 w-3.5" />
@@ -538,6 +542,7 @@ function CotaSection({
   onEdit,
   onDelete,
   onAddNew,
+  detailHref,
 }: {
   cota: string
   patrocinadores: PatrocinadorRow[]
@@ -546,6 +551,7 @@ function CotaSection({
   onEdit: (p: PatrocinadorRow) => void
   onDelete: (p: PatrocinadorRow) => void
   onAddNew: () => void
+  detailHref: (id: string) => string
 }) {
   const [open, setOpen] = useState(true)
   const cfg = COTA_CFG[cota] ?? COTA_CFG.Apoio
@@ -599,6 +605,7 @@ function CotaSection({
                 canEdit={canEdit}
                 onEdit={() => onEdit(p)}
                 onDelete={() => onDelete(p)}
+                detailHref={detailHref}
               />
             ))}
           </div>
@@ -674,6 +681,7 @@ export function FicharioClient({
   onUpdate,
   onDelete,
   canEdit = true,
+  detailHref = (id: string) => `/admin/patrocinadores/${id}`,
 }: Props) {
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -714,10 +722,14 @@ export function FicharioClient({
       {/* Page header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-[var(--accent)]">Gestão</p>
+          <p className="text-[10px] uppercase tracking-widest text-[var(--accent)]">
+            {canEdit ? 'Gestão' : 'Consulta'}
+          </p>
           <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-[var(--foreground)]">Patrocinadores</h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-            Cadastre cada patrocinador. Escopo de entregas gerenciado dentro de cada ficha.
+            {canEdit
+              ? 'Cadastre cada patrocinador. Escopo de entregas gerenciado dentro de cada ficha.'
+              : 'Visualize patrocinadores e o escopo de entregas contratadas.'}
           </p>
         </div>
         {canEdit && (
@@ -747,6 +759,7 @@ export function FicharioClient({
           onEdit={openEdit}
           onDelete={handleDelete}
           onAddNew={() => openCreate(cota)}
+          detailHref={detailHref}
         />
       ))}
 
@@ -760,6 +773,7 @@ export function FicharioClient({
           onEdit={openEdit}
           onDelete={handleDelete}
           onAddNew={() => openCreate()}
+          detailHref={detailHref}
         />
       )}
 

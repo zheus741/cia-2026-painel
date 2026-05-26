@@ -4,9 +4,10 @@
  * Aberto a TODOS os autenticados (operadores, líderes, coordenação e admin).
  * Read-only — para gerenciar use /admin/patrocinadores (admin + coordenação).
  *
- * As server actions originais ficam em /admin/patrocinadores/actions.ts e já
- * têm guard `requireCoordOrAdmin` server-side, então mesmo se passar callbacks
- * "vazias" aqui, a defesa em profundidade tá preservada.
+ * Passa as server actions reais (já com guard requireCoordOrAdmin) por dois motivos:
+ *  - Funções comuns não podem cruzar Server→Client em RSC (precisa ser 'use server')
+ *  - Defesa em profundidade: mesmo se algum botão de edição escapar do canEdit=false,
+ *    a server action recusa server-side
  */
 export const dynamic = 'force-dynamic'
 
@@ -14,11 +15,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth/current-user'
 import { AppShell } from '@/components/app-shell'
 import { FicharioClient, type PatrocinadorRow, type ConteudoStat } from '../admin/patrocinadores/FicharioClient'
-
-// Noop callbacks: read-only não usa, mas o tipo de FicharioClient exige.
-async function noop(): Promise<{ ok: boolean; error?: string }> {
-  return { ok: false, error: 'Sem permissão.' }
-}
+import { createPatrocinador, updatePatrocinador, deletePatrocinador } from '../admin/patrocinadores/actions'
 
 export default async function PatrocinadoresPublicoPage() {
   await requireProfile()
@@ -59,11 +56,11 @@ export default async function PatrocinadoresPublicoPage() {
       <FicharioClient
         patrocinadores={patrocinadores}
         conteudoStats={conteudoStats}
-        onCreate={noop}
-        onUpdate={noop as never}
-        onDelete={noop as never}
+        onCreate={createPatrocinador}
+        onUpdate={updatePatrocinador}
+        onDelete={deletePatrocinador}
         canEdit={false}
-        detailHref={(id) => `/patrocinadores/${id}`}
+        detailHrefPrefix="/patrocinadores"
       />
     </AppShell>
   )

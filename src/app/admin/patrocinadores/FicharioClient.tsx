@@ -56,8 +56,9 @@ interface Props {
   onDelete: (id: string) => Promise<{ ok: boolean; error?: string }>
   /** Se false, oculta botões de criação/edição/exclusão (somente leitura) */
   canEdit?: boolean
-  /** Build de URL pra ficha individual. Default: /admin/patrocinadores/{id} */
-  detailHref?: (id: string) => string
+  /** Prefixo da URL pra ficha individual. Default: /admin/patrocinadores
+   *  String simples (não closure) pra ser serializável de Server→Client Component. */
+  detailHrefPrefix?: string
 }
 
 // ── Cota config ───────────────────────────────────────────────────────────────
@@ -370,7 +371,7 @@ function FichaCard({
   canEdit,
   onEdit,
   onDelete,
-  detailHref,
+  detailHrefPrefix,
 }: {
   p: PatrocinadorRow
   stat: ConteudoStat | undefined
@@ -378,7 +379,7 @@ function FichaCard({
   canEdit: boolean
   onEdit: () => void
   onDelete: () => void
-  detailHref: (id: string) => string
+  detailHrefPrefix: string
 }) {
   const pct = stat && stat.total > 0 ? Math.round((stat.publicados / stat.total) * 100) : 0
 
@@ -501,7 +502,7 @@ function FichaCard({
       {/* Actions */}
       <div className="mt-auto flex items-center justify-end gap-1 border-t border-[var(--border)]/40 pt-2">
         <Link
-          href={detailHref(p.id)}
+          href={`${detailHrefPrefix}/${p.id}`}
           className="flex h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
         >
           <Eye className="h-3.5 w-3.5" />
@@ -542,7 +543,7 @@ function CotaSection({
   onEdit,
   onDelete,
   onAddNew,
-  detailHref,
+  detailHrefPrefix,
 }: {
   cota: string
   patrocinadores: PatrocinadorRow[]
@@ -551,7 +552,7 @@ function CotaSection({
   onEdit: (p: PatrocinadorRow) => void
   onDelete: (p: PatrocinadorRow) => void
   onAddNew: () => void
-  detailHref: (id: string) => string
+  detailHrefPrefix: string
 }) {
   const [open, setOpen] = useState(true)
   const cfg = COTA_CFG[cota] ?? COTA_CFG.Apoio
@@ -605,7 +606,7 @@ function CotaSection({
                 canEdit={canEdit}
                 onEdit={() => onEdit(p)}
                 onDelete={() => onDelete(p)}
-                detailHref={detailHref}
+                detailHrefPrefix={detailHrefPrefix}
               />
             ))}
           </div>
@@ -681,7 +682,7 @@ export function FicharioClient({
   onUpdate,
   onDelete,
   canEdit = true,
-  detailHref = (id: string) => `/admin/patrocinadores/${id}`,
+  detailHrefPrefix = '/admin/patrocinadores',
 }: Props) {
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -759,7 +760,7 @@ export function FicharioClient({
           onEdit={openEdit}
           onDelete={handleDelete}
           onAddNew={() => openCreate(cota)}
-          detailHref={detailHref}
+          detailHrefPrefix={detailHrefPrefix}
         />
       ))}
 
@@ -773,7 +774,7 @@ export function FicharioClient({
           onEdit={openEdit}
           onDelete={handleDelete}
           onAddNew={() => openCreate()}
-          detailHref={detailHref}
+          detailHrefPrefix={detailHrefPrefix}
         />
       )}
 

@@ -8,7 +8,9 @@ import { requireCoordOrAdmin, safe, type ActionResult } from '@/lib/admin/action
  * Cria ou atualiza a configuração de seeds de uma chave (modalidade+categoria+divisão).
  * Necessário para que a propagação automática de vencedores funcione.
  *
- * Conflito resolvido por (modalidade_id, categoria, divisao) — idempotente.
+ * Conflito resolvido por (modalidade_id, categoria, divisao) — mas também faz lookup
+ * cross-edicao via modalidadeSlug pra evitar duplicatas com linhas do migration legado
+ * que podem ter modalidade_id de uma edicao diferente.
  */
 export async function upsertChaveConfig(
   modalidadeId: string,
@@ -16,6 +18,7 @@ export async function upsertChaveConfig(
   divisao: string,
   numTeams: number,
   seeds: string[],
+  modalidadeSlug?: string,
 ): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()
@@ -29,20 +32,45 @@ export async function upsertChaveConfig(
 
     const supabase = await createClient()
 
-    // Verifica se já existe um registro pra fazer update em vez de insert
-    const { data: existing } = await supabase
+    // 1ª tentativa: lookup exato por modalidade_id (caso normal)
+    let existingId: string | null = null
+
+    const { data: exact } = await supabase
       .from('chave_config')
       .select('id')
       .eq('modalidade_id', modalidadeId)
       .eq('categoria', categoria)
-      .eq('divisao', divisao)
+      .ilike('divisao', divisao)
       .maybeSingle()
+    existingId = exact?.id ?? null
 
-    if (existing?.id) {
+    // 2ª tentativa: se não achou e temos o slug, busca cross-edicao.
+    // Cobre o caso de chave_config criada pelo migration legado com ID de outra edicao.
+    if (!existingId && modalidadeSlug) {
+      const { data: sameSlugs } = await supabase
+        .from('modalidades')
+        .select('id')
+        .eq('slug', modalidadeSlug)
+      const allIds = (sameSlugs ?? []).map(m => m.id).filter(id => id !== modalidadeId)
+      if (allIds.length > 0) {
+        const { data: crossEdition } = await supabase
+          .from('chave_config')
+          .select('id')
+          .in('modalidade_id', allIds)
+          .eq('categoria', categoria)
+          .ilike('divisao', divisao)
+          .limit(1)
+          .maybeSingle()
+        existingId = crossEdition?.id ?? null
+      }
+    }
+
+    if (existingId) {
+      // Atualiza seeds + migra o modalidade_id para o da edicao atual (deduplication)
       const { error } = await supabase
         .from('chave_config')
-        .update({ num_teams: numTeams, seeds })
-        .eq('id', existing.id)
+        .update({ modalidade_id: modalidadeId, num_teams: numTeams, seeds })
+        .eq('id', existingId)
       if (error) throw error
     } else {
       const { error } = await supabase

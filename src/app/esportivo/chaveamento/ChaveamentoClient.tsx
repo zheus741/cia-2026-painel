@@ -613,6 +613,7 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
 
             const capCategoria    = chaveAberta!.categoria
             const capDivisao      = chaveAberta!.divisao
+            const capSlug         = chaveAberta!.modalidade  // slug pra deduplication cross-edicao
             startSaveConfigTransition(async () => {
               const result = await upsertChaveConfig(
                 capModalidadeId,
@@ -620,6 +621,7 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                 capDivisao,
                 numTeams,
                 seeds,
+                capSlug,
               )
               if (result.ok) {
                 toast.success('Seeds configuradas!', {

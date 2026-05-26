@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import {
   Trophy, ChevronRight, ChevronLeft, Search, Inbox, ArrowLeft,
   Radio, Clock, CheckCircle2, Users, Calendar, Crown, X, Swords,
-  Layers, Sparkles, RefreshCw, AlertTriangle, Settings, Save, ChevronDown,
+  Layers, Sparkles, RefreshCw, AlertTriangle, Settings, Save, ChevronDown, Zap,
 } from 'lucide-react'
 import { BracketView } from './BracketView'
 import { recalcularChaveAction } from '@/app/placar/actions'
@@ -595,6 +595,34 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
             setShowConfigEditor(true)
           }
 
+          // Auto-configurar: salva imediatamente com os times dos jogos, sem abrir editor.
+          // Seeds em ordem alfabética (não ordem de seeding) — basta pro bracket mostrar.
+          // Usuário pode refinar depois via "Editar seeds".
+          function handleAutoConfig() {
+            if (suggestedTeams.length < 2) return
+            const capCategoria = chaveAberta!.categoria
+            const capDivisao   = chaveAberta!.divisao
+            const capSlug      = chaveAberta!.modalidade
+            startSaveConfigTransition(async () => {
+              const result = await upsertChaveConfig(
+                capModalidadeId,
+                capCategoria,
+                capDivisao,
+                suggestedNumTeams,
+                suggestedTeams,
+                capSlug,
+              )
+              if (result.ok) {
+                toast.success('Chave auto-configurada!', {
+                  description: `${suggestedTeams.length} equipes detectadas dos jogos · ajuste a ordem de seed se necessário`,
+                  duration: 6000,
+                })
+              } else {
+                toast.error('Falha ao auto-configurar', { description: result.error })
+              }
+            })
+          }
+
           function handleSave() {
             const seeds = configEditorSeeds
               .split('\n')
@@ -655,7 +683,9 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                           Seeds não configuradas — propagação automática desativada
                         </p>
                         <p className="text-[11px] text-amber-700/80">
-                          Defina as seeds para que o vencedor de cada jogo avance automaticamente na chave.
+                          {suggestedTeams.length >= 2
+                            ? `${suggestedTeams.length} equipes detectadas nos jogos — clique em Auto-configurar para gerar o bracket.`
+                            : 'Defina as seeds para que o vencedor de cada jogo avance automaticamente na chave.'}
                         </p>
                       </>
                     ) : (
@@ -665,20 +695,34 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={() => showConfigEditor ? setShowConfigEditor(false) : openEditor()}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all ${
-                    !config
-                      ? 'border-amber-500/50 bg-amber-500/15 text-amber-500 hover:bg-amber-500/25'
-                      : 'border-[var(--border)] bg-[var(--card)]/60 text-[var(--muted-foreground)] hover:border-[var(--green-bright)]/40 hover:text-[var(--green-bright)]'
-                  }`}
-                >
-                  {showConfigEditor ? (
-                    <><ChevronDown className="h-3 w-3" /> Fechar</>
-                  ) : (
-                    <><Settings className="h-3 w-3" /> {!config ? 'Configurar seeds' : 'Editar seeds'}</>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {/* Auto-configurar: só aparece quando não há config E há equipes nos jogos */}
+                  {!config && suggestedTeams.length >= 2 && !showConfigEditor && (
+                    <button
+                      onClick={handleAutoConfig}
+                      disabled={isSavingConfig}
+                      title={`Configura automaticamente com ${suggestedTeams.length} equipes detectadas dos jogos`}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--green-bright)]/50 bg-[var(--green-dim)]/20 px-3 py-1.5 text-[11px] font-bold text-[var(--green-bright)] transition-all hover:bg-[var(--green-dim)]/35 disabled:opacity-50"
+                    >
+                      <Zap className="h-3 w-3" />
+                      {isSavingConfig ? 'Configurando…' : 'Auto-configurar'}
+                    </button>
                   )}
-                </button>
+                  <button
+                    onClick={() => showConfigEditor ? setShowConfigEditor(false) : openEditor()}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all ${
+                      !config
+                        ? 'border-amber-500/50 bg-amber-500/15 text-amber-500 hover:bg-amber-500/25'
+                        : 'border-[var(--border)] bg-[var(--card)]/60 text-[var(--muted-foreground)] hover:border-[var(--green-bright)]/40 hover:text-[var(--green-bright)]'
+                    }`}
+                  >
+                    {showConfigEditor ? (
+                      <><ChevronDown className="h-3 w-3" /> Fechar</>
+                    ) : (
+                      <><Settings className="h-3 w-3" /> {!config ? 'Configurar seeds' : 'Editar seeds'}</>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Editor (collapsible) */}

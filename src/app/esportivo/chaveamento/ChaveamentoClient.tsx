@@ -330,13 +330,16 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
       .filter(j => j.inicio && new Date(j.inicio).getTime() > now && j.status !== 'encerrado')
       .sort((a, b) => new Date(a.inicio!).getTime() - new Date(b.inicio!).getTime())[0] ?? null
 
-    // Config da chave
-    const modalidadeAtual = modalidades.find(m => m.slug === chaveAberta.modalidade)
-    const config = modalidadeAtual ? chaveConfigs.find(cc =>
-      cc.modalidade_id === modalidadeAtual.id &&
+    // Config da chave — lookup por slug pra ser robusto quando chave_config.modalidade_id
+    // é de uma edição diferente da ativa (migration legado vs edicao atual). O .find()
+    // por slug exato poderia retornar a modalidade errada se houver duplicatas entre edicoes.
+    // Também normaliza divisao (trim+lower) pra tolerar variações de encoding/acento.
+    const _modIdToSlug = new Map(modalidades.map(m => [m.id, m.slug]))
+    const config = chaveConfigs.find(cc =>
+      _modIdToSlug.get(cc.modalidade_id) === chaveAberta.modalidade &&
       cc.categoria === chaveAberta.categoria &&
-      cc.divisao === chaveAberta.divisao
-    ) : null
+      cc.divisao.trim().toLowerCase() === chaveAberta.divisao.trim().toLowerCase()
+    ) ?? null
 
     // Meta info da chave atual (todas as chaves da mesma divisão, sem filtros)
     const todasNaDivisao: ChaveInfo[] = (() => {
@@ -439,8 +442,10 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                   vencedores na chave. Útil quando jogos foram encerrados antes do avanço
                   automático existir, ou quando há suspeita de inconsistência. */}
               {(() => {
-                const modalidadeAtualLocal = modalidades.find(m => m.slug === chaveAberta.modalidade)
-                if (!modalidadeAtualLocal) return null
+                // Usa modalidade_id diretamente dos jogos (edicao correta garantida).
+                // Não usa modalidades.find() pra evitar pegar ID de edicao errada.
+                const modalidadeIdReal = jogosChave[0]?.modalidade_id ?? null
+                if (!modalidadeIdReal) return null
                 return (
                   <button
                     onClick={async () => {
@@ -453,7 +458,7 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                       if (!ok) return
                       startRecalcTransition(async () => {
                         const result = await recalcularChaveAction(
-                          modalidadeAtualLocal.id,
+                          modalidadeIdReal,
                           chaveAberta.categoria,
                           chaveAberta.divisao,
                         )
@@ -564,8 +569,10 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
 
         {/* ─── Config panel ─── */}
         {(() => {
-          const modalidadeAtualLocal = modalidades.find(m => m.slug === chaveAberta.modalidade)
-          if (!modalidadeAtualLocal) return null
+          // Usa modalidade_id dos jogos da chave (edicao correta garantida).
+          // Evita pegar o ID de uma edicao diferente via modalidades.find().
+          const capModalidadeId = jogosChave[0]?.modalidade_id ?? ''
+          if (!capModalidadeId) return null
 
           // Auto-sugestão de seeds: times únicos dos jogos de oitavas (ou quartas, se não há oitavas)
           const oitavasJogos = jogosChave.filter(j => j.fase === 'oitavas')
@@ -604,7 +611,6 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
               return
             }
 
-            const capModalidadeId = modalidadeAtualLocal!.id
             const capCategoria    = chaveAberta!.categoria
             const capDivisao      = chaveAberta!.divisao
             startSaveConfigTransition(async () => {

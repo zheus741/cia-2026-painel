@@ -333,12 +333,18 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
     // Config da chave — lookup por slug pra ser robusto quando chave_config.modalidade_id
     // é de uma edição diferente da ativa (migration legado vs edicao atual). O .find()
     // por slug exato poderia retornar a modalidade errada se houver duplicatas entre edicoes.
-    // Também normaliza divisao (trim+lower) pra tolerar variações de encoding/acento.
+    // Normaliza divisao agressivamente (trim+lower+remove "divisão"/"divisao"+remove espaços/pontuação)
+    // pra tolerar variantes como "1ª Divisão" vs "1ª", "CYBERCITY" vs "CYBER CITY".
+    const normalizarDivisao = (d: string) =>
+      d.trim().toLowerCase()
+        .replace(/divis[ãa]o/g, '')
+        .replace(/[\s\-_·.]+/g, '')
     const _modIdToSlug = new Map(modalidades.map(m => [m.id, m.slug]))
+    const divisaoAlvo = normalizarDivisao(chaveAberta.divisao)
     const config = chaveConfigs.find(cc =>
       _modIdToSlug.get(cc.modalidade_id) === chaveAberta.modalidade &&
       cc.categoria === chaveAberta.categoria &&
-      cc.divisao.trim().toLowerCase() === chaveAberta.divisao.trim().toLowerCase()
+      normalizarDivisao(cc.divisao) === divisaoAlvo
     ) ?? null
 
     // Meta info da chave atual (todas as chaves da mesma divisão, sem filtros)

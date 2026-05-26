@@ -32,20 +32,24 @@ export async function upsertChaveConfig(
 
     const supabase = await createClient()
 
-    // 1ª tentativa: lookup exato por modalidade_id (caso normal)
+    // Normaliza divisão pra tolerar "1ª Divisão" vs "1ª", "CYBERCITY" vs "CYBER CITY" etc.
+    const normalizarDivisao = (d: string) =>
+      d.trim().toLowerCase()
+        .replace(/divis[ãa]o/g, '')
+        .replace(/[\s\-_·.]+/g, '')
+    const divisaoAlvo = normalizarDivisao(divisao)
+
+    // 1ª tentativa: lookup por modalidade_id + categoria, e filtra divisao normalizada client-side
     let existingId: string | null = null
 
-    const { data: exact } = await supabase
+    const { data: candidatosExatos } = await supabase
       .from('chave_config')
-      .select('id')
+      .select('id, divisao')
       .eq('modalidade_id', modalidadeId)
       .eq('categoria', categoria)
-      .ilike('divisao', divisao)
-      .maybeSingle()
-    existingId = exact?.id ?? null
+    existingId = candidatosExatos?.find(c => normalizarDivisao(c.divisao) === divisaoAlvo)?.id ?? null
 
-    // 2ª tentativa: se não achou e temos o slug, busca cross-edicao.
-    // Cobre o caso de chave_config criada pelo migration legado com ID de outra edicao.
+    // 2ª tentativa: cross-edicao via slug, mesma normalização
     if (!existingId && modalidadeSlug) {
       const { data: sameSlugs } = await supabase
         .from('modalidades')
@@ -55,13 +59,10 @@ export async function upsertChaveConfig(
       if (allIds.length > 0) {
         const { data: crossEdition } = await supabase
           .from('chave_config')
-          .select('id')
+          .select('id, divisao')
           .in('modalidade_id', allIds)
           .eq('categoria', categoria)
-          .ilike('divisao', divisao)
-          .limit(1)
-          .maybeSingle()
-        existingId = crossEdition?.id ?? null
+        existingId = crossEdition?.find(c => normalizarDivisao(c.divisao) === divisaoAlvo)?.id ?? null
       }
     }
 
@@ -96,13 +97,27 @@ export async function deleteChaveConfig(
   return safe(async () => {
     await requireCoordOrAdmin()
     const supabase = await createClient()
-    const { error } = await supabase
+
+    // Normaliza divisão pra cobrir variantes ("1ª" vs "1ª Divisão", "CYBERCITY" vs "CYBER CITY")
+    const normalizarDivisao = (d: string) =>
+      d.trim().toLowerCase()
+        .replace(/divis[ãa]o/g, '')
+        .replace(/[\s\-_·.]+/g, '')
+    const divisaoAlvo = normalizarDivisao(divisao)
+
+    const { data: candidatos } = await supabase
       .from('chave_config')
-      .delete()
+      .select('id, divisao')
       .eq('modalidade_id', modalidadeId)
       .eq('categoria', categoria)
-      .eq('divisao', divisao)
-    if (error) throw error
+    const idsParaDeletar = (candidatos ?? [])
+      .filter(c => normalizarDivisao(c.divisao) === divisaoAlvo)
+      .map(c => c.id)
+
+    if (idsParaDeletar.length > 0) {
+      const { error } = await supabase.from('chave_config').delete().in('id', idsParaDeletar)
+      if (error) throw error
+    }
     revalidatePath('/esportivo/chaveamento')
   })
 }

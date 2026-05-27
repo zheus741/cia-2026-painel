@@ -1,210 +1,123 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import {
+  LINEUP, STAGES, DAY_IDS, toMin, hourLabel,
+  type DayId, type Perf, type StageId, type StageConfig,
+} from '@/lib/lineup-data'
+import { useNowPlaying } from '@/lib/use-now-playing'
+import { NowPlayingPanel } from '@/components/now-playing-panel'
 
-// ── Time helpers ──────────────────────────────────────────────────────────────
-
-/** Converte "HH:MM" em minutos absolutos. Horas < 12 são pós-meia-noite. */
-function toMin(t: string): number {
-  const [h, m] = t.split(':').map(Number)
-  return h < 12 ? (h + 24) * 60 + m : h * 60 + m
-}
-
-function hourLabel(absMin: number): string {
-  const h = Math.floor(absMin / 60) % 24
-  return `${String(h).padStart(2, '0')}h`
-}
-
-// ── Tipos ─────────────────────────────────────────────────────────────────────
-
-interface Perf {
-  artist: string
-  start: string
-  end: string
-  duration: number
-  note?: string
-  special?: boolean
-}
-
-interface StageData {
-  arena:      Perf[]
-  principal:  Perf[]
-  eletronico: Perf[]
-}
-
-interface DayConfig {
-  label: string
-  date:  string
-  wd:    string
-  rangeStart: string
-  rangeEnd:   string
-  stages: StageData
-}
-
-// ── Programação ───────────────────────────────────────────────────────────────
-
-const LINEUP: Record<string, DayConfig> = {
-  qui: {
-    label: 'QUINTA', date: '04/06', wd: 'QUI',
-    rangeStart: '15:10', rangeEnd: '05:50',
-    stages: {
-      arena: [
-        { artist: 'DJ Lipe Open Format', start: '15:10', end: '16:10', duration: 60 },
-        { artist: 'Pente Redondo',        start: '16:20', end: '17:40', duration: 80, note: 'Banda' },
-        { artist: 'DJ Milken',            start: '17:50', end: '18:50', duration: 60 },
-        { artist: 'Turin DJ',             start: '19:00', end: '20:50', duration: 110 },
-      ],
-      principal: [
-        { artist: 'Kenan e Kel',        start: '20:50', end: '21:50', duration: 60 },
-        { artist: 'Teto',               start: '22:00', end: '23:00', duration: 60 },
-        { artist: 'Turma do Pagode',    start: '23:10', end: '00:10', duration: 60 },
-        { artist: 'Matheus e Kauan',    start: '00:20', end: '01:20', duration: 60 },
-        { artist: 'Leo Foguete',        start: '01:30', end: '02:30', duration: 60 },
-        { artist: 'Japa NK',            start: '02:40', end: '03:20', duration: 40 },
-        { artist: 'Ariel B',            start: '03:30', end: '04:10', duration: 40 },
-      ],
-      eletronico: [
-        { artist: 'Contest',            start: '20:50', end: '22:20', duration: 90 },
-        { artist: 'Francisco DJ',       start: '22:20', end: '23:50', duration: 90 },
-        { artist: 'Cat Dealers',        start: '23:50', end: '01:20', duration: 90 },
-        { artist: 'Paranormal Attack',  start: '01:20', end: '02:50', duration: 90 },
-        { artist: 'Vegas',              start: '02:50', end: '04:20', duration: 90 },
-        { artist: 'Claudinho Brasil',   start: '04:20', end: '05:50', duration: 90 },
-      ],
-    },
-  },
-  sex: {
-    label: 'SEXTA', date: '05/06', wd: 'SEX',
-    rangeStart: '14:10', rangeEnd: '07:10',
-    stages: {
-      arena: [
-        { artist: 'DJ ou Banda Contest', start: '14:10', end: '15:00', duration: 50 },
-        { artist: 'MCINTRA',             start: '15:10', end: '16:00', duration: 50 },
-        { artist: 'Meu Nome é Vaca',     start: '16:10', end: '17:00', duration: 50 },
-        { artist: 'Tilia',               start: '17:10', end: '18:10', duration: 60 },
-        { artist: 'DJ Topo',             start: '18:20', end: '19:20', duration: 60 },
-      ],
-      principal: [
-        { artist: 'Mr Monkey',    start: '23:10', end: '00:50', duration: 100 },
-        { artist: 'Pablo Vittar', start: '01:00', end: '02:10', duration: 70 },
-        { artist: 'Matue',        start: '02:20', end: '03:20', duration: 60 },
-        { artist: 'Nattan',       start: '03:30', end: '05:10', duration: 100 },
-        { artist: 'Petroski',     start: '05:20', end: '06:20', duration: 60 },
-      ],
-      eletronico: [
-        { artist: 'Buja',                      start: '23:10', end: '00:10', duration: 60 },
-        { artist: 'Gesus',                     start: '00:10', end: '01:10', duration: 60 },
-        { artist: 'Eli Iwasa',                 start: '01:10', end: '02:10', duration: 60 },
-        { artist: 'Breaking Beatz × Almanac', start: '02:10', end: '03:40', duration: 90 },
-        { artist: 'Victor Lou',               start: '03:40', end: '05:10', duration: 90 },
-        { artist: 'DJ GBR',                   start: '05:10', end: '06:10', duration: 60 },
-        { artist: 'Victor Lou × DJ GBR',      start: '06:10', end: '07:10', duration: 60 },
-      ],
-    },
-  },
-  sab: {
-    label: 'SÁBADO', date: '06/06', wd: 'SÁB',
-    rangeStart: '14:10', rangeEnd: '08:10',
-    stages: {
-      arena: [
-        { artist: 'DJ Isadora',  start: '14:10', end: '15:10', duration: 60, note: 'Stage' },
-        { artist: 'Federah',     start: '15:20', end: '16:30', duration: 70, note: 'Banda' },
-        { artist: 'Patrick DJ',  start: '16:40', end: '18:00', duration: 80 },
-        { artist: 'Melody',      start: '18:10', end: '19:10', duration: 60 },
-      ],
-      principal: [
-        { artist: 'DJ WJ',           start: '23:10', end: '00:20', duration: 70 },
-        { artist: '8K',              start: '00:30', end: '02:00', duration: 90 },
-        { artist: 'Meu Nome É Vaca', start: '02:10', end: '02:50', duration: 40, note: 'Transição' },
-        { artist: 'Pedro Sampaio',   start: '02:50', end: '04:50', duration: 120 },
-        { artist: 'Felipe Amorim',   start: '05:00', end: '06:20', duration: 80 },
-        { artist: 'GP da ZL',        start: '06:30', end: '07:30', duration: 60 },
-      ],
-      eletronico: [
-        { artist: 'A Definir',  start: '23:10', end: '00:40', duration: 90 },
-        { artist: 'A Definir',  start: '00:40', end: '02:10', duration: 90 },
-        { artist: 'Zaark',      start: '02:10', end: '03:40', duration: 90 },
-        { artist: 'Ilusionize', start: '03:40', end: '05:10', duration: 90 },
-        { artist: 'Visage',     start: '05:10', end: '06:40', duration: 90 },
-        { artist: 'Aura Vortex',start: '06:40', end: '08:10', duration: 90 },
-      ],
-    },
-  },
-  dom: {
-    label: 'DOMINGO', date: '07/06', wd: 'DOM',
-    rangeStart: '14:00', rangeEnd: '21:00',
-    stages: {
-      arena: [
-        { artist: 'DJ Hidalgo',       start: '14:00', end: '15:00', duration: 60 },
-        { artist: 'Sambarylove',      start: '15:10', end: '16:30', duration: 80, note: 'Banda' },
-        { artist: 'DJ Lary Marques',  start: '16:40', end: '17:30', duration: 50 },
-      ],
-      principal: [
-        { artist: 'GBR',        start: '17:40', end: '19:40', duration: 120 },
-        { artist: 'Premiação',  start: '19:40', end: '20:10', duration: 30, special: true },
-        { artist: 'GBR',        start: '20:10', end: '21:00', duration: 50, note: 'Retorno' },
-      ],
-      eletronico: [],
-    },
-  },
-}
-
-const DAY_IDS = ['qui', 'sex', 'sab', 'dom'] as const
-type DayId = typeof DAY_IDS[number]
-
-// ── Palcos com tones consagrados do design system ─────────────────────────────
-
-const STAGES = [
-  {
-    id:        'arena' as const,
-    name:      'Arena 360',
-    eyebrow:   'PALCO',
-    tone:      'terracotta',
-    blockBg:   'linear-gradient(155deg, #C46B4A 0%, #D8845F 100%)',
-    blockText: '#FFFFFF',
-    blockTextMuted: 'rgba(255,255,255,0.78)',
-    accentInk:  '#8b3a2a',
-    accentSoft: 'rgba(196,107,74,0.10)',
-    accentRing: 'rgba(196,107,74,0.22)',
-    chipBg:     'rgba(0,0,0,0.18)',
-  },
-  {
-    id:        'principal' as const,
-    name:      'Principal',
-    eyebrow:   'PALCO',
-    tone:      'gold',
-    blockBg:   'linear-gradient(155deg, #F0D04A 0%, #F5DC6A 100%)',
-    blockText: '#0A0F0B',
-    blockTextMuted: 'rgba(10,15,11,0.62)',
-    accentInk:  '#8a5f06',
-    accentSoft: 'rgba(232,184,47,0.14)',
-    accentRing: 'rgba(232,184,47,0.30)',
-    chipBg:     'rgba(10,15,11,0.10)',
-  },
-  {
-    id:        'eletronico' as const,
-    name:      'Eletrônico',
-    eyebrow:   'PALCO',
-    tone:      'electric',
-    blockBg:   'linear-gradient(155deg, #3D49E0 0%, #5C68E8 100%)',
-    blockText: '#FFFFFF',
-    blockTextMuted: 'rgba(255,255,255,0.78)',
-    accentInk:  '#2D1B5C',
-    accentSoft: 'rgba(92,104,232,0.10)',
-    accentRing: 'rgba(92,104,232,0.24)',
-    chipBg:     'rgba(0,0,0,0.20)',
-  },
-]
-
-const PX = 1.6              // pixels por minuto — mais arejado
-const HEADER_H = 64
-const TIME_COL_W = 64
 const SANS = 'var(--font-dm-sans), system-ui, sans-serif'
+const PX = 2.0                    // pixels por minuto — bem mais arejado
+const HEADER_H = 68
+const TIME_COL_W = 68
 
-// ── Componente principal ──────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+interface CardLayout {
+  showTimeEyebrow: boolean
+  showNoteChip:   boolean
+  showDurFooter:  boolean
+  showLiveBadge:  boolean
+  titleSize:      number
+  padding:        string
+  align:          'space-between' | 'center'
+}
+
+/** Decide o que cabe no card baseado na altura disponível (PX=2.0). */
+function getCardLayout(height: number, isLive: boolean, hasNote: boolean): CardLayout {
+  // < 75px (= até ~37min): só nome
+  if (height < 75) {
+    return {
+      showTimeEyebrow: false,
+      showNoteChip: false,
+      showDurFooter: false,
+      showLiveBadge: isLive,
+      titleSize: 13,
+      padding: '8px 12px',
+      align: 'center',
+    }
+  }
+  // 75-110px (= 37-55min): horário + nome (sem chip, sem footer)
+  if (height < 110) {
+    return {
+      showTimeEyebrow: true,
+      showNoteChip: false,
+      showDurFooter: false,
+      showLiveBadge: isLive,
+      titleSize: 15,
+      padding: '10px 14px',
+      align: 'space-between',
+    }
+  }
+  // 110-160px (= 55-80min): tudo, fontes médias
+  if (height < 160) {
+    return {
+      showTimeEyebrow: true,
+      showNoteChip: hasNote,
+      showDurFooter: true,
+      showLiveBadge: isLive,
+      titleSize: 17,
+      padding: '12px 16px',
+      align: 'space-between',
+    }
+  }
+  // ≥ 160px (= ≥80min): tudo grande
+  return {
+    showTimeEyebrow: true,
+    showNoteChip: hasNote,
+    showDurFooter: true,
+    showLiveBadge: isLive,
+    titleSize: height > 240 ? 24 : 20,
+    padding: '14px 18px',
+    align: 'space-between',
+  }
+}
+
+// ── Live pulse dot (para badge "NO AR" nos cards) ────────────────────────────
+
+function LivePulseDot({ color = '#FF4444' }: { color?: string }) {
+  return (
+    <span
+      style={{
+        position: 'relative',
+        display: 'inline-flex',
+        width: 7, height: 7,
+        flexShrink: 0,
+      }}
+      aria-hidden="true"
+    >
+      <span style={{
+        position: 'absolute', inset: 0,
+        borderRadius: '50%',
+        background: color,
+        opacity: 0.55,
+        animation: 'lineup-ping 1.6s cubic-bezier(0,0,0.2,1) infinite',
+      }} />
+      <span style={{
+        position: 'relative',
+        width: 7, height: 7,
+        borderRadius: '50%',
+        background: color,
+        boxShadow: `0 0 8px ${color}`,
+      }} />
+    </span>
+  )
+}
+
+// ── Componente principal ─────────────────────────────────────────────────────
 
 export function LineupClient() {
+  const nowPlaying = useNowPlaying()
   const [activeDay, setActiveDay] = useState<DayId>('qui')
+
+  // Auto-seleciona o dia atual quando o componente monta dentro do evento
+  useEffect(() => {
+    if (nowPlaying.todayDayId) {
+      setActiveDay(nowPlaying.todayDayId)
+    }
+  }, [nowPlaying.todayDayId])
 
   const day = LINEUP[activeDay]
   const startMin = toMin(day.rangeStart)
@@ -226,14 +139,36 @@ export function LineupClient() {
     day.stages.arena.length + day.stages.principal.length + day.stages.eletronico.length
   const totalHours = Math.round(totalMin / 60)
 
+  const isViewingLiveDay = nowPlaying.isLive && nowPlaying.todayDayId === activeDay
+
   return (
     <div className="cia-fade-in" style={{ fontFamily: SANS, color: '#0A0F0B' }}>
 
+      {/* CSS pra animação de pulse */}
+      <style>{`
+        @keyframes lineup-ping {
+          0%   { transform: scale(1);   opacity: 0.55; }
+          70%  { transform: scale(2.5); opacity: 0;    }
+          100% { transform: scale(2.5); opacity: 0;    }
+        }
+        @keyframes lineup-live-ring {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.6), 0 0 0 2px rgba(255,68,68,0.85); }
+          50%      { box-shadow: 0 0 0 6px rgba(255,68,68,0), 0 0 0 2px rgba(255,68,68,0.85); }
+        }
+        .lineup-live-card { animation: lineup-live-ring 2s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .lineup-live-card { animation: none; }
+        }
+      `}</style>
+
       {/* ═══════════════════════════════════════════════════════════════════
-          HEADER EDITORIAL — eyebrow + título grande + meta
+          HEADER EDITORIAL
           ═══════════════════════════════════════════════════════════════════ */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          gap: 24, flexWrap: 'wrap',
+        }}>
           <div>
             <span style={{
               fontSize: 11.5, fontWeight: 600,
@@ -260,11 +195,10 @@ export function LineupClient() {
               letterSpacing: '-0.01em',
               maxWidth: 520,
             }}>
-              Três palcos · {totalArtists * 4} atrações no total · Uberaba MG
+              Três palcos · {totalArtists} atrações no dia · Uberaba MG
             </p>
           </div>
 
-          {/* Stats do dia ativo — número editorial */}
           <div style={{ textAlign: 'right', minWidth: 140 }}>
             <div style={{
               fontFamily: SANS,
@@ -272,6 +206,7 @@ export function LineupClient() {
               letterSpacing: '-0.05em',
               lineHeight: 0.9,
               color: '#0A0F0B',
+              fontVariantNumeric: 'tabular-nums',
             }}>
               {totalArtists}
             </div>
@@ -289,21 +224,26 @@ export function LineupClient() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          DAY TABS — pílulas editoriais com aria-selected
+          PAINEL "NO AR AGORA" — só aparece quando é dia do evento
+          ═══════════════════════════════════════════════════════════════════ */}
+      {nowPlaying.activeDay && (
+        <div style={{ marginBottom: 24 }}>
+          <NowPlayingPanel />
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          DAY TABS
           ═══════════════════════════════════════════════════════════════════ */}
       <div
         role="tablist"
-        aria-label="Selecionar dia"
-        style={{
-          display: 'flex',
-          gap: 8,
-          marginBottom: 16,
-          flexWrap: 'wrap',
-        }}
+        aria-label="Selecionar dia da programação"
+        style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}
       >
         {DAY_IDS.map(id => {
           const d = LINEUP[id]
           const active = activeDay === id
+          const isToday = nowPlaying.todayDayId === id
           return (
             <button
               key={id}
@@ -335,6 +275,16 @@ export function LineupClient() {
                 if (!active) (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'
               }}
             >
+              {/* Indicador "HOJE" — pulse vermelho se for o dia do evento agora */}
+              {isToday && (
+                <div style={{
+                  position: 'absolute',
+                  top: 8, right: 8,
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                  <LivePulseDot />
+                </div>
+              )}
               <div style={{
                 fontSize: 10, fontWeight: 700,
                 color: active ? 'rgba(250,247,240,0.6)' : 'rgba(10,15,11,0.55)',
@@ -348,57 +298,22 @@ export function LineupClient() {
                 fontSize: 20, fontWeight: 800,
                 letterSpacing: '-0.03em',
                 lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
               }}>
                 {d.date}
               </div>
             </button>
           )
         })}
-
-        {/* Spacer + day label à direita */}
-        <div style={{
-          marginLeft: 'auto',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          paddingRight: 4,
-        }}>
-          <div style={{
-            width: 36, height: 1,
-            background: 'rgba(10,15,11,0.18)',
-          }} />
-          <div>
-            <div style={{
-              fontSize: 10, fontWeight: 700,
-              color: 'rgba(10,15,11,0.55)',
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-            }}>
-              dia ativo
-            </div>
-            <div style={{
-              marginTop: 2,
-              fontFamily: SANS,
-              fontSize: 18, fontWeight: 800,
-              letterSpacing: '-0.03em',
-              color: '#0A0F0B',
-              lineHeight: 1,
-            }}>
-              {day.label.toLowerCase()}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          LEGENDA DOS PALCOS (mobile-friendly)
+          LEGENDA + RANGE DE HORAS
           ═══════════════════════════════════════════════════════════════════ */}
       <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 14,
-        marginBottom: 14,
-        paddingLeft: 2,
+        display: 'flex', flexWrap: 'wrap', gap: 14,
+        marginBottom: 14, paddingLeft: 2,
+        alignItems: 'center',
       }}>
         {STAGES.map(s => (
           <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -423,17 +338,18 @@ export function LineupClient() {
         ))}
         <div style={{
           marginLeft: 'auto',
+          display: 'inline-flex', alignItems: 'center', gap: 8,
           fontSize: 11, fontWeight: 600,
           color: 'rgba(10,15,11,0.4)',
           letterSpacing: '-0.01em',
-          fontFamily: SANS,
+          fontVariantNumeric: 'tabular-nums',
         }}>
-          {day.rangeStart} → {day.rangeEnd}
+          {day.rangeStart} <span style={{ opacity: 0.4 }}>→</span> {day.rangeEnd}
         </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          GRADE — card cream com inset escuro nos cabeçalhos
+          GRADE
           ═══════════════════════════════════════════════════════════════════ */}
       <div
         id={`lineup-grid-${activeDay}`}
@@ -449,7 +365,7 @@ export function LineupClient() {
           boxShadow: '0 1px 0 rgba(10,15,11,0.04), 0 8px 32px rgba(10,15,11,0.06)',
         }}
       >
-        <div style={{ display: 'flex', minWidth: 720, position: 'relative' }}>
+        <div style={{ display: 'flex', minWidth: 760, position: 'relative' }}>
 
           {/* ─── Coluna de horas ────────────────────────────────────────── */}
           <div style={{
@@ -462,9 +378,7 @@ export function LineupClient() {
           }}>
             <div style={{
               height: HEADER_H,
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'center',
+              display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
               paddingBottom: 14,
               borderBottom: '1px solid rgba(10,15,11,0.08)',
             }}>
@@ -485,14 +399,14 @@ export function LineupClient() {
                   key={absMin}
                   style={{
                     position: 'absolute',
-                    top: y,
-                    left: 0, right: 0,
+                    top: y, left: 0, right: 0,
                     transform: 'translateY(-50%)',
                     textAlign: 'center',
                     fontFamily: SANS,
                     fontSize: 13, fontWeight: 700,
                     color: 'rgba(10,15,11,0.42)',
                     letterSpacing: '-0.02em',
+                    fontVariantNumeric: 'tabular-nums',
                     lineHeight: 1,
                   }}
                 >
@@ -504,29 +418,29 @@ export function LineupClient() {
 
           {/* ─── Colunas de palcos ─────────────────────────────────────── */}
           {STAGES.map(stage => {
-            const perfs = day.stages[stage.id] ?? []
+            const perfs = day.stages[stage.id as StageId] ?? []
             const isEmpty = perfs.length === 0
+            const stagePlay = nowPlaying.stages[stage.id as StageId]
 
             return (
               <div
                 key={stage.id}
                 style={{
                   flex: 1,
-                  minWidth: 220,
+                  minWidth: 230,
                   position: 'relative',
                   height: gridH + HEADER_H + 24,
                   borderRight: '1px solid rgba(10,15,11,0.08)',
                 }}
               >
-                {/* Cabeçalho do palco — eyebrow + nome */}
+                {/* Cabeçalho do palco */}
                 <div style={{
                   height: HEADER_H,
                   padding: '12px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
+                  display: 'flex', flexDirection: 'column', justifyContent: 'center',
                   background: stage.accentSoft,
                   borderBottom: `2px solid ${stage.accentRing}`,
+                  position: 'relative',
                 }}>
                   <div style={{
                     fontSize: 9.5, fontWeight: 700,
@@ -547,9 +461,31 @@ export function LineupClient() {
                   }}>
                     {stage.name}
                   </div>
+
+                  {/* Badge "NO AR" no header se este palco está com algo tocando */}
+                  {isViewingLiveDay && stagePlay.current && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 12, right: 12,
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '3px 8px',
+                      borderRadius: 999,
+                      background: '#0A0F0B',
+                    }}>
+                      <LivePulseDot />
+                      <span style={{
+                        fontSize: 9, fontWeight: 800,
+                        color: '#FF7777',
+                        letterSpacing: '0.16em',
+                        textTransform: 'uppercase',
+                      }}>
+                        no ar
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Linhas-guia */}
+                {/* Linhas-guia horárias */}
                 {hourTicks.map(absMin => {
                   const y = HEADER_H + (absMin - startMin) * PX
                   return (
@@ -558,8 +494,7 @@ export function LineupClient() {
                       aria-hidden="true"
                       style={{
                         position: 'absolute',
-                        top: y,
-                        left: 0, right: 0,
+                        top: y, left: 0, right: 0,
                         height: 1,
                         background: 'rgba(10,15,11,0.06)',
                         pointerEvents: 'none',
@@ -603,124 +538,21 @@ export function LineupClient() {
                 {perfs.map((p, i) => {
                   const top    = HEADER_H + (toMin(p.start) - startMin) * PX
                   const height = p.duration * PX
-                  const tiny   = height < 64
-                  const small  = height < 100
                   const isSpecial = p.special
+                  const isLive = isViewingLiveDay && stagePlay.current?.start === p.start
+                  const layout = getCardLayout(height, isLive, !!p.note)
 
                   return (
-                    <div
-                      key={i}
-                      role="article"
-                      aria-label={`${p.artist}${p.note ? ` (${p.note})` : ''} no palco ${stage.name} das ${p.start} às ${p.end}`}
-                      title={`${p.artist} · ${p.start}–${p.end}`}
-                      tabIndex={0}
-                      style={{
-                        position: 'absolute',
-                        top: top + 4,
-                        left: 8, right: 8,
-                        height: height - 8,
-                        background: isSpecial
-                          ? 'linear-gradient(155deg, #0A0F0B 0%, #1a1f1c 100%)'
-                          : stage.blockBg,
-                        borderRadius: 14,
-                        padding: tiny ? '6px 12px' : small ? '10px 14px' : '14px 16px',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: tiny ? 'center' : 'space-between',
-                        boxShadow: isSpecial
-                          ? '0 1px 0 rgba(10,15,11,0.06), 0 8px 24px rgba(10,15,11,0.25)'
-                          : `0 1px 0 ${stage.accentRing}, 0 4px 12px rgba(10,15,11,0.08)`,
-                        cursor: 'default',
-                        transition:
-                          'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-                        border: isSpecial ? '1px solid rgba(232,184,47,0.45)' : 'none',
-                        outline: 'none',
-                      }}
-                      onMouseEnter={e => {
-                        const el = e.currentTarget as HTMLElement
-                        el.style.transform = 'translateY(-2px)'
-                        el.style.boxShadow = isSpecial
-                          ? '0 2px 0 rgba(10,15,11,0.08), 0 14px 32px rgba(10,15,11,0.30)'
-                          : `0 2px 0 ${stage.accentRing}, 0 12px 28px rgba(10,15,11,0.16)`
-                      }}
-                      onMouseLeave={e => {
-                        const el = e.currentTarget as HTMLElement
-                        el.style.transform = 'translateY(0)'
-                        el.style.boxShadow = isSpecial
-                          ? '0 1px 0 rgba(10,15,11,0.06), 0 8px 24px rgba(10,15,11,0.25)'
-                          : `0 1px 0 ${stage.accentRing}, 0 4px 12px rgba(10,15,11,0.08)`
-                      }}
-                      onFocus={e => {
-                        const el = e.currentTarget as HTMLElement
-                        el.style.boxShadow = `0 0 0 3px rgba(10,15,11,0.85), 0 0 0 5px rgba(232,184,47,0.6)`
-                      }}
-                      onBlur={e => {
-                        const el = e.currentTarget as HTMLElement
-                        el.style.boxShadow = isSpecial
-                          ? '0 1px 0 rgba(10,15,11,0.06), 0 8px 24px rgba(10,15,11,0.25)'
-                          : `0 1px 0 ${stage.accentRing}, 0 4px 12px rgba(10,15,11,0.08)`
-                      }}
-                    >
-                      <div style={{ minWidth: 0 }}>
-                        {/* Hora no topo (apenas em cards médios/grandes) */}
-                        {!tiny && (
-                          <div style={{
-                            fontFamily: SANS,
-                            fontSize: 10, fontWeight: 700,
-                            color: isSpecial ? 'rgba(232,184,47,0.85)' : stage.blockTextMuted,
-                            letterSpacing: '0.10em',
-                            textTransform: 'uppercase',
-                            marginBottom: 4,
-                          }}>
-                            {p.start} → {p.end}
-                          </div>
-                        )}
-
-                        <div style={{
-                          fontFamily: SANS,
-                          fontSize: tiny ? 13 : small ? 15 : height > 160 ? 22 : 18,
-                          fontWeight: 800,
-                          letterSpacing: '-0.03em',
-                          color: isSpecial ? '#FAF7F0' : stage.blockText,
-                          lineHeight: 1.05,
-                          wordBreak: 'break-word',
-                        }}>
-                          {p.artist}
-                        </div>
-
-                        {p.note && !tiny && (
-                          <div style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            marginTop: 8,
-                            padding: '3px 9px',
-                            borderRadius: 999,
-                            background: isSpecial ? 'rgba(232,184,47,0.18)' : stage.chipBg,
-                            fontFamily: SANS,
-                            fontSize: 9.5, fontWeight: 700,
-                            letterSpacing: '0.10em',
-                            color: isSpecial ? 'rgba(232,184,47,0.95)' : (stage.tone === 'gold' ? '#0A0F0B' : '#FFFFFF'),
-                            textTransform: 'uppercase',
-                          }}>
-                            {p.note}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Footer: duração */}
-                      {!tiny && (
-                        <div style={{
-                          fontFamily: SANS,
-                          fontSize: 11, fontWeight: 600,
-                          color: isSpecial ? 'rgba(250,247,240,0.55)' : stage.blockTextMuted,
-                          letterSpacing: '-0.01em',
-                          marginTop: 6,
-                        }}>
-                          {p.duration} min
-                        </div>
-                      )}
-                    </div>
+                    <PerfCard
+                      key={`${p.artist}-${p.start}-${i}`}
+                      perf={p}
+                      stage={stage}
+                      top={top}
+                      height={height}
+                      isSpecial={!!isSpecial}
+                      isLive={isLive}
+                      layout={layout}
+                    />
                   )
                 })}
               </div>
@@ -730,14 +562,11 @@ export function LineupClient() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          RODAPÉ — disclaimer editorial
+          FOOTER
           ═══════════════════════════════════════════════════════════════════ */}
       <div style={{
         marginTop: 16,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        flexWrap: 'wrap',
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       }}>
         <div style={{
           fontSize: 10, fontWeight: 700,
@@ -747,12 +576,7 @@ export function LineupClient() {
         }}>
           Programação sujeita a alterações
         </div>
-        <div style={{
-          flex: 1,
-          height: 1,
-          background: 'rgba(10,15,11,0.10)',
-          minWidth: 40,
-        }} />
+        <div style={{ flex: 1, height: 1, background: 'rgba(10,15,11,0.10)', minWidth: 40 }} />
         <div style={{
           fontSize: 10, fontWeight: 700,
           color: 'rgba(10,15,11,0.42)',
@@ -762,6 +586,163 @@ export function LineupClient() {
           CIA 2026 · Uberaba MG
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── PerfCard sub-component ───────────────────────────────────────────────────
+
+interface PerfCardProps {
+  perf:      Perf
+  stage:     StageConfig
+  top:       number
+  height:    number
+  isSpecial: boolean
+  isLive:    boolean
+  layout:    CardLayout
+}
+
+function PerfCard({ perf, stage, top, height, isSpecial, isLive, layout }: PerfCardProps) {
+  const noteTextLight = stage.tone === 'gold' ? '#0A0F0B' : '#FFFFFF'
+  const noteTextDark  = isSpecial ? 'rgba(232,184,47,0.95)' : noteTextLight
+
+  return (
+    <div
+      role="article"
+      aria-label={`${perf.artist}${perf.note ? ` (${perf.note})` : ''} no palco ${stage.name} das ${perf.start} às ${perf.end}${isLive ? ' — no ar agora' : ''}`}
+      title={`${perf.artist} · ${perf.start}–${perf.end}`}
+      tabIndex={0}
+      className={isLive ? 'lineup-live-card' : ''}
+      style={{
+        position: 'absolute',
+        top: top + 4,
+        left: 8, right: 8,
+        height: height - 8,
+        background: isSpecial
+          ? 'linear-gradient(155deg, #0A0F0B 0%, #1a1f1c 100%)'
+          : stage.blockBg,
+        borderRadius: 14,
+        padding: layout.padding,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: layout.align,
+        boxShadow: isLive
+          ? `0 0 0 2px #FF4444, 0 8px 20px rgba(255,68,68,0.18)`
+          : isSpecial
+            ? '0 1px 0 rgba(10,15,11,0.06), 0 8px 24px rgba(10,15,11,0.25)'
+            : `0 1px 0 ${stage.accentRing}, 0 4px 12px rgba(10,15,11,0.08)`,
+        cursor: 'default',
+        transition: 'transform 0.22s cubic-bezier(0.16,1,0.3,1), box-shadow 0.22s',
+        border: isSpecial ? '1px solid rgba(232,184,47,0.45)' : 'none',
+        outline: 'none',
+      }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.transform = 'translateY(-2px)'
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.transform = 'translateY(0)'
+      }}
+      onFocus={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.boxShadow = `0 0 0 3px rgba(10,15,11,0.85), 0 0 0 5px rgba(232,184,47,0.6)`
+      }}
+      onBlur={e => {
+        const el = e.currentTarget as HTMLElement
+        el.style.boxShadow = isLive
+          ? `0 0 0 2px #FF4444, 0 8px 20px rgba(255,68,68,0.18)`
+          : isSpecial
+            ? '0 1px 0 rgba(10,15,11,0.06), 0 8px 24px rgba(10,15,11,0.25)'
+            : `0 1px 0 ${stage.accentRing}, 0 4px 12px rgba(10,15,11,0.08)`
+      }}
+    >
+      <div style={{ minWidth: 0, flex: layout.align === 'center' ? 0 : '0 0 auto' }}>
+        {/* Eyebrow: horário OU badge NO AR */}
+        {(layout.showTimeEyebrow || layout.showLiveBadge) && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            marginBottom: 4,
+          }}>
+            {layout.showLiveBadge && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 6px',
+                borderRadius: 999,
+                background: '#0A0F0B',
+              }}>
+                <LivePulseDot />
+                <span style={{
+                  fontSize: 8.5, fontWeight: 800,
+                  color: '#FF7777',
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                }}>
+                  no ar
+                </span>
+              </span>
+            )}
+            {layout.showTimeEyebrow && (
+              <span style={{
+                fontFamily: SANS,
+                fontSize: 10, fontWeight: 700,
+                color: isSpecial ? 'rgba(232,184,47,0.85)' : stage.blockTextMuted,
+                letterSpacing: '0.10em',
+                textTransform: 'uppercase',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {perf.start} → {perf.end}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Título */}
+        <div style={{
+          fontFamily: SANS,
+          fontSize: layout.titleSize,
+          fontWeight: 800,
+          letterSpacing: '-0.03em',
+          color: isSpecial ? '#FAF7F0' : stage.blockText,
+          lineHeight: 1.05,
+          wordBreak: 'break-word',
+        }}>
+          {perf.artist}
+        </div>
+
+        {/* Chip de nota */}
+        {layout.showNoteChip && perf.note && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center',
+            marginTop: 8,
+            padding: '3px 9px',
+            borderRadius: 999,
+            background: isSpecial ? 'rgba(232,184,47,0.18)' : stage.chipBg,
+            fontFamily: SANS,
+            fontSize: 9.5, fontWeight: 700,
+            letterSpacing: '0.10em',
+            color: noteTextDark,
+            textTransform: 'uppercase',
+          }}>
+            {perf.note}
+          </div>
+        )}
+      </div>
+
+      {/* Footer: duração */}
+      {layout.showDurFooter && (
+        <div style={{
+          fontFamily: SANS,
+          fontSize: 11, fontWeight: 600,
+          color: isSpecial ? 'rgba(250,247,240,0.55)' : stage.blockTextMuted,
+          letterSpacing: '-0.01em',
+          marginTop: 6,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {perf.duration} min
+        </div>
+      )}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Radio, Maximize2, Minimize2, Tv2, Calendar } from 'lucide-react'
 import { CiaLogo } from '@/components/cia-logo'
+import { NowPlayingTicker } from '@/components/now-playing-panel'
 import { createClient } from '@/lib/supabase/client'
 import { getConferencia, type ConferenciaMeta } from '@/lib/conferencias'
 
@@ -670,7 +671,9 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
           )}
 
           {/* Spacer + meta */}
-          <div style={{ flex: 1 }} />
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+            <NowPlayingTicker />
+          </div>
 
           <span style={{
             fontSize: 11, color: 'rgba(255,255,255,0.50)', fontWeight: 600,

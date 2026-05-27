@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Radio, Search, Trophy, Music, PartyPopper, Tv2, ArrowUpRight, LayoutList, Inbox } from 'lucide-react'
+import { NowPlayingPanel } from '@/components/now-playing-panel'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -340,6 +341,14 @@ export function AgendaClient({
             }}
           />
         </div>
+      </div>
+
+      {/* ── Now Playing Panel (só aparece se for dia do evento) ────── */}
+      <div style={{
+        padding: '14px 24px 0',
+        flexShrink: 0,
+      }}>
+        <NowPlayingPanel hideWhenIdle detailHref="/lineup" compact />
       </div>
 
       {/* ── Day tabs ──────────────────────────────────────────────── */}

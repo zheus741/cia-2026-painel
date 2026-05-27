@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
-import { ArrowLeft, Music2 } from 'lucide-react'
 
 // ── Time helpers ──────────────────────────────────────────────────────────────
 
@@ -228,87 +226,23 @@ export function LineupClient() {
   return (
     <div
       style={{
-        minHeight: '100dvh',
-        background: '#080808',
         color: '#fff',
         fontFamily: 'var(--font-lineup-mono, "Courier New", monospace)',
-        overflowX: 'hidden',
       }}
     >
-      {/* ── Topbar ─────────────────────────────────────────────── */}
+      {/* ── Seletor de dia ─────────────────────────────────────── */}
       <div
         style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          background: '#080808',
-          borderBottom: '1px solid #1C1C1C',
-          padding: '0 20px',
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
-          height: 60,
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: 16,
+          flexWrap: 'wrap',
         }}
       >
-        <Link
-          href="/"
-          style={{
-            color: '#444',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            textDecoration: 'none',
-            transition: 'color 0.15s',
-          }}
-          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = '#fff')}
-          onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = '#444')}
-        >
-          <ArrowLeft size={15} />
-        </Link>
-
-        {/* Logo text */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flex: 1, minWidth: 0 }}>
-          <span
-            style={{
-              fontFamily: 'var(--font-lineup-display, Impact, sans-serif)',
-              fontSize: 26,
-              letterSpacing: 4,
-              color: '#B5FF00',
-              lineHeight: 1,
-              flexShrink: 0,
-            }}
-          >
-            CIA 2026
-          </span>
-          <span
-            style={{
-              fontFamily: 'var(--font-lineup-display, Impact, sans-serif)',
-              fontSize: 20,
-              letterSpacing: 3,
-              color: '#333',
-              lineHeight: 1,
-              flexShrink: 0,
-            }}
-          >
-            LINE UP
-          </span>
-          <span
-            style={{
-              fontSize: 9,
-              color: '#2A2A2A',
-              letterSpacing: 2,
-              fontWeight: 700,
-              marginLeft: 4,
-              display: 'none',
-            }}
-            className="sm:block"
-          >
-            PROGRAMAÇÃO SUJEITA A ALTERAÇÕES
-          </span>
-        </div>
-
-        {/* Day tabs */}
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+        {/* Tabs de dia */}
+        <div style={{ display: 'flex', gap: 6 }}>
           {DAY_IDS.map(id => {
             const d = LINEUP[id]
             const active = activeDay === id
@@ -317,11 +251,11 @@ export function LineupClient() {
                 key={id}
                 onClick={() => setActiveDay(id)}
                 style={{
-                  padding: '5px 12px',
+                  padding: '6px 14px',
                   borderRadius: 8,
-                  border: active ? '1.5px solid #B5FF00' : '1.5px solid #1E1E1E',
-                  background: active ? '#B5FF0012' : 'transparent',
-                  color: active ? '#B5FF00' : '#3A3A3A',
+                  border: active ? '1.5px solid #B5FF00' : '1.5px solid var(--border)',
+                  background: active ? '#B5FF0015' : 'transparent',
+                  color: active ? '#B5FF00' : 'var(--muted-foreground)',
                   fontFamily: 'var(--font-lineup-mono, monospace)',
                   fontSize: 10,
                   fontWeight: 700,
@@ -338,46 +272,31 @@ export function LineupClient() {
             )
           })}
         </div>
-      </div>
 
-      {/* ── Day label ──────────────────────────────────────────── */}
-      <div
-        style={{
-          padding: '14px 20px 10px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          borderBottom: '1px solid #111',
-        }}
-      >
-        <Music2 size={14} color="#B5FF00" />
+        {/* Label do dia atual */}
         <span
           style={{
             fontFamily: 'var(--font-lineup-display, Impact, sans-serif)',
             fontSize: 13,
             letterSpacing: 4,
-            color: '#B5FF00',
-          }}
-        >
-          {day.wd}
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-lineup-display, Impact, sans-serif)',
-            fontSize: 13,
-            letterSpacing: 4,
-            color: '#333',
+            color: 'var(--muted-foreground)',
           }}
         >
           {day.date} — {day.label}
         </span>
-        <span style={{ fontSize: 9, color: '#222', letterSpacing: 2, marginLeft: 'auto' }}>
-          UBERABA · MG
-        </span>
       </div>
 
       {/* ── Grade ──────────────────────────────────────────────── */}
-      <div style={{ overflowX: 'auto', overflowY: 'visible', paddingBottom: 48 }}>
+      <div
+        style={{
+          overflowX: 'auto',
+          overflowY: 'visible',
+          paddingBottom: 32,
+          borderRadius: 12,
+          border: '1px solid var(--border)',
+          background: '#0A0A0A',
+        }}
+      >
         <div
           style={{
             display: 'flex',
@@ -603,19 +522,19 @@ export function LineupClient() {
       </div>
 
       {/* ── Rodapé ─────────────────────────────────────────────── */}
-      <div
+      <p
         style={{
           textAlign: 'center',
-          padding: '16px 20px',
+          marginTop: 12,
           fontSize: 9,
-          color: '#1E1E1E',
+          color: 'var(--muted-foreground)',
+          opacity: 0.4,
           letterSpacing: 2,
-          borderTop: '1px solid #111',
           fontWeight: 700,
         }}
       >
         CIA 2026 · COPA INTER ATLÉTICAS · UBERABA MG · 04–07 JUN · PROGRAMAÇÃO SUJEITA A ALTERAÇÕES
-      </div>
+      </p>
     </div>
   )
 }

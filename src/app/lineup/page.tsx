@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { Bebas_Neue, Space_Mono } from 'next/font/google'
-import { requireProfile } from '@/lib/auth/current-user'
+import { AppShell } from '@/components/app-shell'
 import { LineupClient } from './LineupClient'
 
 const bebas = Bebas_Neue({
@@ -17,10 +17,11 @@ const mono = Space_Mono({
 })
 
 export default async function LineupPage() {
-  await requireProfile()
   return (
-    <div className={`${bebas.variable} ${mono.variable}`}>
-      <LineupClient />
-    </div>
+    <AppShell section="Line Up" fullWidth>
+      <div className={`${bebas.variable} ${mono.variable}`}>
+        <LineupClient />
+      </div>
+    </AppShell>
   )
 }

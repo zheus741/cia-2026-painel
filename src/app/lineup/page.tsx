@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell'
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth/current-user'
@@ -8,11 +9,17 @@ import { LineupClient } from './LineupClient'
 
 const EDICAO_ID = '00000000-0000-0000-0000-000000000001'
 
-// Edição: somente admin. Coord/lider/operador (incluindo FV) só visualizam.
+// Edição: somente admin. Líderes/coords/operador comum só visualizam.
 const ALLOWED_EDIT_ROLES = new Set(['admin'])
+
+// Operadores de Foto/Vídeo e Esportivo não consomem essa página.
+// Líderes (lider_fv, lider_area) e coordenadores podem visualizar.
+const BLOCKED_ROLES = new Set(['operador_fv', 'operador_esportivo'])
 
 export default async function LineupPage() {
   const profile = await requireProfile()
+  if (BLOCKED_ROLES.has(profile.role ?? '')) redirect('/')
+
   const canEdit = ALLOWED_EDIT_ROLES.has(profile.role ?? '')
 
   const supabase = await createClient()

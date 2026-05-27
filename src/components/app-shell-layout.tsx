@@ -153,7 +153,7 @@ const COORD_ESPORTIVO_GROUPS: NavGroup[] = [
   },
 ]
 
-// Nav para operador_esportivo
+// Nav para operador_esportivo (sem Line Up — não tem acesso)
 const OP_ESPORTIVO_GROUPS: NavGroup[] = [
   {
     label: 'Esportivo',
@@ -170,7 +170,6 @@ const OP_ESPORTIVO_GROUPS: NavGroup[] = [
     label: 'Consulta',
     items: [
       { label: 'Patrocinadores', href: '/patrocinadores', icon: Heart },
-      { label: 'Line Up',        href: '/lineup',         icon: Music },
     ],
   },
 ]
@@ -187,7 +186,7 @@ const COORDENACAO_GROUPS: NavGroup[] = [
   },
 ]
 
-// Nav para operador_fv
+// Nav para operador_fv (sem Line Up — não tem acesso)
 const OP_FV_GROUPS: NavGroup[] = [
   {
     label: 'Principal',
@@ -196,7 +195,6 @@ const OP_FV_GROUPS: NavGroup[] = [
       { label: 'Mapa Ao Vivo',   href: '/mapa',                    icon: MapPin },
       { label: 'Placar Ao Vivo', href: '/placar',                  icon: Radio },
       { label: 'Patrocinadores', href: '/patrocinadores',          icon: Heart },
-      { label: 'Line Up',        href: '/lineup',                  icon: Music },
     ],
   },
   {

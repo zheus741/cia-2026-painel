@@ -18,6 +18,7 @@ export interface TurnoAVPayload {
   parceiro_id?: string | null
   user_id?:     string | null
   prioridade?:  'alta' | 'media' | 'baixa'
+  jogo_id?:     string | null
 }
 
 export async function createTurnoAV(payload: TurnoAVPayload): Promise<ActionResult> {
@@ -34,6 +35,7 @@ export async function createTurnoAV(payload: TurnoAVPayload): Promise<ActionResu
       parceiro_id:   payload.parceiro_id ?? null,
       user_id:       payload.user_id ?? null,
       prioridade:    payload.prioridade ?? 'media',
+      jogo_id:       payload.jogo_id ?? null,
       status_escala: 'rascunho',
       is_roaming:    false,
     })

@@ -40,9 +40,24 @@ export interface TurnoAV {
   id: string; dia_id: string; setor_id: string | null
   funcao: string; user_id: string | null
   prioridade: string | null; status_escala: string | null; parceiro_id: string | null
+  jogo_id: string | null
   setor: { nome: string } | null
   user: { id: string; nome: string; funcao_principal: string | null; foto_url: string | null } | null
   parceiro: { nome: string; cor_hex: string } | null
+  jogo: JogoPreview | null
+}
+
+export interface JogoPreview {
+  id: string
+  inicio: string | null
+  equipe_a_nome: string | null
+  equipe_b_nome: string | null
+  divisao: string | null
+  categoria: string | null
+  status: string | null
+  modalidade_nome: string | null
+  setor_id: string | null
+  dia_id: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,6 +83,13 @@ const FESTIVO_ORDER: Record<string, number> = {
 
 function norm(s: string) {
   return s.toUpperCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').trim()
+}
+
+function fmtHora(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+  })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,13 +132,14 @@ interface TurnoDialogProps {
   setores: Setor[]
   parceiros: Parceiro[]
   profiles: ProfileAV[]
+  jogos: JogoPreview[]
   defaultFuncao: 'foto' | 'video'
   defaultSetorId?: string
   editing?: TurnoAV
 }
 
 function TurnoDialog({
-  open, onClose, dia, setores, parceiros, profiles,
+  open, onClose, dia, setores, parceiros, profiles, jogos,
   defaultFuncao, defaultSetorId, editing,
 }: TurnoDialogProps) {
   const [loading, setLoading] = React.useState(false)
@@ -127,6 +150,7 @@ function TurnoDialog({
   const [parceiro, setParceiro]     = React.useState('')
   const [userId, setUserId]         = React.useState('')
   const [prioridade, setPrioridade] = React.useState<'alta' | 'media' | 'baixa'>('media')
+  const [jogoId, setJogoId]         = React.useState('')
 
   React.useEffect(() => {
     if (!open) return
@@ -136,7 +160,22 @@ function TurnoDialog({
     setParceiro(editing?.parceiro_id ?? '')
     setUserId(editing?.user_id ?? '')
     setPrioridade((editing?.prioridade as 'alta' | 'media' | 'baixa') ?? 'media')
+    setJogoId(editing?.jogo_id ?? '')
   }, [open, editing, defaultFuncao, defaultSetorId])
+
+  // Filtra jogos pelo dia + setor selecionados
+  const jogosDoContexto = React.useMemo(() => {
+    if (!setorId) return [] as JogoPreview[]
+    return jogos
+      .filter(j => j.dia_id === dia.id && j.setor_id === setorId)
+      .sort((a, b) => (a.inicio ?? '').localeCompare(b.inicio ?? ''))
+  }, [jogos, dia.id, setorId])
+
+  // Se trocar setor e o jogo selecionado não pertence mais, limpa
+  React.useEffect(() => {
+    if (!jogoId) return
+    if (!jogosDoContexto.some(j => j.id === jogoId)) setJogoId('')
+  }, [jogosDoContexto, jogoId])
 
   const setorSel  = setores.find(s => s.id === setorId) ?? null
   const colabSel  = profiles.find(p => p.id === userId) ?? null
@@ -156,6 +195,7 @@ function TurnoDialog({
         parceiro_id: parceiro && parceiro !== '__none__' ? parceiro : null,
         user_id:     userId || null,
         prioridade,
+        jogo_id:     jogoId || null,
       }
       const res = editing
         ? await updateTurnoAV(editing.id, payload)
@@ -307,6 +347,94 @@ function TurnoDialog({
               </p>
             </div>
           </div>
+
+          {/* ── Jogo vinculado (opcional) ───────────────────────────────── */}
+          {setorId && (
+            <div>
+              <Label className="mb-1.5 flex items-center gap-1 text-xs">
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ background: '#dc2626' }}
+                />
+                Jogo em foco
+                <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
+                  (opcional)
+                </span>
+              </Label>
+
+              {jogosDoContexto.length === 0 ? (
+                <div
+                  className="rounded-lg border border-dashed px-3 py-2.5 text-[11px]"
+                  style={{
+                    borderColor: 'var(--border)',
+                    color: 'var(--muted-foreground)',
+                    background: 'var(--muted)',
+                  }}
+                >
+                  Nenhum jogo deste setor neste dia. A cobertura será geral.
+                </div>
+              ) : (
+                <>
+                  <Select value={jogoId || '__none__'} onValueChange={v => setJogoId(v === '__none__' ? '' : v)}>
+                    <SelectTrigger className="h-auto min-h-[44px] py-2 text-left text-sm">
+                      <SelectValue placeholder="— selecione o jogo —">
+                        {jogoId && (() => {
+                          const j = jogosDoContexto.find(x => x.id === jogoId)
+                          if (!j) return null
+                          return (
+                            <div className="flex w-full flex-col gap-0.5">
+                              <span className="text-[11px] font-semibold text-[var(--muted-foreground)]">
+                                {fmtHora(j.inicio)}
+                                {j.modalidade_nome ? ` · ${j.modalidade_nome}` : ''}
+                                {j.divisao ? ` · ${j.divisao}` : ''}
+                              </span>
+                              <span className="text-sm font-semibold">
+                                {(j.equipe_a_nome ?? 'A definir')}
+                                <span className="mx-1.5 text-[var(--muted-foreground)]">×</span>
+                                {(j.equipe_b_nome ?? 'A definir')}
+                              </span>
+                            </div>
+                          )
+                        })()}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">
+                        <span className="text-[var(--muted-foreground)]">Sem jogo · cobertura geral</span>
+                      </SelectItem>
+                      {jogosDoContexto.map(j => (
+                        <SelectItem key={j.id} value={j.id}>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] font-semibold tracking-wide text-[var(--muted-foreground)]">
+                              {fmtHora(j.inicio)}
+                              {j.modalidade_nome ? ` · ${j.modalidade_nome}` : ''}
+                              {j.divisao ? ` · ${j.divisao}` : ''}
+                              {j.status === 'ao_vivo' && (
+                                <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-600">
+                                  ● ao vivo
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-[12px] font-semibold">
+                              {(j.equipe_a_nome ?? 'A definir')}
+                              <span className="mx-1.5 text-[var(--muted-foreground)]">×</span>
+                              {(j.equipe_b_nome ?? 'A definir')}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1.5 text-[10px] text-[var(--muted-foreground)]">
+                    {jogoId
+                      ? 'O colaborador vê o jogo destacado na escala dele.'
+                      : `${jogosDoContexto.length} ${jogosDoContexto.length === 1 ? 'jogo' : 'jogos'} disponível${jogosDoContexto.length === 1 ? '' : 'is'} neste setor/dia.`}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
 
           {/* ── Prioridade ── */}
           <div>
@@ -541,7 +669,30 @@ function CoberturaCell({
         >
           {turno.user?.nome ?? 'Sem colaborador'}
         </p>
-        {turno.parceiro && (
+
+        {/* Jogo vinculado — tem prioridade visual sobre parceiro */}
+        {turno.jogo && (
+          <p
+            className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-semibold"
+            style={{ color: '#b45309' }}
+            title={`${turno.jogo.equipe_a_nome ?? '?'} × ${turno.jogo.equipe_b_nome ?? '?'} · ${fmtHora(turno.jogo.inicio)}`}
+          >
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{
+                background: turno.jogo.status === 'ao_vivo' ? '#dc2626' : '#f59e0b',
+                boxShadow: turno.jogo.status === 'ao_vivo' ? '0 0 6px rgba(220,38,38,0.7)' : 'none',
+              }}
+            />
+            <span className="truncate">
+              {fmtHora(turno.jogo.inicio)} · {turno.jogo.equipe_a_nome ?? '?'} × {turno.jogo.equipe_b_nome ?? '?'}
+            </span>
+          </p>
+        )}
+
+        {/* Parceiro só aparece se não há jogo (economia de espaço) */}
+        {!turno.jogo && turno.parceiro && (
           <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-[var(--muted-foreground)]">
             <span
               className="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -687,9 +838,10 @@ export function EscalaAVGrid(props: {
   parceiros: Parceiro[]
   profiles: ProfileAV[]
   turnos: TurnoAV[]
+  jogos: JogoPreview[]
   eventosSetores: { dia_id: string; setor_id: string }[]
 }): React.JSX.Element {
-  const { dias, setores, parceiros, profiles, turnos, eventosSetores } = props
+  const { dias, setores, parceiros, profiles, turnos, jogos, eventosSetores } = props
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1098,6 +1250,7 @@ export function EscalaAVGrid(props: {
           setores={setores}
           parceiros={parceiros}
           profiles={profiles}
+          jogos={jogos}
           defaultFuncao={dialogState.funcao}
           defaultSetorId={dialogState.setorId}
           editing={dialogState.editing}

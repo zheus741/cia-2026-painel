@@ -1,8 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { EscalaAVGrid } from './EscalaAVGrid'
-import type { Dia, Setor, Parceiro, ProfileAV, TurnoAV } from './EscalaAVGrid'
+import type { Dia, Setor, Parceiro, ProfileAV, TurnoAV, JogoPreview } from './EscalaAVGrid'
 import { PageContainer } from '@/components/page-container'
 import { PageHeader } from '@/components/page-header'
+
+type RawModalidade = { nome: string } | { nome: string }[] | null
+
+function flatMod(m: RawModalidade): string | null {
+  if (!m) return null
+  if (Array.isArray(m)) return m[0]?.nome ?? null
+  return m.nome ?? null
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -53,10 +61,19 @@ export default async function EscalaAVPage() {
     // o que torna o embed ambíguo e quebra a query. Resolvemos os joins em JS.
     supabase
       .from('turnos')
-      .select('id, dia_id, setor_id, funcao, user_id, prioridade, status_escala, parceiro_id')
+      .select('id, dia_id, setor_id, funcao, user_id, prioridade, status_escala, parceiro_id, jogo_id')
       .in('funcao', ['foto', 'video']),
 
-    supabase.from('jogos').select('dia_id, setor_id').not('setor_id', 'is', null),
+    // Jogos completos para vincular ao turno
+    supabase
+      .from('jogos')
+      .select(`
+        id, dia_id, setor_id, inicio, status,
+        equipe_a_nome, equipe_b_nome, divisao, categoria,
+        modalidade:modalidade_id (nome)
+      `)
+      .not('setor_id', 'is', null)
+      .order('inicio', { ascending: true }),
     supabase.from('shows').select('dia_id, setor_id').not('setor_id', 'is', null),
     supabase.from('festas').select('dia_id, setor_id').not('setor_id', 'is', null),
   ])
@@ -72,9 +89,25 @@ export default async function EscalaAVPage() {
     (parceiros ?? []).map(p => [p.id, p as { nome: string; cor_hex: string }]),
   )
 
+  // Constrói JogoPreview a partir da query
+  const jogos: JogoPreview[] = (jogosSetores ?? []).map(j => ({
+    id:            j.id as string,
+    dia_id:        j.dia_id as string,
+    setor_id:      j.setor_id as string | null,
+    inicio:        j.inicio as string | null,
+    status:        j.status as string | null,
+    equipe_a_nome: j.equipe_a_nome as string | null,
+    equipe_b_nome: j.equipe_b_nome as string | null,
+    divisao:       j.divisao as string | null,
+    categoria:     j.categoria as string | null,
+    modalidade_nome: flatMod(j.modalidade as RawModalidade),
+  }))
+  const jogoMap = new Map(jogos.map(j => [j.id, j]))
+
   const turnos: TurnoAV[] = (turnosRaw ?? []).map(t => {
     const prof = t.user_id ? profMap.get(t.user_id) : undefined
     const parc = t.parceiro_id ? parcMap.get(t.parceiro_id) : undefined
+    const jogo = t.jogo_id ? jogoMap.get(t.jogo_id) : undefined
     return {
       id:            t.id,
       dia_id:        t.dia_id,
@@ -84,16 +117,18 @@ export default async function EscalaAVPage() {
       prioridade:    t.prioridade,
       status_escala: t.status_escala,
       parceiro_id:   t.parceiro_id,
+      jogo_id:       t.jogo_id ?? null,
       setor:    t.setor_id && setorNome.has(t.setor_id) ? { nome: setorNome.get(t.setor_id)! } : null,
       user:     prof
         ? { id: prof.id, nome: prof.nome, funcao_principal: prof.funcao_principal, foto_url: prof.foto_url }
         : null,
       parceiro: parc ? { nome: parc.nome, cor_hex: parc.cor_hex } : null,
+      jogo:     jogo ?? null,
     }
   })
 
   const eventosSetores = [
-    ...(jogosSetores  ?? []),
+    ...jogos.map(j => ({ dia_id: j.dia_id, setor_id: j.setor_id })),
     ...(showsSetores  ?? []),
     ...(festasSetores ?? []),
   ] as { dia_id: string; setor_id: string }[]
@@ -112,6 +147,7 @@ export default async function EscalaAVPage() {
         parceiros={(parceiros ?? []) as Parceiro[]}
         profiles={(profilesFV ?? []) as ProfileAV[]}
         turnos={turnos}
+        jogos={jogos}
         eventosSetores={eventosSetores}
       />
     </PageContainer>

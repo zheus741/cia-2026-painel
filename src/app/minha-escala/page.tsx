@@ -54,7 +54,8 @@ export default async function MinhaEscalaPage() {
         comentarios_count:comentarios_turno(count),
         dia:dias_evento(nome_dia, data),
         setor:setores(nome, tem_wifi, maps_url, notas_acesso),
-        parceiro:parceiros(nome, cor_hex)
+        parceiro:parceiros(nome, cor_hex),
+        jogo:jogos(inicio, equipe_a_nome, equipe_b_nome, divisao, status)
       `)
       .eq('user_id', user.id)
       .order('inicio'),
@@ -83,11 +84,13 @@ export default async function MinhaEscalaPage() {
     const dia     = Array.isArray(r.dia)     ? (r.dia[0] ?? null)     : (r.dia ?? null)
     const setor   = Array.isArray(r.setor)   ? (r.setor[0] ?? null)   : (r.setor ?? null)
     const parceiro = Array.isArray(r.parceiro) ? (r.parceiro[0] ?? null) : (r.parceiro ?? null)
+    const jogo    = Array.isArray(r.jogo)    ? (r.jogo[0] ?? null)    : (r.jogo ?? null)
     return {
       ...r,
       dia:      dia     as unknown as { nome_dia: string; data: string } | null,
       setor:    setor   as unknown as TurnoCardData['setor'],
       parceiro: parceiro as unknown as TurnoCardData['parceiro'],
+      jogo:     jogo    as unknown as TurnoCardData['jogo'],
       comentarios_count: Array.isArray(r.comentarios_count)
         ? (r.comentarios_count[0] as { count: number } | undefined)?.count ?? 0
         : 0,

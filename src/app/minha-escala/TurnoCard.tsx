@@ -35,6 +35,13 @@ export interface TurnoCardData {
   dia:     { nome_dia: string; data: string } | null
   setor:   { nome: string; tem_wifi: boolean | null; maps_url: string | null; notas_acesso: string | null } | null
   parceiro: { nome: string; cor_hex: string } | null
+  jogo: {
+    inicio: string | null
+    equipe_a_nome: string | null
+    equipe_b_nome: string | null
+    divisao: string | null
+    status: string | null
+  } | null
 }
 
 function fmtTime(ts: string) {
@@ -161,6 +168,51 @@ export function TurnoCard({ turno }: { turno: TurnoCardData }) {
           </span>
         )}
       </div>
+
+      {/* ── Jogo em foco (se vinculado) ── */}
+      {turno.jogo && (
+        <div
+          className="flex items-center gap-2 rounded-lg border px-3 py-2"
+          style={{
+            background: turno.jogo.status === 'ao_vivo'
+              ? 'rgba(220,38,38,0.06)'
+              : 'rgba(232,184,47,0.08)',
+            borderColor: turno.jogo.status === 'ao_vivo'
+              ? 'rgba(220,38,38,0.30)'
+              : 'rgba(232,184,47,0.32)',
+          }}
+        >
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{
+              background: turno.jogo.status === 'ao_vivo' ? '#dc2626' : '#f59e0b',
+              boxShadow:  turno.jogo.status === 'ao_vivo' ? '0 0 8px rgba(220,38,38,0.7)' : 'none',
+            }}
+          />
+          <div className="min-w-0 flex-1">
+            <p
+              className="text-[10px] font-bold uppercase tracking-wider"
+              style={{ color: turno.jogo.status === 'ao_vivo' ? '#dc2626' : '#b45309' }}
+            >
+              {turno.jogo.status === 'ao_vivo' ? 'Jogo ao vivo' : 'Jogo em foco'}
+              {turno.jogo.inicio && (
+                <span className="ml-1.5 font-semibold opacity-75">
+                  · {fmtTime(turno.jogo.inicio)}
+                </span>
+              )}
+              {turno.jogo.divisao && (
+                <span className="ml-1.5 font-semibold opacity-75">· {turno.jogo.divisao}</span>
+              )}
+            </p>
+            <p className="mt-0.5 truncate text-[13px] font-bold text-[var(--foreground)]">
+              {(turno.jogo.equipe_a_nome ?? 'A definir')}
+              <span className="mx-1.5 text-[var(--muted-foreground)]">×</span>
+              {(turno.jogo.equipe_b_nome ?? 'A definir')}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Setor + venue info ── */}
       {turno.setor && (

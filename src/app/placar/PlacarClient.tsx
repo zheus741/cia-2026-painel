@@ -1235,6 +1235,9 @@ function JogoListItem({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   const [expanded, setExpanded] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [woMode, setWoMode] = useState(false)
+  const [resultadoMode, setResultadoMode] = useState(false)
+  const [resA, setResA] = useState('')
+  const [resB, setResB] = useState('')
 
   const isAoVivo    = jogo.status === 'ao_vivo'
   const isEncerrado = jogo.status === 'encerrado'
@@ -1285,6 +1288,14 @@ function JogoListItem({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   function handleRemoverWO() {
     onLocalUpdate(jogo.id, { wo: null })
     startTransition(async () => { await removerWO(jogo.id) })
+  }
+  function handleLancarResultado() {
+    const a = Math.max(0, parseInt(resA, 10) || 0)
+    const b = Math.max(0, parseInt(resB, 10) || 0)
+    onLocalUpdate(jogo.id, { placar_a: a, placar_b: b, status: 'encerrado' })
+    setResultadoMode(false)
+    setResA(''); setResB('')
+    startTransition(async () => { await lancarResultado(jogo.id, a, b) })
   }
 
   const placarA = jogo.placar_a ?? 0
@@ -1490,6 +1501,50 @@ function JogoListItem({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
                 Cancelar
               </button>
             </div>
+          ) : resultadoMode ? (
+            /* Resultado inline — input placar A x B + confirmar */
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--gold)]">
+                Placar final
+              </span>
+              <div className="flex items-center gap-1.5 rounded-md border border-[var(--gold)]/30 bg-[var(--gold)]/5 px-2 py-1">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={resA}
+                  onChange={e => setResA(e.target.value)}
+                  placeholder="0"
+                  className="w-10 bg-transparent text-center text-sm font-bold tabular-nums text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)]/40"
+                  autoFocus
+                />
+                <span className="text-[var(--muted-foreground)]/40">×</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={resB}
+                  onChange={e => setResB(e.target.value)}
+                  placeholder="0"
+                  className="w-10 bg-transparent text-center text-sm font-bold tabular-nums text-[var(--foreground)] outline-none placeholder:text-[var(--muted-foreground)]/40"
+                />
+              </div>
+              <button
+                onClick={handleLancarResultado}
+                disabled={isPending || (!resA && !resB)}
+                className="inline-flex items-center gap-1 rounded-md bg-[var(--gold)] px-3 py-1.5 text-[11px] font-bold text-[var(--background)] transition-colors hover:opacity-90 disabled:opacity-40"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                Confirmar
+              </button>
+              <button
+                onClick={() => { setResultadoMode(false); setResA(''); setResB('') }}
+                disabled={isPending}
+                className="text-[10px] text-[var(--muted-foreground)]/70 hover:text-[var(--foreground)]"
+              >
+                Cancelar
+              </button>
+            </div>
           ) : (
             /* Action buttons */
             <div className="flex flex-wrap items-center gap-1.5">
@@ -1501,6 +1556,17 @@ function JogoListItem({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
                 >
                   <Radio className="h-3 w-3" />
                   Iniciar
+                </button>
+              )}
+
+              {canEdit && isAgendado && (
+                <button
+                  onClick={() => { setResultadoMode(true); setResA(''); setResB('') }}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 rounded-md border border-[var(--gold)]/40 bg-[var(--gold)]/10 px-2.5 py-1.5 text-[10px] font-bold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20 disabled:opacity-40"
+                  title="Registrar só o placar final (sem cobertura ao vivo) — propaga vencedor na chave"
+                >
+                  <CheckCircle2 className="h-3 w-3" /> Lançar resultado
                 </button>
               )}
 

@@ -661,20 +661,36 @@ function CoberturaCell({
       />
 
       <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            'truncate text-[12px] font-semibold leading-tight',
-            semColab ? 'italic text-[var(--muted-foreground)]/70' : 'text-[var(--foreground)]',
+        {/* Linha 1: empresa (chip colorido) + nome colaborador */}
+        <div className="flex items-center gap-1.5">
+          {turno.parceiro && (
+            <span
+              className="shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase leading-none tracking-wider"
+              style={{
+                background: `${turno.parceiro.cor_hex}1F`,
+                color:       turno.parceiro.cor_hex,
+                border:      `1px solid ${turno.parceiro.cor_hex}40`,
+              }}
+              title={turno.parceiro.nome}
+            >
+              {turno.parceiro.nome}
+            </span>
           )}
-        >
-          {turno.user?.nome ?? 'Sem colaborador'}
-        </p>
+          <p
+            className={cn(
+              'truncate text-[12px] font-semibold leading-tight',
+              semColab ? 'italic text-[var(--muted-foreground)]/70' : 'text-[var(--foreground)]',
+            )}
+          >
+            {turno.user?.nome ?? 'Sem colaborador'}
+          </p>
+        </div>
 
-        {/* Jogo vinculado — tem prioridade visual sobre parceiro */}
+        {/* Linha 2: jogo (se vinculado) */}
         {turno.jogo && (
           <p
             className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-semibold"
-            style={{ color: '#b45309' }}
+            style={{ color: turno.jogo.status === 'ao_vivo' ? '#dc2626' : '#b45309' }}
             title={`${turno.jogo.equipe_a_nome ?? '?'} × ${turno.jogo.equipe_b_nome ?? '?'} · ${fmtHora(turno.jogo.inicio)}`}
           >
             <span
@@ -688,17 +704,6 @@ function CoberturaCell({
             <span className="truncate">
               {fmtHora(turno.jogo.inicio)} · {turno.jogo.equipe_a_nome ?? '?'} × {turno.jogo.equipe_b_nome ?? '?'}
             </span>
-          </p>
-        )}
-
-        {/* Parceiro só aparece se não há jogo (economia de espaço) */}
-        {!turno.jogo && turno.parceiro && (
-          <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-[var(--muted-foreground)]">
-            <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full"
-              style={{ background: turno.parceiro.cor_hex }}
-            />
-            {turno.parceiro.nome}
           </p>
         )}
       </div>
@@ -733,8 +738,10 @@ function SetorRow({
   onEdit: (t: TurnoAV) => void
   onDelete: (t: TurnoAV) => void
 }) {
-  const fotoTurno  = turnos.find(t => t.funcao === 'foto')
-  const videoTurno = turnos.find(t => t.funcao === 'video')
+  // Múltiplas designações por (setor, função) — empresas diferentes podem cobrir
+  // o mesmo setor simultaneamente (ex: CURUCLICKS + OLHAR ambas em CEMEA 01).
+  const fotoTurnos  = turnos.filter(t => t.funcao === 'foto')
+  const videoTurnos = turnos.filter(t => t.funcao === 'video')
 
   return (
     <div className="flex items-stretch gap-2 border-b border-[var(--border)] py-2 last:border-b-0">
@@ -745,8 +752,8 @@ function SetorRow({
       </div>
       {showFoto && (
         <div className="flex-1">
-          <CoberturaCell
-            turno={fotoTurno}
+          <CoberturaStack
+            turnos={fotoTurnos}
             funcao="foto"
             temEvento={temEvento}
             onAdd={() => onAdd('foto', setorId)}
@@ -757,8 +764,8 @@ function SetorRow({
       )}
       {showVideo && (
         <div className="flex-1">
-          <CoberturaCell
-            turno={videoTurno}
+          <CoberturaStack
+            turnos={videoTurnos}
             funcao="video"
             temEvento={temEvento}
             onAdd={() => onAdd('video', setorId)}
@@ -767,6 +774,90 @@ function SetorRow({
           />
         </div>
       )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CoberturaStack — múltiplas designações empilhadas verticalmente
+// (mesmo setor + função pode ter várias empresas: CURUCLICKS + OLHAR)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CoberturaStack({
+  turnos, funcao, temEvento, onAdd, onEdit, onDelete,
+}: {
+  turnos: TurnoAV[]
+  funcao: 'foto' | 'video'
+  temEvento: boolean
+  onAdd: () => void
+  onEdit: (t: TurnoAV) => void
+  onDelete: (t: TurnoAV) => void
+}) {
+  const cor = funcao === 'foto' ? FOTO_COLOR : VIDEO_COLOR
+
+  // Vazio: usa o slot de "designar" original
+  if (turnos.length === 0) {
+    return (
+      <CoberturaCell
+        turno={undefined}
+        funcao={funcao}
+        temEvento={temEvento}
+        onAdd={onAdd}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    )
+  }
+
+  // Ordena: jogo ao vivo primeiro, depois por prioridade alta→baixa,
+  // depois por nome da empresa pra estabilidade visual
+  const PRIO_RANK: Record<string, number> = { alta: 0, media: 1, baixa: 2 }
+  const ordenados = [...turnos].sort((a, b) => {
+    const liveA = a.jogo?.status === 'ao_vivo' ? 0 : 1
+    const liveB = b.jogo?.status === 'ao_vivo' ? 0 : 1
+    if (liveA !== liveB) return liveA - liveB
+    const prA = PRIO_RANK[a.prioridade ?? 'media'] ?? 1
+    const prB = PRIO_RANK[b.prioridade ?? 'media'] ?? 1
+    if (prA !== prB) return prA - prB
+    return (a.parceiro?.nome ?? '').localeCompare(b.parceiro?.nome ?? '', 'pt-BR')
+  })
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {ordenados.map(t => (
+        <CoberturaCell
+          key={t.id}
+          turno={t}
+          funcao={funcao}
+          temEvento={temEvento}
+          onAdd={onAdd}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      ))}
+
+      {/* Botão "+ adicionar mais" — discreto, embaixo da pilha */}
+      <button
+        onClick={onAdd}
+        aria-label={`Adicionar outra designação de ${funcao}`}
+        className="flex min-h-[28px] w-full items-center justify-center gap-1 rounded-md border border-dashed text-[10px] font-semibold uppercase tracking-wider transition-all hover:border-solid"
+        style={{
+          borderColor: `${cor}33`,
+          color:       `${cor}AA`,
+          background:  'transparent',
+        }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLElement).style.background = `${cor}08`
+          ;(e.currentTarget as HTMLElement).style.color = cor
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.background = 'transparent'
+          ;(e.currentTarget as HTMLElement).style.color = `${cor}AA`
+        }}
+      >
+        <Plus className="h-3 w-3" />
+        + outra empresa
+      </button>
     </div>
   )
 }

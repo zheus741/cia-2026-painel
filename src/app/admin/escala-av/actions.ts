@@ -166,19 +166,23 @@ export async function replicarDiaAV(
 
     const { data: turnosDestino } = await supabase
       .from('turnos')
-      .select('setor_id, funcao')
+      .select('setor_id, funcao, parceiro_id')
       .eq('dia_id', diaDestinoId)
       .in('funcao', ['foto', 'video'])
 
+    // Chave de dedupe inclui parceiro_id — múltiplas empresas no mesmo
+    // (setor, função) são válidas (CURUCLICKS + OLHAR), mas a MESMA empresa
+    // duplicada não faz sentido. jogo_id é deliberadamente ignorado na
+    // replicação (jogos são específicos do dia).
     const existentes = new Set(
-      (turnosDestino ?? []).map(t => `${t.setor_id}::${t.funcao}`),
+      (turnosDestino ?? []).map(t => `${t.setor_id}::${t.funcao}::${t.parceiro_id ?? ''}`),
     )
 
     const inserts: Array<Record<string, unknown>> = []
     let pulados = 0
 
     for (const t of turnosOrigem) {
-      const key = `${t.setor_id}::${t.funcao}`
+      const key = `${t.setor_id}::${t.funcao}::${t.parceiro_id ?? ''}`
       if (existentes.has(key)) { pulados++; continue }
       inserts.push({
         edicao_id,

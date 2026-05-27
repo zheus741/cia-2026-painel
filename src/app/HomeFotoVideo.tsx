@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import {
   ArrowUpRight, Camera, Video, Aperture, MapPin, Radio,
-  Trophy, BookOpen, UserCircle, Calendar, Zap, Bell,
+  Trophy, BookOpen, UserCircle, Calendar, Zap, Bell, Music,
 } from 'lucide-react'
 
 interface Props {
@@ -212,6 +212,7 @@ export async function HomeFotoVideo({
     { href: '/mapa',        label: 'Mapa Ao Vivo', meta: 'Setores em tempo real',   icon: MapPin,     tone: 'green'      },
     { href: '/placar',      label: 'Placar',       meta: 'Jogos em andamento',      icon: Radio,      tone: 'terracotta' },
     { href: '/esportivo',   label: 'Esportivo',    meta: 'Tabelas e brackets',      icon: Trophy,     tone: 'gold'       },
+    { href: '/lineup',      label: 'Line Up',      meta: 'Programação musical',     icon: Music,      tone: 'lavender'   },
     { href: '/wiki',        label: 'Wiki',         meta: 'Guias e padrões',         icon: BookOpen,   tone: 'cream'      },
     { href: '/perfil',      label: 'Meu Perfil',   meta: 'Dados e config',          icon: UserCircle, tone: 'cream'      },
   ]

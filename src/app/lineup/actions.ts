@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { requireCoordOrAdmin, safe, type ActionResult } from '@/lib/admin/actions-helper'
+import { requireAdmin, safe, type ActionResult } from '@/lib/admin/actions-helper'
 
 const EDICAO_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -67,7 +67,7 @@ function validateInput(input: LineupPerfInput): string | null {
 
 export async function createLineupPerf(input: LineupPerfInput): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireAdmin()
     const err = validateInput(input)
     if (err) throw new Error(err)
 
@@ -117,7 +117,7 @@ export async function createLineupPerf(input: LineupPerfInput): Promise<ActionRe
 
 export async function updateLineupPerf(id: string, input: LineupPerfInput): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireAdmin()
     const err = validateInput(input)
     if (err) throw new Error(err)
 
@@ -155,7 +155,7 @@ export async function updateLineupPerf(id: string, input: LineupPerfInput): Prom
 
 export async function deleteLineupPerf(id: string): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireAdmin()
     const supabase = await createClient()
     const { error } = await supabase.from('shows').delete().eq('id', id)
     if (error) throw error

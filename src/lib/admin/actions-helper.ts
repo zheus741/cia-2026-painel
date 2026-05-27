@@ -92,6 +92,20 @@ export async function requireCoordOrAdmin() {
   }
 }
 
+export async function requireAdmin() {
+  const supabase = await createClient()
+  const { data: u } = await supabase.auth.getUser()
+  if (!u.user) throw new Error('Não autenticado.')
+  const { data: p } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', u.user.id)
+    .maybeSingle()
+  if (!p || p.role !== 'admin') {
+    throw new Error('Sem permissão. Apenas admin pode alterar.')
+  }
+}
+
 export async function requireLiderOrAbove() {
   const supabase = await createClient()
   const { data: u } = await supabase.auth.getUser()

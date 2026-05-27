@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic'
 
-import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/app-shell'
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth/current-user'
@@ -9,15 +8,11 @@ import { LineupClient } from './LineupClient'
 
 const EDICAO_ID = '00000000-0000-0000-0000-000000000001'
 
-const ALLOWED_EDIT_ROLES = new Set(['admin', 'coordenacao'])
-
-// FV (foto/vídeo) não consome essa página — bloqueio explícito.
-const BLOCKED_ROLES = new Set(['operador_fv', 'lider_fv'])
+// Edição: somente admin. Coord/lider/operador (incluindo FV) só visualizam.
+const ALLOWED_EDIT_ROLES = new Set(['admin'])
 
 export default async function LineupPage() {
   const profile = await requireProfile()
-  if (BLOCKED_ROLES.has(profile.role ?? '')) redirect('/')
-
   const canEdit = ALLOWED_EDIT_ROLES.has(profile.role ?? '')
 
   const supabase = await createClient()

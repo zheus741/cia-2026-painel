@@ -1,7 +1,7 @@
 // CIA 2026 — Service Worker
 // Handles push notifications and basic offline caching
 
-const CACHE_NAME = 'cia-2026-v1'
+const CACHE_NAME = 'cia-2026-v2'
 
 // ── Push Notifications ───────────────────────────────────────────────────────
 

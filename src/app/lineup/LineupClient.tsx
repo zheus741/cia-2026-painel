@@ -12,15 +12,8 @@ function toMin(t: string): number {
 
 function hourLabel(absMin: number): string {
   const h = Math.floor(absMin / 60) % 24
-  return `${String(h).padStart(2, '0')}H`
+  return `${String(h).padStart(2, '0')}h`
 }
-
-// ── Paletas por palco ─────────────────────────────────────────────────────────
-
-const ARENA_BG:     string[] = ['#FF5F1F','#FF7A42','#E84E12','#FF9060','#F45A1A','#FF6B35']
-const PRINC_BG:     string[] = ['#C8FF00','#AAEE00','#D6FF22','#B8F500','#99E600','#CCFF00']
-const ELETR_BG:     string[] = ['#00E5FF','#00BFEA','#18FFFF','#00D4EE','#33EEFF','#00CCDD']
-const SPECIAL_BG:   string[] = ['#FFD700','#FFC200','#FFE233'] // Domingo — premiação etc
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -30,7 +23,7 @@ interface Perf {
   end: string
   duration: number    // minutos
   note?: string       // "(Banda)", "(Transição)" etc
-  special?: boolean   // destaque extra (ex: Premiação)
+  special?: boolean   // destaque (ex: Premiação)
 }
 
 interface StageData {
@@ -42,7 +35,7 @@ interface StageData {
 interface DayConfig {
   label:   string
   date:    string
-  wd:      string  // weekday abrev
+  wd:      string
   rangeStart: string
   rangeEnd:   string
   stages:  StageData
@@ -52,11 +45,8 @@ interface DayConfig {
 
 const LINEUP: Record<string, DayConfig> = {
   qui: {
-    label: 'QUINTA-FEIRA',
-    date: '04/06',
-    wd: 'QUI',
-    rangeStart: '15:10',
-    rangeEnd:   '05:50',
+    label: 'QUINTA-FEIRA', date: '04/06', wd: 'QUI',
+    rangeStart: '15:10', rangeEnd: '05:50',
     stages: {
       arena: [
         { artist: 'DJ Lipe Open Format', start: '15:10', end: '16:10', duration: 60 },
@@ -84,11 +74,8 @@ const LINEUP: Record<string, DayConfig> = {
     },
   },
   sex: {
-    label: 'SEXTA-FEIRA',
-    date: '05/06',
-    wd: 'SEX',
-    rangeStart: '14:10',
-    rangeEnd:   '07:10',
+    label: 'SEXTA-FEIRA', date: '05/06', wd: 'SEX',
+    rangeStart: '14:10', rangeEnd: '07:10',
     stages: {
       arena: [
         { artist: 'DJ ou Banda Contest', start: '14:10', end: '15:00', duration: 50 },
@@ -116,11 +103,8 @@ const LINEUP: Record<string, DayConfig> = {
     },
   },
   sab: {
-    label: 'SÁBADO',
-    date: '06/06',
-    wd: 'SÁB',
-    rangeStart: '14:10',
-    rangeEnd:   '08:10',
+    label: 'SÁBADO', date: '06/06', wd: 'SÁB',
+    rangeStart: '14:10', rangeEnd: '08:10',
     stages: {
       arena: [
         { artist: 'DJ Isadora',  start: '14:10', end: '15:10', duration: 60, note: 'Stage' },
@@ -147,11 +131,8 @@ const LINEUP: Record<string, DayConfig> = {
     },
   },
   dom: {
-    label: 'DOMINGO — ENCERRAMENTO',
-    date: '07/06',
-    wd: 'DOM',
-    rangeStart: '14:00',
-    rangeEnd:   '21:00',
+    label: 'DOMINGO — ENCERRAMENTO', date: '07/06', wd: 'DOM',
+    rangeStart: '14:00', rangeEnd: '21:00',
     stages: {
       arena: [
         { artist: 'DJ Hidalgo',       start: '14:00', end: '15:00', duration: 60 },
@@ -160,7 +141,7 @@ const LINEUP: Record<string, DayConfig> = {
       ],
       principal: [
         { artist: 'GBR',           start: '17:40', end: '19:40', duration: 120 },
-        { artist: '🏆 Premiação',   start: '19:40', end: '20:10', duration: 30, special: true },
+        { artist: 'Premiação',     start: '19:40', end: '20:10', duration: 30, special: true },
         { artist: 'GBR',           start: '20:10', end: '21:00', duration: 50, note: 'Retorno' },
       ],
       eletronico: [],
@@ -171,38 +152,44 @@ const LINEUP: Record<string, DayConfig> = {
 const DAY_IDS = ['qui', 'sex', 'sab', 'dom'] as const
 type DayId = typeof DAY_IDS[number]
 
-// ── Configuração dos palcos ────────────────────────────────────────────────────
+// ── Stages com tones do design system CIA ─────────────────────────────────────
 
 const STAGES = [
   {
-    id:         'arena'      as const,
-    name:       'ARENA 360',
-    headerBg:   '#FF5F1F',
-    headerText: '#1A0500',
-    bgs:        ARENA_BG,
-    textDark:   '#1A0500',
+    id:    'arena' as const,
+    name:  'ARENA 360',
+    tone:  'terracotta',
+    accent:    'rgba(196, 107, 74, 1)',
+    accentDim: 'rgba(196, 107, 74, 0.18)',
+    blockBg:   'linear-gradient(155deg, #C46B4A 0%, #D8845F 100%)',
+    blockText: '#FFFFFF',
+    blockNoteBg: 'rgba(0,0,0,0.22)',
   },
   {
-    id:         'principal'  as const,
-    name:       'PALCO PRINCIPAL',
-    headerBg:   '#C8FF00',
-    headerText: '#0A1200',
-    bgs:        PRINC_BG,
-    textDark:   '#0A1200',
+    id:    'principal' as const,
+    name:  'PALCO PRINCIPAL',
+    tone:  'gold',
+    accent:    'rgba(232, 185, 79, 1)',
+    accentDim: 'rgba(232, 185, 79, 0.18)',
+    blockBg:   'linear-gradient(155deg, #c8973a 0%, #e8b94f 100%)',
+    blockText: '#1A1106',
+    blockNoteBg: 'rgba(0,0,0,0.18)',
   },
   {
-    id:         'eletronico' as const,
-    name:       'PALCO ELETRÔNICO',
-    headerBg:   '#00E5FF',
-    headerText: '#001018',
-    bgs:        ELETR_BG,
-    textDark:   '#001018',
+    id:    'eletronico' as const,
+    name:  'PALCO ELETRÔNICO',
+    tone:  'electric',
+    accent:    'rgba(92, 104, 232, 1)',
+    accentDim: 'rgba(92, 104, 232, 0.18)',
+    blockBg:   'linear-gradient(155deg, #3D49E0 0%, #5C68E8 100%)',
+    blockText: '#FFFFFF',
+    blockNoteBg: 'rgba(0,0,0,0.25)',
   },
 ]
 
-const PX = 1.4          // pixels por minuto
-const HEADER_H = 64     // altura do cabeçalho de palco em px
-const TIME_COL_W = 52   // largura da coluna de horas
+const PX = 1.5            // pixels por minuto
+const HEADER_H = 56       // altura do cabeçalho de palco
+const TIME_COL_W = 60     // largura da coluna de horas
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
@@ -215,7 +202,6 @@ export function LineupClient() {
   const totalMin = endMin - startMin
   const gridH    = totalMin * PX
 
-  // Horas inteiras dentro do range
   const firstHour = Math.floor(startMin / 60)
   const lastHour  = Math.ceil(endMin / 60)
   const hourTicks = Array.from(
@@ -223,25 +209,54 @@ export function LineupClient() {
     (_, i) => (firstHour + i) * 60,
   ).filter(m => m >= startMin && m <= endMin)
 
+  const totalArtists =
+    day.stages.arena.length + day.stages.principal.length + day.stages.eletronico.length
+
   return (
-    <div
-      style={{
-        color: '#fff',
-        fontFamily: 'var(--font-lineup-mono, "Courier New", monospace)',
-      }}
-    >
-      {/* ── Seletor de dia ─────────────────────────────────────── */}
+    <div className="cia-fade-in" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+
+      {/* ── Cabeçalho com hierarquia editorial ───────────────────────────── */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+          <h1
+            className="cia-shimmer"
+            style={{
+              fontFamily: "'Orbitron', sans-serif",
+              fontSize: 28,
+              fontWeight: 700,
+              letterSpacing: 6,
+              lineHeight: 1,
+              margin: 0,
+            }}
+          >
+            LINE UP
+          </h1>
+          <span
+            style={{
+              fontFamily: "'ShareTechMono', monospace",
+              fontSize: 11,
+              color: 'var(--muted-foreground)',
+              letterSpacing: 2,
+            }}
+          >
+            CIA 2026 · 04—07 JUN · UBERABA MG
+          </span>
+        </div>
+        <div className="cia-gold-rule" style={{ marginTop: 14, marginBottom: 0 }} />
+      </div>
+
+      {/* ── Tabs de dia + meta ───────────────────────────────────────────── */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 12,
-          marginBottom: 16,
+          gap: 16,
+          marginBottom: 20,
           flexWrap: 'wrap',
         }}
       >
-        {/* Tabs de dia */}
+        {/* Tabs */}
         <div style={{ display: 'flex', gap: 6 }}>
           {DAY_IDS.map(id => {
             const d = LINEUP[id]
@@ -251,71 +266,137 @@ export function LineupClient() {
                 key={id}
                 onClick={() => setActiveDay(id)}
                 style={{
-                  padding: '6px 14px',
-                  borderRadius: 8,
-                  border: active ? '1.5px solid #B5FF00' : '1.5px solid var(--border)',
-                  background: active ? '#B5FF0015' : 'transparent',
-                  color: active ? '#B5FF00' : 'var(--muted-foreground)',
-                  fontFamily: 'var(--font-lineup-mono, monospace)',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: 1.5,
+                  position: 'relative',
+                  padding: '8px 16px',
+                  borderRadius: 10,
+                  border: active
+                    ? '1px solid rgba(232, 185, 79, 0.45)'
+                    : '1px solid var(--border)',
+                  background: active
+                    ? 'linear-gradient(180deg, rgba(232,185,79,0.10) 0%, rgba(232,185,79,0.04) 100%)'
+                    : 'var(--card)',
+                  color: active ? 'var(--gold-bright)' : 'var(--muted-foreground)',
                   cursor: 'pointer',
-                  transition: 'all 0.12s',
-                  lineHeight: 1.5,
-                  textAlign: 'center',
+                  transition: 'all 0.18s',
+                  textAlign: 'left',
+                  lineHeight: 1.2,
+                  fontFamily: "'Rajdhani', sans-serif",
+                  boxShadow: active
+                    ? '0 0 0 1px rgba(232,185,79,0.18), 0 2px 8px rgba(138,95,6,0.10)'
+                    : 'none',
                 }}
               >
-                <div>{d.wd}</div>
-                <div style={{ fontSize: 9, opacity: 0.7 }}>{d.date}</div>
+                <div
+                  style={{
+                    fontFamily: "'Orbitron', sans-serif",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: 2.5,
+                  }}
+                >
+                  {d.wd}
+                </div>
+                <div
+                  style={{
+                    fontFamily: "'ShareTechMono', monospace",
+                    fontSize: 10,
+                    opacity: 0.75,
+                    marginTop: 2,
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {d.date}
+                </div>
               </button>
             )
           })}
         </div>
 
-        {/* Label do dia atual */}
-        <span
-          style={{
-            fontFamily: 'var(--font-lineup-display, Impact, sans-serif)',
-            fontSize: 13,
-            letterSpacing: 4,
-            color: 'var(--muted-foreground)',
-          }}
-        >
-          {day.date} — {day.label}
-        </span>
+        {/* Meta info dia ativo */}
+        <div style={{ textAlign: 'right' }}>
+          <div
+            style={{
+              fontFamily: "'Orbitron', sans-serif",
+              fontSize: 13,
+              fontWeight: 700,
+              letterSpacing: 3,
+              color: 'var(--green-bright)',
+            }}
+          >
+            {day.label}
+          </div>
+          <div
+            style={{
+              fontFamily: "'ShareTechMono', monospace",
+              fontSize: 10,
+              color: 'var(--muted-foreground)',
+              letterSpacing: 1.5,
+              marginTop: 2,
+            }}
+          >
+            {totalArtists} ATRAÇÕES · {day.rangeStart}—{day.rangeEnd}
+          </div>
+        </div>
       </div>
 
-      {/* ── Grade ──────────────────────────────────────────────── */}
+      {/* ── Grade ─────────────────────────────────────────────────────────── */}
       <div
         style={{
           overflowX: 'auto',
           overflowY: 'visible',
-          paddingBottom: 32,
-          borderRadius: 12,
+          borderRadius: 16,
           border: '1px solid var(--border)',
-          background: '#0A0A0A',
+          background: 'var(--card)',
+          boxShadow: '0 0 0 1px rgba(46, 107, 66, 0.06), 0 4px 24px rgba(0,0,0,0.32)',
+          position: 'relative',
         }}
       >
+        {/* Vinheta sutil no fundo da grade */}
         <div
           style={{
-            display: 'flex',
-            minWidth: 640,
-            position: 'relative',
+            position: 'absolute',
+            inset: 0,
+            background:
+              'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(46,107,66,0.06) 0%, transparent 70%)',
+            pointerEvents: 'none',
+            borderRadius: 16,
           }}
-        >
+        />
+
+        <div style={{ display: 'flex', minWidth: 720, position: 'relative' }}>
           {/* Coluna de horas */}
           <div
             style={{
               width: TIME_COL_W,
               flexShrink: 0,
               position: 'relative',
-              height: gridH + HEADER_H + 20,
-              borderRight: '1px solid #141414',
+              height: gridH + HEADER_H + 16,
+              borderRight: '1px solid var(--border)',
+              background: 'rgba(6, 12, 7, 0.4)',
             }}
           >
-            {/* Espaço reservado para cabeçalho de palco */}
-            <div style={{ height: HEADER_H }} />
+            {/* Header label */}
+            <div
+              style={{
+                height: HEADER_H,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "'ShareTechMono', monospace",
+                  fontSize: 10,
+                  color: 'var(--muted-foreground)',
+                  letterSpacing: 1.5,
+                  opacity: 0.7,
+                }}
+              >
+                HORA
+              </span>
+            </div>
 
             {hourTicks.map(absMin => {
               const y = HEADER_H + (absMin - startMin) * PX
@@ -325,13 +406,15 @@ export function LineupClient() {
                   style={{
                     position: 'absolute',
                     top: y,
-                    right: 8,
+                    left: 0,
+                    right: 0,
                     transform: 'translateY(-50%)',
-                    fontSize: 9,
+                    textAlign: 'center',
+                    fontSize: 11,
                     fontWeight: 700,
-                    color: '#2A2A2A',
+                    color: 'var(--muted-foreground)',
                     letterSpacing: 1,
-                    fontFamily: 'var(--font-lineup-mono, monospace)',
+                    fontFamily: "'ShareTechMono', monospace",
                     lineHeight: 1,
                   }}
                 >
@@ -351,39 +434,41 @@ export function LineupClient() {
                 key={stage.id}
                 style={{
                   flex: 1,
-                  minWidth: 180,
+                  minWidth: 200,
                   position: 'relative',
-                  height: gridH + HEADER_H + 20,
-                  borderRight: '1px solid #141414',
+                  height: gridH + HEADER_H + 16,
+                  borderRight: '1px solid var(--border)',
                 }}
               >
-                {/* Cabeçalho do palco */}
+                {/* Cabeçalho do palco — sutil com accent dim */}
                 <div
                   style={{
                     height: HEADER_H,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: stage.headerBg,
-                    borderBottom: '2px solid #000',
+                    background: `linear-gradient(180deg, ${stage.accentDim} 0%, transparent 100%)`,
+                    borderBottom: `1px solid ${stage.accent}`,
+                    position: 'relative',
                   }}
                 >
                   <span
                     style={{
-                      fontFamily: 'var(--font-lineup-display, Impact, sans-serif)',
-                      fontSize: 15,
-                      letterSpacing: 3,
-                      color: stage.headerText,
+                      fontFamily: "'Orbitron', sans-serif",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: 3.5,
+                      color: stage.accent,
                       textAlign: 'center',
-                      lineHeight: 1.2,
                       padding: '0 8px',
+                      textShadow: `0 0 12px ${stage.accentDim}`,
                     }}
                   >
                     {stage.name}
                   </span>
                 </div>
 
-                {/* Linhas de hora (grid) */}
+                {/* Linhas de hora */}
                 {hourTicks.map(absMin => {
                   const y = HEADER_H + (absMin - startMin) * PX
                   return (
@@ -395,7 +480,8 @@ export function LineupClient() {
                         left: 0,
                         right: 0,
                         height: 1,
-                        background: '#111',
+                        background: 'var(--border)',
+                        opacity: 0.55,
                         pointerEvents: 'none',
                       }}
                     />
@@ -407,30 +493,28 @@ export function LineupClient() {
                   <div
                     style={{
                       position: 'absolute',
-                      top: HEADER_H + 16,
-                      left: 0,
-                      right: 0,
+                      top: HEADER_H + 24,
+                      left: 12,
+                      right: 12,
                       textAlign: 'center',
-                      fontSize: 9,
-                      color: '#1E1E1E',
+                      fontFamily: "'ShareTechMono', monospace",
+                      fontSize: 10,
+                      color: 'var(--muted-foreground)',
                       letterSpacing: 2,
-                      fontWeight: 700,
+                      opacity: 0.5,
                     }}
                   >
-                    SEM PROGRAMAÇÃO
+                    — SEM PROGRAMAÇÃO —
                   </div>
                 )}
 
-                {/* Blocos de apresentação */}
+                {/* Blocos de atração */}
                 {perfs.map((p, i) => {
                   const top    = HEADER_H + (toMin(p.start) - startMin) * PX
                   const height = p.duration * PX
-                  const bg     = p.special
-                    ? SPECIAL_BG[i % SPECIAL_BG.length]
-                    : stage.bgs[i % stage.bgs.length]
-                  const textColor = stage.textDark
-                  const tinyBlock = height < 58
-                  const smallBlock = height < 85
+                  const tinyBlock  = height < 60
+                  const smallBlock = height < 92
+                  const isSpecial  = p.special
 
                   return (
                     <div
@@ -438,78 +522,90 @@ export function LineupClient() {
                       title={`${p.artist} — ${p.start} às ${p.end}`}
                       style={{
                         position: 'absolute',
-                        top: top + 2,
-                        left: 4,
-                        right: 4,
-                        height: height - 4,
-                        background: bg,
-                        borderRadius: 6,
-                        padding: tinyBlock ? '3px 8px' : smallBlock ? '6px 10px' : '8px 12px',
+                        top: top + 3,
+                        left: 6,
+                        right: 6,
+                        height: height - 6,
+                        background: isSpecial
+                          ? 'linear-gradient(155deg, #e8b94f 0%, #c8973a 100%)'
+                          : stage.blockBg,
+                        borderRadius: 12,
+                        padding: tinyBlock ? '4px 10px' : smallBlock ? '8px 12px' : '10px 14px',
                         overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: tinyBlock ? 'center' : 'space-between',
-                        boxShadow: '0 1px 4px #00000055',
+                        boxShadow: isSpecial
+                          ? '0 0 0 1px rgba(232,185,79,0.45), 0 4px 16px rgba(232,185,79,0.30)'
+                          : '0 1px 0 rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.25)',
                         cursor: 'default',
-                        transition: 'filter 0.1s',
+                        transition: 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s',
+                        border: isSpecial ? '1px solid rgba(232,185,79,0.55)' : 'none',
                       }}
                       onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.filter = 'brightness(1.1)'
+                        (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'
+                        ;(e.currentTarget as HTMLElement).style.boxShadow = isSpecial
+                          ? '0 0 0 1px rgba(232,185,79,0.65), 0 8px 28px rgba(232,185,79,0.40)'
+                          : '0 2px 0 rgba(0,0,0,0.18), 0 12px 28px rgba(0,0,0,0.40)'
                       }}
                       onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.filter = 'none'
+                        (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'
+                        ;(e.currentTarget as HTMLElement).style.boxShadow = isSpecial
+                          ? '0 0 0 1px rgba(232,185,79,0.45), 0 4px 16px rgba(232,185,79,0.30)'
+                          : '0 1px 0 rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.25)'
                       }}
                     >
-                      {/* Nome do artista */}
                       <div>
                         <div
                           style={{
-                            fontFamily: 'var(--font-lineup-display, Impact, sans-serif)',
-                            fontSize: tinyBlock ? 12 : smallBlock ? 14 : height > 130 ? 20 : 16,
-                            color: textColor,
-                            lineHeight: 1.1,
-                            letterSpacing: 1,
+                            fontFamily: "'Orbitron', sans-serif",
+                            fontSize: tinyBlock ? 11 : smallBlock ? 13 : height > 140 ? 17 : 15,
+                            fontWeight: 700,
+                            color: isSpecial ? '#1A1106' : stage.blockText,
+                            lineHeight: 1.15,
+                            letterSpacing: 0.5,
                             wordBreak: 'break-word',
+                            textTransform: 'uppercase',
                           }}
                         >
                           {p.artist}
                         </div>
 
-                        {/* Tag de nota (Banda / Transição / etc) */}
                         {p.note && !tinyBlock && (
                           <div
                             style={{
                               display: 'inline-block',
-                              marginTop: 3,
-                              padding: '1px 5px',
-                              borderRadius: 3,
-                              background: '#0000001A',
-                              fontSize: 8,
+                              marginTop: 5,
+                              padding: '2px 7px',
+                              borderRadius: 4,
+                              background: stage.blockNoteBg,
+                              fontFamily: "'ShareTechMono', monospace",
+                              fontSize: 8.5,
                               fontWeight: 700,
                               letterSpacing: 1.5,
-                              color: textColor,
-                              opacity: 0.7,
+                              color: isSpecial ? '#1A1106' : stage.blockText,
+                              opacity: 0.85,
+                              textTransform: 'uppercase',
                             }}
                           >
-                            {p.note.toUpperCase()}
+                            {p.note}
                           </div>
                         )}
                       </div>
 
-                      {/* Horário (rodapé) */}
                       {!tinyBlock && (
                         <div
                           style={{
-                            fontSize: 8,
-                            color: textColor,
-                            opacity: 0.5,
-                            fontFamily: 'var(--font-lineup-mono, monospace)',
+                            fontFamily: "'ShareTechMono', monospace",
+                            fontSize: 9.5,
+                            color: isSpecial ? '#1A1106' : stage.blockText,
+                            opacity: 0.7,
                             fontWeight: 700,
                             letterSpacing: 0.5,
-                            marginTop: 4,
+                            marginTop: 6,
                           }}
                         >
-                          {p.start} – {p.end} · {p.duration}min
+                          {p.start}—{p.end} · {p.duration}min
                         </div>
                       )}
                     </div>
@@ -521,20 +617,24 @@ export function LineupClient() {
         </div>
       </div>
 
-      {/* ── Rodapé ─────────────────────────────────────────────── */}
-      <p
-        style={{
-          textAlign: 'center',
-          marginTop: 12,
-          fontSize: 9,
-          color: 'var(--muted-foreground)',
-          opacity: 0.4,
-          letterSpacing: 2,
-          fontWeight: 700,
-        }}
-      >
-        CIA 2026 · COPA INTER ATLÉTICAS · UBERABA MG · 04–07 JUN · PROGRAMAÇÃO SUJEITA A ALTERAÇÕES
-      </p>
+      {/* ── Rodapé místico ───────────────────────────────────────────────── */}
+      <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="cia-gold-rule" style={{ flex: 1 }} />
+        <p
+          style={{
+            fontFamily: "'ShareTechMono', monospace",
+            fontSize: 9.5,
+            color: 'var(--muted-foreground)',
+            opacity: 0.6,
+            letterSpacing: 2,
+            margin: 0,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          PROGRAMAÇÃO SUJEITA A ALTERAÇÕES
+        </p>
+        <div className="cia-gold-rule" style={{ flex: 1 }} />
+      </div>
     </div>
   )
 }

@@ -1,9 +1,9 @@
 import Image from 'next/image'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth/current-user'
 import { AppShell } from '@/components/app-shell'
 import { HomeClient } from './HomeClient'
-import { HomeEsportivo } from './HomeEsportivo'
 import { HomeFotoVideo } from './HomeFotoVideo'
 import type {
   CoordConteudoHoje,
@@ -64,24 +64,10 @@ export default async function Home() {
   const user = { id: profile.id }
   const supabase = await createClient()
 
-  const isEsportivoRole = profile.role === 'coordenador_esportivo' || profile.role === 'operador_esportivo'
-
-  // Early return para roles esportivos — home minimalista, sem buscar dados pesados
-  if (isEsportivoRole) {
-    const now        = new Date()
-    const diffMs     = EVENT_START.getTime() - now.getTime()
-    const diffDays   = Math.max(0, Math.ceil(diffMs / 86_400_000))
-    const eventActive = now >= EVENT_START && now <= new Date('2026-06-08T00:00:00-03:00')
-
-    return (
-      <HomeEsportivo
-        nome={profile.nome}
-        role={profile.role}
-        isCoordEsportivo={profile.role === 'coordenador_esportivo'}
-        diffDays={diffDays}
-        eventActive={eventActive}
-      />
-    )
+  // Coord/Op esportivo: HOME = /esportivo (hub rico com gauge, líderes, próximos jogos).
+  // Sem página intermediária — quem opera esportivo cai direto no painel de comando.
+  if (profile.role === 'coordenador_esportivo' || profile.role === 'operador_esportivo') {
+    redirect('/esportivo')
   }
 
   const isFVRole = profile.role === 'operador_fv' || profile.role === 'lider_fv'
@@ -92,25 +78,7 @@ export default async function Home() {
     const eventActive = now >= EVENT_START && now <= new Date('2026-06-08T00:00:00-03:00')
     return (
       <AppShell fullWidth>
-        <div className="relative flex flex-1 flex-col overflow-hidden cia-bg">
-          {/* Dot grid */}
-          <div className="cia-dot-grid pointer-events-none absolute inset-0 opacity-100" />
-          {/* Giroscópio watermark */}
-          <div className="pointer-events-none absolute -right-28 -top-28 select-none">
-            <div className="cia-spin-slow cia-pulse-glow">
-              <Image
-                src="/assets/giroscopio.png"
-                alt=""
-                width={480}
-                height={480}
-                style={{
-                  filter: 'invert(1) hue-rotate(100deg) saturate(1.5)',
-                  mixBlendMode: 'screen',
-                  opacity: 0.04,
-                }}
-              />
-            </div>
-          </div>
+        <div className="relative flex flex-1 flex-col overflow-hidden">
           <HomeFotoVideo
             userId={profile.id}
             nome={profile.nome}

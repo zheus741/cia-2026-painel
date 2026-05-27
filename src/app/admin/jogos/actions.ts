@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import {
   parseFormData,
@@ -8,6 +9,7 @@ import {
   safe,
   type ActionResult,
 } from '@/lib/admin/actions-helper'
+import { propagarVencedorNaChave } from '@/lib/chaveamento/avanco'
 
 const SCHEMA = [
   { name: 'dia_id', type: 'nullable_text' as const },
@@ -21,6 +23,11 @@ const SCHEMA = [
   { name: 'inicio', type: 'datetime' as const },
   { name: 'fim_previsto', type: 'datetime' as const },
   { name: 'observacoes', type: 'nullable_text' as const },
+  // Campos de resultado — permitem fechar jogo direto do form admin
+  { name: 'status', type: 'nullable_text' as const },
+  { name: 'placar_a', type: 'number' as const },
+  { name: 'placar_b', type: 'number' as const },
+  { name: 'wo', type: 'nullable_text' as const },
 ]
 
 export async function createJogo(fd: FormData): Promise<ActionResult> {
@@ -41,6 +48,22 @@ export async function updateJogo(id: string, fd: FormData): Promise<ActionResult
     const data = parseFormData(fd, SCHEMA)
     const { error } = await supabase.from('jogos').update(data).eq('id', id)
     if (error) throw error
+
+    // Se o update fechou o jogo, propaga vencedor pra próxima fase da chave.
+    // Falha silenciosa — não bloqueia o save se a propagação não conseguir
+    // identificar o slot. O coord pode forçar via "Recalcular" no /chaveamento.
+    if (data.status === 'encerrado') {
+      try {
+        const result = await propagarVencedorNaChave(id)
+        if (!result.ok) {
+          console.warn('[updateJogo] propagação falhou:', result.reason, { jogoId: id })
+        }
+      } catch (err) {
+        console.error('[updateJogo] erro inesperado na propagação:', err)
+      }
+      revalidatePath('/esportivo/chaveamento')
+      revalidatePath('/placar')
+    }
   })
 }
 

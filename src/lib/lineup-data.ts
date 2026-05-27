@@ -1,17 +1,23 @@
 /**
- * Programação musical CIA 2026 — fonte única de verdade.
- * Importável por /lineup, /agenda, /tv/placar e qualquer outro consumidor.
+ * Tipos e helpers do Line Up CIA 2026.
+ * A FONTE DE VERDADE são as tabelas `shows`, `setores` e `dias_evento` no Supabase.
+ *
+ * Use `buildLineupFromShows()` para converter rows do banco em DayConfig estruturado.
  */
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
 export interface Perf {
-  artist: string
-  start: string         // "HH:MM"
-  end: string           // "HH:MM"
-  duration: number      // minutos
-  note?: string         // "Banda", "Transição", "Retorno"...
-  special?: boolean     // destaque editorial (ex: Premiação)
+  /** Pode ser null para placeholders novos antes do save. */
+  id:        string | null
+  artist:    string
+  start:     string    // "HH:MM"
+  end:       string    // "HH:MM"
+  duration:  number    // minutos
+  tipo:      string | null
+  special?:  boolean   // destaque editorial (ex: Premiação)
+  setorId:   string
+  diaId:     string
 }
 
 export type StageId = 'arena' | 'principal' | 'eletronico'
@@ -25,17 +31,20 @@ export interface StageData {
 export type DayId = 'qui' | 'sex' | 'sab' | 'dom'
 
 export interface DayConfig {
-  id:     DayId
-  label:  string          // "QUINTA"
-  date:   string          // "04/06"
-  isoDate: string         // "2026-06-04" — mapeia pra new Date()
-  wd:     string          // "QUI"
-  rangeStart: string      // primeira hora de programação
-  rangeEnd:   string      // última hora (pode passar de meia-noite)
-  stages: StageData
+  id:         DayId
+  label:      string          // "QUINTA"
+  date:       string          // "04/06"
+  isoDate:    string          // "2026-06-04"
+  wd:         string          // "QUI"
+  rangeStart: string          // primeira hora de programação
+  rangeEnd:   string          // última hora (pode passar de meia-noite)
+  diaId:      string          // UUID do dia no banco
+  stages:     StageData
 }
 
-// ── Mapa para descobrir o "dia do evento" a partir de uma Date ───────────────
+export type Lineup = Record<DayId, DayConfig>
+
+// ── Mapeamento data ↔ DayId ──────────────────────────────────────────────────
 
 export const EVENT_DATE_MAP: Record<string, DayId> = {
   '2026-06-04': 'qui',
@@ -44,184 +53,89 @@ export const EVENT_DATE_MAP: Record<string, DayId> = {
   '2026-06-07': 'dom',
 }
 
-// ── Configuração de palcos com cores do design system editorial ──────────────
+const DAY_META: Record<DayId, { label: string; date: string; wd: string; isoDate: string }> = {
+  qui: { label: 'QUINTA',  date: '04/06', wd: 'QUI', isoDate: '2026-06-04' },
+  sex: { label: 'SEXTA',   date: '05/06', wd: 'SEX', isoDate: '2026-06-05' },
+  sab: { label: 'SÁBADO',  date: '06/06', wd: 'SÁB', isoDate: '2026-06-06' },
+  dom: { label: 'DOMINGO', date: '07/06', wd: 'DOM', isoDate: '2026-06-07' },
+}
+
+export const DAY_IDS: DayId[] = ['qui', 'sex', 'sab', 'dom']
+
+// ── Setores → Palcos (mapeamento por nome) ───────────────────────────────────
+
+/**
+ * Mapeia o nome do setor (vindo da tabela `setores`) → StageId.
+ * Aceita variações pra robustez.
+ */
+export function setorToStageId(setorNome: string | null | undefined): StageId | null {
+  if (!setorNome) return null
+  const n = setorNome.trim().toLowerCase()
+  if (n.includes('arena') || n.includes('360'))     return 'arena'
+  if (n.includes('eletr'))                          return 'eletronico'
+  if (n.includes('principal'))                      return 'principal'
+  return null
+}
+
+// ── Configuração visual dos palcos ───────────────────────────────────────────
 
 export interface StageConfig {
-  id:        StageId
-  name:      string
-  eyebrow:   string
-  tone:      'terracotta' | 'gold' | 'electric'
-  blockBg:   string
-  blockText: string
+  id:         StageId
+  name:       string
+  eyebrow:    string
+  tone:       'terracotta' | 'gold' | 'electric'
+  blockBg:    string
+  blockText:  string
   blockTextMuted: string
   accentInk:  string
   accentSoft: string
   accentRing: string
-  chipBg:     string
-  /** Cor de pulse pro indicador "NO AR" — coral para o evento todo */
   liveColor:  string
 }
 
 export const STAGES: StageConfig[] = [
   {
-    id:        'arena',
-    name:      'Arena 360',
-    eyebrow:   'PALCO',
-    tone:      'terracotta',
-    blockBg:   'linear-gradient(155deg, #C46B4A 0%, #D8845F 100%)',
-    blockText: '#FFFFFF',
+    id:         'arena',
+    name:       'Arena 360',
+    eyebrow:    'PALCO',
+    tone:       'terracotta',
+    blockBg:    'linear-gradient(155deg, #C46B4A 0%, #D8845F 100%)',
+    blockText:  '#FFFFFF',
     blockTextMuted: 'rgba(255,255,255,0.78)',
     accentInk:  '#8b3a2a',
     accentSoft: 'rgba(196,107,74,0.10)',
-    accentRing: 'rgba(196,107,74,0.28)',
-    chipBg:     'rgba(0,0,0,0.18)',
+    accentRing: 'rgba(196,107,74,0.30)',
     liveColor:  '#FF4444',
   },
   {
-    id:        'principal',
-    name:      'Principal',
-    eyebrow:   'PALCO',
-    tone:      'gold',
-    blockBg:   'linear-gradient(155deg, #F0D04A 0%, #F5DC6A 100%)',
-    blockText: '#0A0F0B',
+    id:         'principal',
+    name:       'Principal',
+    eyebrow:    'PALCO',
+    tone:       'gold',
+    blockBg:    'linear-gradient(155deg, #F0D04A 0%, #F5DC6A 100%)',
+    blockText:  '#0A0F0B',
     blockTextMuted: 'rgba(10,15,11,0.62)',
     accentInk:  '#8a5f06',
     accentSoft: 'rgba(232,184,47,0.14)',
-    accentRing: 'rgba(232,184,47,0.36)',
-    chipBg:     'rgba(10,15,11,0.10)',
+    accentRing: 'rgba(232,184,47,0.38)',
     liveColor:  '#FF4444',
   },
   {
-    id:        'eletronico',
-    name:      'Eletrônico',
-    eyebrow:   'PALCO',
-    tone:      'electric',
-    blockBg:   'linear-gradient(155deg, #3D49E0 0%, #5C68E8 100%)',
-    blockText: '#FFFFFF',
+    id:         'eletronico',
+    name:       'Eletrônico',
+    eyebrow:    'PALCO',
+    tone:       'electric',
+    blockBg:    'linear-gradient(155deg, #3D49E0 0%, #5C68E8 100%)',
+    blockText:  '#FFFFFF',
     blockTextMuted: 'rgba(255,255,255,0.78)',
     accentInk:  '#2D1B5C',
     accentSoft: 'rgba(92,104,232,0.10)',
-    accentRing: 'rgba(92,104,232,0.30)',
-    chipBg:     'rgba(0,0,0,0.20)',
+    accentRing: 'rgba(92,104,232,0.32)',
     liveColor:  '#FF4444',
   },
 ]
 
-export const DAY_IDS: DayId[] = ['qui', 'sex', 'sab', 'dom']
-
-// ── Programação ──────────────────────────────────────────────────────────────
-
-export const LINEUP: Record<DayId, DayConfig> = {
-  qui: {
-    id: 'qui',
-    label: 'QUINTA', date: '04/06', isoDate: '2026-06-04', wd: 'QUI',
-    rangeStart: '15:10', rangeEnd: '05:50',
-    stages: {
-      arena: [
-        { artist: 'DJ Lipe Open Format', start: '15:10', end: '16:10', duration: 60 },
-        { artist: 'Pente Redondo',        start: '16:20', end: '17:40', duration: 80, note: 'Banda' },
-        { artist: 'DJ Milken',            start: '17:50', end: '18:50', duration: 60 },
-        { artist: 'Turin DJ',             start: '19:00', end: '20:50', duration: 110 },
-      ],
-      principal: [
-        { artist: 'Kenan e Kel',        start: '20:50', end: '21:50', duration: 60 },
-        { artist: 'Teto',               start: '22:00', end: '23:00', duration: 60 },
-        { artist: 'Turma do Pagode',    start: '23:10', end: '00:10', duration: 60 },
-        { artist: 'Matheus e Kauan',    start: '00:20', end: '01:20', duration: 60 },
-        { artist: 'Leo Foguete',        start: '01:30', end: '02:30', duration: 60 },
-        { artist: 'Japa NK',            start: '02:40', end: '03:20', duration: 40 },
-        { artist: 'Ariel B',            start: '03:30', end: '04:10', duration: 40 },
-      ],
-      eletronico: [
-        { artist: 'Contest',            start: '20:50', end: '22:20', duration: 90 },
-        { artist: 'Francisco DJ',       start: '22:20', end: '23:50', duration: 90 },
-        { artist: 'Cat Dealers',        start: '23:50', end: '01:20', duration: 90 },
-        { artist: 'Paranormal Attack',  start: '01:20', end: '02:50', duration: 90 },
-        { artist: 'Vegas',              start: '02:50', end: '04:20', duration: 90 },
-        { artist: 'Claudinho Brasil',   start: '04:20', end: '05:50', duration: 90 },
-      ],
-    },
-  },
-  sex: {
-    id: 'sex',
-    label: 'SEXTA', date: '05/06', isoDate: '2026-06-05', wd: 'SEX',
-    rangeStart: '14:10', rangeEnd: '07:10',
-    stages: {
-      arena: [
-        { artist: 'DJ ou Banda Contest', start: '14:10', end: '15:00', duration: 50 },
-        { artist: 'MCINTRA',             start: '15:10', end: '16:00', duration: 50 },
-        { artist: 'Meu Nome é Vaca',     start: '16:10', end: '17:00', duration: 50 },
-        { artist: 'Tilia',               start: '17:10', end: '18:10', duration: 60 },
-        { artist: 'DJ Topo',             start: '18:20', end: '19:20', duration: 60 },
-      ],
-      principal: [
-        { artist: 'Mr Monkey',    start: '23:10', end: '00:50', duration: 100 },
-        { artist: 'Pablo Vittar', start: '01:00', end: '02:10', duration: 70 },
-        { artist: 'Matue',        start: '02:20', end: '03:20', duration: 60 },
-        { artist: 'Nattan',       start: '03:30', end: '05:10', duration: 100 },
-        { artist: 'Petroski',     start: '05:20', end: '06:20', duration: 60 },
-      ],
-      eletronico: [
-        { artist: 'Buja',                      start: '23:10', end: '00:10', duration: 60 },
-        { artist: 'Gesus',                     start: '00:10', end: '01:10', duration: 60 },
-        { artist: 'Eli Iwasa',                 start: '01:10', end: '02:10', duration: 60 },
-        { artist: 'Breaking Beatz × Almanac', start: '02:10', end: '03:40', duration: 90 },
-        { artist: 'Victor Lou',               start: '03:40', end: '05:10', duration: 90 },
-        { artist: 'DJ GBR',                   start: '05:10', end: '06:10', duration: 60 },
-        { artist: 'Victor Lou × DJ GBR',      start: '06:10', end: '07:10', duration: 60 },
-      ],
-    },
-  },
-  sab: {
-    id: 'sab',
-    label: 'SÁBADO', date: '06/06', isoDate: '2026-06-06', wd: 'SÁB',
-    rangeStart: '14:10', rangeEnd: '08:10',
-    stages: {
-      arena: [
-        { artist: 'DJ Isadora',  start: '14:10', end: '15:10', duration: 60, note: 'Stage' },
-        { artist: 'Federah',     start: '15:20', end: '16:30', duration: 70, note: 'Banda' },
-        { artist: 'Patrick DJ',  start: '16:40', end: '18:00', duration: 80 },
-        { artist: 'Melody',      start: '18:10', end: '19:10', duration: 60 },
-      ],
-      principal: [
-        { artist: 'DJ WJ',           start: '23:10', end: '00:20', duration: 70 },
-        { artist: '8K',              start: '00:30', end: '02:00', duration: 90 },
-        { artist: 'Meu Nome É Vaca', start: '02:10', end: '02:50', duration: 40, note: 'Transição' },
-        { artist: 'Pedro Sampaio',   start: '02:50', end: '04:50', duration: 120 },
-        { artist: 'Felipe Amorim',   start: '05:00', end: '06:20', duration: 80 },
-        { artist: 'GP da ZL',        start: '06:30', end: '07:30', duration: 60 },
-      ],
-      eletronico: [
-        { artist: 'A Definir',  start: '23:10', end: '00:40', duration: 90 },
-        { artist: 'A Definir',  start: '00:40', end: '02:10', duration: 90 },
-        { artist: 'Zaark',      start: '02:10', end: '03:40', duration: 90 },
-        { artist: 'Ilusionize', start: '03:40', end: '05:10', duration: 90 },
-        { artist: 'Visage',     start: '05:10', end: '06:40', duration: 90 },
-        { artist: 'Aura Vortex',start: '06:40', end: '08:10', duration: 90 },
-      ],
-    },
-  },
-  dom: {
-    id: 'dom',
-    label: 'DOMINGO', date: '07/06', isoDate: '2026-06-07', wd: 'DOM',
-    rangeStart: '14:00', rangeEnd: '21:00',
-    stages: {
-      arena: [
-        { artist: 'DJ Hidalgo',       start: '14:00', end: '15:00', duration: 60 },
-        { artist: 'Sambarylove',      start: '15:10', end: '16:30', duration: 80, note: 'Banda' },
-        { artist: 'DJ Lary Marques',  start: '16:40', end: '17:30', duration: 50 },
-      ],
-      principal: [
-        { artist: 'GBR',        start: '17:40', end: '19:40', duration: 120 },
-        { artist: 'Premiação',  start: '19:40', end: '20:10', duration: 30, special: true },
-        { artist: 'GBR',        start: '20:10', end: '21:00', duration: 50, note: 'Retorno' },
-      ],
-      eletronico: [],
-    },
-  },
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers de tempo ─────────────────────────────────────────────────────────
 
 /** Converte "HH:MM" em minutos absolutos. Horas < 12 são pós-meia-noite. */
 export function toMin(t: string): number {
@@ -234,7 +148,17 @@ export function hourLabel(absMin: number): string {
   return `${String(h).padStart(2, '0')}h`
 }
 
-/** Retorna a data ISO (YYYY-MM-DD) atual no fuso de Brasília. */
+/** Extrai "HH:MM" no fuso de São Paulo de uma string ISO. */
+export function isoToHHMM(iso: string | null): string {
+  if (!iso) return '00:00'
+  const d = new Date(iso)
+  return d.toLocaleTimeString('pt-BR', {
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  })
+}
+
+/** Retorna a data ISO (YYYY-MM-DD) no fuso de São Paulo. */
 export function todayIsoBR(now: Date = new Date()): string {
   return now.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 }
@@ -249,3 +173,134 @@ export function nowAbsMinBR(now: Date = new Date()): number {
   const mm = Number(parts.find(p => p.type === 'minute')?.value ?? '0')
   return hh < 12 ? (hh + 24) * 60 + mm : hh * 60 + mm
 }
+
+// ── Conversão Supabase → DayConfig ───────────────────────────────────────────
+
+export interface ShowRow {
+  id:                string
+  nome:              string
+  tipo:              string | null
+  inicio:            string | null
+  fim_previsto:      string | null
+  duracao_minutos:   number | null
+  dia_id:            string | null
+  setor_id:          string | null
+  ordem_no_palco:    number | null
+  embaixador:        boolean | null
+}
+
+export interface DiaRow {
+  id:        string
+  data:      string  // "YYYY-MM-DD"
+}
+
+export interface SetorRow {
+  id:        string
+  nome:      string
+}
+
+/**
+ * Constrói o objeto Lineup completo a partir das rows do Supabase.
+ *
+ * - Filtra shows que pertencem aos 4 dias do CIA 2026
+ * - Mapeia setores → palcos (arena/principal/eletronico)
+ * - Ordena por horário de início
+ * - Calcula rangeStart/rangeEnd por dia
+ * - "Premiação" recebe special=true automaticamente
+ */
+export function buildLineupFromShows(
+  shows: ShowRow[],
+  dias: DiaRow[],
+  setores: SetorRow[],
+): Lineup {
+  // dia.data → DayId
+  const diaIdToDay = new Map<string, DayId>()
+  for (const d of dias) {
+    const day = EVENT_DATE_MAP[d.data]
+    if (day) diaIdToDay.set(d.id, day)
+  }
+
+  // setor.id → StageId
+  const setorIdToStage = new Map<string, StageId>()
+  for (const s of setores) {
+    const sid = setorToStageId(s.nome)
+    if (sid) setorIdToStage.set(s.id, sid)
+  }
+
+  // diaId → real (para devolver no DayConfig)
+  const diaIdByDay = new Map<DayId, string>()
+  for (const [diaId, day] of diaIdToDay) diaIdByDay.set(day, diaId)
+
+  // Inicializa skeleton
+  const lineup: Lineup = Object.fromEntries(
+    DAY_IDS.map(d => [d, {
+      id: d,
+      ...DAY_META[d],
+      rangeStart: '23:59',
+      rangeEnd:   '00:01',
+      diaId:      diaIdByDay.get(d) ?? '',
+      stages: { arena: [], principal: [], eletronico: [] },
+    }]),
+  ) as unknown as Lineup
+
+  // Distribui shows
+  for (const sh of shows) {
+    if (!sh.dia_id || !sh.setor_id || !sh.inicio || !sh.fim_previsto) continue
+    const dayId = diaIdToDay.get(sh.dia_id)
+    const stage = setorIdToStage.get(sh.setor_id)
+    if (!dayId || !stage) continue
+
+    const start = isoToHHMM(sh.inicio)
+    const end   = isoToHHMM(sh.fim_previsto)
+    const duration = sh.duracao_minutos ?? Math.max(1, toMin(end) - toMin(start))
+
+    lineup[dayId].stages[stage].push({
+      id:       sh.id,
+      artist:   sh.nome,
+      start, end,
+      duration,
+      tipo:     sh.tipo,
+      special:  /premia[çc]/i.test(sh.nome),
+      setorId:  sh.setor_id,
+      diaId:    sh.dia_id,
+    })
+  }
+
+  // Ordena por horário absoluto + recalcula range
+  for (const d of DAY_IDS) {
+    const cfg = lineup[d]
+    let minStart = Infinity
+    let maxEnd   = -Infinity
+
+    for (const stage of ['arena','principal','eletronico'] as const) {
+      cfg.stages[stage].sort((a, b) => toMin(a.start) - toMin(b.start))
+      for (const p of cfg.stages[stage]) {
+        const s = toMin(p.start)
+        const e = toMin(p.end)
+        if (s < minStart) minStart = s
+        if (e > maxEnd)   maxEnd   = e
+      }
+    }
+
+    if (minStart !== Infinity && maxEnd !== -Infinity) {
+      // formata back to HH:MM
+      cfg.rangeStart = `${String(Math.floor(minStart / 60) % 24).padStart(2,'0')}:${String(minStart % 60).padStart(2,'0')}`
+      cfg.rangeEnd   = `${String(Math.floor(maxEnd   / 60) % 24).padStart(2,'0')}:${String(maxEnd   % 60).padStart(2,'0')}`
+    }
+  }
+
+  return lineup
+}
+
+// ── Fallback vazio para SSR sem dados ────────────────────────────────────────
+
+export const EMPTY_LINEUP: Lineup = Object.fromEntries(
+  DAY_IDS.map(d => [d, {
+    id: d,
+    ...DAY_META[d],
+    rangeStart: '14:00',
+    rangeEnd:   '23:00',
+    diaId:      '',
+    stages: { arena: [], principal: [], eletronico: [] },
+  }]),
+) as unknown as Lineup

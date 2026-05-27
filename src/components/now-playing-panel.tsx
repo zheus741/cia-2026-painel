@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Radio, Clock, ArrowUpRight } from 'lucide-react'
-import { STAGES, type StageId } from '@/lib/lineup-data'
+import { STAGES, EMPTY_LINEUP, type StageId, type Lineup } from '@/lib/lineup-data'
 import { useNowPlaying } from '@/lib/use-now-playing'
 
 const SANS = 'var(--font-dm-sans), system-ui, sans-serif'
@@ -48,6 +48,8 @@ function LivePulse({ size = 8, color = '#FF4444' }: { size?: number; color?: str
 // ── Painel completo (lineup, agenda) ────────────────────────────────────────
 
 interface NowPlayingPanelProps {
+  /** Lineup completo (vindo do Supabase via server). Default: EMPTY_LINEUP. */
+  lineup?: Lineup
   /** Quando true, oculta o componente se não há nada ao vivo no momento. Default: false (mostra fallback "próximo"). */
   hideWhenIdle?: boolean
   /** Link de "ver tudo" — geralmente "/lineup". */
@@ -57,11 +59,12 @@ interface NowPlayingPanelProps {
 }
 
 export function NowPlayingPanel({
+  lineup = EMPTY_LINEUP,
   hideWhenIdle = false,
   detailHref = '/lineup',
   compact = false,
 }: NowPlayingPanelProps) {
-  const state = useNowPlaying()
+  const state = useNowPlaying(lineup)
 
   // Não é dia do evento
   if (!state.activeDay) {
@@ -344,8 +347,8 @@ export function NowPlayingPanel({
  * Ticker bem compacto pra header de TV mode — só mostra palcos COM atração tocando.
  * Some completamente se nada ao vivo.
  */
-export function NowPlayingTicker() {
-  const state = useNowPlaying({ intervalMs: 15_000 })
+export function NowPlayingTicker({ lineup = EMPTY_LINEUP }: { lineup?: Lineup } = {}) {
+  const state = useNowPlaying(lineup, { intervalMs: 15_000 })
 
   if (!state.isLive) return null
 

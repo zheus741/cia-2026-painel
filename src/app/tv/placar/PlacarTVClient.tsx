@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Radio, Maximize2, Minimize2, Tv2, Calendar } from 'lucide-react'
 import { CiaLogo } from '@/components/cia-logo'
 import { NowPlayingTicker } from '@/components/now-playing-panel'
+import type { Lineup } from '@/lib/lineup-data'
 import { createClient } from '@/lib/supabase/client'
 import { getConferencia, type ConferenciaMeta } from '@/lib/conferencias'
 
@@ -37,6 +38,7 @@ interface Props {
   aoVivo:     JogoTV[]
   encerrados: JogoTV[]
   proximos:   JogoTV[]
+  lineup?:    Lineup
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -475,7 +477,7 @@ function ProximoChip({ jogo }: { jogo: JogoTV }) {
 
 // ── Root component ───────────────────────────────────────────────────────────
 
-export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncerrados, proximos: initialProximos }: Props) {
+export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncerrados, proximos: initialProximos, lineup }: Props) {
   const router = useRouter()
   const [aoVivo, setAoVivo] = useState(initialAoVivo)
   const [encerrados, setEncerrados] = useState(initialEncerrados)
@@ -672,7 +674,7 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
 
           {/* Spacer + meta */}
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-            <NowPlayingTicker />
+            <NowPlayingTicker lineup={lineup} />
           </div>
 
           <span style={{

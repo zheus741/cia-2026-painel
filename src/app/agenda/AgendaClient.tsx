@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Radio, Search, Trophy, Music, PartyPopper, Tv2, ArrowUpRight, LayoutList, Inbox } from 'lucide-react'
 import { NowPlayingPanel } from '@/components/now-playing-panel'
+import type { Lineup } from '@/lib/lineup-data'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ interface Props {
   turnosCoberturaAV:  AgendaTurnoCob[]
   todayDiaId:         string | null
   userRole:           string
+  lineup:             Lineup
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -221,6 +223,7 @@ function EventRow({
 export function AgendaClient({
   dias, jogos, shows, festas, setores,
   turnosCoberturaAV, todayDiaId, userRole,
+  lineup,
 }: Props) {
   const [selectedDiaId, setSelectedDiaId] = useState<string | null>(todayDiaId)
   const [cat, setCat]                     = useState<Cat>('todos')
@@ -348,7 +351,7 @@ export function AgendaClient({
         padding: '14px 24px 0',
         flexShrink: 0,
       }}>
-        <NowPlayingPanel hideWhenIdle detailHref="/lineup" compact />
+        <NowPlayingPanel lineup={lineup} hideWhenIdle detailHref="/lineup" compact />
       </div>
 
       {/* ── Day tabs ──────────────────────────────────────────────── */}

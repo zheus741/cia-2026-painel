@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createServiceClient } from '@/lib/supabase/service'
 import { requireProfile } from '@/lib/auth/current-user'
+import { buildLineupFromShows, type ShowRow, type DiaRow, type SetorRow } from '@/lib/lineup-data'
 import { AgendaClient } from './AgendaClient'
 
 // ── Fetchers cacheados (service client — sem dependência de cookie) ───────────
@@ -103,6 +104,13 @@ export default async function AgendaPage() {
   const todayDia = (dias as { id: string; data: string }[]).find(d => d.data === todaySP)
     ?? (dias[0] ?? null)
 
+  // Lineup completo derivado dos shows — passado pro NowPlayingPanel
+  const lineup = buildLineupFromShows(
+    (shows as unknown as ShowRow[]) ?? [],
+    (dias as unknown as DiaRow[])   ?? [],
+    (setores as unknown as SetorRow[]) ?? [],
+  )
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <AgendaClient
@@ -114,6 +122,7 @@ export default async function AgendaPage() {
         turnosCoberturaAV={turnos as unknown as Parameters<typeof AgendaClient>[0]['turnosCoberturaAV']}
         todayDiaId={(todayDia as { id: string } | null)?.id ?? null}
         userRole={profile.role}
+        lineup={lineup}
       />
     </div>
   )

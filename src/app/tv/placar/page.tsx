@@ -1,6 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { buildLineupFromShows, EMPTY_LINEUP, type ShowRow, type DiaRow, type SetorRow } from '@/lib/lineup-data'
 import { PlacarTVClient } from './PlacarTVClient'
+
+const EDICAO_ID = '00000000-0000-0000-0000-000000000001'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'CIA 2026 · Placar Ao Vivo' }
@@ -53,7 +56,7 @@ export default async function PlacarTVPage() {
   const startOfTodayISO = `${todaySP}T00:00:00-03:00`
   const nowISO = new Date().toISOString()
 
-  const [aoVivoRes, encerradosRes, agendadosRes] = await Promise.all([
+  const [aoVivoRes, encerradosRes, agendadosRes, showsRes, diasRes, setoresRes] = await Promise.all([
     supabase.from('jogos').select(JOGO_SELECT)
       .eq('status', 'ao_vivo')
       .order('inicio', { ascending: true, nullsFirst: false }),
@@ -68,13 +71,28 @@ export default async function PlacarTVPage() {
       .gte('inicio', nowISO)
       .order('inicio', { ascending: true, nullsFirst: false })
       .limit(6),
+    supabase.from('shows')
+      .select('id, nome, tipo, inicio, fim_previsto, duracao_minutos, dia_id, setor_id, ordem_no_palco, embaixador')
+      .eq('edicao_id', EDICAO_ID),
+    supabase.from('dias_evento')
+      .select('id, data')
+      .eq('edicao_id', EDICAO_ID),
+    supabase.from('setores')
+      .select('id, nome')
+      .eq('edicao_id', EDICAO_ID)
+      .eq('tipo', 'palco'),
   ])
+
+  const lineup = (showsRes.data && diasRes.data && setoresRes.data)
+    ? buildLineupFromShows(showsRes.data as ShowRow[], diasRes.data as DiaRow[], setoresRes.data as SetorRow[])
+    : EMPTY_LINEUP
 
   return (
     <PlacarTVClient
       aoVivo={normalize(aoVivoRes.data as RawJogo[] | null)}
       encerrados={normalize(encerradosRes.data as RawJogo[] | null)}
       proximos={normalize(agendadosRes.data as RawJogo[] | null)}
+      lineup={lineup}
     />
   )
 }

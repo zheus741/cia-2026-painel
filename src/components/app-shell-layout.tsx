@@ -196,7 +196,6 @@ const OP_FV_GROUPS: NavGroup[] = [
       { label: 'Mapa Ao Vivo',   href: '/mapa',                    icon: MapPin },
       { label: 'Placar Ao Vivo', href: '/placar',                  icon: Radio },
       { label: 'Patrocinadores', href: '/patrocinadores',          icon: Heart },
-      { label: 'Line Up',        href: '/lineup',                  icon: Music },
     ],
   },
   {
@@ -225,7 +224,6 @@ const LIDER_FV_GROUPS: NavGroup[] = [
       { label: 'Mapa Ao Vivo',   href: '/mapa',                    icon: MapPin },
       { label: 'Placar Ao Vivo', href: '/placar',                  icon: Radio },
       { label: 'Patrocinadores', href: '/patrocinadores',          icon: Heart },
-      { label: 'Line Up',        href: '/lineup',                  icon: Music },
     ],
   },
   {

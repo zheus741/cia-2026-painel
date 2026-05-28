@@ -77,14 +77,17 @@ export interface CoordDashboardProps {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CANAL_CONFIG: Record<string, { label: string; color: string }> = {
-  instagram_cia:       { label: 'Instagram CIA',       color: '#E1306C' },
-  tiktok_cia:          { label: 'TikTok CIA',          color: '#69C9D0' },
-  instagram_exp:       { label: 'Instagram EXP',       color: '#A855F7' },
-  instagram_grupo_exp: { label: 'Instagram Grupo EXP', color: '#7C3AED' },
-  tiktok_exp:          { label: 'TikTok EXP',          color: '#EE1D52' },
-  instagram_nix:       { label: 'Instagram NIX',       color: '#F97316' },
-  x_cia:               { label: 'X CIA',               color: '#94A3B8' },
-  youtube_exp:         { label: 'YouTube EXP',         color: '#EF4444' },
+  instagram_cia:          { label: 'Instagram CIA',           color: '#E1306C' },
+  instagram_jogo_rapido:  { label: 'Instagram Jogo Rápido',   color: '#F43F5E' },
+  tiktok_cia:             { label: 'TikTok CIA',              color: '#69C9D0' },
+  instagram_exp:          { label: 'Instagram EXP',           color: '#A855F7' },
+  instagram_grupo_exp:    { label: 'Instagram Grupo EXP',     color: '#7C3AED' },
+  tiktok_exp:             { label: 'TikTok EXP',              color: '#EE1D52' },
+  instagram_nix:          { label: 'Instagram NIX',           color: '#F97316' },
+  x_cia:                  { label: 'X CIA',                   color: '#94A3B8' },
+  x_exp:                  { label: 'X EXP',                   color: '#475569' },
+  whats_comunidade:       { label: 'Whats Comunidade',        color: '#25D366' },
+  youtube_exp:            { label: 'YouTube EXP',             color: '#EF4444' },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

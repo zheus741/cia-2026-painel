@@ -132,14 +132,17 @@ const CANAL_CONFIG: Record<string, {
   cor:    string   // hex — borda topo do card
   badge:  string   // tailwind classes do badge
 }> = {
-  instagram_cia:       { label: 'Instagram CIA',        cor: '#E1306C', badge: 'bg-rose-50 text-rose-700 border-rose-200' },
-  tiktok_cia:          { label: 'TikTok CIA',           cor: '#69C9D0', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-  instagram_exp:       { label: 'Instagram EXP',        cor: '#A855F7', badge: 'bg-purple-50 text-purple-700 border-purple-200' },
-  instagram_grupo_exp: { label: 'Instagram Grupo EXP',  cor: '#7C3AED', badge: 'bg-violet-50 text-violet-700 border-violet-200' },
-  tiktok_exp:          { label: 'TikTok EXP',           cor: '#EE1D52', badge: 'bg-rose-50 text-rose-700 border-rose-200' },
-  instagram_nix:       { label: 'Instagram NIX',         cor: '#F97316', badge: 'bg-orange-50 text-orange-700 border-orange-200' },
-  x_cia:               { label: 'X CIA',                cor: '#94A3B8', badge: 'bg-slate-100 text-slate-600 border-slate-300' },
-  youtube_exp:         { label: 'YouTube EXP',           cor: '#EF4444', badge: 'bg-red-50 text-red-600 border-red-200' },
+  instagram_cia:          { label: 'Instagram CIA',           cor: '#E1306C', badge: 'bg-rose-50 text-rose-700 border-rose-200' },
+  instagram_jogo_rapido:  { label: 'Instagram Jogo Rápido',    cor: '#F43F5E', badge: 'bg-rose-50 text-rose-700 border-rose-200' },
+  tiktok_cia:             { label: 'TikTok CIA',               cor: '#69C9D0', badge: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  instagram_exp:          { label: 'Instagram EXP',            cor: '#A855F7', badge: 'bg-purple-50 text-purple-700 border-purple-200' },
+  instagram_grupo_exp:    { label: 'Instagram Grupo EXP',      cor: '#7C3AED', badge: 'bg-violet-50 text-violet-700 border-violet-200' },
+  tiktok_exp:             { label: 'TikTok EXP',               cor: '#EE1D52', badge: 'bg-rose-50 text-rose-700 border-rose-200' },
+  instagram_nix:          { label: 'Instagram NIX',            cor: '#F97316', badge: 'bg-orange-50 text-orange-700 border-orange-200' },
+  x_cia:                  { label: 'X CIA',                    cor: '#94A3B8', badge: 'bg-slate-100 text-slate-600 border-slate-300' },
+  x_exp:                  { label: 'X EXP',                    cor: '#475569', badge: 'bg-slate-100 text-slate-700 border-slate-300' },
+  whats_comunidade:       { label: 'Whats Comunidade',         cor: '#25D366', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  youtube_exp:            { label: 'YouTube EXP',              cor: '#EF4444', badge: 'bg-red-50 text-red-600 border-red-200' },
 }
 
 const CANAL_OPTIONS = Object.entries(CANAL_CONFIG).map(([value, { label }]) => ({ value, label }))

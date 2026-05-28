@@ -27,10 +27,39 @@ interface Usuario {
   aprovado: boolean
 }
 
-const EMPRESAS_COBERTURA = [
-  { value: '',              label: '— sem empresa —' },
-  { value: 'Indie Clicks',  label: '📷 Indie Clicks' },
-]
+export interface ParceiroOption {
+  nome: string
+  tipo: string | null  // 'foto' | 'video' | 'ambos' | null
+}
+
+/**
+ * Monta opções do dropdown de empresa, filtradas pela função do colaborador.
+ * - Função "foto" → mostra parceiros tipo 'foto' ou 'ambos'
+ * - Função "video" → mostra tipo 'video' ou 'ambos'
+ * - Outra função (ou nenhuma) → mostra todos os parceiros ativos
+ *
+ * Ícone segue o tipo do parceiro (📷 foto · 🎥 vídeo · 🎬 ambos).
+ */
+function buildEmpresaOptions(
+  parceiros: ParceiroOption[],
+  funcao: string | null,
+): Array<{ value: string; label: string }> {
+  const filtered = parceiros.filter(p => {
+    if (!p.tipo || p.tipo === 'ambos') return true
+    if (funcao === 'foto'  && p.tipo === 'foto')  return true
+    if (funcao === 'video' && p.tipo === 'video') return true
+    // Sem função definida ainda: mostra tudo pra coord decidir
+    if (!funcao) return true
+    return false
+  })
+  return [
+    { value: '', label: '— sem empresa —' },
+    ...filtered.map(p => ({
+      value: p.nome,
+      label: `${p.tipo === 'video' ? '🎥' : p.tipo === 'ambos' ? '🎬' : '📷'} ${p.nome}`,
+    })),
+  ]
+}
 
 const FV_ROLES: Role[] = ['operador_fv', 'lider_fv']
 
@@ -77,10 +106,11 @@ function Avatar({ nome, foto_url }: { nome: string; foto_url: string | null }) {
   )
 }
 
-function UsuarioCard({ u, onUpdate }: { u: Usuario; onUpdate: () => void }) {
+function UsuarioCard({ u, parceiros, onUpdate }: { u: Usuario; parceiros: ParceiroOption[]; onUpdate: () => void }) {
   const [isPending, startTransition] = useTransition()
   const meta = ROLE_META[u.role as Role] ?? ROLE_META.operador
   const RoleIcon = meta.icon
+  const empresaOptions = buildEmpresaOptions(parceiros, u.funcao_principal)
 
   function handleRole(newRole: Role) {
     startTransition(async () => {
@@ -172,7 +202,7 @@ function UsuarioCard({ u, onUpdate }: { u: Usuario; onUpdate: () => void }) {
             disabled={isPending}
             className="flex-1 min-w-[140px] rounded-lg border border-[var(--border)] bg-[var(--muted)] px-2.5 py-1.5 text-xs text-[var(--foreground)] disabled:opacity-50 cursor-pointer"
           >
-            {EMPRESAS_COBERTURA.map((e) => (
+            {empresaOptions.map((e) => (
               <option key={e.value} value={e.value}>{e.label}</option>
             ))}
           </select>
@@ -376,7 +406,7 @@ function PendingUserCard({ u, onUpdate, onApprove }: {
   )
 }
 
-export function UsuariosClient({ usuarios }: { usuarios: Usuario[] }) {
+export function UsuariosClient({ usuarios, parceiros }: { usuarios: Usuario[]; parceiros: ParceiroOption[] }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [filtro, setFiltro] = useState<Role | 'todos'>('todos')
@@ -487,7 +517,7 @@ export function UsuariosClient({ usuarios }: { usuarios: Usuario[] }) {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {filtrados.map((u) => (
-                <UsuarioCard key={u.id} u={u} onUpdate={() => router.refresh()} />
+                <UsuarioCard key={u.id} u={u} parceiros={parceiros} onUpdate={() => router.refresh()} />
               ))}
             </div>
           )}

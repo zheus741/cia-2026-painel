@@ -38,6 +38,22 @@ interface UpcomingJogo {
 
 interface ConferenciaGroup { conferencia: string; equipes: AtleticaWithStats[] }
 
+export interface PracaModalidade { nome: string; icone: string | null; count: number }
+export interface PracaAtletica   { id: string; nome: string; slug: string; cor: string | null; jogos: number }
+export interface PracaStats {
+  id: string
+  nome: string
+  cor: string | null
+  totalJogos: number
+  encerrados: number
+  aoVivo: number
+  agendados: number
+  modalidades: PracaModalidade[]
+  atleticas: PracaAtletica[]
+  primeiroJogo: string | null
+  ultimoJogo: string | null
+}
+
 interface Props {
   div1: AtleticaWithStats[]
   div2: AtleticaWithStats[]
@@ -46,6 +62,7 @@ interface Props {
   totalJogos: number
   totalAtleticas: number
   aoVivoCount: number
+  pracas: PracaStats[]
 }
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
@@ -531,11 +548,251 @@ function ProximosJogos({ upcoming }: { upcoming: UpcomingJogo[] }) {
   )
 }
 
+// ─── MovimentoPracas — volume por praça esportiva ────────────────────────────
+
+function MovimentoPracas({ pracas }: { pracas: PracaStats[] }) {
+  const totalJogos     = pracas.reduce((s, p) => s + p.totalJogos, 0)
+  const totalEncerrados = pracas.reduce((s, p) => s + p.encerrados, 0)
+  const totalAoVivo    = pracas.reduce((s, p) => s + p.aoVivo, 0)
+  const pctEncerrados  = totalJogos > 0 ? Math.round((totalEncerrados / totalJogos) * 100) : 0
+
+  return (
+    <section>
+      <div className="flex items-baseline justify-between" style={{ marginBottom: 14 }}>
+        <div>
+          <h3 style={{
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 'clamp(22px, 2.6vw, 32px)',
+            fontWeight: 800,
+            lineHeight: 1,
+            letterSpacing: '-0.025em',
+            color: '#0A0F0B',
+          }}>
+            Movimento das praças
+          </h3>
+          <p style={{
+            marginTop: 4,
+            fontSize: 12.5, fontWeight: 500,
+            color: 'rgba(10,15,11,0.55)',
+            letterSpacing: '-0.01em',
+          }}>
+            {pracas.length} {pracas.length === 1 ? 'praça' : 'praças'} ativa{pracas.length === 1 ? '' : 's'} · {totalJogos} jogos · {pctEncerrados}% encerrados
+            {totalAoVivo > 0 && <span style={{ marginLeft: 8, color: '#C0392B', fontWeight: 700 }}>● {totalAoVivo} ao vivo</span>}
+          </p>
+        </div>
+      </div>
+
+      <div
+        className="grid gap-3"
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}
+      >
+        {pracas.map(p => <PracaCard key={p.id} praca={p} />)}
+      </div>
+    </section>
+  )
+}
+
+function PracaCard({ praca: p }: { praca: PracaStats }) {
+  const topModalidades = p.modalidades.slice(0, 3)
+  const topAtleticas   = p.atleticas.slice(0, 6)
+  const remainingAtleticas = Math.max(0, p.atleticas.length - topAtleticas.length)
+  const pctEncerrados = p.totalJogos > 0 ? Math.round((p.encerrados / p.totalJogos) * 100) : 0
+  const corBarra = p.cor ?? '#2e6b42'
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        padding: 18,
+        background: '#FAF7F0',
+        borderRadius: 18,
+        border: '1px solid rgba(10,15,11,0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+        transition: 'border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease',
+      }}
+      className="hover:-translate-y-0.5 hover:shadow-md hover:border-[rgba(10,15,11,0.18)]"
+    >
+      {/* Header: nome + número grande de jogos */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p style={{
+            fontSize: 10, fontWeight: 700,
+            color: 'rgba(10,15,11,0.45)',
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            marginBottom: 4,
+          }}>
+            Praça
+          </p>
+          <h4 style={{
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 'clamp(20px, 2vw, 26px)',
+            fontWeight: 800,
+            letterSpacing: '-0.03em',
+            lineHeight: 1.05,
+            color: '#0A0F0B',
+          }}>
+            {p.nome}
+          </h4>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <p style={{
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 38, fontWeight: 800,
+            letterSpacing: '-0.04em',
+            lineHeight: 0.9,
+            color: '#0A0F0B',
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {p.totalJogos}
+          </p>
+          <p style={{
+            marginTop: 2,
+            fontSize: 9.5, fontWeight: 700,
+            color: 'rgba(10,15,11,0.55)',
+            letterSpacing: '0.10em', textTransform: 'uppercase',
+          }}>
+            jogos
+          </p>
+        </div>
+      </div>
+
+      {/* Barra de progresso encerrados / ao_vivo / agendados */}
+      <div>
+        <div style={{
+          height: 8, borderRadius: 4, overflow: 'hidden',
+          background: 'rgba(10,15,11,0.08)',
+          display: 'flex',
+        }}>
+          {p.encerrados > 0 && (
+            <div title={`${p.encerrados} encerrados`} style={{
+              width:  `${(p.encerrados / p.totalJogos) * 100}%`,
+              background: corBarra,
+            }} />
+          )}
+          {p.aoVivo > 0 && (
+            <div title={`${p.aoVivo} ao vivo`} style={{
+              width:  `${(p.aoVivo / p.totalJogos) * 100}%`,
+              background: 'repeating-linear-gradient(45deg, #C0392B, #C0392B 3px, #A02E20 3px, #A02E20 6px)',
+            }} />
+          )}
+        </div>
+        <div className="mt-1.5 flex items-center gap-3" style={{
+          fontSize: 10, fontWeight: 700,
+          color: 'rgba(10,15,11,0.55)',
+          letterSpacing: '0.06em', textTransform: 'uppercase',
+        }}>
+          <span>{p.encerrados} encerrados</span>
+          {p.aoVivo > 0 && <span style={{ color: '#C0392B' }}>● {p.aoVivo} ao vivo</span>}
+          <span>{p.agendados} agendados</span>
+          <span style={{ marginLeft: 'auto', color: '#0A0F0B' }}>{pctEncerrados}%</span>
+        </div>
+      </div>
+
+      {/* Modalidades (top 3) */}
+      {topModalidades.length > 0 && (
+        <div>
+          <p style={{
+            fontSize: 9.5, fontWeight: 700,
+            color: 'rgba(10,15,11,0.45)',
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            marginBottom: 6,
+          }}>
+            Modalidades
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {topModalidades.map(m => (
+              <span
+                key={m.nome}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: 'rgba(10,15,11,0.05)',
+                  border: '1px solid rgba(10,15,11,0.08)',
+                  fontSize: 11, fontWeight: 600,
+                  color: '#0A0F0B',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {m.icone && <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }}>{m.icone}</span>}
+                <span>{m.nome}</span>
+                <span style={{ color: 'rgba(10,15,11,0.45)', fontWeight: 700 }}>· {m.count}</span>
+              </span>
+            ))}
+            {p.modalidades.length > 3 && (
+              <span style={{
+                fontSize: 10.5, fontWeight: 700,
+                color: 'rgba(10,15,11,0.45)',
+              }}>
+                +{p.modalidades.length - 3}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Atléticas (top 6) */}
+      {topAtleticas.length > 0 && (
+        <div>
+          <p style={{
+            fontSize: 9.5, fontWeight: 700,
+            color: 'rgba(10,15,11,0.45)',
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            marginBottom: 6,
+          }}>
+            Atléticas · {p.atleticas.length}
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {topAtleticas.map(a => (
+              <Link
+                key={a.id}
+                href={`/atleticas/${a.slug}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: a.cor ? `${a.cor}15` : 'rgba(10,15,11,0.05)',
+                  border: `1px solid ${a.cor ? `${a.cor}40` : 'rgba(10,15,11,0.08)'}`,
+                  fontSize: 11, fontWeight: 700,
+                  color: a.cor ?? '#0A0F0B',
+                  letterSpacing: '-0.01em',
+                  textDecoration: 'none',
+                  transition: 'background 0.15s',
+                }}
+              >
+                <span style={{
+                  width: 5, height: 5, borderRadius: '50%',
+                  background: a.cor ?? '#0A0F0B',
+                }} />
+                {a.nome}
+                {a.jogos > 1 && (
+                  <span style={{ opacity: 0.65, fontWeight: 600 }}>· {a.jogos}</span>
+                )}
+              </Link>
+            ))}
+            {remainingAtleticas > 0 && (
+              <span style={{
+                fontSize: 10.5, fontWeight: 700,
+                color: 'rgba(10,15,11,0.45)',
+              }}>
+                +{remainingAtleticas}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export function EsportivoClient({
   div1, div2, super08, upcoming,
   totalJogos, totalAtleticas, aoVivoCount,
+  pracas,
 }: Props) {
   const router = useRouter()
   const [liveSync, setLiveSync] = useState(false)
@@ -711,6 +968,13 @@ export function EsportivoClient({
       <div style={{ marginBottom: 36 }}>
         <ProximosJogos upcoming={upcoming} />
       </div>
+
+      {/* ─── Movimento das praças ─── */}
+      {pracas.length > 0 && (
+        <div style={{ marginBottom: 36 }}>
+          <MovimentoPracas pracas={pracas} />
+        </div>
+      )}
 
       {/* ─── Acesso rápido (HUB) ─── */}
       <section>

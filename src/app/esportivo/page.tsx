@@ -24,6 +24,7 @@ export default async function EsportivoPage() {
     { count: aoVivoCount },
     { data: rawInscricoes },
     { data: rawResultadosExternos },
+    { data: rawSetores },
   ] = await Promise.all([
     supabase
       .from('equipes')
@@ -35,7 +36,7 @@ export default async function EsportivoPage() {
     supabase
       .from('jogos')
       .select(`
-        id, modalidade_id, categoria, divisao, fase,
+        id, modalidade_id, categoria, divisao, fase, setor_id,
         inicio, status, placar_a, placar_b, wo,
         equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
         modalidades:modalidade_id (nome, icone)
@@ -57,6 +58,11 @@ export default async function EsportivoPage() {
         modalidade_id, divisao, equipe_id, colocacao, pontos, observacoes,
         modalidades:modalidade_id (nome, icone)
       `),
+    supabase
+      .from('setores')
+      .select('id, nome, tipo, cor_hex')
+      .eq('tipo', 'esportivo')
+      .order('nome'),
   ])
 
   const atleticas = rawAtleticas ?? []
@@ -66,6 +72,7 @@ export default async function EsportivoPage() {
   type RawJogo = {
     id: string; modalidade_id: string
     categoria: string | null; divisao: string | null; fase: string | null
+    setor_id: string | null
     inicio: string | null; status: string | null
     placar_a: number | null; placar_b: number | null
     wo: 'a' | 'b' | 'duplo' | null
@@ -180,6 +187,76 @@ export default async function EsportivoPage() {
       modalidade_nome: j.modalidade_nome, modalidade_icone: j.modalidade_icone,
     }))
 
+  // ── Volume por praça esportiva ────────────────────────────────────────────
+  type SetorRow = { id: string; nome: string; tipo: string; cor_hex: string | null }
+  const setores = (rawSetores as SetorRow[] | null) ?? []
+  // Index pra lookups
+  const rawJogosTyped = (rawJogos as RawJogo[] | null) ?? []
+  const atleticaById = new Map(atleticas.map(a => [a.id, a]))
+
+  type PracaModalidadeCount = { nome: string; icone: string | null; count: number }
+  type PracaAtleticaCount   = { id: string; nome: string; slug: string; cor: string | null; jogos: number }
+
+  const pracas = setores.map(s => {
+    const jogosDaPraca = rawJogosTyped.filter(j => j.setor_id === s.id)
+    let encerradosCount = 0, aoVivoCount = 0, agendadosCount = 0
+    const modMap = new Map<string, PracaModalidadeCount>()
+    const atlMap = new Map<string, PracaAtleticaCount>()
+    let primeiroJogo: string | null = null
+    let ultimoJogo:   string | null = null
+
+    for (const j of jogosDaPraca) {
+      if      (j.status === 'encerrado') encerradosCount++
+      else if (j.status === 'ao_vivo')   aoVivoCount++
+      else if (j.status === 'agendado')  agendadosCount++
+
+      // Modalidade
+      const mod = Array.isArray(j.modalidades) ? j.modalidades[0] : j.modalidades
+      if (mod) {
+        const cur = modMap.get(mod.nome) ?? { nome: mod.nome, icone: mod.icone, count: 0 }
+        cur.count++
+        modMap.set(mod.nome, cur)
+      }
+
+      // Atléticas
+      for (const eqId of [j.equipe_a_id, j.equipe_b_id]) {
+        if (!eqId) continue
+        const a = atleticaById.get(eqId)
+        if (!a) continue
+        const cur = atlMap.get(a.id) ?? { id: a.id, nome: a.nome, slug: a.slug, cor: a.cor_primaria, jogos: 0 }
+        cur.jogos++
+        atlMap.set(a.id, cur)
+      }
+
+      // Range temporal
+      if (j.inicio) {
+        if (!primeiroJogo || j.inicio < primeiroJogo) primeiroJogo = j.inicio
+        if (!ultimoJogo   || j.inicio > ultimoJogo)   ultimoJogo   = j.inicio
+      }
+    }
+
+    const modalidades = [...modMap.values()].sort((a, b) => b.count - a.count)
+    const atleticasList = [...atlMap.values()].sort((a, b) => b.jogos - a.jogos)
+
+    return {
+      id:           s.id,
+      nome:         s.nome,
+      cor:          s.cor_hex,
+      totalJogos:   jogosDaPraca.length,
+      encerrados:   encerradosCount,
+      aoVivo:       aoVivoCount,
+      agendados:    agendadosCount,
+      modalidades,
+      atleticas:    atleticasList,
+      primeiroJogo,
+      ultimoJogo,
+    }
+  })
+  // Ordem: mais movimentada primeiro, vazias no fim
+  .sort((a, b) => b.totalJogos - a.totalJogos || a.nome.localeCompare(b.nome, 'pt-BR'))
+  // Esconde praças sem nenhum jogo
+  .filter(p => p.totalJogos > 0)
+
   return (
     <div className="mx-auto w-full max-w-[1640px] px-4 py-6 sm:px-6 md:py-8 lg:px-10 xl:px-12">
       <EsportivoClient
@@ -190,6 +267,7 @@ export default async function EsportivoPage() {
         totalJogos={encerrados.length}
         totalAtleticas={atleticas.length}
         aoVivoCount={aoVivoCount ?? 0}
+        pracas={pracas}
       />
     </div>
   )

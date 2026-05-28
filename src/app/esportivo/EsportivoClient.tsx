@@ -14,6 +14,7 @@ import Link from 'next/link'
 import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { PracaStats } from '@/lib/competicao/pracas'
+import { groupPracasByLocal, type LocalAgrupado } from '@/lib/competicao/pracas-grupos'
 export type { PracaStats } from '@/lib/competicao/pracas'
 
 // ── Types (mantém shape esperado pela page.tsx) ──────────────────────────────
@@ -534,12 +535,15 @@ function ProximosJogos({ upcoming }: { upcoming: UpcomingJogo[] }) {
   )
 }
 
-// ─── MovimentoPracas — volume por praça esportiva ────────────────────────────
+// ─── MovimentoPracas — volume por LOCAL FÍSICO esportivo ─────────────────────
 
 function MovimentoPracas({ pracas }: { pracas: PracaStats[] }) {
-  const totalJogos     = pracas.reduce((s, p) => s + p.totalJogos, 0)
-  const totalEncerrados = pracas.reduce((s, p) => s + p.encerrados, 0)
-  const totalAoVivo    = pracas.reduce((s, p) => s + p.aoVivo, 0)
+  // Agrupa CEMEA 01-04 → "CEMEA" (1 card por local)
+  const locais = groupPracasByLocal(pracas)
+  const totalJogos     = locais.reduce((s, l) => s + l.totalJogos, 0)
+  const totalEncerrados = locais.reduce((s, l) => s + l.encerrados, 0)
+  const totalAoVivo    = locais.reduce((s, l) => s + l.aoVivo, 0)
+  const totalQuadras   = locais.reduce((s, l) => s + l.numQuadras, 0)
   const pctEncerrados  = totalJogos > 0 ? Math.round((totalEncerrados / totalJogos) * 100) : 0
 
   return (
@@ -562,7 +566,7 @@ function MovimentoPracas({ pracas }: { pracas: PracaStats[] }) {
             color: 'rgba(10,15,11,0.55)',
             letterSpacing: '-0.01em',
           }}>
-            {pracas.length} {pracas.length === 1 ? 'praça' : 'praças'} ativa{pracas.length === 1 ? '' : 's'} · {totalJogos} jogos · {pctEncerrados}% encerrados
+            {locais.length} {locais.length === 1 ? 'local' : 'locais'} · {totalQuadras} quadras · {totalJogos} jogos · {pctEncerrados}% encerrados
             {totalAoVivo > 0 && <span style={{ marginLeft: 8, color: '#C0392B', fontWeight: 700 }}>● {totalAoVivo} ao vivo</span>}
           </p>
         </div>
@@ -570,15 +574,257 @@ function MovimentoPracas({ pracas }: { pracas: PracaStats[] }) {
 
       <div
         className="grid gap-3"
-        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}
       >
-        {pracas.map(p => <PracaCard key={p.id} praca={p} />)}
+        {locais.map(l => <LocalCard key={l.slug} local={l} />)}
       </div>
     </section>
   )
 }
 
-function PracaCard({ praca: p }: { praca: PracaStats }) {
+function LocalCard({ local: l }: { local: LocalAgrupado }) {
+  const topModalidades = l.modalidades.slice(0, 3)
+  const topAtleticas   = l.atleticas.slice(0, 6)
+  const remainingAtleticas = Math.max(0, l.atleticas.length - topAtleticas.length)
+  const pctEncerrados = l.totalJogos > 0 ? Math.round((l.encerrados / l.totalJogos) * 100) : 0
+  const corBarra = l.cor ?? '#2e6b42'
+
+  return (
+    <Link
+      href={`/esportivo/pracas/${l.slug}`}
+      style={{
+        position: 'relative',
+        padding: 18,
+        background: '#FAF7F0',
+        borderRadius: 18,
+        border: '1px solid rgba(10,15,11,0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+        transition: 'border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease',
+        textDecoration: 'none',
+        color: 'inherit',
+      }}
+      className="group hover:-translate-y-0.5 hover:shadow-md hover:border-[rgba(10,15,11,0.18)]"
+    >
+      {/* Header: nome + número grande de jogos */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p style={{
+            fontSize: 10, fontWeight: 700,
+            color: 'rgba(10,15,11,0.45)',
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            marginBottom: 4,
+          }}>
+            {l.numQuadras > 1
+              ? `Local · ${l.numQuadras} quadras`
+              : 'Praça'}
+          </p>
+          <h4 style={{
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 'clamp(20px, 2vw, 26px)',
+            fontWeight: 800,
+            letterSpacing: '-0.03em',
+            lineHeight: 1.05,
+            color: '#0A0F0B',
+          }}>
+            {l.nome}
+          </h4>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <p style={{
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 38, fontWeight: 800,
+            letterSpacing: '-0.04em',
+            lineHeight: 0.9,
+            color: '#0A0F0B',
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {l.totalJogos}
+          </p>
+          <p style={{
+            marginTop: 2,
+            fontSize: 9.5, fontWeight: 700,
+            color: 'rgba(10,15,11,0.55)',
+            letterSpacing: '0.10em', textTransform: 'uppercase',
+          }}>
+            jogos
+          </p>
+        </div>
+      </div>
+
+      {/* Quadras (chips numerados) */}
+      {l.numQuadras > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          {l.quadras.map(q => {
+            const isLive = q.aoVivo > 0
+            return (
+              <span
+                key={q.id}
+                title={`${q.nome} · ${q.totalJogos} jogos${isLive ? ' · ao vivo' : ''}`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '3px 7px',
+                  borderRadius: 6,
+                  background: isLive ? 'rgba(192,57,43,0.10)' : 'rgba(10,15,11,0.05)',
+                  border: isLive ? '1px solid rgba(192,57,43,0.30)' : '1px solid rgba(10,15,11,0.08)',
+                  fontSize: 10.5, fontWeight: 700,
+                  color: isLive ? '#C0392B' : '#0A0F0B',
+                  letterSpacing: '-0.01em',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {isLive && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#C0392B' }} />}
+                {q.numero ?? q.nome.split(' ').pop()}
+                <span style={{ opacity: 0.55, fontWeight: 600 }}>· {q.totalJogos}</span>
+              </span>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Barra de progresso */}
+      <div>
+        <div style={{
+          height: 8, borderRadius: 4, overflow: 'hidden',
+          background: 'rgba(10,15,11,0.08)',
+          display: 'flex',
+        }}>
+          {l.encerrados > 0 && (
+            <div title={`${l.encerrados} encerrados`} style={{
+              width:  `${(l.encerrados / l.totalJogos) * 100}%`,
+              background: corBarra,
+            }} />
+          )}
+          {l.aoVivo > 0 && (
+            <div title={`${l.aoVivo} ao vivo`} style={{
+              width:  `${(l.aoVivo / l.totalJogos) * 100}%`,
+              background: 'repeating-linear-gradient(45deg, #C0392B, #C0392B 3px, #A02E20 3px, #A02E20 6px)',
+            }} />
+          )}
+        </div>
+        <div className="mt-1.5 flex items-center gap-3" style={{
+          fontSize: 10, fontWeight: 700,
+          color: 'rgba(10,15,11,0.55)',
+          letterSpacing: '0.06em', textTransform: 'uppercase',
+        }}>
+          <span>{l.encerrados} encerrados</span>
+          {l.aoVivo > 0 && <span style={{ color: '#C0392B' }}>● {l.aoVivo} ao vivo</span>}
+          <span>{l.agendados} agendados</span>
+          <span style={{ marginLeft: 'auto', color: '#0A0F0B' }}>{pctEncerrados}%</span>
+        </div>
+      </div>
+
+      {/* Modalidades (top 3) */}
+      {topModalidades.length > 0 && (
+        <div>
+          <p style={{
+            fontSize: 9.5, fontWeight: 700,
+            color: 'rgba(10,15,11,0.45)',
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            marginBottom: 6,
+          }}>
+            Modalidades
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {topModalidades.map(m => (
+              <span
+                key={m.nome}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: 'rgba(10,15,11,0.05)',
+                  border: '1px solid rgba(10,15,11,0.08)',
+                  fontSize: 11, fontWeight: 600,
+                  color: '#0A0F0B',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {m.icone && <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }}>{m.icone}</span>}
+                <span>{m.nome}</span>
+                <span style={{ color: 'rgba(10,15,11,0.45)', fontWeight: 700 }}>· {m.count}</span>
+              </span>
+            ))}
+            {l.modalidades.length > 3 && (
+              <span style={{
+                fontSize: 10.5, fontWeight: 700,
+                color: 'rgba(10,15,11,0.45)',
+              }}>
+                +{l.modalidades.length - 3}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Atléticas (top 6) */}
+      {topAtleticas.length > 0 && (
+        <div>
+          <p style={{
+            fontSize: 9.5, fontWeight: 700,
+            color: 'rgba(10,15,11,0.45)',
+            letterSpacing: '0.14em', textTransform: 'uppercase',
+            marginBottom: 6,
+          }}>
+            Atléticas · {l.atleticas.length}
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {topAtleticas.map(a => (
+              <span
+                key={a.id}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: a.cor ? `${a.cor}15` : 'rgba(10,15,11,0.05)',
+                  border: `1px solid ${a.cor ? `${a.cor}40` : 'rgba(10,15,11,0.08)'}`,
+                  fontSize: 11, fontWeight: 700,
+                  color: a.cor ?? '#0A0F0B',
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                <span style={{
+                  width: 5, height: 5, borderRadius: '50%',
+                  background: a.cor ?? '#0A0F0B',
+                }} />
+                {a.nome}
+                {a.jogos > 1 && (
+                  <span style={{ opacity: 0.65, fontWeight: 600 }}>· {a.jogos}</span>
+                )}
+              </span>
+            ))}
+            {remainingAtleticas > 0 && (
+              <span style={{
+                fontSize: 10.5, fontWeight: 700,
+                color: 'rgba(10,15,11,0.45)',
+              }}>
+                +{remainingAtleticas}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CTA hint */}
+      <div className="mt-auto flex items-center justify-between pt-2" style={{
+        borderTop: '1px solid rgba(10,15,11,0.06)',
+      }}>
+        <span style={{
+          fontSize: 11, fontWeight: 600,
+          color: 'rgba(10,15,11,0.55)',
+          letterSpacing: '-0.01em',
+        }}>
+          Ver perfil completo
+        </span>
+        <CircleArrow size={28} />
+      </div>
+    </Link>
+  )
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _PracaCard({ praca: p }: { praca: PracaStats }) {
   const topModalidades = p.modalidades.slice(0, 3)
   const topAtleticas   = p.atleticas.slice(0, 6)
   const remainingAtleticas = Math.max(0, p.atleticas.length - topAtleticas.length)

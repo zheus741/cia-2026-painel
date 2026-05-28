@@ -6,6 +6,7 @@ import {
   Bell, BellRing, LayoutList, ClipboardList, Settings, Inbox,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 
 type NotifTipo = 'kanban' | 'escala' | 'sistema'
 
@@ -35,6 +36,7 @@ export function NotifBell({ userId }: { userId: string }) {
   // Busca inicial + real-time
   useEffect(() => {
     const supabase = createClient()
+    let cancelled = false
 
     supabase
       .from('notificacoes')
@@ -42,20 +44,27 @@ export function NotifBell({ userId }: { userId: string }) {
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(30)
-      .then(({ data }) => setNotifs((data ?? []) as Notif[]))
+      .then(({ data }) => {
+        if (!cancelled) setNotifs((data ?? []) as Notif[])
+      })
 
+    // Canal com sufixo aleatório — evita "cannot add postgres_changes after
+    // subscribe()" quando o componente remonta. Ver lib/supabase/channel-name.
     const channel = supabase
-      .channel(`notif-${userId}`)
+      .channel(uniqueChannel(`notif-${userId}`))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notificacoes', filter: `user_id=eq.${userId}` },
         payload => {
-          setNotifs(prev => [payload.new as Notif, ...prev])
+          if (!cancelled) setNotifs(prev => [payload.new as Notif, ...prev])
         },
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      cancelled = true
+      supabase.removeChannel(channel)
+    }
   }, [userId])
 
   // Fechar ao clicar fora

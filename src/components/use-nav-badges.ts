@@ -13,6 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 
 interface NavBadges {
   aoVivo: number
@@ -39,7 +40,7 @@ export function useNavBadges(): NavBadges {
 
     // Subscribe em UPDATE da tabela jogos — debounce 4s coalesce a rajada
     const channel = supabase
-      .channel('nav-badges-jogos')
+      .channel(uniqueChannel('nav-badges-jogos'))
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',

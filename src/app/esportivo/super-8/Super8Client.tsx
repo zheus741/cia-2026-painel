@@ -18,6 +18,7 @@ import Link from 'next/link'
 import { Trophy, Radio, Crown, TrendingUp, Calendar, UserX, ArrowUpRight, Sparkles, Flag } from 'lucide-react'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 import type { Super8Row, Super8Standing, Super8Participante, Super8Resumo } from '@/lib/competicao/super8'
 
 interface Props {
@@ -39,7 +40,7 @@ export function Super8Client({ edicaoNome, rows: initialRows, standings: initial
     if (jogoIds.size === 0) return
 
     const channel = supabase
-      .channel('super8-jogos')
+      .channel(uniqueChannel('super8-jogos'))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jogos' }, async (payload) => {
         const updatedId = (payload.new as { id: string }).id
         if (!jogoIds.has(updatedId)) return

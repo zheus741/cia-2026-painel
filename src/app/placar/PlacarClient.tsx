@@ -8,6 +8,7 @@ import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Z
 import { setJogoAoVivo, encerrarJogo, atualizarPlacar, lancarResultado, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento, fecharSet } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 
 interface EquipeRef {
   slug: string
@@ -1800,7 +1801,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
     }
 
     const channel = supabase
-      .channel('placar-realtime')
+      .channel(uniqueChannel('placar-realtime'))
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',

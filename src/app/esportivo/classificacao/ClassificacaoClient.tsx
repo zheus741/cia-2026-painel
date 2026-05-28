@@ -15,6 +15,7 @@ import {
   Trophy, TrendingUp, Zap, Crown, ArrowLeft, Info, ChevronRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 import { CONFERENCIAS } from '@/lib/conferencias'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -517,7 +518,7 @@ export function ClassificacaoClient({ div1, div2, super08 }: Props) {
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
-      .channel('classificacao-realtime')
+      .channel(uniqueChannel('classificacao-realtime'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos' }, () => {
         if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
         refreshTimerRef.current = setTimeout(() => { router.refresh() }, 1200)

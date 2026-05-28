@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 import type { PracaStats } from '@/lib/competicao/pracas'
 import { groupPracasByLocal, type LocalAgrupado } from '@/lib/competicao/pracas-grupos'
 export type { PracaStats } from '@/lib/competicao/pracas'
@@ -1034,7 +1035,7 @@ export function EsportivoClient({
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
-      .channel('esportivo-realtime')
+      .channel(uniqueChannel('esportivo-realtime'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos' }, () => {
         if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
         refreshTimerRef.current = setTimeout(() => { router.refresh() }, 3000)

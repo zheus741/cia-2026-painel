@@ -21,6 +21,7 @@ import {
   type ConteudoPayload,
 } from './actions'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -1172,7 +1173,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     }
 
     const channel = supabase
-      .channel('kanban-conteudos')
+      .channel(uniqueChannel('kanban-conteudos'))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'conteudos' }, (payload) => {
         const r = payload.new as unknown as Conteudo
         // Filtro server-side por dia: ignora cards de outros dias

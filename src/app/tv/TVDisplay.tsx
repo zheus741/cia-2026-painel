@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Maximize2, Minimize2, RefreshCw, AlertTriangle, Camera } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 import { CiaLogo } from '@/components/cia-logo'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1785,7 +1786,7 @@ export function TVDisplay({
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
-      .channel('tv-realtime')
+      .channel(uniqueChannel('tv-realtime'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conteudos' }, () => {
         if (debounceRef.current) clearTimeout(debounceRef.current)
         debounceRef.current = setTimeout(() => doRefreshRef.current(), 1_000)

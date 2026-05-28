@@ -13,6 +13,7 @@ import type {
 } from '@/lib/competicao/queries'
 import type { ConferenciaMeta, DivisaoMeta } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 import { AtleticaLogo } from '@/components/atletica-logo'
 
 interface Props {
@@ -497,7 +498,7 @@ export function AtleticaWikiClient({
       refreshTimer.current = setTimeout(() => { router.refresh() }, 1000)
     }
     const channel = supabase
-      .channel(`wiki-atletica:${atletica.id}`)
+      .channel(uniqueChannel(`wiki-atletica:${atletica.id}`))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos', filter: `equipe_a_id=eq.${atletica.id}` }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos', filter: `equipe_b_id=eq.${atletica.id}` }, scheduleRefresh)
       .subscribe()

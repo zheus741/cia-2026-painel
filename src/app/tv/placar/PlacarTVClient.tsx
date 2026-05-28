@@ -7,6 +7,7 @@ import { CiaLogo } from '@/components/cia-logo'
 import { NowPlayingTicker } from '@/components/now-playing-panel'
 import type { Lineup } from '@/lib/lineup-data'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 import { getConferencia, type ConferenciaMeta } from '@/lib/conferencias'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -520,7 +521,7 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
     }
 
     const channel = supabase
-      .channel('tv-placar-realtime')
+      .channel(uniqueChannel('tv-placar-realtime'))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jogos' }, (payload) => {
         const newRow = payload.new as Partial<JogoTV> & { id: string }
         const oldRow = payload.old as Partial<JogoTV>

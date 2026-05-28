@@ -4,6 +4,7 @@ import {
   useState, useEffect, useRef, useTransition, useCallback,
 } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { uniqueChannel } from '@/lib/supabase/channel-name'
 import { addComentarioTurno, deleteComentarioTurno } from '@/app/actions/turno'
 import { Send, Trash2, Loader2, MessageSquare, ChevronDown } from 'lucide-react'
 
@@ -111,7 +112,7 @@ export function TurnoComments({ turnoId, initialCount = 0 }: Props) {
     let alive = true
 
     const channel = supabase
-      .channel(`turno-comments-${turnoId}`)
+      .channel(uniqueChannel(`turno-comments-${turnoId}`))
       .on(
         'postgres_changes',
         {

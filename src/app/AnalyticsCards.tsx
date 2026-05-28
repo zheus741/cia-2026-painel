@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertTriangle, ShieldCheck, ShieldAlert } from 'lucide-react'
+import Link from 'next/link'
+import { AlertTriangle, ShieldCheck, ShieldAlert, ArrowUpRight } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -28,6 +29,7 @@ interface Props {
   lacunas:       LacunaItem[]
   volumePorHora: VolumePorHora[]
   atleticas:     AtleticaItem[]
+  pracas?:       import('@/lib/competicao/pracas').PracaStats[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -650,7 +652,7 @@ function AtleticasCard({ atleticas }: { atleticas: AtleticaItem[] }) {
 // Main export
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function AnalyticsCards({ ranking, lacunas, volumePorHora, atleticas }: Props) {
+export function AnalyticsCards({ ranking, lacunas, volumePorHora, atleticas, pracas = [] }: Props) {
   return (
     <div
       className="grid"
@@ -663,6 +665,176 @@ export function AnalyticsCards({ ranking, lacunas, volumePorHora, atleticas }: P
       <div className="cia-metrics-col-6"><LacunasCard      lacunas={lacunas} /></div>
       <div className="cia-metrics-col-6"><VolumeHoraCard   volumePorHora={volumePorHora} /></div>
       <div className="cia-metrics-col-6"><AtleticasCard    atleticas={atleticas} /></div>
+      {pracas.length > 0 && (
+        <div style={{ gridColumn: 'span 12' }}>
+          <PracasCard pracas={pracas} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── PracasCard — versão compacta do "Movimento das praças" pra home ──────────
+
+function PracasCard({ pracas }: { pracas: import('@/lib/competicao/pracas').PracaStats[] }) {
+  const totalJogos = pracas.reduce((s, p) => s + p.totalJogos, 0)
+  const totalAoVivo = pracas.reduce((s, p) => s + p.aoVivo, 0)
+  const totalEncerrados = pracas.reduce((s, p) => s + p.encerrados, 0)
+  const pctEncerrados = totalJogos > 0 ? Math.round((totalEncerrados / totalJogos) * 100) : 0
+
+  return (
+    <div className="cia-edit-card cia-edit-card--cream" style={{ minHeight: 'auto' }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <span style={{
+            fontSize: 11.5, fontWeight: 600,
+            color: 'rgba(10,15,11,0.55)',
+            letterSpacing: '-0.01em',
+          }}>
+            movimento das praças
+          </span>
+          <h3 style={{
+            marginTop: 4,
+            fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+            fontSize: 28, fontWeight: 800,
+            letterSpacing: '-0.04em',
+            color: '#0A0F0B',
+            lineHeight: 1,
+          }}>
+            {pracas.length} {pracas.length === 1 ? 'praça ativa' : 'praças ativas'}
+          </h3>
+          <p style={{
+            marginTop: 6,
+            fontSize: 12.5, fontWeight: 500,
+            color: 'rgba(10,15,11,0.55)',
+            letterSpacing: '-0.01em',
+          }}>
+            {totalJogos} jogos · {pctEncerrados}% encerrados
+            {totalAoVivo > 0 && <span style={{ marginLeft: 8, color: '#C0392B', fontWeight: 700 }}>● {totalAoVivo} ao vivo</span>}
+          </p>
+        </div>
+        <Link
+          href="/esportivo"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '7px 13px',
+            borderRadius: 999,
+            background: '#0A0F0B',
+            color: '#FFFFFF',
+            fontSize: 11, fontWeight: 700,
+            letterSpacing: '-0.01em',
+            textDecoration: 'none',
+            flexShrink: 0,
+          }}
+        >
+          Ver detalhe
+          <ArrowUpRight size={12} strokeWidth={2.2} />
+        </Link>
+      </div>
+
+      {/* Mini-grid de praças */}
+      <div
+        className="mt-4 grid gap-2"
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}
+      >
+        {pracas.slice(0, 8).map(p => {
+          const pct = p.totalJogos > 0 ? Math.round((p.encerrados / p.totalJogos) * 100) : 0
+          const topMod = p.modalidades.slice(0, 2)
+          return (
+            <div
+              key={p.id}
+              style={{
+                padding: 12,
+                background: 'rgba(255,255,255,0.55)',
+                border: '1px solid rgba(10,15,11,0.08)',
+                borderRadius: 12,
+              }}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <p style={{
+                  fontSize: 13, fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  color: '#0A0F0B',
+                  lineHeight: 1.1,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  flex: 1,
+                  minWidth: 0,
+                }}>
+                  {p.nome}
+                </p>
+                <span style={{
+                  fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                  fontSize: 18, fontWeight: 800,
+                  letterSpacing: '-0.03em',
+                  color: '#0A0F0B',
+                  fontVariantNumeric: 'tabular-nums',
+                  flexShrink: 0,
+                }}>
+                  {p.totalJogos}
+                </span>
+              </div>
+
+              {/* Mini barra */}
+              <div style={{
+                marginTop: 6,
+                height: 4, borderRadius: 2,
+                background: 'rgba(10,15,11,0.08)',
+                overflow: 'hidden',
+                display: 'flex',
+              }}>
+                {p.encerrados > 0 && (
+                  <div style={{
+                    width: `${(p.encerrados / p.totalJogos) * 100}%`,
+                    background: p.cor ?? '#2e6b42',
+                  }} />
+                )}
+                {p.aoVivo > 0 && (
+                  <div style={{
+                    width: `${(p.aoVivo / p.totalJogos) * 100}%`,
+                    background: '#C0392B',
+                  }} />
+                )}
+              </div>
+
+              {/* Top modalidades + atléticas count */}
+              <div className="mt-2 flex items-center gap-2" style={{
+                fontSize: 10.5, fontWeight: 600,
+                color: 'rgba(10,15,11,0.55)',
+                letterSpacing: '-0.01em',
+              }}>
+                {topMod.length > 0 && (
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}>
+                    {topMod.map(m => `${m.icone ?? ''} ${m.nome}`).join(' · ')}
+                    {p.modalidades.length > 2 && <span style={{ opacity: 0.6 }}> +{p.modalidades.length - 2}</span>}
+                  </span>
+                )}
+                <span style={{
+                  flexShrink: 0,
+                  padding: '1px 6px',
+                  borderRadius: 999,
+                  background: 'rgba(10,15,11,0.06)',
+                  fontSize: 9.5, fontWeight: 700,
+                  letterSpacing: '0.04em',
+                }}>
+                  {p.atleticas.length} atl
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {pracas.length > 8 && (
+        <p className="mt-2 text-center" style={{
+          fontSize: 11, fontWeight: 600,
+          color: 'rgba(10,15,11,0.55)',
+          letterSpacing: '-0.01em',
+        }}>
+          +{pracas.length - 8} praças no detalhe completo
+        </p>
+      )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import {
   type InscricaoDetalhe,
   type ResultadoExterno,
 } from '@/lib/competicao/queries'
+import { aggregatePracas } from '@/lib/competicao/pracas'
 import { CONFERENCIAS } from '@/lib/conferencias'
 import { EsportivoClient } from './EsportivoClient'
 
@@ -188,74 +189,18 @@ export default async function EsportivoPage() {
     }))
 
   // ── Volume por praça esportiva ────────────────────────────────────────────
-  type SetorRow = { id: string; nome: string; tipo: string; cor_hex: string | null }
-  const setores = (rawSetores as SetorRow[] | null) ?? []
-  // Index pra lookups
-  const rawJogosTyped = (rawJogos as RawJogo[] | null) ?? []
-  const atleticaById = new Map(atleticas.map(a => [a.id, a]))
-
-  type PracaModalidadeCount = { nome: string; icone: string | null; count: number }
-  type PracaAtleticaCount   = { id: string; nome: string; slug: string; cor: string | null; jogos: number }
-
-  const pracas = setores.map(s => {
-    const jogosDaPraca = rawJogosTyped.filter(j => j.setor_id === s.id)
-    let encerradosCount = 0, aoVivoCount = 0, agendadosCount = 0
-    const modMap = new Map<string, PracaModalidadeCount>()
-    const atlMap = new Map<string, PracaAtleticaCount>()
-    let primeiroJogo: string | null = null
-    let ultimoJogo:   string | null = null
-
-    for (const j of jogosDaPraca) {
-      if      (j.status === 'encerrado') encerradosCount++
-      else if (j.status === 'ao_vivo')   aoVivoCount++
-      else if (j.status === 'agendado')  agendadosCount++
-
-      // Modalidade
-      const mod = Array.isArray(j.modalidades) ? j.modalidades[0] : j.modalidades
-      if (mod) {
-        const cur = modMap.get(mod.nome) ?? { nome: mod.nome, icone: mod.icone, count: 0 }
-        cur.count++
-        modMap.set(mod.nome, cur)
-      }
-
-      // Atléticas
-      for (const eqId of [j.equipe_a_id, j.equipe_b_id]) {
-        if (!eqId) continue
-        const a = atleticaById.get(eqId)
-        if (!a) continue
-        const cur = atlMap.get(a.id) ?? { id: a.id, nome: a.nome, slug: a.slug, cor: a.cor_primaria, jogos: 0 }
-        cur.jogos++
-        atlMap.set(a.id, cur)
-      }
-
-      // Range temporal
-      if (j.inicio) {
-        if (!primeiroJogo || j.inicio < primeiroJogo) primeiroJogo = j.inicio
-        if (!ultimoJogo   || j.inicio > ultimoJogo)   ultimoJogo   = j.inicio
-      }
-    }
-
-    const modalidades = [...modMap.values()].sort((a, b) => b.count - a.count)
-    const atleticasList = [...atlMap.values()].sort((a, b) => b.jogos - a.jogos)
-
-    return {
-      id:           s.id,
-      nome:         s.nome,
-      cor:          s.cor_hex,
-      totalJogos:   jogosDaPraca.length,
-      encerrados:   encerradosCount,
-      aoVivo:       aoVivoCount,
-      agendados:    agendadosCount,
-      modalidades,
-      atleticas:    atleticasList,
-      primeiroJogo,
-      ultimoJogo,
-    }
-  })
-  // Ordem: mais movimentada primeiro, vazias no fim
-  .sort((a, b) => b.totalJogos - a.totalJogos || a.nome.localeCompare(b.nome, 'pt-BR'))
-  // Esconde praças sem nenhum jogo
-  .filter(p => p.totalJogos > 0)
+  const pracas = aggregatePracas(
+    (rawSetores ?? []) as Array<{ id: string; nome: string; cor_hex: string | null }>,
+    (rawJogos   ?? []) as Array<{
+      setor_id: string | null
+      status:   string | null
+      inicio:   string | null
+      equipe_a_id: string | null
+      equipe_b_id: string | null
+      modalidades: { nome: string; icone: string | null } | { nome: string; icone: string | null }[] | null
+    }>,
+    atleticas,
+  )
 
   return (
     <div className="mx-auto w-full max-w-[1640px] px-4 py-6 sm:px-6 md:py-8 lg:px-10 xl:px-12">

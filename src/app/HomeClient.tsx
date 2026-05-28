@@ -87,6 +87,7 @@ interface Props {
   analyticsLacunas?:       LacunaItem[]
   analyticsVolumePorHora?: VolumePorHora[]
   analyticsAtleticas?:     AtleticaItem[]
+  analyticsPracas?:        import('@/lib/competicao/pracas').PracaStats[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -440,6 +441,7 @@ export function HomeClient({
   analyticsLacunas        = [],
   analyticsVolumePorHora  = [],
   analyticsAtleticas      = [],
+  analyticsPracas         = [],
 }: Props) {
   const [tab, setTab] = useState<'comandos' | 'analises'>('comandos')
 
@@ -578,6 +580,7 @@ export function HomeClient({
               lacunas={analyticsLacunas}
               volumePorHora={analyticsVolumePorHora}
               atleticas={analyticsAtleticas}
+              pracas={analyticsPracas}
             />
           )}
         </div>

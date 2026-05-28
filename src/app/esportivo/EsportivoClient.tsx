@@ -13,6 +13,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import type { PracaStats } from '@/lib/competicao/pracas'
+export type { PracaStats } from '@/lib/competicao/pracas'
 
 // ── Types (mantém shape esperado pela page.tsx) ──────────────────────────────
 
@@ -37,22 +39,6 @@ interface UpcomingJogo {
 }
 
 interface ConferenciaGroup { conferencia: string; equipes: AtleticaWithStats[] }
-
-export interface PracaModalidade { nome: string; icone: string | null; count: number }
-export interface PracaAtletica   { id: string; nome: string; slug: string; cor: string | null; jogos: number }
-export interface PracaStats {
-  id: string
-  nome: string
-  cor: string | null
-  totalJogos: number
-  encerrados: number
-  aoVivo: number
-  agendados: number
-  modalidades: PracaModalidade[]
-  atleticas: PracaAtletica[]
-  primeiroJogo: string | null
-  ultimoJogo: string | null
-}
 
 interface Props {
   div1: AtleticaWithStats[]

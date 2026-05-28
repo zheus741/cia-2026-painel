@@ -160,6 +160,7 @@ export default async function Home() {
   let analyticsLacunas:       { id: string; label: string; hora: string; modalidade: string }[]                       = []
   let analyticsVolumePorHora: { hora: number; count: number }[]                                                       = []
   let analyticsAtleticas:     { nome: string; jogos: number; coberta: boolean }[]                                     = []
+  let analyticsPracas:        import('@/lib/competicao/pracas').PracaStats[]                                          = []
 
   {
     // Resolve dia_id for today (Sao Paulo) — reaproveita diasRes, sem nova query.
@@ -184,6 +185,8 @@ export default async function Home() {
         profilesRes,
         ckInstsComJogoRes,
         modalidadesRes,
+        setoresEspRes,
+        atleticasRes,
       ] = await Promise.all([
         // 1. Conteudos today by canal + status
         supabase
@@ -195,7 +198,11 @@ export default async function Home() {
         // 2. Jogos — todos os 4 dias do evento
         supabase
           .from('jogos')
-          .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id, modalidade_id, setor_id')
+          .select(`
+            id, equipe_a_nome, equipe_b_nome, equipe_a_id, equipe_b_id,
+            inicio, fim_previsto, dia_id, modalidade_id, setor_id, status,
+            modalidades:modalidade_id(nome, icone)
+          `)
           .order('inicio'),
 
         // 3. Shows — todos os 4 dias do evento
@@ -256,6 +263,14 @@ export default async function Home() {
 
         // 13. Modalidades — label dos jogos
         supabase.from('modalidades').select('id, nome'),
+
+        // 14. Setores esportivos — agregação "movimento das praças"
+        supabase.from('setores').select('id, nome, cor_hex').eq('tipo', 'esportivo'),
+
+        // 15. Atléticas — labels + cores nos chips de praças
+        supabase.from('equipes')
+          .select('id, nome, slug, cor_primaria')
+          .eq('tipo', 'atletica'),
       ])
 
       coordConteudosHoje      = (contHojeRes.data   ?? []) as CoordConteudoHoje[]
@@ -346,6 +361,23 @@ export default async function Home() {
       analyticsAtleticas = Array.from(atleticaJogos.entries())
         .map(([nome, jogos]) => ({ nome, jogos, coberta: atleticaCoberta.has(nome) }))
         .sort((a, b) => Number(b.coberta) - Number(a.coberta) || b.jogos - a.jogos)
+
+      // ── Movimento das praças ────────────────────────────────────────────
+      const { aggregatePracas } = await import('@/lib/competicao/pracas')
+      analyticsPracas = aggregatePracas(
+        (setoresEspRes.data ?? []) as Array<{ id: string; nome: string; cor_hex: string | null }>,
+        (jogosRes.data ?? []) as Array<{
+          setor_id: string | null
+          status:   string | null
+          inicio:   string | null
+          equipe_a_id: string | null
+          equipe_b_id: string | null
+          modalidades: { nome: string; icone: string | null } | { nome: string; icone: string | null }[] | null
+        }>,
+        (atleticasRes.data ?? []) as Array<{
+          id: string; nome: string; slug: string; cor_primaria: string | null
+        }>,
+      )
     }
   }
 
@@ -466,6 +498,7 @@ export default async function Home() {
         analyticsLacunas={analyticsLacunas}
         analyticsVolumePorHora={analyticsVolumePorHora}
         analyticsAtleticas={analyticsAtleticas}
+        analyticsPracas={analyticsPracas}
       />
     </div>
     </AppShell>

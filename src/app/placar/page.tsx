@@ -18,7 +18,7 @@ export default async function PlacarPage() {
   const canEdit = CAN_EDIT_ROLES.includes(profile.role)
   const supabase = await createClient()
 
-  const [{ data: diasDB }, { data: jogosDB }] = await Promise.all([
+  const [diasRes, jogosRes] = await Promise.all([
     supabase.from('dias_evento').select('id, nome_dia, data').order('data'),
     supabase
       .from('jogos')
@@ -32,6 +32,12 @@ export default async function PlacarPage() {
       `)
       .order('inicio', { ascending: true, nullsFirst: false }),
   ])
+
+  // Falha explícita: error.tsx mostra mensagem clara em vez de tela vazia silenciosa.
+  if (jogosRes.error) throw new Error(`Falha ao carregar jogos: ${jogosRes.error.message}`)
+
+  const diasDB = diasRes.data
+  const jogosDB = jogosRes.data
 
   const dias = (diasDB?.length ? diasDB : DIAS_FIXOS) as { id: string; nome_dia: string; data: string }[]
 

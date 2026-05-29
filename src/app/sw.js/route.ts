@@ -1,7 +1,31 @@
-// CIA 2026 — Service Worker
-// Handles push notifications and basic offline caching
+/**
+ * Service Worker servido dinamicamente para invalidar cache a cada deploy.
+ *
+ * Estratégia:
+ * - O conteúdo é o mesmo do antigo public/sw.js
+ * - CACHE_NAME usa VERCEL_GIT_COMMIT_SHA (primeiros 8 chars) — muda a cada
+ *   deploy, força o `activate` listener a limpar caches anteriores
+ * - Em dev usa timestamp fixo do startup pra não invalidar a cada HMR
+ *
+ * Fix do bug "deploy mid-event prende clientes em JS antigo" — agora cada
+ * deploy automaticamente gera novo CACHE_NAME e o `activate` faz cleanup.
+ */
 
-const CACHE_NAME = 'cia-2026-v2'
+import { NextResponse } from 'next/server'
+
+// force-static: gerado uma vez por build com o SHA daquele build.
+// Próximo deploy = novo build = novo SHA = SW novo → activate limpa cache.
+export const dynamic = 'force-static'
+
+const BUILD_ID =
+  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ??
+  process.env.NEXT_PUBLIC_BUILD_ID ??
+  'dev'
+
+const SW_BODY = `// CIA 2026 — Service Worker (build ${BUILD_ID})
+// Servido por src/app/sw.js/route.ts — CACHE_NAME muda a cada deploy.
+
+const CACHE_NAME = 'cia-2026-${BUILD_ID}'
 
 // ── Push Notifications ───────────────────────────────────────────────────────
 
@@ -42,14 +66,12 @@ self.addEventListener('notificationclick', function (event) {
     clients
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then(function (windowClients) {
-        // Foca janela existente se já aberta
         for (const client of windowClients) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
             client.navigate(targetUrl)
             return client.focus()
           }
         }
-        // Senão abre nova aba
         if (clients.openWindow) {
           return clients.openWindow(targetUrl)
         }
@@ -59,12 +81,10 @@ self.addEventListener('notificationclick', function (event) {
 
 // ── Offline Cache (app shell) ────────────────────────────────────────────────
 
-// Estratégia: network-first para navegação, cache-first para assets estáticos
 self.addEventListener('fetch', function (event) {
   const { request } = event
   const url = new URL(request.url)
 
-  // Ignora requests non-GET e de outras origens (Supabase, etc.)
   if (request.method !== 'GET') return
   if (url.origin !== self.location.origin) return
 
@@ -72,7 +92,7 @@ self.addEventListener('fetch', function (event) {
   if (
     url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/assets/') ||
-    url.pathname.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2?)$/)
+    url.pathname.match(/\\.(png|jpg|jpeg|svg|webp|ico|woff2?)$/)
   ) {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
@@ -103,7 +123,7 @@ self.addEventListener('fetch', function (event) {
   )
 })
 
-// Limpa caches velhos no activate
+// Limpa caches velhos no activate — invalidação automática a cada deploy
 self.addEventListener('activate', function (event) {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -116,3 +136,15 @@ self.addEventListener('activate', function (event) {
   )
   return self.clients.claim()
 })
+`
+
+export function GET() {
+  return new NextResponse(SW_BODY, {
+    headers: {
+      'content-type': 'application/javascript; charset=utf-8',
+      // Cache curto pra o browser checar mudança rápido após deploy
+      'cache-control': 'public, max-age=0, must-revalidate',
+      'service-worker-allowed': '/',
+    },
+  })
+}

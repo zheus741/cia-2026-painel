@@ -9,6 +9,7 @@ import { setJogoAoVivo, encerrarJogo, atualizarPlacar, lancarResultado, cancelar
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
+import { runAction } from '@/lib/run-action'
 
 interface EquipeRef {
   slug: string
@@ -352,45 +353,95 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
     })
   }
 
+  // Snapshot do estado anterior pra rollback se action falhar
+  const snapshotJogo = (): Partial<Jogo> => ({
+    status:   jogo.status,
+    placar_a: jogo.placar_a,
+    placar_b: jogo.placar_b,
+    wo:       jogo.wo,
+  })
+
   function handleAoVivo() {
+    const prev = snapshotJogo()
     onLocalUpdate(jogo.id, { status: 'ao_vivo', placar_a: 0, placar_b: 0 })
-    startTransition(async () => { await setJogoAoVivo(jogo.id) })
+    startTransition(async () => {
+      await runAction(() => setJogoAoVivo(jogo.id), {
+        label: 'iniciar jogo',
+        onError: () => onLocalUpdate(jogo.id, prev),
+      })
+    })
   }
 
   function handleEncerrar() {
+    const prev = snapshotJogo()
     onLocalUpdate(jogo.id, { status: 'encerrado' })
-    startTransition(async () => { await encerrarJogo(jogo.id) })
+    startTransition(async () => {
+      await runAction(() => encerrarJogo(jogo.id), {
+        label: 'encerrar jogo',
+        onError: () => onLocalUpdate(jogo.id, prev),
+      })
+    })
   }
 
   // Lançar resultado direto — quadra sem operador ao vivo
   function handleLancarResultado() {
     const a = Math.max(0, parseInt(resA, 10) || 0)
     const b = Math.max(0, parseInt(resB, 10) || 0)
+    const prev = snapshotJogo()
     onLocalUpdate(jogo.id, { placar_a: a, placar_b: b, status: 'encerrado' })
     setResultadoMode(false)
-    startTransition(async () => { await lancarResultado(jogo.id, a, b) })
+    startTransition(async () => {
+      await runAction(() => lancarResultado(jogo.id, a, b), {
+        label: 'lançar resultado',
+        onError: () => onLocalUpdate(jogo.id, prev),
+      })
+    })
   }
 
   function handleCancelar() {
+    const prev = snapshotJogo()
     onLocalUpdate(jogo.id, { status: 'cancelado' })
-    startTransition(async () => { await cancelarJogo(jogo.id) })
+    startTransition(async () => {
+      await runAction(() => cancelarJogo(jogo.id), {
+        label: 'cancelar jogo',
+        onError: () => onLocalUpdate(jogo.id, prev),
+      })
+    })
   }
 
   function handleReativar() {
+    const prev = snapshotJogo()
     onLocalUpdate(jogo.id, { status: 'agendado', placar_a: 0, placar_b: 0, wo: null })
-    startTransition(async () => { await reativarJogo(jogo.id) })
+    startTransition(async () => {
+      await runAction(() => reativarJogo(jogo.id), {
+        label: 'reativar jogo',
+        onError: () => onLocalUpdate(jogo.id, prev),
+      })
+    })
   }
 
   // ── W.O. handlers (Art. 58-65 do regulamento) ─────────────────────────────
   function handleDeclararWO(lado: 'a' | 'b' | 'duplo') {
+    const prev = snapshotJogo()
     onLocalUpdate(jogo.id, { wo: lado, status: 'encerrado' })
     setWoMode(false)
-    startTransition(async () => { await declararWO(jogo.id, lado) })
+    startTransition(async () => {
+      await runAction(() => declararWO(jogo.id, lado), {
+        label: 'declarar W.O.',
+        onError: () => onLocalUpdate(jogo.id, prev),
+      })
+    })
   }
 
   function handleRemoverWO() {
+    const prev = snapshotJogo()
     onLocalUpdate(jogo.id, { wo: null })
-    startTransition(async () => { await removerWO(jogo.id) })
+    startTransition(async () => {
+      await runAction(() => removerWO(jogo.id), {
+        label: 'remover W.O.',
+        onError: () => onLocalUpdate(jogo.id, prev),
+      })
+    })
   }
 
   const isAoVivo    = jogo.status === 'ao_vivo'

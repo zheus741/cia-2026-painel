@@ -1845,7 +1845,8 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
   // Realtime subscription
   useEffect(() => {
     const supabase = createClient()
-    let refreshTimeout: ReturnType<typeof setTimeout> | null = null
+    let refreshTimeout:   ReturnType<typeof setTimeout> | null = null
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
     const scheduleRefresh = () => {
       if (refreshTimeout) clearTimeout(refreshTimeout)
       refreshTimeout = setTimeout(() => { router.refresh() }, 1000)
@@ -1910,10 +1911,17 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
       }, () => { scheduleRefresh() })
       .subscribe((status) => {
         setConectado(status === 'SUBSCRIBED')
+        // Reconnect em queda — sem isso a TV/celular fica com channel morto
+        // e nunca recebe updates depois de uma queda de WS (4G ruim, sleep)
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (reconnectTimeout) clearTimeout(reconnectTimeout)
+          reconnectTimeout = setTimeout(() => channel.subscribe(), 2000)
+        }
       })
 
     return () => {
-      if (refreshTimeout) clearTimeout(refreshTimeout)
+      if (refreshTimeout)   clearTimeout(refreshTimeout)
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
       supabase.removeChannel(channel)
     }
   }, [router, handleLocalUpdate, flashRecent])

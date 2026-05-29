@@ -1,9 +1,15 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireCoordOrAdmin, safe, type ActionResult } from '@/lib/admin/actions-helper'
 import { propagarVencedorNaChave, recalcularChave } from '@/lib/chaveamento/avanco'
+
+// Helper: invalida cache da home quando dados estáticos do evento mudam.
+// updateTag = revalidateTag mas com read-your-own-writes (Next 16+).
+function bustHomeCache() {
+  updateTag('home-static-event-data')
+}
 
 export async function setJogoAoVivo(id: string): Promise<ActionResult> {
   return safe(async () => {
@@ -15,6 +21,7 @@ export async function setJogoAoVivo(id: string): Promise<ActionResult> {
       .eq('id', id)
     if (error) throw error
     revalidatePath('/placar')
+    bustHomeCache()
   })
 }
 
@@ -38,6 +45,7 @@ export async function encerrarJogo(id: string): Promise<ActionResult> {
       console.error('[encerrarJogo] erro inesperado na propagação:', err)
     }
     revalidatePath('/placar')
+    bustHomeCache()
     revalidatePath('/esportivo/chaveamento')
   })
 }
@@ -56,6 +64,7 @@ export async function atualizarPlacar(
       .eq('id', id)
     if (error) throw error
     revalidatePath('/placar')
+    bustHomeCache()
   })
 }
 
@@ -86,6 +95,7 @@ export async function lancarResultado(
       console.error('[lancarResultado] erro inesperado na propagação:', err)
     }
     revalidatePath('/placar')
+    bustHomeCache()
     revalidatePath('/esportivo/chaveamento')
   })
 }
@@ -100,6 +110,7 @@ export async function cancelarJogo(id: string): Promise<ActionResult> {
       .eq('id', id)
     if (error) throw error
     revalidatePath('/placar')
+    bustHomeCache()
   })
 }
 
@@ -122,6 +133,7 @@ export async function criarJogoTeste(diaId: string): Promise<ActionResult & { da
       .single()
     if (error) throw error
     revalidatePath('/placar')
+    bustHomeCache()
     return data as { id: string }
   })
 }
@@ -136,6 +148,7 @@ export async function reativarJogo(id: string): Promise<ActionResult> {
       .eq('id', id)
     if (error) throw error
     revalidatePath('/placar')
+    bustHomeCache()
   })
 }
 
@@ -180,6 +193,7 @@ export async function declararWO(
       }
     }
     revalidatePath('/placar')
+    bustHomeCache()
     revalidatePath('/esportivo/chaveamento')
   })
 }
@@ -198,6 +212,7 @@ export async function removerWO(id: string): Promise<ActionResult> {
       .eq('id', id)
     if (error) throw error
     revalidatePath('/placar')
+    bustHomeCache()
   })
 }
 
@@ -229,6 +244,7 @@ export async function registrarEvento(
       .insert({ jogo_id: jogoId, tipo, equipe })
     if (error) throw error
     revalidatePath('/placar')
+    bustHomeCache()
   })
 }
 
@@ -253,6 +269,7 @@ export async function fecharSet(
       .eq('id', jogoId)
     if (plErr) throw plErr
     revalidatePath('/placar')
+    bustHomeCache()
   })
 }
 
@@ -270,6 +287,7 @@ export async function removerEvento(eventoId: string): Promise<ActionResult> {
       .eq('id', eventoId)
     if (error) throw error
     revalidatePath('/placar')
+    bustHomeCache()
   })
 }
 
@@ -291,6 +309,7 @@ export async function recalcularChaveAction(
     await requireCoordOrAdmin()
     const result = await recalcularChave(modalidadeId, categoria, divisao)
     revalidatePath('/placar')
+    bustHomeCache()
     revalidatePath('/esportivo/chaveamento')
     return {
       total:      result.total,

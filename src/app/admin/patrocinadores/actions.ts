@@ -1,7 +1,11 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
+
+function bustHomeCache() {
+  updateTag('home-static-event-data')
+}
 import {
   parseFormData,
   requireCoordOrAdmin,
@@ -61,6 +65,7 @@ export async function uploadLogoPatrocinador(
     if (dbErr) throw dbErr
 
     revalidatePath('/admin/patrocinadores')
+    bustHomeCache()
     return { ok: true, url }
   } catch (e) {
     const msg = e instanceof Error ? e.message
@@ -92,6 +97,7 @@ export async function createPatrocinador(fd: FormData): Promise<ActionResult> {
     const { error } = await supabase.from('patrocinadores').insert({ ...data, edicao_id })
     if (error) throw error
     revalidatePath('/admin/patrocinadores')
+    bustHomeCache()
   })
 }
 
@@ -103,6 +109,7 @@ export async function updatePatrocinador(id: string, fd: FormData): Promise<Acti
     const { error } = await supabase.from('patrocinadores').update(data).eq('id', id)
     if (error) throw error
     revalidatePath('/admin/patrocinadores')
+    bustHomeCache()
   })
 }
 
@@ -113,5 +120,6 @@ export async function deletePatrocinador(id: string): Promise<ActionResult> {
     const { error } = await supabase.from('patrocinadores').delete().eq('id', id)
     if (error) throw error
     revalidatePath('/admin/patrocinadores')
+    bustHomeCache()
   })
 }

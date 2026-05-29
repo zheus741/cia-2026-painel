@@ -1034,15 +1034,24 @@ export function EsportivoClient({
   // Realtime
   useEffect(() => {
     const supabase = createClient()
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
     const channel = supabase
       .channel(uniqueChannel('esportivo-realtime'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos' }, () => {
         if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
         refreshTimerRef.current = setTimeout(() => { router.refresh() }, 3000)
       })
-      .subscribe(status => { setLiveSync(status === 'SUBSCRIBED') })
+      .subscribe(status => {
+        setLiveSync(status === 'SUBSCRIBED')
+        // Reconnect automático em queda
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (reconnectTimeout) clearTimeout(reconnectTimeout)
+          reconnectTimeout = setTimeout(() => channel.subscribe(), 2000)
+        }
+      })
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      if (reconnectTimeout)        clearTimeout(reconnectTimeout)
       supabase.removeChannel(channel)
     }
   }, [router])

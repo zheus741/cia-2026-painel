@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth/current-user'
 import { AppShell } from '@/components/app-shell'
+import { getStaticEventData } from '@/lib/home/static-event-data'
 import { HomeClient } from './HomeClient'
 import { HomeFotoVideo } from './HomeFotoVideo'
 import type {
@@ -170,23 +171,22 @@ export default async function Home() {
     coordDiaAtualId = diaId
 
     if (diaId) {
-      // PERF: tudo num único Promise.all — 13 queries paralelas, 1 round-trip.
+      // PERF: dados estáticos do evento (jogos/patrocinadores/modalidades/
+      // setores/atléticas/youtube setores) vêm de cache compartilhado de 30s.
+      // Só queries user/dia-específicas batem no DB a cada load da home.
+      const staticData = await getStaticEventData()
+
+      // Queries específicas do dia/usuário — não cacheáveis globalmente.
       const [
         contHojeRes,
-        jogosRes,
         showsRes,
         festasRes,
         turnosRes,
-        patrocinadoresRes,
         contPatrocRes,
         ckItensRes,
         turnosCoberturaAVRes,
-        youtubeSetoresRes,
         profilesRes,
         ckInstsComJogoRes,
-        modalidadesRes,
-        setoresEspRes,
-        atleticasRes,
       ] = await Promise.all([
         // 1. Conteudos today by canal + status
         supabase
@@ -195,100 +195,67 @@ export default async function Home() {
           .eq('dia_id', diaId)
           .not('status', 'in', '(arquivado,cancelado)'),
 
-        // 2. Jogos — todos os 4 dias do evento
-        supabase
-          .from('jogos')
-          .select(`
-            id, equipe_a_nome, equipe_b_nome, equipe_a_id, equipe_b_id,
-            inicio, fim_previsto, dia_id, modalidade_id, setor_id, status,
-            modalidades:modalidade_id(nome, icone)
-          `)
-          .order('inicio'),
-
-        // 3. Shows — todos os 4 dias do evento
+        // 2. Shows — todos os 4 dias do evento (pequeno e pode mudar; fora do cache)
         supabase
           .from('shows')
           .select('id, nome, inicio, fim_previsto, dia_id, setor_id')
           .order('inicio'),
 
-        // 4. Festas — todos os 4 dias do evento
+        // 3. Festas — idem
         supabase
           .from('festas')
           .select('id, nome, inicio, fim_previsto, dia_id, setor_id')
           .order('inicio'),
 
-        // 5. Turnos today (distinct user_ids + setor_ids)
+        // 4. Turnos today (distinct user_ids + setor_ids)
         supabase
           .from('turnos')
           .select('user_id, setor_id')
           .eq('dia_id', diaId),
 
-        // 6. Patrocinadores
-        supabase
-          .from('patrocinadores')
-          .select('id, nome, ativo, logo_url')
-          .eq('ativo', true),
-
-        // 7. Conteudos linked to patrocinadores (for patrocinio card)
+        // 5. Conteudos linked to patrocinadores (for patrocinio card)
         supabase
           .from('conteudos')
           .select('patrocinador_id, status')
           .not('patrocinador_id', 'is', null)
           .not('status', 'in', '(arquivado,cancelado)'),
 
-        // 8. Checklist items do dia — inner join, 1 round-trip (sem await aninhado)
+        // 6. Checklist items do dia
         supabase
           .from('checklist_itens')
           .select('id, status, checklist_instancias!inner(dia_id)')
           .eq('checklist_instancias.dia_id', diaId),
 
-        // 9. Turnos foto/video (todos os dias) — para indicadores de cobertura
+        // 7. Turnos foto/video (todos os dias)
         supabase
           .from('turnos')
           .select('setor_id, funcao, dia_id')
           .in('funcao', ['foto', 'video'])
           .not('setor_id', 'is', null),
 
-        // 10. Setores com YouTube ao vivo
-        supabase
-          .from('setores')
-          .select('id')
-          .eq('tem_youtube_live', true),
-
-        // 11. Perfis — ranking de produtividade
+        // 8. Perfis — ranking de produtividade
         supabase.from('profiles').select('id, nome, funcao_principal').order('nome'),
 
-        // 12. Checklist instancias de hoje com jogo_id — lacunas de cobertura
+        // 9. Checklist instancias com jogo_id
         supabase.from('checklist_instancias').select('jogo_id').eq('dia_id', diaId).not('jogo_id', 'is', null),
-
-        // 13. Modalidades — label dos jogos
-        supabase.from('modalidades').select('id, nome'),
-
-        // 14. Setores esportivos — agregação "movimento das praças"
-        supabase.from('setores').select('id, nome, cor_hex').eq('tipo', 'esportivo'),
-
-        // 15. Atléticas — labels + cores nos chips de praças
-        supabase.from('equipes')
-          .select('id, nome, slug, cor_primaria')
-          .eq('tipo', 'atletica'),
       ])
 
       coordConteudosHoje      = (contHojeRes.data   ?? []) as CoordConteudoHoje[]
-      coordJogosHoje          = (jogosRes.data       ?? []) as CoordJogo[]
+      coordJogosHoje          = staticData.jogos as CoordJogo[]
       coordShowsHoje          = (showsRes.data       ?? []) as CoordShow[]
       coordFestasHoje         = (festasRes.data      ?? []) as CoordFesta[]
       coordTurnosHoje         = (turnosRes.data      ?? []) as CoordTurnoCount[]
-      coordPatrocinadores     = (patrocinadoresRes.data ?? []) as CoordPatrocinador[]
+      coordPatrocinadores     = staticData.patrocinadores
       coordConteudosPorPatroc = (contPatrocRes.data  ?? []) as { patrocinador_id: string | null; status: string }[]
       coordChecklistItens     = ((ckItensRes.data ?? []) as { id: string; status: string }[])
         .map(i => ({ id: i.id, status: i.status }))
       coordTurnosCoberturaAV  = (turnosCoberturaAVRes.data ?? []) as { setor_id: string; funcao: string; dia_id: string }[]
-      coordYoutubeSetorIds    = ((youtubeSetoresRes.data ?? []) as { id: string }[]).map(s => s.id)
+      coordYoutubeSetorIds    = staticData.youtubeSetorIds
 
       // ── Analytics (dados já vieram no Promise.all acima) ─────────────────
       const profilesList = (profilesRes.data ?? []) as { id: string; nome: string; funcao_principal: string | null }[]
       const profilesMap  = new Map(profilesList.map(p => [p.id, p]))
-      const modalMap     = new Map(((modalidadesRes.data ?? []) as { id: string; nome: string }[]).map(m => [m.id, m.nome]))
+      const modalMap     = new Map(staticData.modalidades.map(m => [m.id, m.nome]))
       const allJogos     = coordJogosHoje  // já temos todos
 
       // 1. Ranking de produtividade
@@ -365,8 +332,8 @@ export default async function Home() {
       // ── Movimento das praças ────────────────────────────────────────────
       const { aggregatePracas } = await import('@/lib/competicao/pracas')
       analyticsPracas = aggregatePracas(
-        (setoresEspRes.data ?? []) as Array<{ id: string; nome: string; cor_hex: string | null }>,
-        (jogosRes.data ?? []) as Array<{
+        staticData.setoresEsportivos,
+        staticData.jogos as unknown as Array<{
           setor_id: string | null
           status:   string | null
           inicio:   string | null
@@ -374,9 +341,7 @@ export default async function Home() {
           equipe_b_id: string | null
           modalidades: { nome: string; icone: string | null } | { nome: string; icone: string | null }[] | null
         }>,
-        (atleticasRes.data ?? []) as Array<{
-          id: string; nome: string; slug: string; cor_primaria: string | null
-        }>,
+        staticData.atleticas,
       )
     }
   }

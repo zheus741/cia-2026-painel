@@ -515,9 +515,13 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
   useEffect(() => {
     const supabase = createClient()
     let refreshTimeout: ReturnType<typeof setTimeout> | null = null
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
+
+    // Debounce 3s — coalesce rajadas de updates (5 jogos terminando juntos
+    // não disparam 5 router.refresh, só 1)
     const scheduleRefresh = () => {
       if (refreshTimeout) clearTimeout(refreshTimeout)
-      refreshTimeout = setTimeout(() => { router.refresh() }, 1000)
+      refreshTimeout = setTimeout(() => { router.refresh() }, 3000)
     }
 
     const channel = supabase
@@ -560,10 +564,18 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jogos' }, scheduleRefresh)
       .subscribe((status) => {
         setConectado(status === 'SUBSCRIBED')
+        // Reconnect automático em queda de conexão (fix realtime-resilience)
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (reconnectTimeout) clearTimeout(reconnectTimeout)
+          reconnectTimeout = setTimeout(() => {
+            channel.subscribe()
+          }, 2000)
+        }
       })
 
     return () => {
-      if (refreshTimeout) clearTimeout(refreshTimeout)
+      if (refreshTimeout)   clearTimeout(refreshTimeout)
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
       supabase.removeChannel(channel)
     }
   }, [router, triggerPulse])

@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import {
   parseFormData,
@@ -10,6 +10,10 @@ import {
   type ActionResult,
 } from '@/lib/admin/actions-helper'
 import { propagarVencedorNaChave } from '@/lib/chaveamento/avanco'
+
+function bustHomeCache() {
+  updateTag('home-static-event-data')
+}
 
 const SCHEMA = [
   { name: 'dia_id', type: 'nullable_text' as const },
@@ -38,6 +42,7 @@ export async function createJogo(fd: FormData): Promise<ActionResult> {
     const data = parseFormData(fd, SCHEMA)
     const { error } = await supabase.from('jogos').insert({ ...data, edicao_id, status: 'agendado' })
     if (error) throw error
+    bustHomeCache()
   })
 }
 
@@ -63,6 +68,7 @@ export async function updateJogo(id: string, fd: FormData): Promise<ActionResult
       }
       revalidatePath('/esportivo/chaveamento')
       revalidatePath('/placar')
+      bustHomeCache()
     }
   })
 }
@@ -73,6 +79,7 @@ export async function deleteJogo(id: string): Promise<ActionResult> {
     const supabase = await createClient()
     const { error } = await supabase.from('jogos').delete().eq('id', id)
     if (error) throw error
+    bustHomeCache()
   })
 }
 
@@ -271,6 +278,7 @@ export async function confirmImportJogos(
 
     const { error } = await supabase.from('jogos').insert(inserts)
     if (error) throw error
+    bustHomeCache()
     return inserts.length
   })
 }

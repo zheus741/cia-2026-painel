@@ -39,6 +39,27 @@ export default async function PlacarPage() {
   const diasDB = diasRes.data
   const jogosDB = jogosRes.data
 
+  // PERF: pre-fetch de eventos_jogo em UMA query para todos os jogos
+  // ao_vivo/encerrado. Antes cada card disparava 1 query no useEffect (N+1).
+  // Com 30 jogos ativos = 30 round-trips. Agora 1.
+  const jogosComEventos = (jogosDB ?? [])
+    .filter(j => j.status === 'ao_vivo' || j.status === 'encerrado')
+    .map(j => j.id)
+  let eventosPorJogo: Record<string, unknown[]> = {}
+  if (jogosComEventos.length > 0) {
+    const { data: eventosDB } = await supabase
+      .from('eventos_jogo')
+      .select('*')
+      .in('jogo_id', jogosComEventos)
+      .order('criado_em')
+    for (const e of (eventosDB ?? []) as Array<{ jogo_id: string }>) {
+      if (!eventosPorJogo[e.jogo_id]) eventosPorJogo[e.jogo_id] = []
+      eventosPorJogo[e.jogo_id].push(e)
+    }
+  }
+  // No-op TypeScript guard
+  void eventosPorJogo
+
   const dias = (diasDB?.length ? diasDB : DIAS_FIXOS) as { id: string; nome_dia: string; data: string }[]
 
   type EquipeRef = { slug: string; divisao: string | null; conferencia: string | null; cor_primaria: string | null; universidade: string | null; logo_url: string | null }
@@ -113,6 +134,7 @@ export default async function PlacarPage() {
         jogosPorDia={jogosPorDia as Record<string, Parameters<typeof PlacarBoard>[0]['jogosPorDia'][string]>}
         diaAtivo={diaAtivo}
         canEdit={canEdit}
+        eventosPorJogo={eventosPorJogo as Parameters<typeof PlacarBoard>[0]['eventosPorJogo']}
       />
     </div>
   )

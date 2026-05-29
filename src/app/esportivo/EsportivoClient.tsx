@@ -1035,12 +1035,29 @@ export function EsportivoClient({
   useEffect(() => {
     const supabase = createClient()
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
-    const channel = supabase
-      .channel(uniqueChannel('esportivo-realtime'))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos' }, () => {
+
+    // Filtros granulares (em vez de event:'*') — só eventos relevantes pra
+    // home dispara refresh: status mudou (afeta líderes/contadores) ou placar
+    // (afeta líderes). UPDATE só de inicio/setor_id NÃO refaz a página.
+    const refreshIfNeeded = (payload: { new: Record<string, unknown>; old: Record<string, unknown>; eventType: string }) => {
+      // Para INSERT/DELETE sempre refresh
+      if (payload.eventType !== 'UPDATE') {
         if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
         refreshTimerRef.current = setTimeout(() => { router.refresh() }, 3000)
-      })
+        return
+      }
+      // UPDATE: só refresh se status/placar mudaram (campos que afetam a home)
+      const fieldsRelevant = ['status', 'placar_a', 'placar_b', 'wo']
+      const changed = fieldsRelevant.some(f => payload.new[f] !== payload.old[f])
+      if (changed) {
+        if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+        refreshTimerRef.current = setTimeout(() => { router.refresh() }, 3000)
+      }
+    }
+
+    const channel = supabase
+      .channel(uniqueChannel('esportivo-realtime'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos' }, refreshIfNeeded)
       .subscribe(status => {
         setLiveSync(status === 'SUBSCRIBED')
         // Reconnect automático em queda

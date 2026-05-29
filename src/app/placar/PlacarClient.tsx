@@ -248,18 +248,20 @@ function TeamBlade({ logoUrl, nome, big }: {
   )
 }
 
-function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
+function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEventos = [] }: {
   jogo: Jogo
   onLocalUpdate: (id: string, patch: Partial<Jogo>) => void
   recentlyChanged: boolean
   canEdit?: boolean
+  initialEventos?: EventoJogo[]
 }) {
   const [isPending, startTransition] = useTransition()
   const [woMode, setWoMode] = useState(false)
   const [resultadoMode, setResultadoMode] = useState(false)
   const [resA, setResA] = useState('')
   const [resB, setResB] = useState('')
-  const [eventos, setEventos] = useState<EventoJogo[]>([])
+  // SSR pre-fetch elimina N+1: cada card já vem com os eventos no mount.
+  const [eventos, setEventos] = useState<EventoJogo[]>(initialEventos)
 
   const placarA = jogo.placar_a ?? 0
   const placarB = jogo.placar_b ?? 0
@@ -283,10 +285,14 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   const setsA = getCount('set_ganho', 'a')
   const setsB = getCount('set_ganho', 'b')
 
-  // Carrega eventos quando o jogo está ao vivo ou encerrado
+  // initialEventos do SSR cobre o mount. Re-fetch só quando o jogo transita
+  // pra ao_vivo durante a sessão (vinha como 'agendado' do SSR, sem eventos).
   const isLoadable = jogo.status === 'ao_vivo' || jogo.status === 'encerrado'
+  const eventosCarregadosRef = useRef(initialEventos.length > 0)
   useEffect(() => {
     if (!isLoadable) return
+    if (eventosCarregadosRef.current) return  // SSR já cobriu
+    eventosCarregadosRef.current = true
     const supabase = createClient()
     supabase
       .from('eventos_jogo')
@@ -1754,6 +1760,8 @@ interface Props {
   jogosPorDia: Record<string, Jogo[]>
   diaAtivo: string
   canEdit?: boolean
+  /** Pre-fetched eventos por jogo (SSR) — elimina N+1 dos useEffect dos cards. */
+  eventosPorJogo?: Record<string, EventoJogo[]>
 }
 
 // Campos escalares que o realtime pode atualizar in-place (sem perder joins).
@@ -1763,7 +1771,7 @@ const REALTIME_MERGEABLE: (keyof Jogo)[] = [
   'inicio', 'fase', 'categoria', 'divisao', 'teste',
 ]
 
-export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, canEdit }: Props) {
+export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, canEdit, eventosPorJogo = {} }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   // Honra ?dia=<uuid> da URL (deep-link de outras seções) — fallback para diaAtivo do servidor
@@ -2284,6 +2292,7 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
                 onLocalUpdate={handleLocalUpdate}
                 recentlyChanged={recentIds.has(jogo.id) || highlightedJogoId === jogo.id}
                 canEdit={canEdit}
+                initialEventos={eventosPorJogo[jogo.id] ?? []}
               />
             ))}
           </div>

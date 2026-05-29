@@ -324,7 +324,7 @@ function MobileBottomNav({ role, pathname, badges }: { role: string | null | und
   return (
     <nav
       aria-label="Navegação rápida"
-      className="md:hidden fixed inset-x-0 bottom-0 z-30"
+      className="md:hidden fixed inset-x-0 bottom-0 z-30 print:hidden"
       style={{
         // Safe area inset para iOS PWA (home indicator)
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -660,7 +660,7 @@ export function AppShellLayout({
   const roleName  = profile?.role  ? (ROLE_LABEL[profile.role] ?? profile.role) : '—'
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden print:block print:h-auto print:overflow-visible">
 
       {/* Skip link — aparece ao receber foco (teclado), invisível para mouse */}
       <a href="#main-content" className="cia-skip-link">
@@ -668,7 +668,7 @@ export function AppShellLayout({
       </a>
 
       {/* ── Top Navigation Bar ────────────────────────────────────────── */}
-      <header className="mac-toolbar sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 px-4">
+      <header className="mac-toolbar sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 px-4 print:hidden">
 
         {/* Mobile hamburger — 40×40px para touch target adequado */}
         <button
@@ -815,13 +815,13 @@ export function AppShellLayout({
       {/* ── Main content ──────────────────────────────────────────────── */}
       <main
         id="main-content"
-        className="relative flex-1 overflow-auto"
+        className="relative flex-1 overflow-auto print:overflow-visible print:flex-none"
         style={{ background: 'var(--background)' }}
       >
         {fullWidth ? (
-          <div className="relative z-10 h-full pb-16 md:pb-0">{children}</div>
+          <div className="relative z-10 h-full pb-16 md:pb-0 print:h-auto print:pb-0">{children}</div>
         ) : (
-          <div className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6 pb-20 md:pb-6">{children}</div>
+          <div className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6 pb-20 md:pb-6 print:pb-0">{children}</div>
         )}
         <QuickCapture />
       </main>

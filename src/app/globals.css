@@ -1658,3 +1658,26 @@ body {
     scroll-behavior:          auto   !important;
   }
 }
+
+/* ── Print: neutraliza height/overflow da cadeia do shell ─────────────────────
+   Sem isto, o AppShell (h-screen + overflow-hidden) corta o conteúdo em
+   1 pagina ao imprimir. Garante que html/body/main fluam por todas as paginas. */
+@media print {
+  html, body {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+  /* Qualquer container de scroll vira fluxo normal na impressao */
+  #main-content,
+  #main-content > * {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+  /* Cores fieis na impressao (badges, barras de progresso) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

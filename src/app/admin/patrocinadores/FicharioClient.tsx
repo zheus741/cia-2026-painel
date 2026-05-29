@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import {
   Crown, Upload, Loader2, Mail, Phone, PowerOff, Plus, ChevronDown,
-  ChevronRight, Pencil, Trash2, Eye, AlertTriangle,
+  ChevronRight, Pencil, Trash2, Eye, AlertTriangle, LayoutList,
 } from 'lucide-react'
 import {
   Dialog,
@@ -60,6 +60,8 @@ interface Props {
   /** Prefixo da URL pra ficha individual. Default: /admin/patrocinadores
    *  String simples (não closure) pra ser serializável de Server→Client Component. */
   detailHrefPrefix?: string
+  /** Se informado, mostra botão "Dossiê completo" no header apontando pra cá. */
+  dossieHref?: string
 }
 
 // ── Cota config ───────────────────────────────────────────────────────────────
@@ -698,6 +700,7 @@ export function FicharioClient({
   onDelete,
   canEdit = true,
   detailHrefPrefix = '/admin/patrocinadores',
+  dossieHref,
 }: Props) {
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -748,17 +751,29 @@ export function FicharioClient({
               : 'Visualize patrocinadores e o escopo de entregas contratadas.'}
           </p>
         </div>
-        {canEdit && (
-          <button
-            type="button"
-            onClick={() => openCreate()}
-            disabled={deletePending}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
-            <Plus className="h-4 w-4" />
-            Novo patrocinador
-          </button>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {dossieHref && (
+            <Link
+              href={dossieHref}
+              className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:border-[rgba(10,15,11,0.20)]"
+              title="Visão geral consolidada de todas as entregas"
+            >
+              <LayoutList className="h-4 w-4" />
+              Dossiê completo
+            </Link>
+          )}
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => openCreate()}
+              disabled={deletePending}
+              className="flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              <Plus className="h-4 w-4" />
+              Novo patrocinador
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Summary */}

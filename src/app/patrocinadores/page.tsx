@@ -61,6 +61,7 @@ export default async function PatrocinadoresPublicoPage() {
         onDelete={deletePatrocinador}
         canEdit={false}
         detailHrefPrefix="/patrocinadores"
+        dossieHref="/patrocinadores/dossie"
       />
     </AppShell>
   )

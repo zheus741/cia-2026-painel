@@ -48,6 +48,7 @@ export default async function PatrocinadoresPage() {
       onUpdate={updatePatrocinador}
       onDelete={deletePatrocinador}
       canEdit={canEdit}
+      dossieHref="/patrocinadores/dossie"
     />
   )
 }

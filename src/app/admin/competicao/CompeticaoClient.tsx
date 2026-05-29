@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import {
   Search,
@@ -129,14 +130,14 @@ function LogoSection({ form, uploadingLogo, onChange, setUploadingLogo }: LogoSe
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         {/* Preview */}
         <div style={{
+          position: 'relative',
           width: 64, height: 64, borderRadius: 12,
           border: '1px solid rgba(10,15,11,0.12)',
           background: '#f4f6f4', overflow: 'hidden', flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {form.logo_url
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={form.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            ? <Image src={form.logo_url} alt="" fill sizes="64px" style={{ objectFit: 'contain' }} unoptimized />
             : <ImageIcon size={24} color="#d1d5db" />
           }
         </div>
@@ -964,14 +965,14 @@ export default function CompeticaoClient({ atleticas, inscricoes, modalidades }:
                     }
                     {/* Brasão */}
                     <div style={{
+                      position: 'relative',
                       width: 28, height: 28, borderRadius: 6, flexShrink: 0, overflow: 'hidden',
                       border: '1px solid rgba(10,15,11,0.08)',
                       background: '#f4f6f4',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       {atletica.logo_url
-                        // eslint-disable-next-line @next/next/no-img-element
-                        ? <img src={atletica.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        ? <Image src={atletica.logo_url} alt="" fill sizes="28px" style={{ objectFit: 'contain' }} unoptimized />
                         : <Users size={12} color="#d1d5db" />
                       }
                     </div>

@@ -112,6 +112,24 @@ export async function requireAdmin() {
   }
 }
 
+/**
+ * Permite admin OU coordenador esportivo. Usado em ações de placar/jogos
+ * onde o time esportivo precisa editar mas coord geral (de mídia) não.
+ */
+export async function requireSportEditor() {
+  const supabase = await createClient()
+  const { data: u } = await supabase.auth.getUser()
+  if (!u.user) throw new Error('Não autenticado.')
+  const { data: p } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', u.user.id)
+    .maybeSingle()
+  if (!p || !['admin', 'coordenador_esportivo'].includes(p.role)) {
+    throw new Error('Sem permissão. Apenas admin ou coord. esportivo podem alterar.')
+  }
+}
+
 export async function requireLiderOrAbove() {
   const supabase = await createClient()
   const { data: u } = await supabase.auth.getUser()

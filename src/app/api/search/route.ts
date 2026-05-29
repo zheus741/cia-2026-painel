@@ -35,6 +35,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ results: [] satisfies SearchResult[] }, { status: 401 })
   }
 
+  // PII guard: só admin/coord/líder vê e-mails de outros usuários nos resultados.
+  // Operador não precisa pesquisar pessoas pelo email.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+  const canSeePII = ['admin', 'coordenacao', 'lider_area', 'coordenador_esportivo'].includes(profile?.role ?? '')
+
   // Sanitiza o termo: vírgulas, parênteses e aspas quebram o parser do .or() do
   // PostgREST. Removemos esses chars (busca segue funcional).
   const sanitized = q.replace(/[(),"'%]/g, ' ').trim()
@@ -63,13 +72,21 @@ export async function GET(req: Request) {
       .select('id, titulo, tipo, status')
       .ilike('titulo', pattern)
       .limit(LIMIT_PER_CATEGORY),
-    // Usuários: por nome ou email (só ativos)
-    supabase
-      .from('profiles')
-      .select('id, nome, email, role')
-      .or(`nome.ilike.${pattern},email.ilike.${pattern}`)
-      .eq('ativo', true)
-      .limit(LIMIT_PER_CATEGORY),
+    // Usuários: só admin/coord/líder pode buscar por email.
+    // Outros roles veem só busca por nome — sem leakage de PII.
+    canSeePII
+      ? supabase
+          .from('profiles')
+          .select('id, nome, email, role')
+          .or(`nome.ilike.${pattern},email.ilike.${pattern}`)
+          .eq('ativo', true)
+          .limit(LIMIT_PER_CATEGORY)
+      : supabase
+          .from('profiles')
+          .select('id, nome, role')
+          .ilike('nome', pattern)
+          .eq('ativo', true)
+          .limit(LIMIT_PER_CATEGORY),
     // Setores
     supabase
       .from('setores')
@@ -117,13 +134,13 @@ export async function GET(req: Request) {
     })
   }
 
-  // Usuários
-  for (const u of usuariosRes.data ?? []) {
+  // Usuários — email no subtitle só pra quem tem permissão
+  for (const u of (usuariosRes.data ?? []) as Array<{ id: string; nome: string; email?: string; role: string }>) {
     results.push({
       id:       `usuario-${u.id}`,
       type:     'usuario',
       title:    u.nome,
-      subtitle: [u.role, u.email].filter(Boolean).join(' · ') || undefined,
+      subtitle: [u.role, canSeePII ? u.email : null].filter(Boolean).join(' · ') || undefined,
       href:     `/admin/usuarios`,
     })
   }
@@ -139,5 +156,12 @@ export async function GET(req: Request) {
     })
   }
 
-  return NextResponse.json({ results })
+  return NextResponse.json({ results }, {
+    headers: {
+      // Cache 5s no browser + revalidação. Usuários costumam digitar várias
+      // letras rápidas no command palette; sem cache cada keystroke vira
+      // 5 queries simultâneas. Cache permite reutilizar resultados próximos.
+      'cache-control': 'private, max-age=5, stale-while-revalidate=10',
+    },
+  })
 }

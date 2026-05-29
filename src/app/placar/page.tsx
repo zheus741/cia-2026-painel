@@ -49,7 +49,7 @@ export default async function PlacarPage() {
   if (jogosComEventos.length > 0) {
     const { data: eventosDB } = await supabase
       .from('eventos_jogo')
-      .select('*')
+      .select('id, jogo_id, tipo, equipe, minuto, criado_em')
       .in('jogo_id', jogosComEventos)
       .order('criado_em')
     for (const e of (eventosDB ?? []) as Array<{ jogo_id: string }>) {

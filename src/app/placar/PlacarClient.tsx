@@ -296,7 +296,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
     const supabase = createClient()
     supabase
       .from('eventos_jogo')
-      .select('*')
+      .select('id, jogo_id, tipo, equipe, minuto, criado_em')
       .eq('jogo_id', jogo.id)
       .order('criado_em')
       .then(({ data }) => setEventos(data ?? []))
@@ -324,7 +324,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
       const supabase = createClient()
       const { data } = await supabase
         .from('eventos_jogo')
-        .select('*')
+        .select('id, jogo_id, tipo, equipe, minuto, criado_em')
         .eq('jogo_id', jogo.id)
         .order('criado_em')
       setEventos(data ?? [])
@@ -498,7 +498,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
       const supabase = createClient()
       const { data } = await supabase
         .from('eventos_jogo')
-        .select('*')
+        .select('id, jogo_id, tipo, equipe, minuto, criado_em')
         .eq('jogo_id', jogo.id)
         .order('criado_em')
       setEventos(data ?? [])

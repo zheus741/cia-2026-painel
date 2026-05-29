@@ -7,7 +7,7 @@ import { requireProfile, ROLES_APROVADORES } from '@/lib/auth/current-user'
 import { enviarNotif } from '@/lib/notif'
 
 const VALID_ROLES    = ['admin', 'coordenacao', 'lider_area', 'operador', 'coordenador_esportivo', 'operador_esportivo', 'operador_fv', 'lider_fv'] as const
-const VALID_FUNCOES  = ['foto', 'video', 'editor', 'design', 'coordenacao', 'storymaker', 'lider_cobertura', null] as const
+const VALID_FUNCOES  = ['foto', 'video', 'editor', 'design', 'social_media', 'coordenacao', 'storymaker', 'lider_cobertura', null] as const
 
 type ValidRole   = typeof VALID_ROLES[number]
 type ValidFuncao = typeof VALID_FUNCOES[number]

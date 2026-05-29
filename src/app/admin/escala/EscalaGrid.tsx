@@ -39,6 +39,7 @@ const FUNCOES = [
   { value: 'video',             label: 'Vídeo' },
   { value: 'editor',            label: 'Editor' },
   { value: 'design',            label: 'Design' },
+  { value: 'social_media',      label: 'Social Media' },
   { value: 'coordenacao',       label: 'Coordenação' },
   { value: 'storymaker',        label: 'Storymaker' },
   { value: 'lider_cobertura',   label: 'Líder de Cobertura' },

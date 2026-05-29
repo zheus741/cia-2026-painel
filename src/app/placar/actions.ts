@@ -2,7 +2,7 @@
 
 import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { requireCoordOrAdmin, safe, type ActionResult } from '@/lib/admin/actions-helper'
+import { requireSportEditor, safe, type ActionResult } from '@/lib/admin/actions-helper'
 import { propagarVencedorNaChave, recalcularChave } from '@/lib/chaveamento/avanco'
 
 // Helper: invalida cache da home quando dados estáticos do evento mudam.
@@ -13,7 +13,7 @@ function bustHomeCache() {
 
 export async function setJogoAoVivo(id: string): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const supabase = await createClient()
     const { error } = await supabase
       .from('jogos')
@@ -27,7 +27,7 @@ export async function setJogoAoVivo(id: string): Promise<ActionResult> {
 
 export async function encerrarJogo(id: string): Promise<ActionResult> {
   try {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const supabase = await createClient()
     const { error } = await supabase
       .from('jogos')
@@ -65,7 +65,7 @@ export async function atualizarPlacar(
   placar_b: number,
 ): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const supabase = await createClient()
     const { error } = await supabase
       .from('jogos')
@@ -87,7 +87,7 @@ export async function lancarResultado(
   placar_b: number,
 ): Promise<ActionResult> {
   try {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const supabase = await createClient()
     const { error } = await supabase
       .from('jogos')
@@ -119,7 +119,7 @@ export async function lancarResultado(
 
 export async function cancelarJogo(id: string): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const supabase = await createClient()
     const { error } = await supabase
       .from('jogos')
@@ -133,7 +133,7 @@ export async function cancelarJogo(id: string): Promise<ActionResult> {
 
 export async function criarJogoTeste(diaId: string): Promise<ActionResult & { data?: { id: string } }> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('jogos')
@@ -157,7 +157,7 @@ export async function criarJogoTeste(diaId: string): Promise<ActionResult & { da
 
 export async function reativarJogo(id: string): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const supabase = await createClient()
     const { error } = await supabase
       .from('jogos')
@@ -188,7 +188,7 @@ export async function declararWO(
   lado: 'a' | 'b' | 'duplo',
 ): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     if (!['a', 'b', 'duplo'].includes(lado)) {
       throw new Error(`Lado inválido: ${lado}`)
     }
@@ -221,7 +221,7 @@ export async function declararWO(
  */
 export async function removerWO(id: string): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const supabase = await createClient()
     const { error } = await supabase
       .from('jogos')
@@ -244,7 +244,7 @@ export async function registrarEvento(
   equipe: 'a' | 'b',
 ): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const TIPOS_VALIDOS = [
       // Pontos / gols (registro histórico)
       'gol', 'cesta_2', 'cesta_3', 'lance_livre', 'ace', 'bloqueio', 'set_ganho',
@@ -274,7 +274,7 @@ export async function fecharSet(
   vencedor: 'a' | 'b',
 ): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const supabase = await createClient()
     const { error: evErr } = await supabase
       .from('eventos_jogo')
@@ -296,7 +296,7 @@ export async function fecharSet(
  */
 export async function removerEvento(eventoId: string): Promise<ActionResult> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const supabase = await createClient()
     const { error } = await supabase
       .from('eventos_jogo')
@@ -323,7 +323,7 @@ export async function recalcularChaveAction(
   divisao: string,
 ): Promise<ActionResult & { data?: { total: number; propagados: number; pulados: number; errors: number } }> {
   return safe(async () => {
-    await requireCoordOrAdmin()
+    await requireSportEditor()
     const result = await recalcularChave(modalidadeId, categoria, divisao)
     revalidatePath('/placar')
     bustHomeCache()

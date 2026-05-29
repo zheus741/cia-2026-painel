@@ -63,9 +63,13 @@ export function parseFormData<T extends Record<string, unknown>>(
 
 /**
  * Tenta executar e devolve {ok,error} sem lançar.
+ *
+ * Toda falha capturada é logada estruturadamente via logError —
+ * Vercel logs ficam consultáveis por action/userId no painel.
  */
 export async function safe<T>(
   fn: () => Promise<T>,
+  context?: { action?: string },
 ): Promise<ActionResult & { data?: T }> {
   try {
     const data = await fn()
@@ -79,7 +83,10 @@ export async function safe<T>(
       const pe = e as Record<string, unknown>
       msg = String(pe.message ?? pe.details ?? pe.hint ?? pe.code ?? 'Erro desconhecido.')
     }
-    console.error('[safe]', e)
+    // Lazy import — evita ciclo se actions-helper for importado em código
+    // que não pode usar 'server-only'.
+    const { logError } = await import('@/lib/observability/log-error')
+    logError(e, { action: context?.action ?? 'safe' })
     return { ok: false, error: msg }
   }
 }

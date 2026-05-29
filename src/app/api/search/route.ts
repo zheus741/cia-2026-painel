@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { checkRate } from '@/lib/rate-limit'
 
 /**
  * GET /api/search?q=<termo>
@@ -33,6 +34,19 @@ export async function GET(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json({ results: [] satisfies SearchResult[] }, { status: 401 })
+  }
+
+  // Rate-limit por usuário: 60 queries/min é mais que suficiente pra um
+  // command palette legítimo. Protege contra usuários ou bots fazendo flood.
+  const rate = checkRate(`search:${user.id}`, 60, 60_000)
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { results: [], error: 'Muitas buscas em pouco tempo. Aguarde.' },
+      {
+        status: 429,
+        headers: { 'retry-after': String(rate.retryAfter) },
+      },
+    )
   }
 
   // PII guard: só admin/coord/líder vê e-mails de outros usuários nos resultados.

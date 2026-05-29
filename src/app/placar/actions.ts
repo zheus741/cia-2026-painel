@@ -3,6 +3,8 @@
 import { revalidatePath, updateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireSportEditor, safe, type ActionResult } from '@/lib/admin/actions-helper'
+import { logError } from '@/lib/observability/log-error'
+import { detectConcurrentEdit } from '@/lib/competicao/concurrent-edit'
 import { propagarVencedorNaChave, recalcularChave } from '@/lib/chaveamento/avanco'
 
 // Helper: invalida cache da home quando dados estáticos do evento mudam.
@@ -29,6 +31,11 @@ export async function encerrarJogo(id: string): Promise<ActionResult> {
   try {
     await requireSportEditor()
     const supabase = await createClient()
+
+    // Detecção SOFT de edição concorrente — avisa se outro coord editou
+    // este jogo nos últimos 3s.
+    const concurrent = await detectConcurrentEdit(id, supabase)
+
     const { error } = await supabase
       .from('jogos')
       .update({ status: 'encerrado' })
@@ -37,16 +44,16 @@ export async function encerrarJogo(id: string): Promise<ActionResult> {
 
     // Propaga vencedor pro próximo jogo da chave. Falha NÃO bloqueia
     // mas retorna warning pro client mostrar toast amarelo + "Recalcular".
-    let warning: string | undefined
+    let warning: string | undefined = concurrent.warning
     try {
       const result = await propagarVencedorNaChave(id)
       if (!result.ok && result.reason !== 'ja-e-final') {
         console.warn('[encerrarJogo] propagação falhou:', result.reason, { jogoId: id })
-        warning = `Jogo encerrado, mas o vencedor não avançou na chave (${result.reason}). Clique RECALCULAR no chaveamento.`
+        warning = warning ?? `Jogo encerrado, mas o vencedor não avançou na chave (${result.reason}). Clique RECALCULAR no chaveamento.`
       }
     } catch (err) {
-      console.error('[encerrarJogo] erro inesperado na propagação:', err)
-      warning = 'Jogo encerrado, mas falhou propagação na chave. Use RECALCULAR.'
+      logError(err, { action: 'encerrarJogo:propagacao', extra: { jogoId: id } })
+      warning = warning ?? 'Jogo encerrado, mas falhou propagação na chave. Use RECALCULAR.'
     }
     revalidatePath('/placar')
     bustHomeCache()
@@ -54,7 +61,7 @@ export async function encerrarJogo(id: string): Promise<ActionResult> {
     return { ok: true, warning }
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro ao encerrar.'
-    console.error('[encerrarJogo]', e)
+    logError(e, { action: 'encerrarJogo', extra: { jogoId: id } })
     return { ok: false, error: msg }
   }
 }
@@ -89,22 +96,25 @@ export async function lancarResultado(
   try {
     await requireSportEditor()
     const supabase = await createClient()
+
+    const concurrent = await detectConcurrentEdit(id, supabase)
+
     const { error } = await supabase
       .from('jogos')
       .update({ placar_a, placar_b, status: 'encerrado' })
       .eq('id', id)
     if (error) throw error
 
-    let warning: string | undefined
+    let warning: string | undefined = concurrent.warning
     try {
       const result = await propagarVencedorNaChave(id)
       if (!result.ok && result.reason !== 'ja-e-final') {
         console.warn('[lancarResultado] propagação falhou:', result.reason, { jogoId: id })
-        warning = `Resultado lançado, mas o vencedor não avançou na chave (${result.reason}). Use RECALCULAR no chaveamento.`
+        warning = warning ?? `Resultado lançado, mas o vencedor não avançou na chave (${result.reason}). Use RECALCULAR no chaveamento.`
       }
     } catch (err) {
-      console.error('[lancarResultado] erro inesperado na propagação:', err)
-      warning = 'Resultado lançado, mas falhou propagação na chave. Use RECALCULAR.'
+      logError(err, { action: 'lancarResultado:propagacao', extra: { jogoId: id } })
+      warning = warning ?? 'Resultado lançado, mas falhou propagação na chave. Use RECALCULAR.'
     }
     revalidatePath('/placar')
     bustHomeCache()
@@ -112,7 +122,7 @@ export async function lancarResultado(
     return { ok: true, warning }
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro ao lançar resultado.'
-    console.error('[lancarResultado]', e)
+    logError(e, { action: 'lancarResultado', extra: { jogoId: id, placar_a, placar_b } })
     return { ok: false, error: msg }
   }
 }
@@ -206,7 +216,7 @@ export async function declararWO(
           console.warn('[declararWO] propagação falhou:', result.reason, { jogoId: id })
         }
       } catch (err) {
-        console.error('[declararWO] erro inesperado na propagação:', err)
+        logError(err, { action: 'declararWO:propagacao', extra: { jogoId: id, lado } })
       }
     }
     revalidatePath('/placar')

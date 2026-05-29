@@ -70,14 +70,16 @@ export async function confirmarChegada(escalaId: string): Promise<ActionResult> 
     const profile = await requireProfile()
     const supabase = await createClient()
 
-    // Garante que o usuário só confirma a própria escala (admin pode confirmar qualquer uma)
-    const query = supabase
+    // Garante que o usuário só confirma a própria escala (admin pode confirmar qualquer uma).
+    // BUG ANTERIOR: query.eq() retorna NOVO builder; sem reatribuir, o filtro user_id
+    // era descartado e coord_esportivo conseguia confirmar chegada de qualquer um.
+    let query = supabase
       .from('escalas_esportivo')
       .update({ confirmado_em: new Date().toISOString() })
       .eq('id', escalaId)
 
     if (profile.role !== 'admin') {
-      query.eq('user_id', profile.id)
+      query = query.eq('user_id', profile.id)
     }
 
     const { error } = await query

@@ -24,9 +24,14 @@ export async function criarEscopoItem(patrocinadorId: string, fd: FormData): Pro
   })
 }
 
+const ESCOPO_STATUS_VALIDOS = ['pendente', 'em_producao', 'entregue', 'atrasado'] as const
+
 export async function updateEscopoItemStatus(id: string, patrocinadorId: string, status: string): Promise<ActionResult> {
   return safe(async () => {
     await requireCoordOrAdmin()
+    if (!ESCOPO_STATUS_VALIDOS.includes(status as typeof ESCOPO_STATUS_VALIDOS[number])) {
+      throw new Error(`Status inválido: ${status}`)
+    }
     const supabase = createAdminClient()
     const { error } = await supabase.from('escopo_itens').update({ status }).eq('id', id)
     if (error) throw error

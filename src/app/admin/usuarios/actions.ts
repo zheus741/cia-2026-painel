@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireCoordOrAdmin } from '@/lib/admin/actions-helper'
+import { requireCoordOrAdmin, requireAdmin } from '@/lib/admin/actions-helper'
 import { requireProfile, ROLES_APROVADORES } from '@/lib/auth/current-user'
 import { enviarNotif } from '@/lib/notif'
 
@@ -14,7 +14,13 @@ type ValidFuncao = typeof VALID_FUNCOES[number]
 
 export async function updateRole(userId: string, role: string) {
   if (!VALID_ROLES.includes(role as ValidRole)) throw new Error('Role inválido.')
-  await requireCoordOrAdmin()
+  // Defesa contra escalada de privilégio: promover alguém a admin
+  // exige que o solicitante TAMBÉM seja admin. Coord não promove.
+  if (role === 'admin') {
+    await requireAdmin()
+  } else {
+    await requireCoordOrAdmin()
+  }
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('profiles')
@@ -93,6 +99,11 @@ export async function aprovarUsuario(
 
     if (!VALID_ROLES.includes(payload.role as ValidRole)) {
       return { ok: false, error: 'Role inválido.' }
+    }
+
+    // Só admin pode aprovar alguém JÁ como admin (defesa contra escalada)
+    if (payload.role === 'admin' && approver.role !== 'admin') {
+      return { ok: false, error: 'Apenas admin pode aprovar outro admin.' }
     }
     if (payload.funcao !== null && !VALID_FUNCOES.includes(payload.funcao as ValidFuncao)) {
       return { ok: false, error: 'Função inválida.' }

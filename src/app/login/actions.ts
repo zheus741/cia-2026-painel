@@ -44,17 +44,17 @@ export async function signupSemEmail(
 
   if (error) {
     const msg = error.message ?? ''
-    // Trata erros conhecidos com mensagem amigável em PT-BR
-    if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('registered')) {
-      return { ok: false, error: 'Este e-mail já tem uma conta. Faça login.' }
-    }
+    // Erros revelados ao usuário só para casos NÃO-PII (senha fraca, email malformado).
+    // Caso "email já existe" devolve mensagem GENÉRICA pra não permitir
+    // enumeração de contas via /login (security hardening).
     if (msg.toLowerCase().includes('weak') || msg.toLowerCase().includes('password')) {
       return { ok: false, error: 'Senha muito fraca. Use pelo menos 6 caracteres.' }
     }
     if (msg.toLowerCase().includes('invalid') && msg.toLowerCase().includes('email')) {
       return { ok: false, error: 'E-mail inválido.' }
     }
-    return { ok: false, error: msg || 'Erro ao criar conta. Tente de novo.' }
+    // Mensagem padrão para outros casos — não vaza "já existe" / "registered"
+    return { ok: false, error: 'Não foi possível criar a conta. Se você já tem cadastro, faça login. Senão tente novamente.' }
   }
 
   // Silencia o lint sobre o listUsers acima

@@ -99,15 +99,38 @@ export interface AtualizarPautaResult {
 /**
  * Atualiza setor e dia de uma pauta existente.
  * Permite null pra "remover" a atribuição.
+ *
+ * Autoria: somente o autor da pauta OU coord/admin/líder pode reposicionar.
+ * Antes qualquer autenticado conseguia (board "aberto"), mas isso permitia
+ * operador_fv sabotar pautas críticas. Restrição leve sem fechar colab geral.
  */
 export async function atualizarSetorDiaAction(
   id: string,
   setorId: string | null,
   diaId: string | null,
 ): Promise<AtualizarPautaResult> {
-  await requireProfile()
+  const profile = await requireProfile()
 
   const service = createServiceClient()
+
+  // Roles com edição livre (líder pra cima)
+  const ROLES_EDIT_FREE = new Set([
+    'admin', 'coordenacao', 'lider_area',
+    'coordenador_esportivo', 'lider_fv',
+  ])
+
+  // Se não está no grupo livre, exige autoria
+  if (!ROLES_EDIT_FREE.has(profile.role ?? '')) {
+    const { data: pauta } = await service
+      .from('pautas')
+      .select('autor_id')
+      .eq('id', id)
+      .maybeSingle()
+    if (!pauta || pauta.autor_id !== profile.id) {
+      return { ok: false, error: 'Só o autor ou líder pode reposicionar esta pauta.' }
+    }
+  }
+
   const { error } = await service
     .from('pautas')
     .update({ setor_id: setorId, dia_id: diaId })

@@ -137,8 +137,9 @@ function TurnoDialog({ open, onClose, dia, dias, setores, profiles, defaultFunca
   const [nomePessoa, setNomePessoa] = React.useState(editing?.nome_pessoa ?? '')
   const [isRoaming, setIsRoaming] = React.useState(editing?.is_roaming ?? false)
   const [obs, setObs] = React.useState(editing?.observacoes ?? '')
-  // Aplicar a todos os dias — só faz sentido em criação (não edição) e com >1 dia
-  const [todosDias, setTodosDias] = React.useState(false)
+  // Dias selecionados pra escalar (criação) — inicia só com o dia aberto.
+  // Set de dia_id. Marcar mais dias = escala em todos de uma vez.
+  const [diasSel, setDiasSel] = React.useState<Set<string>>(new Set([dia.id]))
 
   // reset on open
   React.useEffect(() => {
@@ -151,7 +152,7 @@ function TurnoDialog({ open, onClose, dia, dias, setores, profiles, defaultFunca
       setNomePessoa(editing?.nome_pessoa ?? '')
       setIsRoaming(editing?.is_roaming ?? false)
       setObs(editing?.observacoes ?? '')
-      setTodosDias(false)
+      setDiasSel(new Set([dia.id]))
 
       // Detect shift: se editando, tenta casar com preset; senão fallback pra custom
       if (editing) {
@@ -177,7 +178,7 @@ function TurnoDialog({ open, onClose, dia, dias, setores, profiles, defaultFunca
         setCustomFim('20:00')
       }
     }
-  }, [open, editing, defaultFuncao, defaultSetorId])
+  }, [open, editing, defaultFuncao, defaultSetorId, dia.id])
 
   async function submit() {
     setLoading(true)
@@ -209,10 +210,11 @@ function TurnoDialog({ open, onClose, dia, dias, setores, profiles, defaultFunca
       const setorResolved = (setorId && setorId !== '__none__') ? setorId : null
       const userResolved  = (userId && userId !== '__none__') ? userId : null
 
-      // Caminho "todos os dias": cria o mesmo turno em cada dia do evento
-      if (todosDias && !editing) {
+      // Caminho multi-dias: cria o mesmo turno em cada dia selecionado
+      const diasEscolhidos = dias.filter(d => diasSel.has(d.id))
+      if (diasEscolhidos.length > 1 && !editing) {
         const res = await createTurnoMultiDias({
-          dias: dias.map(d => ({ id: d.id, data: d.data })),
+          dias: diasEscolhidos.map(d => ({ id: d.id, data: d.data })),
           funcao,
           setor_id: setorResolved,
           inicioHHMM,
@@ -229,11 +231,13 @@ function TurnoDialog({ open, onClose, dia, dias, setores, profiles, defaultFunca
         return
       }
 
-      const inicio = buildTimestamp(dia.data, inicioHHMM)
-      const fim    = buildTimestamp(dia.data, fimHHMM, nextDay)
+      // Single: dia alvo = o único selecionado (criação) ou o dia em edição.
+      const diaAlvo = (!editing && diasEscolhidos.length === 1) ? diasEscolhidos[0] : dia
+      const inicio = buildTimestamp(diaAlvo.data, inicioHHMM)
+      const fim    = buildTimestamp(diaAlvo.data, fimHHMM, nextDay)
 
       const payload: TurnoPayload = {
-        dia_id: dia.id,
+        dia_id: diaAlvo.id,
         funcao,
         setor_id: setorResolved,
         inicio,
@@ -409,30 +413,69 @@ function TurnoDialog({ open, onClose, dia, dias, setores, profiles, defaultFunca
             Roaming (sem setor fixo — circula entre áreas)
           </label>
 
-          {/* Aplicar a todos os dias — só em criação e com >1 dia */}
+          {/* Seleção de dias — só em criação e com >1 dia */}
           {!editing && dias.length > 1 && (
-            <label
-              className="flex items-start gap-2 rounded-lg border p-2.5 text-sm cursor-pointer select-none transition-colors"
-              style={{
-                borderColor: todosDias ? 'var(--green-bright)' : 'var(--border)',
-                background: todosDias ? 'var(--green-dim)' + '14' : 'transparent',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={todosDias}
-                onChange={(e) => setTodosDias(e.target.checked)}
-                className="mt-0.5 rounded border-[var(--border)]"
-              />
-              <span>
-                <span className="font-semibold text-[var(--foreground)]">
-                  Escalar nos {dias.length} dias do evento
-                </span>
-                <span className="mt-0.5 block text-[11px] text-[var(--muted-foreground)]">
-                  Mesma função, horário, setor e pessoa em {dias.map(d => d.nome_dia).join(', ')}.
-                </span>
-              </span>
-            </label>
+            <div className="rounded-lg border border-[var(--border)] p-2.5">
+              <div className="mb-2 flex items-center justify-between">
+                <Label className="block text-xs">
+                  Escalar em quais dias
+                  <span className="ml-1.5 font-normal text-[var(--muted-foreground)]">
+                    ({diasSel.size} {diasSel.size === 1 ? 'dia' : 'dias'})
+                  </span>
+                </Label>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setDiasSel(new Set(dias.map(d => d.id)))}
+                    className="text-[10px] font-semibold uppercase tracking-wider text-[var(--green-bright)] hover:underline"
+                  >
+                    Todos
+                  </button>
+                  <span className="text-[10px] text-[var(--muted-foreground)]">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setDiasSel(new Set([dia.id]))}
+                    className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)] hover:underline"
+                  >
+                    Só este
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {dias.map(d => {
+                  const sel = diasSel.has(d.id)
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setDiasSel(prev => {
+                        const next = new Set(prev)
+                        if (next.has(d.id)) {
+                          // Não deixa zerar — sempre ao menos 1 dia
+                          if (next.size > 1) next.delete(d.id)
+                        } else {
+                          next.add(d.id)
+                        }
+                        return next
+                      })}
+                      className={cn(
+                        'rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
+                        sel
+                          ? 'border-[var(--green-bright)] bg-[var(--green-dim)]/15 text-[var(--green-bright)]'
+                          : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]',
+                      )}
+                    >
+                      {d.nome_dia}
+                    </button>
+                  )
+                })}
+              </div>
+              {diasSel.size > 1 && (
+                <p className="mt-2 text-[10px] text-[var(--muted-foreground)]">
+                  Mesma função, horário, setor e pessoa nos {diasSel.size} dias.
+                </p>
+              )}
+            </div>
           )}
 
           {/* Obs */}
@@ -448,7 +491,7 @@ function TurnoDialog({ open, onClose, dia, dias, setores, profiles, defaultFunca
           <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
           <Button size="sm" onClick={submit} disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {editing ? 'Salvar' : todosDias ? `Adicionar nos ${dias.length} dias` : 'Adicionar'}
+            {editing ? 'Salvar' : diasSel.size > 1 ? `Adicionar em ${diasSel.size} dias` : 'Adicionar'}
           </Button>
         </DialogFooter>
       </DialogContent>

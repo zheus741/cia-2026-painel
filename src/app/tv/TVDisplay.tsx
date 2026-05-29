@@ -87,6 +87,7 @@ interface Props {
   podiosRecentes:   PodioRecente[]
   tipoBreakdown:    TipoStat[]
   jogosEncerrados:  Jogo[]
+  funilProducao?:   import('@/lib/conteudos/funil-producao').FunilProducao | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -873,6 +874,40 @@ function CanalChart({ canais }: { canais: CanalStat[] }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // TipoChart — content type bars (mirrors CanalChart style)
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── FunilProducaoChart — andamento captação/design/edição ────────────────────
+function FunilProducaoChart({ funil }: { funil: import('@/lib/conteudos/funil-producao').FunilProducao }) {
+  const ICONE: Record<string, string> = { captacao: '📷', design: '🎨', edicao: '🎬' }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {funil.etapas.map(et => {
+        const pctConc = et.total > 0 ? (et.concluido / et.total) * 100 : 0
+        const pctProd = et.total > 0 ? (et.produzindo / et.total) * 100 : 0
+        return (
+          <div key={et.etapa}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.cream }}>
+                <span aria-hidden style={{ marginRight: 5 }}>{ICONE[et.etapa]}</span>{et.label}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: C.gold, fontVariantNumeric: 'tabular-nums' }}>
+                {et.concluido}<span style={{ fontSize: 10, color: C.creamMute, fontWeight: 600 }}>/{et.total}</span>
+              </span>
+            </div>
+            <div style={{ height: 10, borderRadius: 5, overflow: 'hidden', background: 'rgba(250,247,240,0.08)', display: 'flex' }}>
+              {pctConc > 0 && <div style={{ width: `${pctConc}%`, background: C.green }} />}
+              {pctProd > 0 && <div style={{ width: `${pctProd}%`, background: C.blue }} />}
+            </div>
+          </div>
+        )
+      })}
+      {funil.produzindoAgora > 0 && (
+        <p style={{ fontSize: 11, fontWeight: 700, color: C.blue, marginTop: 2 }}>
+          ● {funil.produzindoAgora} produzindo agora
+        </p>
+      )}
+    </div>
+  )
+}
 
 function TipoChart({ tipos }: { tipos: TipoStat[] }) {
   const maxTotal = Math.max(...tipos.map(t => t.total), 1)
@@ -1744,6 +1779,7 @@ export function TVDisplay({
   tipoBreakdown,
   jogosEncerrados,
   setoresCobertos,
+  funilProducao,
 }: Props) {
   const router        = useRouter()
   const [fullscreen, setFullscreen]   = useState(false)
@@ -2108,6 +2144,11 @@ export function TVDisplay({
           <TVCard title="Pipeline · Saúde da Produção" style={{ flex: '0 0 auto' }}>
             <PipelineDonut stats={pipelineStats} velocidade={velocidade} />
           </TVCard>
+          {funilProducao && funilProducao.totalTarefas > 0 && (
+            <TVCard title={`Produção · ${funilProducao.pctGeral}% concluído`} style={{ flex: '0 0 auto' }}>
+              <FunilProducaoChart funil={funilProducao} />
+            </TVCard>
+          )}
           {tipoBreakdown.length > 0 && (
             <TVCard title="Formatos · Hoje" style={{ flex: 1, minHeight: 0 }}>
               <TipoChart tipos={tipoBreakdown} />

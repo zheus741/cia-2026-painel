@@ -103,10 +103,10 @@ export default async function Home() {
 
   // Fetch all data in parallel
   const [conteudosRes, diasRes, turnosRes, checklistsRes, weather] = await Promise.all([
-    // All active conteudos — inclui campos de análise
+    // All active conteudos — inclui campos de análise + status de produção
     supabase
       .from('conteudos')
-      .select('id, status, tipo, dia_id, jogo_id, responsavel_captacao_id, responsavel_edicao_id')
+      .select('id, status, tipo, dia_id, jogo_id, responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, status_captacao, status_design, status_edicao')
       .not('status', 'in', '(arquivado,cancelado)'),
 
     // Event days to map dia_id → day index 1–4
@@ -162,6 +162,7 @@ export default async function Home() {
   let analyticsVolumePorHora: { hora: number; count: number }[]                                                       = []
   let analyticsAtleticas:     { nome: string; jogos: number; coberta: boolean }[]                                     = []
   let analyticsPracas:        import('@/lib/competicao/pracas').PracaStats[]                                          = []
+  let analyticsFunil:         import('@/lib/conteudos/funil-producao').FunilProducao | null                          = null
 
   {
     // Resolve dia_id for today (Sao Paulo) — reaproveita diasRes, sem nova query.
@@ -362,6 +363,21 @@ export default async function Home() {
     publicado:   allConteudos.filter(c => c.status === 'publicado').length,
   }
 
+  // ── Funil de produção (status captação/design/edição por responsável) ─────
+  {
+    const { buildFunilProducao } = await import('@/lib/conteudos/funil-producao')
+    analyticsFunil = buildFunilProducao(
+      (conteudosRes.data ?? []) as Array<{
+        responsavel_captacao_id?: string | null
+        responsavel_design_id?:   string | null
+        responsavel_edicao_id?:   string | null
+        status_captacao?:         string | null
+        status_design?:           string | null
+        status_edicao?:           string | null
+      }>,
+    )
+  }
+
   // ── Build heatmap data (tipo × event-day index) ───────────────────────────
 
   const diasSorted = (diasRes.data ?? []) as { id: string; data: string }[]
@@ -464,6 +480,7 @@ export default async function Home() {
         analyticsVolumePorHora={analyticsVolumePorHora}
         analyticsAtleticas={analyticsAtleticas}
         analyticsPracas={analyticsPracas}
+        analyticsFunil={analyticsFunil}
       />
     </div>
     </AppShell>

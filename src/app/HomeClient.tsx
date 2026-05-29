@@ -88,6 +88,7 @@ interface Props {
   analyticsVolumePorHora?: VolumePorHora[]
   analyticsAtleticas?:     AtleticaItem[]
   analyticsPracas?:        import('@/lib/competicao/pracas').PracaStats[]
+  analyticsFunil?:         import('@/lib/conteudos/funil-producao').FunilProducao | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -442,6 +443,7 @@ export function HomeClient({
   analyticsVolumePorHora  = [],
   analyticsAtleticas      = [],
   analyticsPracas         = [],
+  analyticsFunil          = null,
 }: Props) {
   const [tab, setTab] = useState<'comandos' | 'analises'>('comandos')
 
@@ -581,6 +583,7 @@ export function HomeClient({
               volumePorHora={analyticsVolumePorHora}
               atleticas={analyticsAtleticas}
               pracas={analyticsPracas}
+              funil={analyticsFunil}
             />
           )}
         </div>

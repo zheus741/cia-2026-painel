@@ -64,7 +64,7 @@ export default async function TVPage() {
   ] = await Promise.all([
     supabase.from('dias_evento').select('id, data').order('data'),
     supabase.from('conteudos')
-      .select('id, status, tipo, titulo, dia_id, canal_publicacao, patrocinador_id')
+      .select('id, status, tipo, titulo, dia_id, canal_publicacao, patrocinador_id, responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, status_captacao, status_design, status_edicao')
       .not('status', 'in', '(arquivado,cancelado)'),
     supabase.from('patrocinadores').select('id, nome, ativo, logo_url').eq('ativo', true),
     fetchWeather(),
@@ -123,7 +123,13 @@ export default async function TVPage() {
   const allConteudos = (conteudosTodosRes.data ?? []) as {
     id: string; status: string; tipo: string; titulo: string | null
     dia_id: string | null; canal_publicacao: string | null; patrocinador_id: string | null
+    responsavel_captacao_id?: string | null; responsavel_design_id?: string | null; responsavel_edicao_id?: string | null
+    status_captacao?: string | null; status_design?: string | null; status_edicao?: string | null
   }[]
+
+  // Funil de produção (captação/design/edição)
+  const { buildFunilProducao } = await import('@/lib/conteudos/funil-producao')
+  const funilProducao = buildFunilProducao(allConteudos)
 
   // Conteúdos por dia (índice 1–4)
   const conteudosPorDia = [1, 2, 3, 4].map(idx => {
@@ -316,6 +322,7 @@ export default async function TVPage() {
       podiosRecentes={podiosRecentes}
       tipoBreakdown={tipoBreakdown}
       jogosEncerrados={jogosEncerrados}
+      funilProducao={funilProducao}
     />
   )
 }

@@ -30,6 +30,7 @@ interface Props {
   volumePorHora: VolumePorHora[]
   atleticas:     AtleticaItem[]
   pracas?:       import('@/lib/competicao/pracas').PracaStats[]
+  funil?:        import('@/lib/conteudos/funil-producao').FunilProducao | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -652,7 +653,7 @@ function AtleticasCard({ atleticas }: { atleticas: AtleticaItem[] }) {
 // Main export
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function AnalyticsCards({ ranking, lacunas, volumePorHora, atleticas, pracas = [] }: Props) {
+export function AnalyticsCards({ ranking, lacunas, volumePorHora, atleticas, pracas = [], funil = null }: Props) {
   return (
     <div
       className="grid"
@@ -661,6 +662,9 @@ export function AnalyticsCards({ ranking, lacunas, volumePorHora, atleticas, pra
         gap: 14,
       }}
     >
+      {funil && funil.totalTarefas > 0 && (
+        <div style={{ gridColumn: 'span 12' }}><FunilCard funil={funil} /></div>
+      )}
       <div className="cia-metrics-col-6"><RankingCard      ranking={ranking} /></div>
       <div className="cia-metrics-col-6"><LacunasCard      lacunas={lacunas} /></div>
       <div className="cia-metrics-col-6"><VolumeHoraCard   volumePorHora={volumePorHora} /></div>
@@ -670,6 +674,71 @@ export function AnalyticsCards({ ranking, lacunas, volumePorHora, atleticas, pra
           <PracasCard pracas={pracas} />
         </div>
       )}
+    </div>
+  )
+}
+
+// ── FunilCard — andamento da produção (captação/design/edição) ───────────────
+
+function FunilCard({ funil }: { funil: import('@/lib/conteudos/funil-producao').FunilProducao }) {
+  const SANS = 'var(--font-dm-sans), system-ui, sans-serif'
+  const ICONE: Record<string, string> = { captacao: '📷', design: '🎨', edicao: '🎬' }
+
+  return (
+    <div className="cia-edit-card cia-edit-card--cream" style={{ minHeight: 'auto' }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <span style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(10,15,11,0.55)', letterSpacing: '-0.01em' }}>
+            funil de produção
+          </span>
+          <h3 className="mt-1" style={{
+            fontFamily: SANS, fontSize: 28, fontWeight: 800,
+            letterSpacing: '-0.04em', color: '#0A0F0B', lineHeight: 1,
+          }}>
+            {funil.pctGeral}% concluído
+          </h3>
+          <p style={{ marginTop: 6, fontSize: 12.5, fontWeight: 500, color: 'rgba(10,15,11,0.55)' }}>
+            {funil.totalConcluidas}/{funil.totalTarefas} tarefas
+            {funil.produzindoAgora > 0 && (
+              <span style={{ marginLeft: 8, color: '#2563eb', fontWeight: 700 }}>
+                ● {funil.produzindoAgora} produzindo agora
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* 3 etapas, barra empilhada concluído/produzindo/a fazer */}
+      <div className="mt-4 space-y-3">
+        {funil.etapas.map(et => {
+          const pctConc = et.total > 0 ? (et.concluido / et.total) * 100 : 0
+          const pctProd = et.total > 0 ? (et.produzindo / et.total) * 100 : 0
+          return (
+            <div key={et.etapa}>
+              <div className="mb-1 flex items-baseline justify-between">
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0A0F0B' }}>
+                  <span aria-hidden style={{ marginRight: 6 }}>{ICONE[et.etapa]}</span>
+                  {et.label}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(10,15,11,0.55)', fontVariantNumeric: 'tabular-nums' }}>
+                  {et.concluido}/{et.total}
+                  {et.total === 0 && <span style={{ opacity: 0.5 }}> · sem responsável</span>}
+                </span>
+              </div>
+              <div style={{ height: 10, borderRadius: 5, overflow: 'hidden', background: 'rgba(10,15,11,0.07)', display: 'flex' }}>
+                {pctConc > 0 && <div style={{ width: `${pctConc}%`, background: '#2e9e6b' }} title={`${et.concluido} concluído`} />}
+                {pctProd > 0 && <div style={{ width: `${pctProd}%`, background: '#3b82f6' }} title={`${et.produzindo} produzindo`} />}
+              </div>
+              {/* legenda inline */}
+              <div className="mt-1 flex items-center gap-3" style={{ fontSize: 10, fontWeight: 600, color: 'rgba(10,15,11,0.5)' }}>
+                <span style={{ color: '#1f7a52' }}>{et.concluido} concluído</span>
+                {et.produzindo > 0 && <span style={{ color: '#2563eb' }}>{et.produzindo} produzindo</span>}
+                {et.naoIniciado > 0 && <span>{et.naoIniciado} a fazer</span>}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

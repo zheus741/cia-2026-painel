@@ -26,7 +26,7 @@ export async function setJogoAoVivo(id: string): Promise<ActionResult> {
 }
 
 export async function encerrarJogo(id: string): Promise<ActionResult> {
-  return safe(async () => {
+  try {
     await requireCoordOrAdmin()
     const supabase = await createClient()
     const { error } = await supabase
@@ -34,20 +34,29 @@ export async function encerrarJogo(id: string): Promise<ActionResult> {
       .update({ status: 'encerrado' })
       .eq('id', id)
     if (error) throw error
-    // Propaga vencedor pro próximo jogo da chave (oitava → quarta → semi → final).
-    // Falha silenciosa (log only) — não bloqueia o encerramento se a propagação falhar.
+
+    // Propaga vencedor pro próximo jogo da chave. Falha NÃO bloqueia
+    // mas retorna warning pro client mostrar toast amarelo + "Recalcular".
+    let warning: string | undefined
     try {
       const result = await propagarVencedorNaChave(id)
-      if (!result.ok) {
+      if (!result.ok && result.reason !== 'ja-e-final') {
         console.warn('[encerrarJogo] propagação falhou:', result.reason, { jogoId: id })
+        warning = `Jogo encerrado, mas o vencedor não avançou na chave (${result.reason}). Clique RECALCULAR no chaveamento.`
       }
     } catch (err) {
       console.error('[encerrarJogo] erro inesperado na propagação:', err)
+      warning = 'Jogo encerrado, mas falhou propagação na chave. Use RECALCULAR.'
     }
     revalidatePath('/placar')
     bustHomeCache()
     revalidatePath('/esportivo/chaveamento')
-  })
+    return { ok: true, warning }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Erro ao encerrar.'
+    console.error('[encerrarJogo]', e)
+    return { ok: false, error: msg }
+  }
 }
 
 export async function atualizarPlacar(
@@ -77,7 +86,7 @@ export async function lancarResultado(
   placar_a: number,
   placar_b: number,
 ): Promise<ActionResult> {
-  return safe(async () => {
+  try {
     await requireCoordOrAdmin()
     const supabase = await createClient()
     const { error } = await supabase
@@ -85,19 +94,27 @@ export async function lancarResultado(
       .update({ placar_a, placar_b, status: 'encerrado' })
       .eq('id', id)
     if (error) throw error
-    // Propaga vencedor na chave — igual ao encerrarJogo
+
+    let warning: string | undefined
     try {
       const result = await propagarVencedorNaChave(id)
-      if (!result.ok) {
+      if (!result.ok && result.reason !== 'ja-e-final') {
         console.warn('[lancarResultado] propagação falhou:', result.reason, { jogoId: id })
+        warning = `Resultado lançado, mas o vencedor não avançou na chave (${result.reason}). Use RECALCULAR no chaveamento.`
       }
     } catch (err) {
       console.error('[lancarResultado] erro inesperado na propagação:', err)
+      warning = 'Resultado lançado, mas falhou propagação na chave. Use RECALCULAR.'
     }
     revalidatePath('/placar')
     bustHomeCache()
     revalidatePath('/esportivo/chaveamento')
-  })
+    return { ok: true, warning }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Erro ao lançar resultado.'
+    console.error('[lancarResultado]', e)
+    return { ok: false, error: msg }
+  }
 }
 
 export async function cancelarJogo(id: string): Promise<ActionResult> {

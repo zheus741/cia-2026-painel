@@ -23,9 +23,11 @@ import { toast } from '@/components/toast'
 // Compatível com ActionResult do helper do projeto: ok: boolean + opcional error/data.
 // Usamos forma "loose" pra aceitar tanto discriminated union quanto a forma boolean.
 export interface ActionResultLike<T = unknown> {
-  ok:     boolean
-  error?: string
-  data?:  T
+  ok:       boolean
+  error?:   string
+  /** Aviso não-bloqueante — mostra toast warning sem fazer rollback. */
+  warning?: string
+  data?:    T
 }
 
 interface RunActionOptions<T> {
@@ -56,7 +58,13 @@ export async function runAction<T = unknown>(
     }
 
     if (result.ok) {
-      if (!silent) toast.success(`${capitalize(label)} concluído`)
+      // Warning: ação succeeded mas algo secundário falhou (ex: propagação
+      // na chave). Mostra toast amarelo, sem rollback.
+      if (result.warning) {
+        toast.warning('Atenção', { description: result.warning, duration: 8000 })
+      } else if (!silent) {
+        toast.success(`${capitalize(label)} concluído`)
+      }
       onSuccess?.(result.data)
       return true
     }

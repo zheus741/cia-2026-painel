@@ -298,9 +298,10 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   }, [jogo.id, isLoadable])
 
   function handleRegistrarEvento(tipo: string, equipe: 'a' | 'b') {
-    // Otimista: adiciona evento temporário
+    // Otimista: adiciona evento temporário com UUID (evita colisão em
+    // double-click rápido onde Date.now() repete entre eventos).
     const temp: EventoJogo = {
-      id: `temp-${Date.now()}`,
+      id: `temp-${crypto.randomUUID()}`,
       jogo_id: jogo.id,
       tipo,
       equipe,
@@ -478,7 +479,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit }: {
   // (assim setsA/setsB incrementam na hora, sem esperar refetch).
   function fecharSetLocal(vencedor: 'a' | 'b') {
     const tempEv: EventoJogo = {
-      id: `temp-${Date.now()}`,
+      id: `temp-${crypto.randomUUID()}`,
       jogo_id: jogo.id,
       tipo: 'set_ganho',
       equipe: vencedor,

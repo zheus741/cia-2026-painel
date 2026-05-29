@@ -1,7 +1,13 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 
-export type ActionResult = { ok: boolean; error?: string }
+/**
+ * Resultado padrão de server actions.
+ * - ok=true sempre. error preenchido em falha.
+ * - warning: mensagem não-bloqueante (ex: "salvo mas propagação na chave
+ *   falhou — clique RECALCULAR"). Mostrado como toast amarelo no client.
+ */
+export type ActionResult = { ok: boolean; error?: string; warning?: string }
 
 export async function getEdicaoAtivaId() {
   const supabase = await createClient()

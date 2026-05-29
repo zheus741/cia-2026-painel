@@ -50,6 +50,9 @@ export interface Conteudo {
   responsavel_captacao_id: string | null
   responsavel_design_id:   string | null
   responsavel_edicao_id:   string | null
+  status_captacao?:        string | null
+  status_design?:          string | null
+  status_edicao?:          string | null
   dia?:             { nome_dia: string; data: string } | null
   setor?:           { nome: string } | null
   patrocinador?:    { nome: string } | null
@@ -144,6 +147,14 @@ const CANAL_CONFIG: Record<string, {
   whats_comunidade:       { label: 'Whats Comunidade',         cor: '#25D366', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   youtube_exp:            { label: 'YouTube EXP',              cor: '#EF4444', badge: 'bg-red-50 text-red-600 border-red-200' },
 }
+
+// Status de andamento por responsável (captação/design/edição)
+const RESP_STATUS_META: Record<string, { label: string; short: string; dot: string; text: string; bg: string }> = {
+  nao_iniciado: { label: 'Não iniciado', short: 'A fazer',    dot: '#94a3b8', text: '#64748b', bg: 'rgba(148,163,184,0.15)' },
+  produzindo:   { label: 'Produzindo',   short: 'Produzindo', dot: '#3b82f6', text: '#2563eb', bg: 'rgba(59,130,246,0.12)' },
+  concluido:    { label: 'Concluído',    short: 'Concluído',  dot: '#2e9e6b', text: '#1f7a52', bg: 'rgba(46,158,107,0.14)' },
+}
+const RESP_STATUS_ORDER = ['nao_iniciado', 'produzindo', 'concluido'] as const
 
 const CANAL_OPTIONS = Object.entries(CANAL_CONFIG).map(([value, { label }]) => ({ value, label }))
 
@@ -331,6 +342,35 @@ function ConteudoCard({
           </div>
         )}
 
+        {/* Status dos papéis — só os que têm responsável */}
+        {(() => {
+          const papeis = [
+            { emoji: '📷', resp: c.responsavel_captacao_id, status: c.status_captacao },
+            { emoji: '🎨', resp: c.responsavel_design_id,   status: c.status_design },
+            { emoji: '🎬', resp: c.responsavel_edicao_id,   status: c.status_edicao },
+          ].filter(p => p.resp)
+          if (papeis.length === 0) return null
+          return (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1">
+              {papeis.map((p, i) => {
+                const meta = RESP_STATUS_META[p.status ?? 'nao_iniciado'] ?? RESP_STATUS_META.nao_iniciado
+                return (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold"
+                    style={{ background: meta.bg, color: meta.text }}
+                    title={`${p.emoji} ${meta.label}`}
+                  >
+                    <span aria-hidden style={{ fontSize: 9 }}>{p.emoji}</span>
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: meta.dot }} />
+                    {meta.short}
+                  </span>
+                )
+              })}
+            </div>
+          )
+        })()}
+
         {/* Actions — aparecem no hover */}
         <div className="mt-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           {!readOnly && hasPrev && (
@@ -419,9 +459,10 @@ function Pill({ children, color }: { children: React.ReactNode; color?: string }
   )
 }
 
-function PersonRow({ perfil, label }: { perfil: Perfil | null | undefined; label: string }) {
+function PersonRow({ perfil, label, status }: { perfil: Perfil | null | undefined; label: string; status?: string | null }) {
   if (!perfil) return null
   const initials = perfil.nome.trim().split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase()
+  const statusMeta = status ? RESP_STATUS_META[status] : null
   return (
     <div className="flex items-center gap-2">
       <div
@@ -437,6 +478,15 @@ function PersonRow({ perfil, label }: { perfil: Perfil | null | undefined; label
         )}
       </div>
       <span className="text-[11px] font-semibold text-[var(--foreground)]">{perfil.nome}</span>
+      {statusMeta && (
+        <span
+          className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold"
+          style={{ background: statusMeta.bg, color: statusMeta.text }}
+        >
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusMeta.dot }} />
+          {statusMeta.label}
+        </span>
+      )}
     </div>
   )
 }
@@ -548,15 +598,15 @@ function ConteudoViewDialog({
 
           {/* ── Responsáveis ────────────────────────────── */}
           <PropRow icon={Camera} label="Captação">
-            {captacao ? <PersonRow perfil={captacao} label="Captação" /> : <Empty />}
+            {captacao ? <PersonRow perfil={captacao} label="Captação" status={c.status_captacao} /> : <Empty />}
           </PropRow>
 
           <PropRow icon={Palette} label="Design">
-            {design ? <PersonRow perfil={design} label="Design" /> : <Empty />}
+            {design ? <PersonRow perfil={design} label="Design" status={c.status_design} /> : <Empty />}
           </PropRow>
 
           <PropRow icon={Film} label="Edição">
-            {edicao ? <PersonRow perfil={edicao} label="Edição" /> : <Empty />}
+            {edicao ? <PersonRow perfil={edicao} label="Edição" status={c.status_edicao} /> : <Empty />}
           </PropRow>
         </div>
 
@@ -604,13 +654,18 @@ function ConteudoViewDialog({
 
 function PerfisSelect({
   label, value, onChange, perfis, placeholder,
+  status, onStatusChange,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   perfis: Perfil[]
   placeholder?: string
+  /** Status de andamento deste papel. Se fornecido, mostra seletor de status. */
+  status?: string
+  onStatusChange?: (s: string) => void
 }) {
+  const hasPerson = value && value !== '__none__'
   return (
     <div>
       <Label className="mb-1.5 block text-xs">{label}</Label>
@@ -625,6 +680,33 @@ function PerfisSelect({
           ))}
         </SelectContent>
       </Select>
+
+      {/* Status de andamento — só quando há responsável designado */}
+      {onStatusChange && hasPerson && (
+        <div className="mt-1.5 flex gap-1">
+          {RESP_STATUS_ORDER.map(s => {
+            const meta = RESP_STATUS_META[s]
+            const active = (status ?? 'nao_iniciado') === s
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => onStatusChange(s)}
+                className="flex flex-1 items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-semibold transition-colors"
+                style={{
+                  borderColor: active ? meta.dot : 'var(--border)',
+                  background: active ? meta.bg : 'transparent',
+                  color: active ? meta.text : 'var(--muted-foreground)',
+                }}
+                title={meta.label}
+              >
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: active ? meta.dot : 'var(--border)' }} />
+                {meta.short}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -664,6 +746,9 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
   const [captacaoId, setCaptacaoId] = React.useState(editing?.responsavel_captacao_id ?? '')
   const [designId, setDesignId]     = React.useState(editing?.responsavel_design_id ?? '')
   const [edicaoId2, setEdicaoId2]   = React.useState(editing?.responsavel_edicao_id ?? '')
+  const [statusCaptacao, setStatusCaptacao] = React.useState(editing?.status_captacao ?? 'nao_iniciado')
+  const [statusDesign, setStatusDesign]     = React.useState(editing?.status_design ?? 'nao_iniciado')
+  const [statusEdicao, setStatusEdicao]     = React.useState(editing?.status_edicao ?? 'nao_iniciado')
 
   React.useEffect(() => {
     if (!open) return
@@ -682,6 +767,9 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
     setCaptacaoId(editing?.responsavel_captacao_id ?? '')
     setDesignId(editing?.responsavel_design_id ?? '')
     setEdicaoId2(editing?.responsavel_edicao_id ?? '')
+    setStatusCaptacao(editing?.status_captacao ?? 'nao_iniciado')
+    setStatusDesign(editing?.status_design ?? 'nao_iniciado')
+    setStatusEdicao(editing?.status_edicao ?? 'nao_iniciado')
   }, [open, editing, defaultStatus])
 
   async function submit() {
@@ -704,6 +792,9 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
         responsavel_captacao_id: nullIfNone(captacaoId),
         responsavel_design_id:   nullIfNone(designId),
         responsavel_edicao_id:   nullIfNone(edicaoId2),
+        status_captacao:         statusCaptacao,
+        status_design:           statusDesign,
+        status_edicao:           statusEdicao,
         ...(link ? { link_publicado: link } : {}),
       }
       const res = editing ? await updateConteudo(editing.id, payload) : await createConteudo(payload)
@@ -882,9 +973,9 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
               <span>Responsáveis</span>
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <PerfisSelect label="📷 Captação" value={captacaoId} onChange={setCaptacaoId} perfis={perfis} />
-              <PerfisSelect label="🎨 Design"   value={designId}   onChange={setDesignId}   perfis={perfis} />
-              <PerfisSelect label="🎬 Edição"   value={edicaoId2}  onChange={setEdicaoId2}  perfis={perfis} />
+              <PerfisSelect label="📷 Captação" value={captacaoId} onChange={setCaptacaoId} perfis={perfis} status={statusCaptacao} onStatusChange={setStatusCaptacao} />
+              <PerfisSelect label="🎨 Design"   value={designId}   onChange={setDesignId}   perfis={perfis} status={statusDesign}   onStatusChange={setStatusDesign} />
+              <PerfisSelect label="🎬 Edição"   value={edicaoId2}  onChange={setEdicaoId2}  perfis={perfis} status={statusEdicao}   onStatusChange={setStatusEdicao} />
             </div>
           </div>
 
@@ -1117,6 +1208,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
       canal_publicacao, briefing, horario_previsto, link_publicado,
       responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
+      status_captacao, status_design, status_edicao,
       dia:dia_id (nome_dia, data),
       setor:setor_id (nome),
       patrocinador:patrocinador_id (nome),

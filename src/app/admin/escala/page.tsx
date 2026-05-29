@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getCachedDias, getCachedSetores } from '@/lib/cache/lookups'
 import { EscalaGrid } from './EscalaGrid'
-import { MockRoster } from './MockRoster'
 import { PageHeader } from '@/components/page-header'
 
 export default async function EscalaPage() {
@@ -36,9 +35,6 @@ export default async function EscalaPage() {
           subtitle="Distribua a equipe por função, setor e turno. Adicione pessoas genéricas antes dos usuários se cadastrarem."
         />
       </div>
-
-      {/* Roster CIA 2025 — dimensionamento visual (30 nomes mock pra planejar) */}
-      <MockRoster />
 
       <EscalaGrid
         dias={dias as { id: string; nome_dia: string; data: string }[]}

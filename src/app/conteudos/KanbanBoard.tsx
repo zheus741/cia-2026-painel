@@ -681,32 +681,36 @@ function PerfisSelect({
         </SelectContent>
       </Select>
 
-      {/* Status de andamento — só quando há responsável designado */}
-      {onStatusChange && hasPerson && (
-        <div className="mt-1.5 flex gap-1">
-          {RESP_STATUS_ORDER.map(s => {
-            const meta = RESP_STATUS_META[s]
-            const active = (status ?? 'nao_iniciado') === s
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onStatusChange(s)}
-                className="flex flex-1 items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[10px] font-semibold transition-colors"
-                style={{
-                  borderColor: active ? meta.dot : 'var(--border)',
-                  background: active ? meta.bg : 'transparent',
-                  color: active ? meta.text : 'var(--muted-foreground)',
-                }}
-                title={meta.label}
-              >
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: active ? meta.dot : 'var(--border)' }} />
-                {meta.short}
-              </button>
-            )
-          })}
-        </div>
-      )}
+      {/* Status de andamento — dropdown, só quando há responsável designado */}
+      {onStatusChange && hasPerson && (() => {
+        const cur = RESP_STATUS_META[status ?? 'nao_iniciado'] ?? RESP_STATUS_META.nao_iniciado
+        return (
+          <Select value={status ?? 'nao_iniciado'} onValueChange={onStatusChange}>
+            <SelectTrigger
+              className="mt-1.5 h-7 text-[11px]"
+              style={{ borderColor: cur.dot + '55', background: cur.bg, color: cur.text }}
+            >
+              <span className="flex items-center gap-1.5">
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: cur.dot }} />
+                {cur.label}
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              {RESP_STATUS_ORDER.map(s => {
+                const meta = RESP_STATUS_META[s]
+                return (
+                  <SelectItem key={s} value={s}>
+                    <span className="flex items-center gap-2">
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: meta.dot }} />
+                      {meta.label}
+                    </span>
+                  </SelectItem>
+                )
+              })}
+            </SelectContent>
+          </Select>
+        )
+      })()}
     </div>
   )
 }

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { createTurno, updateTurno, deleteTurno, type TurnoPayload } from './actions'
+import { createTurno, createTurnoMultiDias, updateTurno, deleteTurno, type TurnoPayload } from './actions'
 import { FiltrosEscala } from './FiltrosEscala'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -114,6 +114,8 @@ interface TurnoDialogProps {
   open: boolean
   onClose: () => void
   dia: Dia
+  /** Todos os dias do evento — habilita "aplicar a todos os dias". */
+  dias: Dia[]
   setores: Setor[]
   profiles: Profile[]
   defaultFuncao?: string
@@ -121,7 +123,7 @@ interface TurnoDialogProps {
   editing?: Turno
 }
 
-function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, defaultSetorId, editing }: TurnoDialogProps) {
+function TurnoDialog({ open, onClose, dia, dias, setores, profiles, defaultFuncao, defaultSetorId, editing }: TurnoDialogProps) {
   const router = useRouter()
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -135,6 +137,8 @@ function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, def
   const [nomePessoa, setNomePessoa] = React.useState(editing?.nome_pessoa ?? '')
   const [isRoaming, setIsRoaming] = React.useState(editing?.is_roaming ?? false)
   const [obs, setObs] = React.useState(editing?.observacoes ?? '')
+  // Aplicar a todos os dias — só faz sentido em criação (não edição) e com >1 dia
+  const [todosDias, setTodosDias] = React.useState(false)
 
   // reset on open
   React.useEffect(() => {
@@ -147,6 +151,7 @@ function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, def
       setNomePessoa(editing?.nome_pessoa ?? '')
       setIsRoaming(editing?.is_roaming ?? false)
       setObs(editing?.observacoes ?? '')
+      setTodosDias(false)
 
       // Detect shift: se editando, tenta casar com preset; senão fallback pra custom
       if (editing) {
@@ -201,16 +206,39 @@ function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, def
         fimHHMM = s.fim.replace('+1', '')
       }
 
+      const setorResolved = (setorId && setorId !== '__none__') ? setorId : null
+      const userResolved  = (userId && userId !== '__none__') ? userId : null
+
+      // Caminho "todos os dias": cria o mesmo turno em cada dia do evento
+      if (todosDias && !editing) {
+        const res = await createTurnoMultiDias({
+          dias: dias.map(d => ({ id: d.id, data: d.data })),
+          funcao,
+          setor_id: setorResolved,
+          inicioHHMM,
+          fimHHMM,
+          nextDay,
+          user_id: userResolved,
+          nome_pessoa: nomePessoa || null,
+          is_roaming: isRoaming,
+          observacoes: obs || null,
+        })
+        if (!res.ok) { setError(res.error ?? 'Erro ao salvar.'); return }
+        router.refresh()
+        onClose()
+        return
+      }
+
       const inicio = buildTimestamp(dia.data, inicioHHMM)
       const fim    = buildTimestamp(dia.data, fimHHMM, nextDay)
 
       const payload: TurnoPayload = {
         dia_id: dia.id,
         funcao,
-        setor_id: (setorId && setorId !== '__none__') ? setorId : null,
+        setor_id: setorResolved,
         inicio,
         fim,
-        user_id: (userId && userId !== '__none__') ? userId : null,
+        user_id: userResolved,
         nome_pessoa: nomePessoa || null,
         is_roaming: isRoaming,
         observacoes: obs || null,
@@ -381,6 +409,32 @@ function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, def
             Roaming (sem setor fixo — circula entre áreas)
           </label>
 
+          {/* Aplicar a todos os dias — só em criação e com >1 dia */}
+          {!editing && dias.length > 1 && (
+            <label
+              className="flex items-start gap-2 rounded-lg border p-2.5 text-sm cursor-pointer select-none transition-colors"
+              style={{
+                borderColor: todosDias ? 'var(--green-bright)' : 'var(--border)',
+                background: todosDias ? 'var(--green-dim)' + '14' : 'transparent',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={todosDias}
+                onChange={(e) => setTodosDias(e.target.checked)}
+                className="mt-0.5 rounded border-[var(--border)]"
+              />
+              <span>
+                <span className="font-semibold text-[var(--foreground)]">
+                  Escalar nos {dias.length} dias do evento
+                </span>
+                <span className="mt-0.5 block text-[11px] text-[var(--muted-foreground)]">
+                  Mesma função, horário, setor e pessoa em {dias.map(d => d.nome_dia).join(', ')}.
+                </span>
+              </span>
+            </label>
+          )}
+
           {/* Obs */}
           <div>
             <Label className="mb-1.5 block text-xs">Observações</Label>
@@ -394,7 +448,7 @@ function TurnoDialog({ open, onClose, dia, setores, profiles, defaultFuncao, def
           <Button variant="outline" size="sm" onClick={onClose}>Cancelar</Button>
           <Button size="sm" onClick={submit} disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {editing ? 'Salvar' : 'Adicionar'}
+            {editing ? 'Salvar' : todosDias ? `Adicionar nos ${dias.length} dias` : 'Adicionar'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -681,6 +735,7 @@ export function EscalaGrid({ dias, setores, profiles, turnos }: EscalaGridProps)
           open={dialog.open}
           onClose={() => setDialog({ open: false })}
           dia={dialog.dia}
+          dias={dias}
           setores={setores}
           profiles={profiles}
           defaultFuncao={dialog.defaultFuncao}

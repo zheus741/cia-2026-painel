@@ -55,12 +55,16 @@ export default async function ImportarEsportivoPage() {
         </p>
         <div className="flex flex-wrap gap-2">
           {[
-            { code: 'FF/FM',   label: 'Futsal',          icon: '⚽' },
-            { code: 'HM/HF',   label: 'Handebol',        icon: '🤾' },
-            { code: 'VM/VF',   label: 'Vôlei',           icon: '🏐' },
-            { code: 'BM/BF',   label: 'Basquete',        icon: '🏀' },
-            { code: 'VPM/VPF', label: 'Vôlei de Praia',  icon: '🏖️' },
-            { code: 'FC',      label: 'Futebol de Campo', icon: '🏟️' },
+            { code: 'FF/FM',     label: 'Futsal',           icon: '⚽' },
+            { code: 'FC',        label: 'Futebol de Campo', icon: '🏟️' },
+            { code: 'F7M/F7F',   label: 'Futebol 7',        icon: '🥅' },
+            { code: 'HM/HF',     label: 'Handebol',         icon: '🤾' },
+            { code: 'BM/BF',     label: 'Basquete',         icon: '🏀' },
+            { code: 'VM/VF',     label: 'Vôlei',            icon: '🏐' },
+            { code: 'VPM/VPF',   label: 'Vôlei de Praia',   icon: '🏖️' },
+            { code: 'PM/PF',     label: 'Peteca',           icon: '🏸' },
+            { code: 'TCM/TCF',   label: 'Tênis de Campo',   icon: '🎾' },
+            { code: 'TMSM/TMSF', label: 'Tênis de Mesa',    icon: '🏓' },
           ].map(({ code, label, icon }) => (
             <span
               key={code}

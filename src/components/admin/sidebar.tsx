@@ -6,7 +6,7 @@ import {
   Calendar, Map, MapPin, Users, Trophy, Music, PartyPopper,
   Heart, GitBranch, Tag, UserCog, Settings, Swords, ClipboardList, Camera, CheckSquare,
   Lightbulb, BookOpen, LayoutList, UserCircle, Radio, Aperture, Users2,
-  FileSpreadsheet, PanelLeftClose, PanelLeftOpen, X,
+  FileSpreadsheet, PanelLeftClose, PanelLeftOpen, X, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -16,8 +16,9 @@ const ADMIN_NAV_GROUPS = [
   {
     label: 'Principal',
     items: [
-      { label: 'Conteúdos',      href: '/conteudos',    icon: Camera },
-      { label: 'Placar Ao Vivo', href: '/placar',       icon: Radio },
+      { label: 'Conteúdos',        href: '/conteudos',  icon: Camera },
+      { label: 'Central de Jogos', href: '/central',    icon: Zap },
+      { label: 'Placar Ao Vivo',   href: '/placar',     icon: Radio },
       { label: 'Checklists',     href: '/checklist',    icon: CheckSquare },
       { label: 'Pautas',         href: '/pautas',       icon: Lightbulb },
       { label: 'Cronograma',     href: '/cronograma',   icon: LayoutList },

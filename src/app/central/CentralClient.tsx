@@ -298,9 +298,9 @@ function GroupBlock({
         </div>
       </button>
 
-      {/* Games */}
+      {/* Games — grid multi-coluna no desktop pra aproveitar a largura */}
       {open && (
-        <div className="space-y-1.5 px-3 pb-3">
+        <div className="grid gap-2 px-3 pb-3 sm:grid-cols-2 xl:grid-cols-3">
           {jogos.map(j => (
             <GameRow
               key={j.id}
@@ -386,15 +386,15 @@ function AtleticaFocus({ atletica, jogos, onClear }: {
       </div>
 
       {/* Games */}
-      <div className="space-y-1.5 p-3">
-        {ordered.length === 0 ? (
-          <p className="py-4 text-center text-sm text-[var(--muted-foreground)]">
-            Nenhum jogo encontrado para esta atlética.
-          </p>
-        ) : (
-          ordered.map(j => <GameRow key={j.id} jogo={j} highlight />)
-        )}
-      </div>
+      {ordered.length === 0 ? (
+        <p className="py-6 text-center text-sm text-[var(--muted-foreground)]">
+          Nenhum jogo encontrado para esta atlética.
+        </p>
+      ) : (
+        <div className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-3">
+          {ordered.map(j => <GameRow key={j.id} jogo={j} highlight />)}
+        </div>
+      )}
     </div>
   )
 }
@@ -547,7 +547,7 @@ export function CentralClient({ jogos: initial }: { jogos: Jogo[] }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
+    <div className="mx-auto max-w-3xl lg:max-w-[1320px] space-y-4 px-4 py-6 lg:px-8">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start gap-3">
@@ -572,35 +572,91 @@ export function CentralClient({ jogos: initial }: { jogos: Jogo[] }) {
         )}
       </div>
 
-      {/* ── Search ─────────────────────────────────────────────────────────── */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-        <input
-          value={busca}
-          onChange={e => { setBusca(e.target.value); if (!e.target.value) setAtleticaFoco(null) }}
-          placeholder="Buscar atlética, modalidade…"
-          className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-2.5 pl-9 pr-9 text-[14px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none focus:border-[var(--green-bright)] focus:ring-2 focus:ring-[var(--green-bright)]/20 transition-all"
-        />
-        {busca && (
-          <button
-            onClick={() => { setBusca(''); setAtleticaFoco(null) }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+      {/* ── Control bar (sticky no desktop) ────────────────────────────────── */}
+      <div className="lg:sticky lg:top-0 lg:z-20 space-y-3 lg:-mx-8 lg:bg-[var(--background)]/85 lg:px-8 lg:py-3 lg:backdrop-blur-md lg:border-b lg:border-[var(--border)]">
 
-        {/* Suggestions dropdown */}
-        {atleticasSugeridas.length > 0 && !atleticaFoco && (
-          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
-            {atleticasSugeridas.map(nome => (
+        {/* Linha 1: busca + (no desktop) status pills à direita */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+          {/* Search */}
+          <div className="relative flex-1 lg:max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+            <input
+              value={busca}
+              onChange={e => { setBusca(e.target.value); if (!e.target.value) setAtleticaFoco(null) }}
+              placeholder="Buscar atlética, modalidade…"
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-2.5 pl-9 pr-9 text-[14px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] outline-none focus:border-[var(--green-bright)] focus:ring-2 focus:ring-[var(--green-bright)]/20 transition-all"
+            />
+            {busca && (
               <button
-                key={nome}
-                onClick={() => { setAtleticaFoco(nome); setBusca(nome) }}
-                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] transition-colors hover:bg-[var(--muted)]/50"
+                onClick={() => { setBusca(''); setAtleticaFoco(null) }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               >
-                <Users2 className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" />
-                <span className="truncate font-medium text-[var(--foreground)]">{nome}</span>
+                <X className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Suggestions dropdown */}
+            {atleticasSugeridas.length > 0 && !atleticaFoco && (
+              <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg">
+                {atleticasSugeridas.map(nome => (
+                  <button
+                    key={nome}
+                    onClick={() => { setAtleticaFoco(nome); setBusca(nome) }}
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] transition-colors hover:bg-[var(--muted)]/50"
+                  >
+                    <Users2 className="h-3.5 w-3.5 shrink-0 text-[var(--muted-foreground)]" />
+                    <span className="truncate font-medium text-[var(--foreground)]">{nome}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Status pills */}
+          <div className="flex items-center gap-2 flex-wrap lg:justify-end">
+            {([
+              { key: 'todos',      label: 'Todos' },
+              { key: 'ao_vivo',    label: '● Ao Vivo' },
+              { key: 'agendado',   label: 'Agendados' },
+              { key: 'encerrado',  label: 'Encerrados' },
+            ] as { key: StatusFiltro; label: string }[]).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setStatusFiltro(key)}
+                className="rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all"
+                style={{
+                  background: statusFiltro === key
+                    ? key === 'ao_vivo' ? 'var(--green-bright)' : 'var(--foreground)'
+                    : 'var(--muted)',
+                  color: statusFiltro === key ? '#fff' : 'var(--muted-foreground)',
+                  border: '1px solid',
+                  borderColor: statusFiltro === key
+                    ? key === 'ao_vivo' ? 'var(--green-bright)' : 'var(--foreground)'
+                    : 'var(--border)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Linha 2: Eixo tabs */}
+        {!atleticaFoco && (
+          <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--muted)]/40 p-1 lg:inline-flex lg:w-auto">
+            {EIXOS.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setEixo(key)}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold uppercase tracking-wider transition-all lg:flex-none lg:px-5"
+                style={{
+                  background: eixo === key ? 'var(--card)' : 'transparent',
+                  color: eixo === key ? 'var(--foreground)' : 'var(--muted-foreground)',
+                  boxShadow: eixo === key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                }}
+              >
+                <Icon className="h-3 w-3 shrink-0" />
+                <span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>
@@ -614,55 +670,6 @@ export function CentralClient({ jogos: initial }: { jogos: Jogo[] }) {
           jogos={jogosFoco}
           onClear={() => { setAtleticaFoco(null); setBusca('') }}
         />
-      )}
-
-      {/* ── Status pills ───────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {([
-          { key: 'todos',      label: 'Todos' },
-          { key: 'ao_vivo',    label: '● Ao Vivo' },
-          { key: 'agendado',   label: 'Agendados' },
-          { key: 'encerrado',  label: 'Encerrados' },
-        ] as { key: StatusFiltro; label: string }[]).map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setStatusFiltro(key)}
-            className="rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all"
-            style={{
-              background: statusFiltro === key
-                ? key === 'ao_vivo' ? 'var(--green-bright)' : 'var(--foreground)'
-                : 'var(--muted)',
-              color: statusFiltro === key ? '#fff' : 'var(--muted-foreground)',
-              border: '1px solid',
-              borderColor: statusFiltro === key
-                ? key === 'ao_vivo' ? 'var(--green-bright)' : 'var(--foreground)'
-                : 'var(--border)',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Eixo tabs ──────────────────────────────────────────────────────── */}
-      {!atleticaFoco && (
-        <div className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--muted)]/40 p-1">
-          {EIXOS.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setEixo(key)}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold uppercase tracking-wider transition-all"
-              style={{
-                background: eixo === key ? 'var(--card)' : 'transparent',
-                color: eixo === key ? 'var(--foreground)' : 'var(--muted-foreground)',
-                boxShadow: eixo === key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              }}
-            >
-              <Icon className="h-3 w-3 shrink-0" />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
-        </div>
       )}
 
       {/* ── Groups ─────────────────────────────────────────────────────────── */}

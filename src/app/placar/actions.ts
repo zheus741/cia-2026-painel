@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireSportEditor, safe, type ActionResult } from '@/lib/admin/actions-helper'
 import { logError } from '@/lib/observability/log-error'
 import { detectConcurrentEdit } from '@/lib/competicao/concurrent-edit'
-import { propagarVencedorNaChave, recalcularChave } from '@/lib/chaveamento/avanco'
+import { propagarVencedorNaChave, recalcularChave, vincularEquipesNaChave } from '@/lib/chaveamento/avanco'
 
 // Helper: invalida cache da home quando dados estáticos do evento mudam.
 // updateTag = revalidateTag mas com read-your-own-writes (Next 16+).
@@ -381,18 +381,24 @@ export async function recalcularChaveAction(
   modalidadeId: string,
   categoria: string,
   divisao: string,
-): Promise<ActionResult & { data?: { total: number; propagados: number; pulados: number; errors: number } }> {
+): Promise<ActionResult & { data?: { total: number; propagados: number; pulados: number; errors: number; vinculados: number; naoResolvidos: string[] } }> {
   return safe(async () => {
     await requireSportEditor()
+    // 1) Vincula equipe_nome → equipe_id (conserta apuração/previsão de jogos importados).
+    const vinculo = await vincularEquipesNaChave(modalidadeId, categoria, divisao)
+    // 2) Recalcula a chave — propaga vencedores e CRIA as fases seguintes faltantes.
     const result = await recalcularChave(modalidadeId, categoria, divisao)
     revalidatePath('/placar')
     bustHomeCache()
     revalidatePath('/esportivo/chaveamento')
+    revalidatePath('/esportivo/classificacao')
     return {
-      total:      result.total,
-      propagados: result.propagados,
-      pulados:    result.pulados,
-      errors:     result.errors.length,
+      total:         result.total,
+      propagados:    result.propagados,
+      pulados:       result.pulados,
+      errors:        result.errors.length,
+      vinculados:    vinculo.vinculados,
+      naoResolvidos: vinculo.naoResolvidos,
     }
   })
 }

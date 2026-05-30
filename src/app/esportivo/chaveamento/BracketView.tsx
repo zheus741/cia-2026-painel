@@ -228,6 +228,14 @@ function enrich(games: BracketGame[], seeds: string[], jogos: JogoChave[]): EGam
     const sB = rslot(g.slots[1], seeds)
     let jogo: JogoChave | null = null
 
+    // 0) Âncora estável: bracket_num. Resolve as fases feeder (quartas/semis/final)
+    //    que não têm nome de seed pra casar — inclusive quando ainda estão "A definir".
+    const byNum = jogos.find(j => !used.has(j.id) && j.bracket_num != null && j.bracket_num === g.num)
+    if (byNum) {
+      used.add(byNum.id)
+      return { bg: g, sA, sB, jogo: byNum }
+    }
+
     const match2 = (ja: string, jb: string, cA: string, cB: string) =>
       (ja === cA && jb === cB) || (ja === cB && jb === cA)
     const fuzzy2 = (ja: string, jb: string, cA: string, cB: string) =>

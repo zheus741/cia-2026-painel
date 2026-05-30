@@ -24,7 +24,7 @@ export default async function ChaveamentoPage() {
       .from('jogos')
       .select(`
         id, dia_id, setor_id, inicio, status, wo,
-        modalidade_id, categoria, divisao, fase,
+        modalidade_id, categoria, divisao, fase, bracket_num,
         equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
         placar_a, placar_b,
         modalidade:modalidades(nome, icone, slug),

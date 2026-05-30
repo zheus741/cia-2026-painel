@@ -10,6 +10,7 @@ import {
   type ActionResult,
 } from '@/lib/admin/actions-helper'
 import { propagarVencedorNaChave } from '@/lib/chaveamento/avanco'
+import { resolveEquipeId, type EquipeRef } from '@/lib/chaveamento/bracket-builder'
 
 function bustHomeCache() {
   updateTag('home-static-event-data')
@@ -237,6 +238,14 @@ export async function confirmImportJogos(
       G: 'grupos', GF: 'grupos', GR: 'grupos',
     }
 
+    // Carrega equipes da edição pra resolver equipe_nome → equipe_id já no import.
+    // Sem o id, a apuração de pontos (que filtra por id) ignora a atlética.
+    const { data: equipesRaw } = await supabase
+      .from('equipes')
+      .select('id, nome')
+      .eq('edicao_id', edicao_id)
+    const equipes = (equipesRaw ?? []) as EquipeRef[]
+
     const inserts = rows.map((r) => {
       const dia_id = mapping.dias[r.dia_nome] ?? null
       const setor_id = mapping.setores[r.quadra] ?? null
@@ -256,6 +265,8 @@ export async function confirmImportJogos(
         categoria: mapping.categorias[r.mod_codigo] ?? null,
         divisao: r.divisao,
         fase: r.fase ? (FASE_MAP[r.fase.toUpperCase()] ?? r.fase.toLowerCase()) : null,
+        equipe_a_id: resolveEquipeId(r.equipe_a, equipes),
+        equipe_b_id: resolveEquipeId(r.equipe_b, equipes),
         equipe_a_nome: r.equipe_a,
         equipe_b_nome: r.equipe_b,
         inicio,

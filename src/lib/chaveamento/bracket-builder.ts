@@ -248,3 +248,33 @@ export function fuzzyMatchTeam(a: string, b: string): boolean {
   if (Math.min(preA.length, preB.length) < 3) return false
   return preA.startsWith(preB) || preB.startsWith(preA)
 }
+
+/**
+ * Resolve o `equipe_id` a partir de um nome (texto livre vindo do XLSX/seed).
+ *
+ * Usado pra vincular jogos importados — que vêm só com `equipe_*_nome` — às
+ * linhas reais de `equipes`. Tenta match canônico exato e depois fuzzy
+ * (abreviação ↔ nome completo, com mesma instituição).
+ *
+ * Retorna o id da equipe ou null se nenhuma casar com confiança.
+ */
+export interface EquipeRef { id: string; nome: string | null }
+
+export function resolveEquipeId(
+  nome: string | null | undefined,
+  equipes: EquipeRef[],
+): string | null {
+  if (!nome) return null
+  const canon = canonTeamName(nome)
+  if (!canon) return null
+
+  // 1) Match canônico exato
+  for (const e of equipes) {
+    if (canonTeamName(e.nome) === canon) return e.id
+  }
+  // 2) Fuzzy (ENG UFMG ↔ ENGENHARIA UFMG) — mesma instituição, curso prefixo
+  for (const e of equipes) {
+    if (fuzzyMatchTeam(canonTeamName(e.nome), canon)) return e.id
+  }
+  return null
+}

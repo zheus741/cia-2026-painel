@@ -26,6 +26,7 @@ export interface JogoChave {
   categoria: string | null
   divisao: string | null
   fase: string | null
+  bracket_num: number | null
   equipe_a_id: string | null
   equipe_b_id: string | null
   equipe_a_nome: string | null
@@ -457,9 +458,9 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                     onClick={async () => {
                       if (isRecalcPending) return
                       const ok = await confirmDialog({
-                        title: 'Recalcular avanço da chave?',
-                        description: 'Vai reprocessar todos os jogos encerrados em ordem (oitavas → quartas → semi → final) e atualizar os jogos seguintes com os vencedores. Operação segura e idempotente.',
-                        confirmLabel: 'Recalcular',
+                        title: 'Sincronizar chave?',
+                        description: 'Vincula as equipes aos jogos (conserta a pontuação), reprocessa os jogos encerrados em ordem (oitavas → quartas → semi → final) e cria/preenche as fases seguintes com os vencedores. Operação segura e idempotente.',
+                        confirmLabel: 'Sincronizar',
                       })
                       if (!ok) return
                       startRecalcTransition(async () => {
@@ -470,22 +471,24 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                         )
                         if (result.ok && result.data) {
                           const d = result.data
-                          toast.success('Recálculo da chave concluído', {
-                            description: `${d.total} jogos processados · ${d.propagados} avançadas · ${d.pulados} já ok · ${d.errors} erros`,
-                            duration: 8000,
+                          const naoResolvidos = d.naoResolvidos ?? []
+                          toast.success('Chave sincronizada', {
+                            description: `${d.vinculados} jogos vinculados · ${d.propagados} avançadas · ${d.pulados} já ok · ${d.errors} erros`
+                              + (naoResolvidos.length ? ` · ⚠ ${naoResolvidos.length} nome(s) sem equipe: ${naoResolvidos.slice(0, 3).join(', ')}${naoResolvidos.length > 3 ? '…' : ''}` : ''),
+                            duration: 9000,
                           })
                         } else {
-                          toast.error('Falha no recálculo', { description: 'Veja o console pra detalhes.' })
-                          console.error('[recalcular]', result)
+                          toast.error('Falha ao sincronizar', { description: 'Veja o console pra detalhes.' })
+                          console.error('[sincronizar-chave]', result)
                         }
                       })
                     }}
                     disabled={isRecalcPending}
-                    title="Reprocessa todos os jogos encerrados desta chave e propaga vencedores"
+                    title="Vincula equipes, propaga vencedores e cria as fases seguintes desta chave"
                     className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)]/60 px-3 text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)] transition-all hover:border-[var(--gold-bright)]/40 hover:text-[var(--gold-bright)] disabled:opacity-40"
                   >
                     <RefreshCw className={`h-3 w-3 ${isRecalcPending ? 'animate-spin' : ''}`} />
-                    {isRecalcPending ? 'Recalculando…' : 'Recalcular'}
+                    {isRecalcPending ? 'Sincronizando…' : 'Sincronizar'}
                   </button>
                 )
               })()}

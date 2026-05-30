@@ -21,18 +21,26 @@ import {
   buildGames,
   canonTeamName,
   fuzzyMatchTeam,
+  resolveEquipeId,
   type BracketGame,
   type BracketSlot,
+  type EquipeRef,
 } from './bracket-builder'
+
+// Colunas lidas/escritas em todas as queries de jogo da chave.
+const JOGO_COLS =
+  'id, edicao_id, modalidade_id, categoria, divisao, fase, bracket_num, status, wo, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome, placar_a, placar_b'
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
 interface JogoMin {
   id: string
+  edicao_id: string | null
   modalidade_id: string | null
   categoria: string | null
   divisao: string | null
   fase: string | null
+  bracket_num: number | null
   status: string | null
   wo: 'a' | 'b' | 'duplo' | null
   equipe_a_id: string | null
@@ -200,6 +208,11 @@ function findDbGameForLogical(
   const phase = ROUND_TO_FASE[logicalGame.round]
   if (!phase) return null
 
+  // 0) Âncora estável: bracket_num. Imune a nomes vazios — resolve o caso em que
+  //    a fase seguinte está toda "A definir" e o match por nome é impossível.
+  const byNum = candidateDbGames.find(j => j.bracket_num === logicalGame.num)
+  if (byNum) return byNum
+
   const candidates = candidateDbGames.filter(j => j.fase === phase)
   if (candidates.length === 0) return null
   if (candidates.length === 1) return candidates[0]  // Só um jogo dessa fase — direto
@@ -242,7 +255,7 @@ export async function propagarVencedorNaChave(jogoId: string): Promise<AvancoRes
   // 1. Carrega o jogo encerrado
   const { data: jogoRaw, error: jogoErr } = await supabase
     .from('jogos')
-    .select('id, modalidade_id, categoria, divisao, fase, status, wo, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome, placar_a, placar_b')
+    .select(JOGO_COLS)
     .eq('id', jogoId)
     .single()
   if (jogoErr || !jogoRaw) return { ok: false, reason: 'jogo-nao-encontrado' }
@@ -284,36 +297,91 @@ export async function propagarVencedorNaChave(jogoId: string): Promise<AvancoRes
   // 7. Carrega jogos do banco da mesma chave (modalidade+categoria+divisão)
   const { data: jogosChaveRaw } = await supabase
     .from('jogos')
-    .select('id, modalidade_id, categoria, divisao, fase, status, wo, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome, placar_a, placar_b')
+    .select(JOGO_COLS)
     .eq('modalidade_id', jogo.modalidade_id)
     .eq('categoria', jogo.categoria)
     .eq('divisao', jogo.divisao)
   if (!jogosChaveRaw) return { ok: false, reason: 'jogos-chave-vazios' }
   const jogosChave = jogosChaveRaw as JogoMin[]
 
-  // 8. Identifica o jogo do banco correspondente ao parent
-  const parentDbGame = findDbGameForLogical(parent, bracketGames, config.seeds, jogosChave)
-  if (!parentDbGame) return { ok: false, reason: 'parent-db-game-nao-encontrado' }
+  // 8. Resolve o id do vencedor pelo nome se ele não veio preenchido.
+  //    Jogos importados do XLSX trazem só `equipe_*_nome` (id null) — sem isso,
+  //    a chave e a apuração de pontos propagariam adiante sempre sem id.
+  let winnerId = winner.equipeId
+  if (!winnerId && winner.equipeNome && jogo.edicao_id) {
+    const { data: equipesRaw } = await supabase
+      .from('equipes')
+      .select('id, nome')
+      .eq('edicao_id', jogo.edicao_id)
+    winnerId = resolveEquipeId(winner.equipeNome, (equipesRaw ?? []) as EquipeRef[])
+  }
 
-  // 9. Verifica se já está propagado (idempotência)
   const targetField    = slotIndex === 0 ? 'equipe_a_id'   : 'equipe_b_id'
   const targetNomField = slotIndex === 0 ? 'equipe_a_nome' : 'equipe_b_nome'
+  const parentSlot: 'a' | 'b' = slotIndex === 0 ? 'a' : 'b'
+
+  // 9. Identifica o jogo do banco correspondente ao parent — ou cria se não existe.
+  let parentDbGame = findDbGameForLogical(parent, bracketGames, config.seeds, jogosChave)
+
+  if (!parentDbGame) {
+    // A fase seguinte ainda não existe no banco (ex: importaram só as oitavas).
+    // Cria a linha já com o vencedor no slot e o bracket_num como âncora, pra
+    // que o outro feeder ache ESTA mesma linha ao encerrar.
+    const novaFase = ROUND_TO_FASE[parent.round]
+    const insertPayload: Record<string, unknown> = {
+      edicao_id:        jogo.edicao_id,
+      modalidade_id:    jogo.modalidade_id,
+      categoria:        jogo.categoria,
+      divisao:          jogo.divisao,
+      fase:             novaFase,
+      bracket_num:      parent.num,
+      status:           'agendado',
+      [targetField]:    winnerId,
+      [targetNomField]: winner.equipeNome,
+    }
+    const { data: created, error: insErr } = await supabase
+      .from('jogos')
+      .insert(insertPayload)
+      .select('id')
+      .single()
+
+    if (!insErr && created) {
+      return { ok: true, reason: 'created', parentJogoId: created.id, parentSlot, vencedorNome: winner.equipeNome ?? undefined }
+    }
+
+    // Corrida com outra propagação (índice único bracket_num): relê e segue p/ update.
+    const { data: reread } = await supabase
+      .from('jogos')
+      .select(JOGO_COLS)
+      .eq('modalidade_id', jogo.modalidade_id)
+      .eq('categoria', jogo.categoria)
+      .eq('divisao', jogo.divisao)
+      .eq('bracket_num', parent.num)
+      .maybeSingle()
+    if (!reread) {
+      console.error('[propagarVencedor] erro ao criar parent', insErr)
+      return { ok: false, reason: 'erro-criar-parent' }
+    }
+    parentDbGame = reread as JogoMin
+  }
+
+  // 10. Idempotência — se o slot já tem o vencedor correto, no-op.
   const currentIdInSlot   = slotIndex === 0 ? parentDbGame.equipe_a_id   : parentDbGame.equipe_b_id
   const currentNomeInSlot = slotIndex === 0 ? parentDbGame.equipe_a_nome : parentDbGame.equipe_b_nome
-
-  // Se já está com o vencedor correto, no-op
-  if (winner.equipeId && currentIdInSlot === winner.equipeId) {
-    return { ok: true, reason: 'already', parentJogoId: parentDbGame.id, parentSlot: slotIndex === 0 ? 'a' : 'b', vencedorNome: winner.equipeNome ?? undefined }
+  if (winnerId && currentIdInSlot === winnerId) {
+    return { ok: true, reason: 'already', parentJogoId: parentDbGame.id, parentSlot, vencedorNome: winner.equipeNome ?? undefined }
   }
-  if (!winner.equipeId && winner.equipeNome && currentNomeInSlot === winner.equipeNome) {
-    return { ok: true, reason: 'already', parentJogoId: parentDbGame.id, parentSlot: slotIndex === 0 ? 'a' : 'b', vencedorNome: winner.equipeNome }
+  if (!winnerId && winner.equipeNome && currentNomeInSlot === winner.equipeNome) {
+    return { ok: true, reason: 'already', parentJogoId: parentDbGame.id, parentSlot, vencedorNome: winner.equipeNome }
   }
 
-  // 10. Atualiza o slot do parent com o vencedor
-  const updatePayload: Record<string, string | null> = {
-    [targetField]:    winner.equipeId,
+  // 11. Atualiza o slot do parent com o vencedor (+ ancora bracket_num se faltava).
+  const updatePayload: Record<string, string | number | null> = {
+    [targetField]:    winnerId,
     [targetNomField]: winner.equipeNome,
   }
+  if (parentDbGame.bracket_num == null) updatePayload.bracket_num = parent.num
+
   const { error: updErr } = await supabase
     .from('jogos')
     .update(updatePayload)
@@ -326,9 +394,80 @@ export async function propagarVencedorNaChave(jogoId: string): Promise<AvancoRes
   return {
     ok: true,
     parentJogoId: parentDbGame.id,
-    parentSlot:   slotIndex === 0 ? 'a' : 'b',
+    parentSlot,
     vencedorNome: winner.equipeNome ?? undefined,
   }
+}
+
+// ── Vinculação equipe_nome → equipe_id ───────────────────────────────────────
+
+export interface VinculoResult {
+  total:        number
+  vinculados:   number   // jogos onde preenchemos ao menos um id que faltava
+  naoResolvidos: string[] // nomes que não casaram com nenhuma equipe
+}
+
+/**
+ * Resolve `equipe_a_id`/`equipe_b_id` a partir dos nomes em todos os jogos de
+ * uma chave. Jogos importados do XLSX vêm só com nome (id null) — sem o id, a
+ * apuração de pontos (que filtra por id) ignora a atlética e a previsão fica
+ * zerada mesmo após vitórias.
+ *
+ * Não-destrutivo: só preenche ids que estão NULL; nunca sobrescreve um id
+ * existente nem mexe em nomes.
+ */
+export async function vincularEquipesNaChave(
+  modalidadeId: string,
+  categoria: string,
+  divisao: string,
+): Promise<VinculoResult> {
+  const supabase = await createClient()
+
+  const { data: jogosRaw } = await supabase
+    .from('jogos')
+    .select('id, edicao_id, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome')
+    .eq('modalidade_id', modalidadeId)
+    .eq('categoria', categoria)
+    .eq('divisao', divisao)
+  if (!jogosRaw || jogosRaw.length === 0) {
+    return { total: 0, vinculados: 0, naoResolvidos: [] }
+  }
+
+  const edicaoId = (jogosRaw[0] as { edicao_id: string | null }).edicao_id
+  const { data: equipesRaw } = await supabase
+    .from('equipes')
+    .select('id, nome')
+    .eq('edicao_id', edicaoId ?? '')
+  const equipes = (equipesRaw ?? []) as EquipeRef[]
+
+  let vinculados = 0
+  const naoResolvidos = new Set<string>()
+
+  for (const j of jogosRaw as Array<{
+    id: string
+    equipe_a_id: string | null; equipe_b_id: string | null
+    equipe_a_nome: string | null; equipe_b_nome: string | null
+  }>) {
+    const patch: Record<string, string> = {}
+
+    if (!j.equipe_a_id && j.equipe_a_nome) {
+      const id = resolveEquipeId(j.equipe_a_nome, equipes)
+      if (id) patch.equipe_a_id = id
+      else naoResolvidos.add(j.equipe_a_nome)
+    }
+    if (!j.equipe_b_id && j.equipe_b_nome) {
+      const id = resolveEquipeId(j.equipe_b_nome, equipes)
+      if (id) patch.equipe_b_id = id
+      else naoResolvidos.add(j.equipe_b_nome)
+    }
+
+    if (Object.keys(patch).length > 0) {
+      const { error } = await supabase.from('jogos').update(patch).eq('id', j.id)
+      if (!error) vinculados++
+    }
+  }
+
+  return { total: jogosRaw.length, vinculados, naoResolvidos: [...naoResolvidos] }
 }
 
 // ── Recálculo em batch (pra debug/reset) ─────────────────────────────────────

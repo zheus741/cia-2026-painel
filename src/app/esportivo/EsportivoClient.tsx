@@ -14,6 +14,8 @@ import Link from 'next/link'
 import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
+import { useRealtimeRevival } from '@/lib/supabase/use-realtime-revival'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { PracaStats } from '@/lib/competicao/pracas'
 import { groupPracasByLocal, type LocalAgrupado } from '@/lib/competicao/pracas-grupos'
 export type { PracaStats } from '@/lib/competicao/pracas'
@@ -1030,6 +1032,9 @@ export function EsportivoClient({
   const router = useRouter()
   const [liveSync, setLiveSync] = useState(false)
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const channelRef = useRef<RealtimeChannel | null>(null)
+
+  useRealtimeRevival(channelRef, () => router.refresh())
 
   // Realtime
   useEffect(() => {
@@ -1066,9 +1071,11 @@ export function EsportivoClient({
           reconnectTimeout = setTimeout(() => channel.subscribe(), 2000)
         }
       })
+    channelRef.current = channel
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
       if (reconnectTimeout)        clearTimeout(reconnectTimeout)
+      channelRef.current = null
       supabase.removeChannel(channel)
     }
   }, [router])

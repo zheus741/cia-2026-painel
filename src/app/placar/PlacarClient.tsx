@@ -9,6 +9,8 @@ import { setJogoAoVivo, encerrarJogo, atualizarPlacar, lancarResultado, cancelar
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
+import { useRealtimeRevival } from '@/lib/supabase/use-realtime-revival'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { runAction } from '@/lib/run-action'
 
 interface EquipeRef {
@@ -1851,6 +1853,10 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
     }, 1500)
   }, [])
 
+  // Revival em wake-from-sleep (celular bloqueado durante o jogo)
+  const channelRef = useRef<RealtimeChannel | null>(null)
+  useRealtimeRevival(channelRef, () => router.refresh())
+
   // Realtime subscription
   useEffect(() => {
     const supabase = createClient()
@@ -1928,9 +1934,12 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
         }
       })
 
+    channelRef.current = channel
+
     return () => {
       if (refreshTimeout)   clearTimeout(refreshTimeout)
       if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      channelRef.current = null
       supabase.removeChannel(channel)
     }
   }, [router, handleLocalUpdate, flashRecent])

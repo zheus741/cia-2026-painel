@@ -16,6 +16,8 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
+import { useRealtimeRevival } from '@/lib/supabase/use-realtime-revival'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { CONFERENCIAS } from '@/lib/conferencias'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -514,18 +516,31 @@ export function ClassificacaoClient({ div1, div2, super08 }: Props) {
   const [tab, setTab] = useState<TabKey>('div1')
   const [liveSync, setLiveSync] = useState(false)
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const channelRef = useRef<RealtimeChannel | null>(null)
+
+  useRealtimeRevival(channelRef, () => router.refresh())
 
   useEffect(() => {
     const supabase = createClient()
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
     const channel = supabase
       .channel(uniqueChannel('classificacao-realtime'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jogos' }, () => {
         if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
         refreshTimerRef.current = setTimeout(() => { router.refresh() }, 1200)
       })
-      .subscribe(status => { setLiveSync(status === 'SUBSCRIBED') })
+      .subscribe(status => {
+        setLiveSync(status === 'SUBSCRIBED')
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (reconnectTimeout) clearTimeout(reconnectTimeout)
+          reconnectTimeout = setTimeout(() => channel.subscribe(), 2000)
+        }
+      })
+    channelRef.current = channel
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      channelRef.current = null
       supabase.removeChannel(channel)
     }
   }, [router])

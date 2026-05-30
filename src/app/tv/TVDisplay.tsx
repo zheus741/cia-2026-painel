@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Maximize2, Minimize2, RefreshCw, AlertTriangle, Camera } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
+import { useRealtimeRevival } from '@/lib/supabase/use-realtime-revival'
+import { useTvHeartbeat } from '@/lib/supabase/use-tv-heartbeat'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { CiaLogo } from '@/components/cia-logo'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1789,6 +1792,11 @@ export function TVDisplay({
   const debounceRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
   const prevPublicados = useRef(pipelineStats.publicado)
   const doRefreshRef   = useRef<() => void>(() => {})
+  const channelRef     = useRef<RealtimeChannel | null>(null)
+
+  // Revival em wake-from-sleep + heartbeat de reload (TV ligada o dia todo)
+  useRealtimeRevival(channelRef, () => router.refresh())
+  useTvHeartbeat(20)
 
   useEffect(() => {
     if (pipelineStats.publicado > prevPublicados.current) {
@@ -1821,6 +1829,7 @@ export function TVDisplay({
 
   useEffect(() => {
     const supabase = createClient()
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
     const channel = supabase
       .channel(uniqueChannel('tv-realtime'))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conteudos' }, () => {
@@ -1835,9 +1844,18 @@ export function TVDisplay({
         if (debounceRef.current) clearTimeout(debounceRef.current)
         debounceRef.current = setTimeout(() => doRefreshRef.current(), 1_000)
       })
-      .subscribe()
+      .subscribe((status) => {
+        // Reconnect em queda (faltava neste client)
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          if (reconnectTimeout) clearTimeout(reconnectTimeout)
+          reconnectTimeout = setTimeout(() => channel.subscribe(), 2000)
+        }
+      })
+    channelRef.current = channel
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current)
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      channelRef.current = null
       supabase.removeChannel(channel)
     }
   }, [])

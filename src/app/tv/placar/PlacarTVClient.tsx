@@ -8,6 +8,9 @@ import { NowPlayingTicker } from '@/components/now-playing-panel'
 import type { Lineup } from '@/lib/lineup-data'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
+import { useRealtimeRevival } from '@/lib/supabase/use-realtime-revival'
+import { useTvHeartbeat } from '@/lib/supabase/use-tv-heartbeat'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { getConferencia, type ConferenciaMeta } from '@/lib/conferencias'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -63,6 +66,8 @@ const REALTIME_MERGEABLE: (keyof JogoTV)[] = [
   'equipe_a_nome', 'equipe_b_nome',
   'inicio', 'fase', 'categoria', 'divisao',
 ]
+// Nota: WO sempre vem junto de mudança de status='encerrado', que já
+// dispara refresh full — não precisa estar no merge incremental.
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -511,6 +516,11 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
     }, 600)
   }, [])
 
+  // Ref do canal pra revival (wake-from-sleep) + heartbeat de reload da TV
+  const channelRef = useRef<RealtimeChannel | null>(null)
+  useRealtimeRevival(channelRef, () => router.refresh())
+  useTvHeartbeat(20)
+
   // Realtime subscription
   useEffect(() => {
     const supabase = createClient()
@@ -573,9 +583,12 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
         }
       })
 
+    channelRef.current = channel
+
     return () => {
       if (refreshTimeout)   clearTimeout(refreshTimeout)
       if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      channelRef.current = null
       supabase.removeChannel(channel)
     }
   }, [router, triggerPulse])

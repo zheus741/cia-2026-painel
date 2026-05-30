@@ -378,22 +378,22 @@ export async function removerEvento(eventoId: string): Promise<ActionResult> {
  * Roda em ordem oitavas → quartas → semifinal → final, em loop idempotente.
  */
 export async function recalcularChaveAction(
-  modalidadeId: string,
-  categoria: string,
+  modalidadeSlug: string,
+  categoria: string | null,
   divisao: string,
 ): Promise<ActionResult & { data?: { total: number; propagados: number; pulados: number; errors: number; vinculados: number; naoResolvidos: string[] } }> {
   return safe(async () => {
     await requireSportEditor()
     // 1) Vincula equipe_nome → equipe_id (conserta apuração/previsão de jogos importados).
-    const vinculo = await vincularEquipesNaChave(modalidadeId, categoria, divisao)
+    const vinculo = await vincularEquipesNaChave(modalidadeSlug, categoria, divisao)
     // 2) Recalcula a chave — propaga vencedores e CRIA as fases seguintes faltantes.
-    const result = await recalcularChave(modalidadeId, categoria, divisao)
+    const result = await recalcularChave(modalidadeSlug, categoria, divisao)
     revalidatePath('/placar')
     bustHomeCache()
     revalidatePath('/esportivo/chaveamento')
     revalidatePath('/esportivo/classificacao')
     return {
-      total:         result.total,
+      total:         vinculo.total,
       propagados:    result.propagados,
       pulados:       result.pulados,
       errors:        result.errors.length,

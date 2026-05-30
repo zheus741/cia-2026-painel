@@ -31,6 +31,52 @@ import {
 const JOGO_COLS =
   'id, edicao_id, modalidade_id, categoria, divisao, fase, bracket_num, status, wo, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome, placar_a, placar_b'
 
+// ── Matching tolerante de chave ──────────────────────────────────────────────
+// O banco tem variações: categoria nula renderizada como "—", divisão como
+// "1ª Divisão" vs "1ª", e modalidade_id duplicado entre edições (mesmo slug).
+// Filtrar por .eq exato erra silenciosamente. Estes normalizadores + o fetcher
+// por slug casam os jogos do MESMO jeito que a tela faz.
+
+function normDivisao(d: string | null | undefined): string {
+  return (d ?? '').trim().toLowerCase()
+    .replace(/divis[ãa]o/g, '')
+    .replace(/[\s\-_·.]+/g, '')
+}
+
+function normCategoria(c: string | null | undefined): string | null {
+  const v = (c ?? '').trim()
+  return v === '' || v === '—' ? null : v
+}
+
+/** Resolve todos os modalidade_id que compartilham o slug (cobre duplicata cross-edição). */
+async function modalidadeIdsPorSlug(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  modalidadeSlug: string,
+): Promise<string[]> {
+  const { data } = await supabase.from('modalidades').select('id').eq('slug', modalidadeSlug)
+  return (data ?? []).map(m => (m as { id: string }).id)
+}
+
+/**
+ * Carrega os jogos de uma chave por (slug, categoria, divisão) com matching
+ * tolerante — o mesmo critério da UI. Evita o filtro exato que retornava 0.
+ */
+async function fetchJogosDaChave(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  modalidadeSlug: string,
+  categoria: string | null,
+  divisao: string,
+): Promise<JogoMin[]> {
+  const modIds = await modalidadeIdsPorSlug(supabase, modalidadeSlug)
+  if (modIds.length === 0) return []
+  const { data } = await supabase.from('jogos').select(JOGO_COLS).in('modalidade_id', modIds)
+  const wantCat = normCategoria(categoria)
+  const wantDiv = normDivisao(divisao)
+  return ((data ?? []) as JogoMin[]).filter(j =>
+    normCategoria(j.categoria) === wantCat && normDivisao(j.divisao) === wantDiv,
+  )
+}
+
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
 interface JogoMin {
@@ -262,7 +308,8 @@ export async function propagarVencedorNaChave(jogoId: string): Promise<AvancoRes
   const jogo = jogoRaw as JogoMin
 
   if (jogo.status !== 'encerrado') return { ok: false, reason: 'jogo-nao-encerrado' }
-  if (!jogo.modalidade_id || !jogo.categoria || !jogo.divisao || !jogo.fase) {
+  // categoria pode ser nula (chave sem categoria) — não é campo essencial.
+  if (!jogo.modalidade_id || !jogo.divisao || !jogo.fase) {
     return { ok: false, reason: 'campos-essenciais-faltando' }
   }
   if (jogo.fase === 'final') return { ok: false, reason: 'ja-e-final' }
@@ -271,16 +318,21 @@ export async function propagarVencedorNaChave(jogoId: string): Promise<AvancoRes
   const winner = determinarVencedor(jogo)
   if (!winner) return { ok: false, reason: 'sem-vencedor' }
 
-  // 3. Carrega a chave_config
-  const { data: configRaw } = await supabase
+  // 3. Carrega a chave_config — match tolerante (slug + categoria/divisão normalizadas)
+  //    pra cobrir modalidade_id de edição diferente e variações de string.
+  const slugRow = await supabase.from('modalidades').select('slug').eq('id', jogo.modalidade_id).single()
+  const modalidadeSlug = (slugRow.data as { slug: string } | null)?.slug ?? null
+  const modIds = modalidadeSlug ? await modalidadeIdsPorSlug(supabase, modalidadeSlug) : [jogo.modalidade_id]
+  const { data: configsRaw } = await supabase
     .from('chave_config')
     .select('modalidade_id, categoria, divisao, num_teams, seeds')
-    .eq('modalidade_id', jogo.modalidade_id)
-    .eq('categoria', jogo.categoria)
-    .eq('divisao', jogo.divisao)
-    .single()
-  if (!configRaw) return { ok: false, reason: 'chave-config-ausente' }
-  const config = configRaw as ChaveConfig
+    .in('modalidade_id', modIds.length ? modIds : [jogo.modalidade_id])
+  const wantCat = normCategoria(jogo.categoria)
+  const wantDiv = normDivisao(jogo.divisao)
+  const config = ((configsRaw ?? []) as ChaveConfig[]).find(c =>
+    normCategoria(c.categoria) === wantCat && normDivisao(c.divisao) === wantDiv,
+  )
+  if (!config) return { ok: false, reason: 'chave-config-ausente' }
 
   // 4. Constrói estrutura lógica do bracket
   const bracketGames = buildGames(config.num_teams)
@@ -294,15 +346,11 @@ export async function propagarVencedorNaChave(jogoId: string): Promise<AvancoRes
   if (!parentInfo) return { ok: false, reason: 'sem-parent' }
   const { parent, slotIndex } = parentInfo
 
-  // 7. Carrega jogos do banco da mesma chave (modalidade+categoria+divisão)
-  const { data: jogosChaveRaw } = await supabase
-    .from('jogos')
-    .select(JOGO_COLS)
-    .eq('modalidade_id', jogo.modalidade_id)
-    .eq('categoria', jogo.categoria)
-    .eq('divisao', jogo.divisao)
-  if (!jogosChaveRaw) return { ok: false, reason: 'jogos-chave-vazios' }
-  const jogosChave = jogosChaveRaw as JogoMin[]
+  // 7. Carrega jogos do banco da mesma chave (matching tolerante)
+  const jogosChave = modalidadeSlug
+    ? await fetchJogosDaChave(supabase, modalidadeSlug, jogo.categoria, jogo.divisao)
+    : []
+  if (jogosChave.length === 0) return { ok: false, reason: 'jogos-chave-vazios' }
 
   // 8. Resolve o id do vencedor pelo nome se ele não veio preenchido.
   //    Jogos importados do XLSX trazem só `equipe_*_nome` (id null) — sem isso,
@@ -417,23 +465,18 @@ export interface VinculoResult {
  * existente nem mexe em nomes.
  */
 export async function vincularEquipesNaChave(
-  modalidadeId: string,
-  categoria: string,
+  modalidadeSlug: string,
+  categoria: string | null,
   divisao: string,
 ): Promise<VinculoResult> {
   const supabase = await createClient()
 
-  const { data: jogosRaw } = await supabase
-    .from('jogos')
-    .select('id, edicao_id, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome')
-    .eq('modalidade_id', modalidadeId)
-    .eq('categoria', categoria)
-    .eq('divisao', divisao)
-  if (!jogosRaw || jogosRaw.length === 0) {
+  const jogos = await fetchJogosDaChave(supabase, modalidadeSlug, categoria, divisao)
+  if (jogos.length === 0) {
     return { total: 0, vinculados: 0, naoResolvidos: [] }
   }
 
-  const edicaoId = (jogosRaw[0] as { edicao_id: string | null }).edicao_id
+  const edicaoId = jogos[0].edicao_id
   const { data: equipesRaw } = await supabase
     .from('equipes')
     .select('id, nome')
@@ -443,11 +486,7 @@ export async function vincularEquipesNaChave(
   let vinculados = 0
   const naoResolvidos = new Set<string>()
 
-  for (const j of jogosRaw as Array<{
-    id: string
-    equipe_a_id: string | null; equipe_b_id: string | null
-    equipe_a_nome: string | null; equipe_b_nome: string | null
-  }>) {
+  for (const j of jogos) {
     const patch: Record<string, string> = {}
 
     if (!j.equipe_a_id && j.equipe_a_nome) {
@@ -467,7 +506,7 @@ export async function vincularEquipesNaChave(
     }
   }
 
-  return { total: jogosRaw.length, vinculados, naoResolvidos: [...naoResolvidos] }
+  return { total: jogos.length, vinculados, naoResolvidos: [...naoResolvidos] }
 }
 
 // ── Recálculo em batch (pra debug/reset) ─────────────────────────────────────
@@ -486,25 +525,18 @@ export interface RecalcResult {
  * resultados em lote sem ter triggered o avanço.
  */
 export async function recalcularChave(
-  modalidadeId: string,
-  categoria: string,
+  modalidadeSlug: string,
+  categoria: string | null,
   divisao: string,
 ): Promise<RecalcResult> {
   const supabase = await createClient()
 
-  const { data: jogosRaw } = await supabase
-    .from('jogos')
-    .select('id, fase, status')
-    .eq('modalidade_id', modalidadeId)
-    .eq('categoria', categoria)
-    .eq('divisao', divisao)
-    .eq('status', 'encerrado')
-  if (!jogosRaw) return { total: 0, propagados: 0, pulados: 0, errors: [] }
+  const todos = await fetchJogosDaChave(supabase, modalidadeSlug, categoria, divisao)
 
   // Ordem: oitavas → quartas → semifinal → final
   const ORDER: Record<string, number> = { oitavas: 1, quartas: 2, semifinal: 3, final: 4 }
-  const jogos = (jogosRaw as Array<{ id: string; fase: string | null }>)
-    .filter(j => j.fase && ORDER[j.fase])
+  const jogos = todos
+    .filter(j => j.status === 'encerrado' && j.fase && ORDER[j.fase])
     .sort((a, b) => (ORDER[a.fase!] ?? 99) - (ORDER[b.fase!] ?? 99))
 
   let propagados = 0

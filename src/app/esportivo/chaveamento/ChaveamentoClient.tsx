@@ -449,10 +449,11 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                   vencedores na chave. Útil quando jogos foram encerrados antes do avanço
                   automático existir, ou quando há suspeita de inconsistência. */}
               {(() => {
-                // Usa modalidade_id diretamente dos jogos (edicao correta garantida).
-                // Não usa modalidades.find() pra evitar pegar ID de edicao errada.
-                const modalidadeIdReal = jogosChave[0]?.modalidade_id ?? null
-                if (!modalidadeIdReal) return null
+                // Match por SLUG (não por id) — robusto a modalidade_id duplicado
+                // entre edições. Categoria "—" (placeholder de nula) vira null.
+                const slug = chaveAberta.modalidade
+                const categoriaReal = chaveAberta.categoria === '—' ? null : chaveAberta.categoria
+                if (!slug) return null
                 return (
                   <button
                     onClick={async () => {
@@ -465,15 +466,15 @@ export function ChaveamentoClient({ jogos, modalidades, chaveConfigs }: Props) {
                       if (!ok) return
                       startRecalcTransition(async () => {
                         const result = await recalcularChaveAction(
-                          modalidadeIdReal,
-                          chaveAberta.categoria,
+                          slug,
+                          categoriaReal,
                           chaveAberta.divisao,
                         )
                         if (result.ok && result.data) {
                           const d = result.data
                           const naoResolvidos = d.naoResolvidos ?? []
                           toast.success('Chave sincronizada', {
-                            description: `${d.vinculados} jogos vinculados · ${d.propagados} avançadas · ${d.pulados} já ok · ${d.errors} erros`
+                            description: `${d.total} jogos na chave · ${d.vinculados} vinculados · ${d.propagados} avançadas · ${d.pulados} já ok · ${d.errors} erros`
                               + (naoResolvidos.length ? ` · ⚠ ${naoResolvidos.length} nome(s) sem equipe: ${naoResolvidos.slice(0, 3).join(', ')}${naoResolvidos.length > 3 ? '…' : ''}` : ''),
                             duration: 9000,
                           })

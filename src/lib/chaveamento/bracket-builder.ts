@@ -226,18 +226,25 @@ export function canonTeamName(s: string | null | undefined): string {
 export function fuzzyMatchTeam(a: string, b: string): boolean {
   if (!a || !b) return false
   if (a === b) return true
-  // containment (ex: 'MEDICINA UFMG' contém 'MED UFMG'? não — mas 'ENG' está em 'ENGENHARIA UFMG'? parcialmente)
-  if (a.includes(b) || b.includes(a)) return true
-  const wa = a.split(' ')
-  const wb = b.split(' ')
-  // Sufixo (sigla da universidade) deve ser idêntico
+
+  const wa = a.split(' ').filter(Boolean)
+  const wb = b.split(' ').filter(Boolean)
+  if (wa.length === 0 || wb.length === 0) return false
+
+  // REGRA DURA: o sufixo (sigla da universidade) DEVE ser idêntico.
+  // Times de universidades diferentes NUNCA são o mesmo, mesmo que o curso
+  // coincida (MED UFU ≠ MED UFTM). Isso elimina a maioria das colisões.
   const sufA = wa[wa.length - 1]
   const sufB = wb[wb.length - 1]
   if (sufA !== sufB) return false
-  // Prefixo: uma é prefixo da outra (mínimo 3 chars pra evitar falso-positivo)
+
+  // Prefixo (curso): uma é prefixo da outra, mín. 3 chars.
+  // Cobre abreviação: ENG↔ENGENHARIA, MED↔MEDICINA.
+  // IMPORTANTE: NÃO usa containment de substring crua — isso casava
+  // 'MED UFMG' dentro de 'BIOMED UFMG' (cursos distintos, mesma universidade)
+  // e avançava o time errado na chave silenciosamente.
   const preA = wa[0]
   const preB = wb[0]
-  const minLen = Math.min(preA.length, preB.length)
-  if (minLen < 3) return false
+  if (Math.min(preA.length, preB.length) < 3) return false
   return preA.startsWith(preB) || preB.startsWith(preA)
 }

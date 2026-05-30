@@ -31,6 +31,8 @@ export interface Jogo {
   equipe_b_nome: string | null
   placar_a: number | null
   placar_b: number | null
+  penaltis_a: number | null
+  penaltis_b: number | null
   status: string
   wo: 'a' | 'b' | 'duplo' | null
   inicio: string | null
@@ -123,8 +125,10 @@ function GameRow({ jogo, highlight }: { jogo: Jogo; highlight?: boolean }) {
   const corA  = jogo.equipe_a?.cor_primaria
   const corB  = jogo.equipe_b?.cor_primaria
 
-  const winA = hasScore && (jogo.placar_a! > jogo.placar_b!)
-  const winB = hasScore && (jogo.placar_b! > jogo.placar_a!)
+  // Desempate por pênaltis (futsal/futebol empatado no mata-mata)
+  const temPenaltis = jogo.penaltis_a != null && jogo.penaltis_b != null
+  const winA = hasScore && (jogo.placar_a! > jogo.placar_b! || (jogo.placar_a! === jogo.placar_b! && temPenaltis && jogo.penaltis_a! > jogo.penaltis_b!))
+  const winB = hasScore && (jogo.placar_b! > jogo.placar_a! || (jogo.placar_a! === jogo.placar_b! && temPenaltis && jogo.penaltis_b! > jogo.penaltis_a!))
 
   // WO overrides
   const woA = jogo.wo === 'a'
@@ -201,6 +205,11 @@ function GameRow({ jogo, highlight }: { jogo: Jogo; highlight?: boolean }) {
             >
               {jogo.placar_b}
             </div>
+            {temPenaltis && (
+              <div className="mt-0.5 text-[9px] font-bold tabular-nums text-[var(--gold)]" title="Decidido nos pênaltis">
+                pên {jogo.penaltis_a}×{jogo.penaltis_b}
+              </div>
+            )}
           </>
         ) : (
           <div className="text-[11px] text-[var(--muted-foreground)] font-mono tabular-nums">
@@ -409,7 +418,7 @@ const EIXOS: { key: Eixo; label: string; icon: typeof Trophy }[] = [
 ]
 
 const REALTIME_FIELDS: (keyof Jogo)[] = [
-  'status', 'placar_a', 'placar_b', 'wo',
+  'status', 'placar_a', 'placar_b', 'penaltis_a', 'penaltis_b', 'wo',
 ]
 
 export function CentralClient({ jogos: initial }: { jogos: Jogo[] }) {

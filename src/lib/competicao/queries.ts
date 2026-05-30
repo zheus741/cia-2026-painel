@@ -69,6 +69,9 @@ export interface JogoDetalhe {
   equipe_b_nome:     string | null
   /** W.O. (Art. 58-65). 'a'=A não compareceu (perdeu), 'b'=B, 'duplo'=ambas. */
   wo?:               'a' | 'b' | 'duplo' | null
+  /** Desempate por pênaltis (futsal/futebol no mata-mata) — vencedor = maior. */
+  penaltis_a?:       number | null
+  penaltis_b?:       number | null
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -207,7 +210,7 @@ export async function getJogosByEquipe(equipeId: string): Promise<JogoDetalhe[]>
     .from('jogos')
     .select(`
       id, modalidade_id, categoria, divisao, fase,
-      inicio, fim_previsto, status, placar_a, placar_b, wo,
+      inicio, fim_previsto, status, placar_a, placar_b, penaltis_a, penaltis_b, wo,
       equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
       modalidades:modalidade_id (nome, icone)
     `)
@@ -228,6 +231,8 @@ export async function getJogosByEquipe(equipeId: string): Promise<JogoDetalhe[]>
     status: string | null
     placar_a: number | null
     placar_b: number | null
+    penaltis_a: number | null
+    penaltis_b: number | null
     wo: 'a' | 'b' | 'duplo' | null
     equipe_a_id: string | null
     equipe_b_id: string | null
@@ -251,6 +256,8 @@ export async function getJogosByEquipe(equipeId: string): Promise<JogoDetalhe[]>
       status:           r.status,
       placar_a:         r.placar_a,
       placar_b:         r.placar_b,
+      penaltis_a:       r.penaltis_a,
+      penaltis_b:       r.penaltis_b,
       wo:               r.wo,
       equipe_a_id:      r.equipe_a_id,
       equipe_b_id:      r.equipe_b_id,
@@ -347,6 +354,11 @@ const venceu = (j: JogoDetalhe, equipeId: string): boolean => {
 
   if (j.placar_a == null || j.placar_b == null) return false
   const isA = j.equipe_a_id === equipeId
+  // Empate no tempo normal → desempate por pênaltis (futsal/futebol no mata-mata)
+  if (j.placar_a === j.placar_b) {
+    if (j.penaltis_a == null || j.penaltis_b == null || j.penaltis_a === j.penaltis_b) return false
+    return isA ? j.penaltis_a > j.penaltis_b : j.penaltis_b > j.penaltis_a
+  }
   return isA ? j.placar_a > j.placar_b : j.placar_b > j.placar_a
 }
 
@@ -797,7 +809,12 @@ function computePrevisaoEliminatoria(
   const isA        = ultimo.equipe_a_id === equipeId
   const meu        = isA ? ultimo.placar_a : ultimo.placar_b
   const dele       = isA ? ultimo.placar_b : ultimo.placar_a
-  const venceu     = meu != null && dele != null && meu > dele
+  // Vitória normal OU por pênaltis (empate no tempo normal, futsal/futebol mata-mata)
+  const venceuPenaltis =
+    meu != null && dele != null && meu === dele &&
+    ultimo.penaltis_a != null && ultimo.penaltis_b != null &&
+    (isA ? ultimo.penaltis_a > ultimo.penaltis_b : ultimo.penaltis_b > ultimo.penaltis_a)
+  const venceu     = (meu != null && dele != null && meu > dele) || venceuPenaltis
 
   if (!venceu) {
     // Perdeu o último → eliminada (ou vice se foi a final)

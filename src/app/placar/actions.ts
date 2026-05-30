@@ -84,6 +84,62 @@ export async function encerrarJogo(id: string): Promise<ActionResult> {
   }
 }
 
+/**
+ * Encerra um jogo de gol corrido (futsal/futebol) empatado no tempo normal,
+ * registrando o placar da disputa de pênaltis. O vencedor (maior nº de pênaltis)
+ * avança na chave. Exige penA != penB — disputa de pênaltis sempre tem vencedor.
+ */
+export async function encerrarComPenaltis(
+  id: string,
+  penA: number,
+  penB: number,
+): Promise<ActionResult> {
+  try {
+    await requireSportEditor()
+    const pa = clampPlacar(penA)
+    const pb = clampPlacar(penB)
+    if (pa === pb) {
+      return { ok: false, error: 'A disputa de pênaltis precisa ter um vencedor (placares diferentes).' }
+    }
+    const supabase = await createClient()
+    const concurrent = await detectConcurrentEdit(id, supabase)
+
+    // Guard idempotente: só encerra se não estava encerrado (evita dupla-propagação).
+    const { data: changed, error } = await supabase
+      .from('jogos')
+      .update({ penaltis_a: pa, penaltis_b: pb, status: 'encerrado' })
+      .eq('id', id)
+      .neq('status', 'encerrado')
+      .select('id')
+    if (error) throw error
+
+    // Já encerrado: atualiza só os pênaltis (correção), sem re-propagar do zero.
+    if (!changed || changed.length === 0) {
+      await supabase.from('jogos').update({ penaltis_a: pa, penaltis_b: pb }).eq('id', id)
+    }
+
+    let warning: string | undefined = concurrent.warning
+    try {
+      const result = await propagarVencedorNaChave(id)
+      if (!result.ok && result.reason !== 'ja-e-final') {
+        warning = warning ?? `Pênaltis registrados, mas o vencedor não avançou na chave (${result.reason}). Clique SINCRONIZAR no chaveamento.`
+      }
+    } catch (err) {
+      logError(err, { action: 'encerrarComPenaltis:propagacao', extra: { jogoId: id } })
+      warning = warning ?? 'Pênaltis registrados, mas falhou a propagação na chave. Use SINCRONIZAR.'
+    }
+    revalidatePath('/placar')
+    bustHomeCache()
+    revalidatePath('/esportivo/chaveamento')
+    revalidatePath('/central')
+    return { ok: true, warning }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Erro ao registrar pênaltis.'
+    logError(e, { action: 'encerrarComPenaltis', extra: { jogoId: id } })
+    return { ok: false, error: msg }
+  }
+}
+
 export async function atualizarPlacar(
   id: string,
   placar_a: number,

@@ -58,6 +58,10 @@ function getWinner(j: JogoChave): 'a' | 'b' | null {
   if (j.placar_a != null && j.placar_b != null) {
     if (j.placar_a > j.placar_b) return 'a'
     if (j.placar_b > j.placar_a) return 'b'
+    // Empate → desempate por pênaltis (futsal/futebol no mata-mata)
+    if (j.penaltis_a != null && j.penaltis_b != null && j.penaltis_a !== j.penaltis_b) {
+      return j.penaltis_a > j.penaltis_b ? 'a' : 'b'
+    }
   }
   return null
 }

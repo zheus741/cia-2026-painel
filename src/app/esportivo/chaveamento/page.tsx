@@ -26,7 +26,7 @@ export default async function ChaveamentoPage() {
         id, dia_id, setor_id, inicio, status, wo,
         modalidade_id, categoria, divisao, fase, bracket_num,
         equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
-        placar_a, placar_b,
+        placar_a, placar_b, penaltis_a, penaltis_b,
         modalidade:modalidades(nome, icone, slug),
         equipe_a:equipe_a_id(slug, cor_primaria, universidade, logo_url),
         equipe_b:equipe_b_id(slug, cor_primaria, universidade, logo_url)

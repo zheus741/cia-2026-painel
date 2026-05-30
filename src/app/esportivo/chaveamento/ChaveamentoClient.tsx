@@ -33,6 +33,8 @@ export interface JogoChave {
   equipe_b_nome: string | null
   placar_a: number | null
   placar_b: number | null
+  penaltis_a: number | null
+  penaltis_b: number | null
   modalidade: { nome: string; icone: string; slug: string } | null
   equipe_a: { slug: string; cor_primaria: string | null; universidade: string | null; logo_url: string | null } | null
   equipe_b: { slug: string; cor_primaria: string | null; universidade: string | null; logo_url: string | null } | null

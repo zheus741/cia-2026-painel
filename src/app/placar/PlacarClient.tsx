@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2, X, ChevronDown, Crown } from 'lucide-react'
-import { setJogoAoVivo, encerrarJogo, atualizarPlacar, lancarResultado, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento, fecharSet } from './actions'
+import { setJogoAoVivo, encerrarJogo, encerrarComPenaltis, atualizarPlacar, lancarResultado, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento, fecharSet } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
@@ -30,6 +30,9 @@ interface Jogo {
   equipe_b_nome: string | null
   placar_a: number | null
   placar_b: number | null
+  /** Pênaltis (futsal/futebol empatado no mata-mata) — vencedor = maior. */
+  penaltis_a?: number | null
+  penaltis_b?: number | null
   status: string
   /** W.O. — Art. 58-65. 'a'=A não compareceu, 'b'=B, 'duplo'=ambas. */
   wo: 'a' | 'b' | 'duplo' | null
@@ -126,6 +129,20 @@ function getSetConfig(modalidadeNome: string | null | undefined): SetConfig | nu
   if (n.includes('volei') || n.includes('voleibol') || n.includes('vole')) return SET_CONFIG['voleibol']
   if (n.includes('peteca')) return SET_CONFIG['peteca']
   return null
+}
+
+/** Esporte de gol corrido que vai pra pênaltis quando empata no mata-mata. */
+function usaPenaltis(modalidadeNome: string | null | undefined): boolean {
+  if (!modalidadeNome) return false
+  const n = normalizarNome(modalidadeNome)
+  return n.includes('futsal') || n.includes('futebol') || n.includes('fut7') || n.includes('futebol 7')
+}
+
+/** Fase de mata-mata — onde empate exige desempate (vs fase de grupos). */
+function isMataMata(fase: string | null | undefined): boolean {
+  if (!fase) return false
+  const f = fase.toLowerCase().trim()
+  return ['oitavas', 'quartas', 'semifinal', 'semi', 'final', '3lugar', 'terceiro'].includes(f)
 }
 
 function getEventosTipos(modalidadeNome: string | null): string[] {
@@ -262,6 +279,9 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
   const [resultadoMode, setResultadoMode] = useState(false)
   const [resA, setResA] = useState('')
   const [resB, setResB] = useState('')
+  const [penaltiMode, setPenaltiMode] = useState(false)
+  const [penA, setPenA] = useState('')
+  const [penB, setPenB] = useState('')
   // SSR pre-fetch elimina N+1: cada card já vem com os eventos no mount.
   const [eventos, setEventos] = useState<EventoJogo[]>(initialEventos)
 
@@ -364,10 +384,12 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
 
   // Snapshot do estado anterior pra rollback se action falhar
   const snapshotJogo = (): Partial<Jogo> => ({
-    status:   jogo.status,
-    placar_a: jogo.placar_a,
-    placar_b: jogo.placar_b,
-    wo:       jogo.wo,
+    status:     jogo.status,
+    placar_a:   jogo.placar_a,
+    placar_b:   jogo.placar_b,
+    penaltis_a: jogo.penaltis_a,
+    penaltis_b: jogo.penaltis_b,
+    wo:         jogo.wo,
   })
 
   function handleAoVivo() {
@@ -381,12 +403,36 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
     })
   }
 
+  // Empate em mata-mata de futsal/futebol precisa de pênaltis pra definir quem avança.
+  const precisaPenaltis =
+    usaPenaltis(jogo.modalidade?.nome) && isMataMata(jogo.fase) && placarA === placarB
+
   function handleEncerrar() {
+    if (precisaPenaltis) {
+      // Não encerra direto — abre a disputa de pênaltis.
+      setPenA(''); setPenB(''); setPenaltiMode(true)
+      return
+    }
     const prev = snapshotJogo()
     onLocalUpdate(jogo.id, { status: 'encerrado' })
     startTransition(async () => {
       await runAction(() => encerrarJogo(jogo.id), {
         label: 'encerrar jogo',
+        onError: () => onLocalUpdate(jogo.id, prev),
+      })
+    })
+  }
+
+  function handleEncerrarPenaltis() {
+    const a = Math.max(0, parseInt(penA, 10) || 0)
+    const b = Math.max(0, parseInt(penB, 10) || 0)
+    if (a === b) return  // precisa de vencedor
+    const prev = snapshotJogo()
+    onLocalUpdate(jogo.id, { penaltis_a: a, penaltis_b: b, status: 'encerrado' })
+    setPenaltiMode(false)
+    startTransition(async () => {
+      await runAction(() => encerrarComPenaltis(jogo.id, a, b), {
+        label: 'registrar pênaltis',
         onError: () => onLocalUpdate(jogo.id, prev),
       })
     })
@@ -788,6 +834,15 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
               </div>
             </div>
 
+            {/* Resultado dos pênaltis (futsal/futebol decidido na disputa) */}
+            {jogo.penaltis_a != null && jogo.penaltis_b != null && (
+              <div className="mt-2 flex items-center justify-center">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 bg-[var(--gold)]/10 px-3 py-1 text-[11px] font-bold tabular-nums text-[var(--gold)]">
+                  🥅 Pênaltis {jogo.penaltis_a} × {jogo.penaltis_b}
+                </span>
+              </div>
+            )}
+
             {/* Painel de SET — vôlei / vôlei de praia / peteca, ao vivo */}
             {isEsporteSet && isAoVivo && !hasWO && !isCancelado && (
               <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
@@ -1145,6 +1200,59 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
         </div>
       )}
 
+      {/* Painel de pênaltis — empate em mata-mata de futsal/futebol */}
+      {penaltiMode && (
+        <div className="mt-4 rounded-lg border border-[var(--gold)]/40 bg-[var(--gold)]/8 p-3">
+          <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--gold)]">
+            🥅 Disputa de pênaltis
+          </p>
+          <p className="mb-3 text-[10px] leading-snug text-[var(--muted-foreground)]/80">
+            Empate em {placarA}×{placarB} no tempo normal. Quem fizer mais pênaltis avança.
+          </p>
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <label className="mb-1 block truncate text-[10px] font-semibold text-[var(--muted-foreground)]">
+                {jogo.equipe_a_nome ?? 'Equipe A'}
+              </label>
+              <input
+                type="number" min={0} inputMode="numeric" value={penA}
+                onChange={e => setPenA(e.target.value)}
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-2 text-center text-lg font-extrabold tabular-nums text-[var(--foreground)] outline-none focus:border-[var(--gold)]"
+                placeholder="0"
+              />
+            </div>
+            <span className="pb-2 text-sm font-bold text-[var(--muted-foreground)]">×</span>
+            <div className="min-w-0 flex-1">
+              <label className="mb-1 block truncate text-[10px] font-semibold text-[var(--muted-foreground)]">
+                {jogo.equipe_b_nome ?? 'Equipe B'}
+              </label>
+              <input
+                type="number" min={0} inputMode="numeric" value={penB}
+                onChange={e => setPenB(e.target.value)}
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-2 text-center text-lg font-extrabold tabular-nums text-[var(--foreground)] outline-none focus:border-[var(--gold)]"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setPenaltiMode(false)}
+              disabled={isPending}
+              className="rounded-md border border-[var(--border)] px-2 py-2 text-[11px] text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)] disabled:opacity-40"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleEncerrarPenaltis}
+              disabled={isPending || penA === '' || penB === '' || (parseInt(penA, 10) || 0) === (parseInt(penB, 10) || 0)}
+              className="rounded-md border border-[var(--gold)]/50 bg-[var(--gold)]/15 px-2 py-2 text-[11px] font-bold uppercase tracking-wider text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/25 disabled:opacity-40"
+            >
+              Encerrar nos pênaltis
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Lançar resultado direto — quadra sem operador ao vivo */}
       {canEdit && isAgendado && !isCancelado && !woMode && resultadoMode && (
         <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
@@ -1199,7 +1307,7 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
       )}
 
       {/* Ações */}
-      {canEdit && !isEncerrado && !isCancelado && !woMode && !resultadoMode && (
+      {canEdit && !isEncerrado && !isCancelado && !woMode && !resultadoMode && !penaltiMode && (
         <div className="mt-4 flex flex-wrap gap-2">
           {isAgendado && (
             <>
@@ -1227,9 +1335,10 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
               onClick={handleEncerrar}
               disabled={isPending}
               className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--green-dim)]/40 bg-[var(--card)] py-2 text-xs font-semibold text-[var(--green-bright)] transition-colors hover:bg-[var(--green-dim)]/20 disabled:opacity-40"
+              title={precisaPenaltis ? 'Empate — vai abrir a disputa de pênaltis' : undefined}
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
-              Encerrar
+              {precisaPenaltis ? 'Encerrar (pênaltis)' : 'Encerrar'}
             </button>
           )}
           {/* W.O. — disponível em agendado e ao_vivo */}
@@ -1778,7 +1887,7 @@ interface Props {
 
 // Campos escalares que o realtime pode atualizar in-place (sem perder joins).
 const REALTIME_MERGEABLE: (keyof Jogo)[] = [
-  'status', 'placar_a', 'placar_b', 'wo',
+  'status', 'placar_a', 'placar_b', 'penaltis_a', 'penaltis_b', 'wo',
   'equipe_a_nome', 'equipe_b_nome',
   'inicio', 'fase', 'categoria', 'divisao', 'teste',
 ]

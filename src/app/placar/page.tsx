@@ -24,7 +24,7 @@ export default async function PlacarPage() {
       .from('jogos')
       .select(`
         id, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
-        placar_a, placar_b, status, wo, inicio, dia_id, setor_id, divisao, fase, categoria, teste,
+        placar_a, placar_b, penaltis_a, penaltis_b, status, wo, inicio, dia_id, setor_id, divisao, fase, categoria, teste,
         modalidade:modalidades(nome, icone),
         setor:setores(nome),
         equipe_a:equipe_a_id(slug, divisao, conferencia, cor_primaria, universidade, logo_url),
@@ -68,6 +68,7 @@ export default async function PlacarPage() {
     equipe_a_id: string | null; equipe_b_id: string | null
     equipe_a_nome: string | null; equipe_b_nome: string | null
     placar_a: number | null; placar_b: number | null
+    penaltis_a: number | null; penaltis_b: number | null
     status: string; wo: 'a' | 'b' | 'duplo' | null
     inicio: string | null; dia_id: string; setor_id: string | null
     divisao: string | null; fase: string | null; categoria: string | null; teste: boolean | null

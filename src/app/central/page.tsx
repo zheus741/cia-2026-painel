@@ -11,7 +11,7 @@ export const metadata = {
 
 const JOGO_SELECT = `
   id, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
-  placar_a, placar_b, status, wo, inicio, divisao, fase, categoria, teste,
+  placar_a, placar_b, penaltis_a, penaltis_b, status, wo, inicio, divisao, fase, categoria, teste,
   modalidade:modalidades(nome, icone, slug),
   setor:setores(nome),
   equipe_a:equipe_a_id(nome, slug, divisao, conferencia, cor_primaria, universidade, logo_url),

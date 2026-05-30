@@ -29,7 +29,7 @@ import {
 
 // Colunas lidas/escritas em todas as queries de jogo da chave.
 const JOGO_COLS =
-  'id, edicao_id, modalidade_id, categoria, divisao, fase, bracket_num, status, wo, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome, placar_a, placar_b'
+  'id, edicao_id, modalidade_id, categoria, divisao, fase, bracket_num, status, wo, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome, placar_a, placar_b, penaltis_a, penaltis_b'
 
 // ── Matching tolerante de chave ──────────────────────────────────────────────
 // O banco tem variações: categoria nula renderizada como "—", divisão como
@@ -95,6 +95,8 @@ interface JogoMin {
   equipe_b_nome: string | null
   placar_a: number | null
   placar_b: number | null
+  penaltis_a: number | null
+  penaltis_b: number | null
 }
 
 interface ChaveConfig {
@@ -142,7 +144,14 @@ function determinarVencedor(jogo: JogoMin): Winner | null {
   if (jogo.placar_b > jogo.placar_a) {
     return { equipeId: jogo.equipe_b_id, equipeNome: jogo.equipe_b_nome, side: 'b' }
   }
-  // Empate: sem vencedor pra avançar (regulamento prevê desempate por critérios — fora do MVP)
+  // Empate no tempo normal → desempate por pênaltis (futsal/futebol no mata-mata)
+  if (jogo.penaltis_a != null && jogo.penaltis_b != null && jogo.penaltis_a !== jogo.penaltis_b) {
+    if (jogo.penaltis_a > jogo.penaltis_b) {
+      return { equipeId: jogo.equipe_a_id, equipeNome: jogo.equipe_a_nome, side: 'a' }
+    }
+    return { equipeId: jogo.equipe_b_id, equipeNome: jogo.equipe_b_nome, side: 'b' }
+  }
+  // Empate sem pênaltis registrados — sem vencedor pra avançar
   return null
 }
 

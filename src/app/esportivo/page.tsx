@@ -38,7 +38,7 @@ export default async function EsportivoPage() {
       .from('jogos')
       .select(`
         id, modalidade_id, categoria, divisao, fase, setor_id,
-        inicio, status, placar_a, placar_b, wo,
+        inicio, status, placar_a, placar_b, penaltis_a, penaltis_b, wo,
         equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
         modalidades:modalidade_id (nome, icone)
       `)
@@ -76,6 +76,7 @@ export default async function EsportivoPage() {
     setor_id: string | null
     inicio: string | null; status: string | null
     placar_a: number | null; placar_b: number | null
+    penaltis_a: number | null; penaltis_b: number | null
     wo: 'a' | 'b' | 'duplo' | null
     equipe_a_id: string | null; equipe_b_id: string | null
     equipe_a_nome: string | null; equipe_b_nome: string | null
@@ -89,7 +90,8 @@ export default async function EsportivoPage() {
       modalidade_icone: mod?.icone ?? null,
       categoria: r.categoria, divisao: r.divisao, fase: r.fase,
       inicio: r.inicio, fim_previsto: null, status: r.status,
-      placar_a: r.placar_a, placar_b: r.placar_b, wo: r.wo,
+      placar_a: r.placar_a, placar_b: r.placar_b,
+      penaltis_a: r.penaltis_a, penaltis_b: r.penaltis_b, wo: r.wo,
       equipe_a_id: r.equipe_a_id, equipe_b_id: r.equipe_b_id,
       equipe_a_nome: r.equipe_a_nome, equipe_b_nome: r.equipe_b_nome,
     }

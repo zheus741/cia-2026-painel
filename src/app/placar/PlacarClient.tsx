@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useTransition, useEffect, useCallback, useRef, useMemo, memo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -1742,7 +1742,7 @@ function TimelineSection({ jogos, onLocalUpdate, recentIds, highlightedJogoId, c
           {/* Games list */}
           <div className="space-y-1.5">
             {games.map(jogo => (
-              <JogoListItem
+              <JogoListItemMemo
                 key={jogo.id}
                 jogo={jogo}
                 onLocalUpdate={onLocalUpdate}
@@ -1756,6 +1756,16 @@ function TimelineSection({ jogos, onLocalUpdate, recentIds, highlightedJogoId, c
     </div>
   )
 }
+
+// Referência estável p/ jogos sem eventos — evita criar [] novo a cada render,
+// o que quebraria a memoização dos cards (prop muda de identidade toda vez).
+const EMPTY_EVENTOS: EventoJogo[] = []
+
+// Versões memoizadas: com onLocalUpdate estável (useCallback) e jogo com
+// identidade preservada p/ jogos não-alterados, só o card que mudou re-renderiza
+// — antes, cada +/- ou evento realtime re-renderizava o dia inteiro (50-100 cards).
+const PlacarCardMemo = memo(PlacarCard)
+const JogoListItemMemo = memo(JogoListItem)
 
 interface Props {
   dias: { id: string; nome_dia: string; data: string }[]
@@ -2295,13 +2305,13 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
           />
           <div className="grid gap-4 lg:grid-cols-2">
             {liveGames.map(jogo => (
-              <PlacarCard
+              <PlacarCardMemo
                 key={jogo.id}
                 jogo={jogo}
                 onLocalUpdate={handleLocalUpdate}
                 recentlyChanged={recentIds.has(jogo.id) || highlightedJogoId === jogo.id}
                 canEdit={canEdit}
-                initialEventos={eventosPorJogo[jogo.id] ?? []}
+                initialEventos={eventosPorJogo[jogo.id] ?? EMPTY_EVENTOS}
               />
             ))}
           </div>

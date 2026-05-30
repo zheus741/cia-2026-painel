@@ -13,6 +13,13 @@ function bustHomeCache() {
   updateTag('home-static-event-data')
 }
 
+// Sanitiza placar: inteiro >= 0 e teto defensivo (evita valor absurdo via
+// requisição forjada). O client já clampa, mas o server precisa também.
+function clampPlacar(n: number): number {
+  if (!Number.isFinite(n)) return 0
+  return Math.max(0, Math.min(999, Math.floor(n)))
+}
+
 export async function setJogoAoVivo(id: string): Promise<ActionResult> {
   return safe(async () => {
     await requireSportEditor()
@@ -36,11 +43,22 @@ export async function encerrarJogo(id: string): Promise<ActionResult> {
     // este jogo nos últimos 3s.
     const concurrent = await detectConcurrentEdit(id, supabase)
 
-    const { error } = await supabase
+    // GUARD: só encerra se NÃO estava encerrado. Evita dupla-propagação
+    // quando 2 coords clicam "Encerrar" no mesmo jogo (UI defasada).
+    // .select() retorna [] se nenhuma linha bateu o filtro → já encerrado.
+    const { data: changed, error } = await supabase
       .from('jogos')
       .update({ status: 'encerrado' })
       .eq('id', id)
+      .neq('status', 'encerrado')
+      .select('id')
     if (error) throw error
+
+    // Já estava encerrado: no-op idempotente, não re-propaga.
+    if (!changed || changed.length === 0) {
+      revalidatePath('/placar')
+      return { ok: true }
+    }
 
     // Propaga vencedor pro próximo jogo da chave. Falha NÃO bloqueia
     // mas retorna warning pro client mostrar toast amarelo + "Recalcular".
@@ -76,7 +94,7 @@ export async function atualizarPlacar(
     const supabase = await createClient()
     const { error } = await supabase
       .from('jogos')
-      .update({ placar_a, placar_b })
+      .update({ placar_a: clampPlacar(placar_a), placar_b: clampPlacar(placar_b) })
       .eq('id', id)
     if (error) throw error
     revalidatePath('/placar')
@@ -101,7 +119,7 @@ export async function lancarResultado(
 
     const { error } = await supabase
       .from('jogos')
-      .update({ placar_a, placar_b, status: 'encerrado' })
+      .update({ placar_a: clampPlacar(placar_a), placar_b: clampPlacar(placar_b), status: 'encerrado' })
       .eq('id', id)
     if (error) throw error
 
@@ -266,6 +284,22 @@ export async function registrarEvento(
     if (!TIPOS_VALIDOS.includes(tipo)) throw new Error(`Tipo inválido: ${tipo}`)
 
     const supabase = await createClient()
+
+    // Dedup defensivo: evento idêntico (jogo+tipo+equipe) nos últimos 1.5s
+    // é provavelmente double-click. No-op silencioso.
+    const since = new Date(Date.now() - 1500).toISOString()
+    const { data: recent } = await supabase
+      .from('eventos_jogo')
+      .select('id')
+      .eq('jogo_id', jogoId)
+      .eq('tipo', tipo)
+      .eq('equipe', equipe)
+      .gte('criado_em', since)
+      .limit(1)
+    if (recent && recent.length > 0) {
+      return // duplicado — ignora
+    }
+
     const { error } = await supabase
       .from('eventos_jogo')
       .insert({ jogo_id: jogoId, tipo, equipe })
@@ -286,6 +320,22 @@ export async function fecharSet(
   return safe(async () => {
     await requireSportEditor()
     const supabase = await createClient()
+
+    // Dedup CRÍTICO: double-click fecharia 2 sets, corrompendo o resultado
+    // (melhor-de-3 com contagem errada). Janela de 3s — fechar 2 sets reais
+    // em 3s é impossível.
+    const since = new Date(Date.now() - 3000).toISOString()
+    const { data: recentSet } = await supabase
+      .from('eventos_jogo')
+      .select('id')
+      .eq('jogo_id', jogoId)
+      .eq('tipo', 'set_ganho')
+      .gte('criado_em', since)
+      .limit(1)
+    if (recentSet && recentSet.length > 0) {
+      return // double-click — set já foi fechado
+    }
+
     const { error: evErr } = await supabase
       .from('eventos_jogo')
       .insert({ jogo_id: jogoId, tipo: 'set_ganho', equipe: vencedor })

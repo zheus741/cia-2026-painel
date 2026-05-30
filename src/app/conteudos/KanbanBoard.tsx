@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import {
-  createConteudo, updateConteudo, deleteConteudo, setStatus,
+  createConteudo, updateConteudo, deleteConteudo, setStatus, reordenarColuna,
   type ConteudoPayload,
 } from './actions'
 import { createClient } from '@/lib/supabase/client'
@@ -36,6 +36,8 @@ export interface Conteudo {
   tipo:                    string
   status:                  string
   prioridade:              number
+  /** Posição manual na coluna do kanban. Null = ordem cronológica. */
+  ordem:                   number | null
   dia_id:                  string | null
   setor_id:                string | null
   patrocinador_id:         string | null
@@ -197,6 +199,19 @@ function sortCronologico(a: Conteudo, b: Conteudo): number {
   return a.prioridade - b.prioridade
 }
 
+/**
+ * Ordenação da coluna: ordem MANUAL manda (cards arrastados). Cards sem ordem
+ * (null) caem pra cronológica e vão pro fim da coluna. Assim que o usuário
+ * reordena uma coluna, todos ganham `ordem` e a coluna fica 100% manual.
+ */
+function sortManual(a: Conteudo, b: Conteudo): number {
+  const oa = a.ordem, ob = b.ordem
+  if (oa != null && ob != null) return oa - ob
+  if (oa != null) return -1   // manual antes de não-ordenado
+  if (ob != null) return 1
+  return sortCronologico(a, b)
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function nullIfNone(v: string): string | null {
@@ -251,7 +266,7 @@ function MiniAvatar({ perfil, size = 20 }: { perfil: Perfil; size?: number }) {
 // ── Card ──────────────────────────────────────────────────────────────────────
 
 function ConteudoCard({
-  c, perfis, onEdit, onDelete, onMove, onView, isBeingDragged, readOnly,
+  c, perfis, onEdit, onDelete, onMove, onView, onReorderBefore, isBeingDragged, readOnly,
 }: {
   c: Conteudo
   perfis: Perfil[]
@@ -259,9 +274,12 @@ function ConteudoCard({
   onDelete: () => void
   onMove: (status: string) => void
   onView: () => void
+  /** Reordenar: insere o card arrastado ANTES deste (mesma coluna). */
+  onReorderBefore?: (draggedId: string) => void
   isBeingDragged: boolean
   readOnly?: boolean
 }) {
+  const [overTop, setOverTop] = React.useState(false)
   const hasPrev = !!PREV_STATUS[c.status]
   const hasNext = !!NEXT_STATUS[c.status]
   const canais     = parseCanais(c.canal_publicacao)
@@ -283,15 +301,40 @@ function ConteudoCard({
     e.dataTransfer.effectAllowed = 'move'
   }
 
+  // Reordenação dentro da coluna: ao soltar OUTRO card deste mesmo status sobre
+  // este, ele entra logo ACIMA. Cross-coluna não para a propagação → borbulha
+  // pra coluna (move pro fim, comportamento atual).
+  function handleDragOverCard(e: React.DragEvent) {
+    if (readOnly) return
+    e.preventDefault()
+    if (!overTop) setOverTop(true)
+  }
+  function handleDropCard(e: React.DragEvent) {
+    setOverTop(false)
+    if (readOnly) return
+    let data: { id: string; srcStatus: string } | null = null
+    try { data = JSON.parse(e.dataTransfer.getData('text/plain')) } catch { return }
+    if (!data || data.id === c.id) return
+    if (data.srcStatus === c.status) {
+      e.stopPropagation()           // mesma coluna → reordena aqui
+      onReorderBefore?.(data.id)
+    }
+    // status diferente → deixa borbulhar pra coluna (move pro fim)
+  }
+
   return (
     <div
       draggable
       onDragStart={handleDragStart}
+      onDragOver={handleDragOverCard}
+      onDragLeave={() => setOverTop(false)}
+      onDrop={handleDropCard}
       onClick={onView}
       className={cn(
         'group relative cursor-grab active:cursor-grabbing select-none',
         'transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(10,15,11,0.08)]',
         isBeingDragged && 'opacity-30 scale-[0.97] pointer-events-none',
+        overTop && 'shadow-[inset_0_3px_0_0_var(--green-bright)]',
       )}
       style={{
         borderRadius: 14,
@@ -1050,7 +1093,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
 // ── Column ────────────────────────────────────────────────────────────────────
 
 function KanbanColumn({
-  col, conteudos, perfis, onAdd, onEdit, onDelete, onMove, onView,
+  col, conteudos, perfis, onAdd, onEdit, onDelete, onMove, onView, onReorder,
   isDragOver, onDragOver, onDragLeave, onDrop, dragId, readOnly,
 }: {
   col: (typeof COLUNAS)[number]
@@ -1061,6 +1104,8 @@ function KanbanColumn({
   onDelete: (c: Conteudo) => void
   onMove: (c: Conteudo, status: string) => void
   onView: (c: Conteudo) => void
+  /** Reordena dentro da coluna: insere draggedId antes de beforeId (null = fim). */
+  onReorder: (status: string, draggedId: string, beforeId: string | null) => void
   isDragOver: boolean
   onDragOver: () => void
   onDragLeave: () => void
@@ -1078,7 +1123,10 @@ function KanbanColumn({
     e.preventDefault()
     try {
       const { id, srcStatus } = JSON.parse(e.dataTransfer.getData('text/plain'))
-      onDrop(id, srcStatus)
+      // Soltou na área da coluna (não num card). Mesma coluna → vai pro FIM.
+      // Coluna diferente → move de status (comportamento atual).
+      if (srcStatus === col.status) onReorder(col.status, id, null)
+      else onDrop(id, srcStatus)
     } catch { /* ignore */ }
   }
 
@@ -1151,6 +1199,7 @@ function KanbanColumn({
               onDelete={() => onDelete(c)}
               onMove={(s) => onMove(c, s)}
               onView={() => onView(c)}
+              onReorderBefore={(draggedId) => onReorder(col.status, draggedId, c.id)}
               isBeingDragged={dragId === c.id}
               readOnly={readOnly}
             />
@@ -1233,7 +1282,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
   React.useEffect(() => {
     const supabase = createClient()
     const SELECT_COLS = `
-      id, titulo, tipo, status, prioridade,
+      id, titulo, tipo, status, prioridade, ordem,
       dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
       canal_publicacao, briefing, horario_previsto, link_publicado,
       responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
@@ -1359,7 +1408,8 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     // PERF: optimistic update — o ator vê o card mover INSTANTANEAMENTE.
     // Se o servidor retornar erro, revertemos.
     const prevStatus = c.status
-    setConteudos(prev => prev.map(x => x.id === c.id ? { ...x, status } : x))
+    // Ao mudar de coluna, zera a ordem manual → entra no fim da nova coluna.
+    setConteudos(prev => prev.map(x => x.id === c.id ? { ...x, status, ordem: null } : x))
     if (viewCard?.id === c.id) setViewCard(v => v ? { ...v, status } : v)
     setMoving(c.id)
     const res = await setStatus(c.id, status)
@@ -1368,6 +1418,30 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       // Rollback em caso de erro de rede / permissão
       setConteudos(prev => prev.map(x => x.id === c.id ? { ...x, status: prevStatus } : x))
       if (viewCard?.id === c.id) setViewCard(v => v ? { ...v, status: prevStatus } : v)
+    }
+  }
+
+  // Reordena dentro de uma coluna: insere draggedId antes de beforeId (null = fim).
+  // Renumera a coluna inteira (ordem = índice) e persiste — ordem compartilhada.
+  async function handleReorder(status: string, draggedId: string, beforeId: string | null) {
+    const colIds = conteudos
+      .filter(c => c.status === status)
+      .sort(sortManual)
+      .map(c => c.id)
+      .filter(id => id !== draggedId)
+    const insertAt = beforeId ? colIds.indexOf(beforeId) : colIds.length
+    colIds.splice(insertAt < 0 ? colIds.length : insertAt, 0, draggedId)
+
+    // Optimistic: aplica ordem = índice nos cards desta coluna.
+    const ordemPorId = new Map(colIds.map((id, i) => [id, i]))
+    setConteudos(prev => prev.map(c =>
+      ordemPorId.has(c.id) ? { ...c, status, ordem: ordemPorId.get(c.id)! } : c,
+    ))
+
+    const res = await reordenarColuna(colIds)
+    if (res && !res.ok) {
+      // Rollback leve: recarrega do servidor via revalidação na próxima navegação.
+      console.error('[handleReorder] falhou:', res.error)
     }
   }
 
@@ -1515,7 +1589,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       <div className="flex-1 md:overflow-x-auto overflow-y-auto">
         <div className="flex flex-col md:flex-row gap-4 p-4 md:p-6 md:min-w-max">
           {COLUNAS.map(col => {
-            const colConteudos = filtered.filter(c => c.status === col.status).sort(sortCronologico)
+            const colConteudos = filtered.filter(c => c.status === col.status).sort(sortManual)
             return (
               <KanbanColumn
                 key={col.status}
@@ -1527,6 +1601,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
                 onDelete={(c) => setDeleteTarget(c)}
                 onMove={handleMove}
                 onView={(c) => setViewCard(c)}
+                onReorder={handleReorder}
                 isDragOver={dragOver === col.status}
                 onDragOver={() => setDragOver(col.status)}
                 onDragLeave={() => setDragOver(prev => prev === col.status ? null : prev)}

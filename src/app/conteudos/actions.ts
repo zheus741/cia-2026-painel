@@ -125,6 +125,26 @@ const STATUS_LABEL: Record<string, string> = {
   arquivado:   'Arquivado',
 }
 
+/**
+ * Salva a ordem manual de uma coluna do kanban. Recebe os ids do conteúdo na
+ * ordem visual (de cima pra baixo) e grava `ordem` = posição. Compartilhado:
+ * todo o time passa a ver nessa ordem.
+ */
+export async function reordenarColuna(orderedIds: string[]) {
+  return safe(async () => {
+    await requireLiderOrAbove()
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) return
+    const supabase = await createClient()
+    // Grava posição de cada card. Espaçamento simples (índice) — a coluna é
+    // sempre renumerada por inteiro a cada reordenação.
+    await Promise.all(
+      orderedIds.map((id, i) =>
+        supabase.from('conteudos').update({ ordem: i }).eq('id', id),
+      ),
+    )
+  })
+}
+
 export async function setStatus(id: string, status: string) {
   return safe(async () => {
     if (!VALID_STATUSES.includes(status as typeof VALID_STATUSES[number])) {

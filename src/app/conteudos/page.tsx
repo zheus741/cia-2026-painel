@@ -44,7 +44,7 @@ export default async function ConteudosPage({
   let conteudosQuery = supabase
     .from('conteudos')
     .select(`
-      id, titulo, tipo, status, prioridade,
+      id, titulo, tipo, status, prioridade, ordem,
       dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
       canal_publicacao, briefing, horario_previsto, link_publicado,
       responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,

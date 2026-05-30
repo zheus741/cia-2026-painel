@@ -1241,6 +1241,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
   const [filterTipo, setFilterTipo]     = React.useState('')
   const [filterPerfil, setFilterPerfil] = React.useState('')
   const [filterCanal, setFilterCanal]   = React.useState('')
+  const [filterSetor, setFilterSetor]   = React.useState('')
 
   const [dragId, setDragId]     = React.useState<string | null>(null)
   const [dragOver, setDragOver] = React.useState<string | null>(null)
@@ -1401,8 +1402,13 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     if (filterCanal && filterCanal !== '__all__') {
       list = list.filter(c => parseCanais(c.canal_publicacao).includes(filterCanal))
     }
+    if (filterSetor && filterSetor !== '__all__') {
+      list = filterSetor === '__none__'
+        ? list.filter(c => !c.setor_id)
+        : list.filter(c => c.setor_id === filterSetor)
+    }
     return list
-  }, [conteudos, search, filterDia, filterTipo, filterPerfil, filterCanal])
+  }, [conteudos, search, filterDia, filterTipo, filterPerfil, filterCanal, filterSetor])
 
   async function handleMove(c: Conteudo, status: string) {
     // PERF: optimistic update — o ator vê o card mover INSTANTANEAMENTE.
@@ -1552,6 +1558,17 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
                 </span>
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterSetor} onValueChange={setFilterSetor}>
+          <SelectTrigger className="h-8 w-36 text-[11px] rounded-full border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)]">
+            <SelectValue placeholder="Setor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos os setores</SelectItem>
+            {setores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+            <SelectItem value="__none__">Sem setor</SelectItem>
           </SelectContent>
         </Select>
 

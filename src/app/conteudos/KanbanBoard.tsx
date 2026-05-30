@@ -159,15 +159,40 @@ const RESP_STATUS_ORDER = ['nao_iniciado', 'produzindo', 'concluido'] as const
 const CANAL_OPTIONS = Object.entries(CANAL_CONFIG).map(([value, { label }]) => ({ value, label }))
 
 // ── Ordenação cronológica ─────────────────────────────────────────────────────
+
+/**
+ * Converte horario_previsto pra minutos do dia (0–1439), pra comparação numérica.
+ * O campo vem em DOIS formatos no banco: "HH:MM" (input time, novo) e ISO
+ * timestamptz "2026-06-04T14:30:00..." (legado). Comparar como string lexical
+ * embaralhava tudo ("14:30" < "2026-..."). Null/inválido → fim do dia.
+ */
+function horarioParaMinutos(raw: string | null | undefined): number {
+  if (!raw) return 99999
+  let hh: number, mm: number
+  if (raw.includes('T')) {
+    const d = new Date(raw)
+    if (Number.isNaN(d.getTime())) return 99999
+    // Hora no fuso do evento (São Paulo)
+    const hm = d.toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo',
+    })
+    ;[hh, mm] = hm.split(':').map(Number)
+  } else {
+    ;[hh, mm] = raw.split(':').map(Number)
+  }
+  if (Number.isNaN(hh)) return 99999
+  return hh * 60 + (Number.isNaN(mm) ? 0 : mm)
+}
+
 function sortCronologico(a: Conteudo, b: Conteudo): number {
   // Sem dia → vai ao final
   const diaA = a.dia?.data ?? '9999-99-99'
   const diaB = b.dia?.data ?? '9999-99-99'
   if (diaA !== diaB) return diaA.localeCompare(diaB)
-  // Mesmo dia → ordena por horário (sem horário vai ao final do dia)
-  const horA = a.horario_previsto ?? '99:99'
-  const horB = b.horario_previsto ?? '99:99'
-  if (horA !== horB) return horA.localeCompare(horB)
+  // Mesmo dia → ordena por horário em minutos (trata "HH:MM" e ISO)
+  const horA = horarioParaMinutos(a.horario_previsto)
+  const horB = horarioParaMinutos(b.horario_previsto)
+  if (horA !== horB) return horA - horB
   // Desempate por prioridade
   return a.prioridade - b.prioridade
 }

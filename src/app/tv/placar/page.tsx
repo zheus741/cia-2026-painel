@@ -1,12 +1,24 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { buildLineupFromShows, EMPTY_LINEUP, type ShowRow, type DiaRow, type SetorRow } from '@/lib/lineup-data'
 import { PlacarTVClient } from './PlacarTVClient'
 
 const EDICAO_ID = '00000000-0000-0000-0000-000000000001'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'CIA 2026 · Placar Ao Vivo' }
+export const metadata = {
+  title: 'CIA 2026 · Placar Ao Vivo',
+  description: 'Acompanhe os jogos da Copa Inter Atléticas 2026 em tempo real.',
+  openGraph: {
+    title: 'CIA 2026 · Placar Ao Vivo',
+    description: 'Acompanhe os jogos da Copa Inter Atléticas 2026 em tempo real.',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image' as const,
+    title: 'CIA 2026 · Placar Ao Vivo',
+    description: 'Acompanhe os jogos da Copa Inter Atléticas 2026 em tempo real.',
+  },
+}
 
 const JOGO_SELECT = `
   id, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
@@ -48,9 +60,10 @@ function normalize(jogos: RawJogo[] | null) {
 }
 
 export default async function PlacarTVPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  // PÚBLICO: sem login. Usa service client (bypassa RLS) pro fetch inicial —
+  // só lê dados de competição que já são públicos. O realtime no client usa
+  // o role anon (policies em migration 0063).
+  const supabase = createServiceClient()
 
   const todaySP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const startOfTodayISO = `${todaySP}T00:00:00-03:00`

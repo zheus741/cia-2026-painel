@@ -112,11 +112,13 @@ function LiveCard({
   variant,
   pulseA,
   pulseB,
+  isMobile = false,
 }: {
   jogo: JogoTV
   variant: 'hero' | 'large' | 'medium'
   pulseA: boolean
   pulseB: boolean
+  isMobile?: boolean
 }) {
   const accentA = teamAccent(jogo.equipe_a, jogo.divisao)
   const accentB = teamAccent(jogo.equipe_b, jogo.divisao)
@@ -126,10 +128,11 @@ function LiveCard({
   const divColor = divisao ? DIV_COLORS[divisao] : null
   const conf = accentA.meta ?? accentB.meta
 
-  const scoreSize     = variant === 'hero' ? 180 : variant === 'large' ? 130 : 88
-  const nameSize      = variant === 'hero' ? 32  : variant === 'large' ? 26  : 18
-  const uniSize       = variant === 'hero' ? 14  : variant === 'large' ? 12  : 10
-  const padding       = variant === 'hero' ? 36  : variant === 'large' ? 28  : 20
+  // Mobile: tamanhos compactos pra caber no celular sem cortar
+  const scoreSize = isMobile ? 64 : variant === 'hero' ? 180 : variant === 'large' ? 130 : 88
+  const nameSize  = isMobile ? 17 : variant === 'hero' ? 32  : variant === 'large' ? 26  : 18
+  const uniSize   = isMobile ? 10 : variant === 'hero' ? 14  : variant === 'large' ? 12  : 10
+  const padding   = isMobile ? 18 : variant === 'hero' ? 36  : variant === 'large' ? 28  : 20
 
   return (
     <div
@@ -494,6 +497,15 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
   const lastEncerradoFlashRef = useRef<Set<string>>(new Set(initialEncerrados.map(j => j.id)))
   const now = useClock()
 
+  // Detecta mobile (público acompanhando no celular) — layout empilha.
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   // Sincroniza props (quando router.refresh refaz fetch)
   useEffect(() => { setAoVivo(initialAoVivo) }, [initialAoVivo])
   useEffect(() => { setEncerrados(initialEncerrados) }, [initialEncerrados])
@@ -622,9 +634,12 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
 
   // Layout do grid de ao_vivo (varia por count)
   const liveVariant: 'hero' | 'large' | 'medium' =
+    isMobile ? (aoVivo.length === 1 ? 'hero' : 'large') :
     aoVivo.length === 1 ? 'hero' :
     aoVivo.length <= 4 ? 'large' : 'medium'
+  // Mobile: sempre 1 coluna (cards empilhados). Telão: multi-coluna.
   const liveCols =
+    isMobile ? '1fr' :
     aoVivo.length === 1 ? '1fr' :
     aoVivo.length === 2 ? 'repeat(2, 1fr)' :
     aoVivo.length <= 4 ? 'repeat(2, 1fr)' :
@@ -657,17 +672,19 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
         position: 'relative', zIndex: 1,
         display: 'flex', flexDirection: 'column',
         minHeight: '100vh',
-        padding: '20px 28px 16px',
-        gap: 18,
+        padding: isMobile ? '14px 14px 20px' : '20px 28px 16px',
+        gap: isMobile ? 12 : 18,
       }}>
 
         {/* HEADER */}
         <header style={{
-          display: 'flex', alignItems: 'center', gap: 16,
+          display: 'flex', alignItems: 'center',
+          gap: isMobile ? 10 : 16,
           paddingBottom: 12,
           borderBottom: '1px solid rgba(255,255,255,0.06)',
+          flexWrap: isMobile ? 'wrap' : 'nowrap',
         }}>
-          <CiaLogo size={28} />
+          <CiaLogo size={isMobile ? 24 : 28} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <span style={{
               fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase',
@@ -676,7 +693,7 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
               CIA 2026 · Placar
             </span>
             <span style={{
-              fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em',
+              fontSize: isMobile ? 16 : 18, fontWeight: 800, letterSpacing: '-0.02em',
             }}>
               Ao Vivo
             </span>
@@ -685,7 +702,7 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
           {/* Ao vivo count */}
           {aoVivo.length > 0 && (
             <span style={{
-              marginLeft: 16,
+              marginLeft: isMobile ? 'auto' : 16,
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '6px 12px', borderRadius: 99,
               background: 'rgba(220,38,38,0.20)',
@@ -698,25 +715,31 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
             </span>
           )}
 
-          {/* Spacer + meta */}
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-            <NowPlayingTicker lineup={lineup} />
-          </div>
+          {/* Spacer + ticker (desktop só — no mobile polui) */}
+          {!isMobile && (
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+              <NowPlayingTicker lineup={lineup} />
+            </div>
+          )}
+          {isMobile && <div style={{ flex: 1 }} />}
 
-          <span style={{
-            fontSize: 11, color: 'rgba(255,255,255,0.50)', fontWeight: 600,
-            letterSpacing: '0.04em',
-          }}>
-            {now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' })}
-          </span>
+          {/* Data — só desktop */}
+          {!isMobile && (
+            <span style={{
+              fontSize: 11, color: 'rgba(255,255,255,0.50)', fontWeight: 600,
+              letterSpacing: '0.04em',
+            }}>
+              {now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' })}
+            </span>
+          )}
 
           <span style={{
             fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif',
-            fontSize: 22, fontWeight: 800, letterSpacing: '-0.03em',
+            fontSize: isMobile ? 18 : 22, fontWeight: 800, letterSpacing: '-0.03em',
             fontVariantNumeric: 'tabular-nums',
             color: '#fafaf0',
           }}>
-            {now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Sao_Paulo' })}
+            {now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}
           </span>
 
           {/* Connection */}
@@ -739,21 +762,23 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
             {conectado ? 'Sync' : 'OFF'}
           </span>
 
-          {/* Fullscreen toggle */}
-          <button
-            onClick={toggleFullscreen}
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 30, height: 30, borderRadius: 8,
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              color: 'rgba(255,255,255,0.55)',
-              cursor: 'pointer',
-            }}
-            title={fullscreen ? 'Sair de tela cheia (Esc)' : 'Tela cheia'}
-          >
-            {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          </button>
+          {/* Fullscreen toggle — desktop só (público no celular não precisa) */}
+          {!isMobile && (
+            <button
+              onClick={toggleFullscreen}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 30, height: 30, borderRadius: 8,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: 'rgba(255,255,255,0.55)',
+                cursor: 'pointer',
+              }}
+              title={fullscreen ? 'Sair de tela cheia (Esc)' : 'Tela cheia'}
+            >
+              {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+          )}
         </header>
 
         {/* MAIN — live games or upcoming preview */}
@@ -773,6 +798,7 @@ export function PlacarTVClient({ aoVivo: initialAoVivo, encerrados: initialEncer
                   variant={liveVariant}
                   pulseA={pulseMap.get(jogo.id) === 'a'}
                   pulseB={pulseMap.get(jogo.id) === 'b'}
+                  isMobile={isMobile}
                 />
               ))}
             </div>

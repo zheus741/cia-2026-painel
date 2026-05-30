@@ -601,6 +601,27 @@ export function ClassificacaoClient({ div1, div2, super08 }: Props) {
         </span>
       </header>
 
+      {/* Legenda explicativa — evita contestação sobre o número exibido */}
+      <div
+        className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border px-4 py-2.5"
+        style={{ borderColor: 'var(--border)', background: 'var(--muted)' }}
+      >
+        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+          Como ler
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-[11.5px] text-[var(--foreground)]">
+          <span className="font-bold text-[var(--green-bright)]">Atual</span>
+          <span className="text-[var(--muted-foreground)]">= pontos já garantidos até a fase atual</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-[11.5px] text-[var(--foreground)]">
+          <span className="font-bold text-[var(--gold-bright)]">Máx</span>
+          <span className="text-[var(--muted-foreground)]">= potencial se vencer tudo daqui pra frente</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-[11.5px] text-[var(--muted-foreground)]">
+          O ranking ordena pelo <strong className="text-[var(--foreground)]">piso garantido</strong> — quem está vivo numa fase avançada pode aparecer atrás de quem já fechou colocação melhor.
+        </span>
+      </div>
+
       {/* Tabs como cards visuais */}
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
         {tabsConfig.map(t => {

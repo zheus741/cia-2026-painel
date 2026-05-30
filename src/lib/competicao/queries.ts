@@ -338,6 +338,13 @@ const isFase = (jogo: { fase: string | null }, lista: string[]): boolean =>
   !!jogo.fase && lista.includes(jogo.fase.toLowerCase().trim())
 
 const venceu = (j: JogoDetalhe, equipeId: string): boolean => {
+  // Vitória por W.O. — adversário não compareceu. Conta como vitória normal
+  // (decisão de regra: W.O. = vitória pra fins de avanço e pontuação).
+  // wo='a' → A não compareceu, B venceu. wo='b' → B faltou, A venceu.
+  if (j.wo === 'a') return j.equipe_b_id === equipeId
+  if (j.wo === 'b') return j.equipe_a_id === equipeId
+  if (j.wo === 'duplo') return false  // ambos faltaram — ninguém vence
+
   if (j.placar_a == null || j.placar_b == null) return false
   const isA = j.equipe_a_id === equipeId
   return isA ? j.placar_a > j.placar_b : j.placar_b > j.placar_a

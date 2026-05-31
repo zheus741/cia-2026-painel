@@ -1176,6 +1176,13 @@ export function EsportivoClient({
       tone: 'cream' as const,
       span: 'sm' as const,
     },
+    {
+      href: '/esportivo/mapa',
+      label: 'Mapa Esportivo',
+      meta: '17 praças · satélite interativo',
+      tone: 'terracotta' as const,
+      span: 'sm' as const,
+    },
   ]
 
   return (

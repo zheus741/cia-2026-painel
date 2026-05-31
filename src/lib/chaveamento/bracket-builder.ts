@@ -202,6 +202,10 @@ const ALIASES: Record<string, string> = {
   'X 10 DE OUTUBRO':     'X DE OUTUBRO',
   'XV SETEMBRO':         'XV DE SETEMBRO',
   'TOUROS PUC':          'TOURO PUC',
+  // Mesmo time grafado com/sem a sigla da instituição (planilha × banco).
+  // Sem isso o fuzzy falha: o sufixo "UFU" não bate contra o nome curto.
+  'FAEFI':               'FAEFI UFU',
+  'BIOLOGICAS':          'BIOLOGICAS UFU',
 }
 
 export function canonTeamName(s: string | null | undefined): string {

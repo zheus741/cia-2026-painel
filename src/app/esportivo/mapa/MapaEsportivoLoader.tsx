@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import type { Venue } from './types'
 
 const Dyn = dynamic(
   () => import('./MapaEsportivoVenuesClient').then(m => m.MapaEsportivoVenuesClient),
@@ -14,6 +15,6 @@ const Dyn = dynamic(
   },
 )
 
-export function MapaEsportivoLoader() {
-  return <Dyn />
+export function MapaEsportivoLoader({ venues, semGeo }: { venues: Venue[]; semGeo: string[] }) {
+  return <Dyn venues={venues} semGeo={semGeo} />
 }

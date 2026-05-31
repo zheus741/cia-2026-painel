@@ -673,6 +673,40 @@ export interface ResultadoExterno {
   observacoes:      string | null
 }
 
+/**
+ * Família da modalidade a partir do NOME — pra casar inscrição (modalidade
+ * genérica "Vôlei") com jogo (modalidade por gênero "Vôlei Masculino"), já que
+ * eles vêm de fontes diferentes (seed vs import) com ids/nomes distintos.
+ */
+function famModalidade(nome: string | null | undefined): string {
+  const n = (nome ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  if (n.includes('futsal')) return 'futsal'
+  if (n.includes('futebol') && n.includes('7')) return 'fut7'
+  if (n.includes('fut') && n.includes('7')) return 'fut7'
+  if (n.includes('futebol')) return 'futebol'
+  if (n.includes('basquete')) return 'basquete'
+  if (n.includes('hand')) return 'handebol'
+  if (n.includes('praia')) return 'voleipraia'
+  if (n.includes('volei') || n.includes('vole')) return 'volei'
+  if (n.includes('peteca')) return 'peteca'
+  if (n.includes('tenis') && n.includes('mesa')) return 'tenismesa'
+  if (n.includes('tenis')) return 'teniscampo'
+  if (n.includes('natac')) return 'natacao'
+  if (n.includes('atletismo')) return 'atletismo'
+  return n.trim() || '?'
+}
+
+/** Compara categoria tolerando "F"/"M" vs "Feminino"/"Masculino". */
+function categoriaIgual(a: string | null | undefined, b: string | null | undefined): boolean {
+  const norm = (c: string | null | undefined) => {
+    const x = (c ?? '').trim().toLowerCase()
+    if (x.startsWith('f')) return 'f'
+    if (x.startsWith('m')) return 'm'
+    return x
+  }
+  return norm(a) === norm(b)
+}
+
 export function computePrevisaoAtletica(
   todosJogos: JogoDetalhe[],
   inscricoes: InscricaoDetalhe[],
@@ -686,11 +720,14 @@ export function computePrevisaoAtletica(
   let decididas = 0
 
   for (const insc of inscricoes) {
-    // Jogos desta modalidade+categoria especificamente
+    // Jogos desta modalidade+categoria — match TOLERANTE (família da modalidade
+    // + gênero), pois inscrições (seed) e jogos (import) usam modalidade_id e
+    // formato de categoria diferentes.
+    const fam = famModalidade(insc.modalidade_nome)
     const jogosMod = todosJogos.filter(j =>
-      j.modalidade_id === insc.modalidade_id && j.categoria === insc.categoria,
+      famModalidade(j.modalidade_nome) === fam && categoriaIgual(j.categoria, insc.categoria),
     )
-    const isIntraConf = insc.divisao === 'Super 08'
+    const isIntraConf = insc.divisao === 'Super 08' || !!insc.conferencia
 
     // Modalidade de prova (natação, atletismo) — sem range
     if (isModalidadeProva(insc.modalidade_nome)) {

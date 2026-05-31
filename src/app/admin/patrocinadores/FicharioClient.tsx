@@ -747,7 +747,7 @@ export function FicharioClient({
           <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-[var(--foreground)]">Patrocinadores</h1>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">
             {canEdit
-              ? 'Cadastre cada patrocinador. Escopo de entregas gerenciado dentro de cada ficha.'
+              ? 'Cadastre cada patrocinador. Escopo de entregas gerenciado dentro de cada ficha. TODOS OS PATROCINADORES DEVERÃO TER APLICAÇÃO DE MARCA NO TELÃO DO PALCO E TRANSMISSÃO AO VIVO.'
               : 'Visualize patrocinadores e o escopo de entregas contratadas.'}
           </p>
         </div>

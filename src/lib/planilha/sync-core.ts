@@ -18,21 +18,29 @@ function gvizUrl(aba: string): string {
   return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(aba)}`
 }
 
-/** Busca e parseia todas as abas da planilha. */
+/** Busca e parseia todas as abas da planilha — EM PARALELO (rápido). */
 export async function buscarResultadosDasAbas(): Promise<{
   resultados: ResultadoPlanilha[]
   abasComErro: string[]
 }> {
   const resultados: ResultadoPlanilha[] = []
   const abasComErro: string[] = []
-  for (const aba of ABAS) {
+
+  const fetchAba = async (aba: string): Promise<{ aba: string; res?: ResultadoPlanilha[] }> => {
     try {
-      const resp = await fetch(gvizUrl(aba), { cache: 'no-store' })
-      if (!resp.ok) { abasComErro.push(aba); continue }
-      resultados.push(...parseAba(await resp.text(), aba))
+      // timeout por aba (12s) pra uma aba lenta não travar a sincronização inteira
+      const resp = await fetch(gvizUrl(aba), { cache: 'no-store', signal: AbortSignal.timeout(12_000) })
+      if (!resp.ok) return { aba }
+      return { aba, res: parseAba(await resp.text(), aba) }
     } catch {
-      abasComErro.push(aba)
+      return { aba }
     }
+  }
+
+  const settled = await Promise.all(ABAS.map(fetchAba))
+  for (const s of settled) {
+    if (s.res) resultados.push(...s.res)
+    else abasComErro.push(s.aba)
   }
   return { resultados, abasComErro }
 }

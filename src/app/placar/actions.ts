@@ -6,6 +6,10 @@ import { requireSportEditor, safe, type ActionResult } from '@/lib/admin/actions
 import { logError } from '@/lib/observability/log-error'
 import { detectConcurrentEdit } from '@/lib/competicao/concurrent-edit'
 import { propagarVencedorNaChave, recalcularChave, vincularEquipesNaChave } from '@/lib/chaveamento/avanco'
+import {
+  buscarResultadosDasAbas, casarResultados, aplicarResultadoNoJogo,
+  JOGO_SELECT_COLS, type JogoRow,
+} from '@/lib/planilha/sync-core'
 
 // Helper: invalida cache da home quando dados estáticos do evento mudam.
 // updateTag = revalidateTag mas com read-your-own-writes (Next 16+).
@@ -483,5 +487,43 @@ export async function recalcularChaveAction(
       vinculados:    vinculo.vinculados,
       naoResolvidos: vinculo.naoResolvidos,
     }
+  })
+}
+
+/**
+ * Sincroniza AGORA com a planilha pública: lê os resultados, casa com os jogos
+ * e aplica os de casamento único (novos ou que mudaram), propagando a chave.
+ * Botão "Sincronizar planilha" no placar. Mesma lógica do webhook realtime.
+ */
+export async function sincronizarPlanilhaAgora(): Promise<
+  ActionResult & { data?: { lidos: number; aplicados: number; jaIguais: number; semCasar: number; ambiguos: number; erros: number } }
+> {
+  return safe(async () => {
+    await requireSportEditor()
+    const supabase = await createClient()
+
+    const { data: jogosRaw } = await supabase.from('jogos').select(JOGO_SELECT_COLS)
+    const jogos = (jogosRaw ?? []) as JogoRow[]
+
+    const { resultados } = await buscarResultadosDasAbas()
+    const itens = casarResultados(jogos, resultados)
+
+    let aplicados = 0, jaIguais = 0, semCasar = 0, ambiguos = 0, erros = 0
+    for (const it of itens) {
+      if (it.status === 'sem_jogo' || it.status === 'sem_modalidade') { semCasar++; continue }
+      if (it.status === 'ambiguo') { ambiguos++; continue }
+      if (it.status === 'igual')   { jaIguais++; continue }
+      const r = await aplicarResultadoNoJogo(supabase, it)
+      if (r === 'aplicado') aplicados++
+      else if (r === 'erro') erros++
+      else jaIguais++
+    }
+
+    revalidatePath('/placar')
+    bustHomeCache()
+    revalidatePath('/esportivo/chaveamento')
+    revalidatePath('/esportivo/classificacao')
+    revalidatePath('/central')
+    return { lidos: resultados.length, aplicados, jaIguais, semCasar, ambiguos, erros }
   })
 }

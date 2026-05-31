@@ -4,8 +4,9 @@ import { useState, useTransition, useEffect, useCallback, useRef, useMemo, memo 
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2, X, ChevronDown, Crown } from 'lucide-react'
-import { setJogoAoVivo, encerrarJogo, encerrarComPenaltis, atualizarPlacar, lancarResultado, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento, fecharSet } from './actions'
+import { Radio, CheckCircle2, XCircle, Minus, Plus, AlertCircle, ArrowUpRight, Zap, Share2, RotateCcw, Filter, FlaskConical, UserX, Undo2, X, ChevronDown, Crown, RefreshCw } from 'lucide-react'
+import { toast } from '@/components/toast'
+import { setJogoAoVivo, encerrarJogo, encerrarComPenaltis, atualizarPlacar, lancarResultado, cancelarJogo, reativarJogo, criarJogoTeste, declararWO, removerWO, registrarEvento, removerEvento, fecharSet, sincronizarPlanilhaAgora } from './actions'
 import { getConferencia } from '@/lib/conferencias'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
@@ -2076,6 +2077,22 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
   const [filterMod, setFilterMod] = useState('')
   const [filterConf, setFilterConf] = useState('')
   const [isPendingTeste, startTransitionTeste] = useTransition()
+  const [isSyncPending, startSyncTransition] = useTransition()
+
+  function handleSincronizarPlanilha() {
+    startSyncTransition(async () => {
+      const r = await sincronizarPlanilhaAgora()
+      if (r.ok && r.data) {
+        const d = r.data
+        toast.success('Planilha sincronizada', {
+          description: `${d.lidos} lidos · ${d.aplicados} aplicados · ${d.jaIguais} já ok · ${d.semCasar} sem casar${d.ambiguos ? ` · ${d.ambiguos} ambíguos` : ''}`,
+          duration: 8000,
+        })
+      } else {
+        toast.error('Falha ao sincronizar planilha', { description: r.error })
+      }
+    })
+  }
 
   const lastLocalChangeRef = useRef<Map<string, number>>(new Map())
 
@@ -2369,6 +2386,17 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
               />
               {conectado ? 'Tempo real' : 'Conectando'}
             </span>
+            {canEdit && (
+              <button
+                onClick={handleSincronizarPlanilha}
+                disabled={isSyncPending}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--green-bright)]/40 bg-[var(--green-dim)]/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--green-bright)] transition-all hover:bg-[var(--green-dim)]/25 disabled:opacity-40"
+                title="Lê a planilha de resultados e aplica os placares nos jogos"
+              >
+                <RefreshCw className={`h-3 w-3 ${isSyncPending ? 'animate-spin' : ''}`} />
+                {isSyncPending ? 'Sincronizando…' : 'Sincronizar planilha'}
+              </button>
+            )}
             {canEdit && (
               <button
                 onClick={() => startTransitionTeste(async () => { await criarJogoTeste(diaId) })}

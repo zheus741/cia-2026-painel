@@ -11,7 +11,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp, ClipboardList } from 'lucide-react'
+import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp, ClipboardList, Download } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
 import { useRealtimeRevival } from '@/lib/supabase/use-realtime-revival'
@@ -1159,6 +1159,14 @@ export function EsportivoClient({
       label: 'Importar tabela',
       meta: 'XLSX da CIA',
       tone: 'cream' as const,
+      span: 'sm' as const,
+    },
+    {
+      href: '/esportivo/importar-resultados',
+      label: 'Importar resultados',
+      meta: 'Placares da planilha Google',
+      tone: 'green' as const,
+      icon: Download,
       span: 'sm' as const,
     },
     {

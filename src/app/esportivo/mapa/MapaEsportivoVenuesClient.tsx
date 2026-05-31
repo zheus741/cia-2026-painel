@@ -149,6 +149,13 @@ export function MapaEsportivoVenuesClient() {
                 <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--gold)]">Praça · {String(venue.id).padStart(2, '0')}</div>
                 <div className="mt-1 text-[15px] font-extrabold text-[var(--foreground)]">{venue.name}</div>
                 <div className="mt-0.5 text-xs text-[var(--muted-foreground)]">{venue.addr} — <span className="text-[var(--gold)]">{venue.neigh}</span></div>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${venue.name}, ${venue.addr}, ${venue.neigh}, Uberaba - MG`)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[var(--green)] px-3 py-1.5 text-[11px] font-bold text-white transition-opacity hover:opacity-90"
+                >
+                  🧭 Como chegar
+                </a>
               </div>
               <div className="flex-1 overflow-y-auto px-4 py-3">
                 <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-[var(--gold)]">Instalações</div>

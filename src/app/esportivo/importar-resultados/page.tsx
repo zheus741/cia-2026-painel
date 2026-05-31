@@ -6,6 +6,7 @@ import { ImportResultadosClient } from './ImportResultadosClient'
 const CAN_EDIT_ROLES = ['admin', 'coordenador_esportivo']
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 30  // server actions desta página: busca/aplica resultados (rede + DB)
 
 export default async function ImportarResultadosPage() {
   const profile = await requireProfile()

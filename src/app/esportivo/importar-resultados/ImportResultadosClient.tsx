@@ -29,16 +29,21 @@ export function ImportResultadosClient() {
   async function buscar() {
     setLoading(true)
     setItens(null); setSel(new Set())
-    const r = await buscarPreviewPlanilha()
-    setLoading(false)
-    if (!r.ok || !r.data) { toast.error('Falha ao buscar a planilha', { description: r.error }); return }
-    setItens(r.data.itens)
-    setMeta({ abasComErro: r.data.abasComErro, totalLidos: r.data.totalLidos })
-    // Pré-seleciona os "novos" (jogos ainda não encerrados).
-    const novos = new Set<number>()
-    r.data.itens.forEach((it, i) => { if (it.status === 'novo') novos.add(i) })
-    setSel(novos)
-    toast.success('Planilha lida', { description: `${r.data.itens.length} resultados encontrados` })
+    try {
+      const r = await buscarPreviewPlanilha()
+      if (!r.ok || !r.data) { toast.error('Falha ao buscar a planilha', { description: r.error }); return }
+      setItens(r.data.itens)
+      setMeta({ abasComErro: r.data.abasComErro, totalLidos: r.data.totalLidos })
+      // Pré-seleciona os "novos" (jogos ainda não encerrados).
+      const novos = new Set<number>()
+      r.data.itens.forEach((it, i) => { if (it.status === 'novo') novos.add(i) })
+      setSel(novos)
+      toast.success('Planilha lida', { description: `${r.data.itens.length} resultados encontrados` })
+    } catch (e) {
+      toast.error('Erro ao buscar', { description: e instanceof Error ? e.message : 'tente de novo' })
+    } finally {
+      setLoading(false)
+    }
   }
 
   function toggle(i: number) {
@@ -54,11 +59,16 @@ export function ImportResultadosClient() {
     const escolhidos = [...sel].map(i => itens[i]).filter(it => it.jogoId)
     if (escolhidos.length === 0) { toast.error('Selecione ao menos um resultado'); return }
     setApplying(true)
-    const r = await aplicarResultadosPlanilha(escolhidos)
-    setApplying(false)
-    if (!r.ok || !r.data) { toast.error('Falha ao aplicar', { description: r.error }); return }
-    toast.success('Resultados aplicados', { description: `${r.data.aplicados} aplicados · ${r.data.erros} erros` })
-    buscar()  // recarrega preview
+    try {
+      const r = await aplicarResultadosPlanilha(escolhidos)
+      if (!r.ok || !r.data) { toast.error('Falha ao aplicar', { description: r.error }); return }
+      toast.success('Resultados aplicados', { description: `${r.data.aplicados} aplicados · ${r.data.erros} erros` })
+      buscar()  // recarrega preview
+    } catch (e) {
+      toast.error('Erro ao aplicar', { description: e instanceof Error ? e.message : 'tente de novo' })
+    } finally {
+      setApplying(false)
+    }
   }
 
   const aplicaveis = itens?.filter(it => STATUS_META[it.status].aplicavel) ?? []

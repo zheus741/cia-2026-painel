@@ -496,7 +496,7 @@ export async function recalcularChaveAction(
  * Botão "Sincronizar planilha" no placar. Mesma lógica do webhook realtime.
  */
 export async function sincronizarPlanilhaAgora(): Promise<
-  ActionResult & { data?: { lidos: number; aplicados: number; jaIguais: number; semCasar: number; ambiguos: number; erros: number } }
+  ActionResult & { data?: { lidos: number; aplicados: number; jaIguais: number; semCasar: number; ambiguos: number; erros: number; naoCasados: string[] } }
 > {
   return safe(async () => {
     await requireSportEditor()
@@ -509,10 +509,15 @@ export async function sincronizarPlanilhaAgora(): Promise<
     const itens = casarResultados(jogos, resultados)
 
     let aplicados = 0, jaIguais = 0, semCasar = 0, ambiguos = 0, erros = 0
+    const naoCasados: string[] = []
     for (const it of itens) {
-      if (it.status === 'sem_jogo' || it.status === 'sem_modalidade') { semCasar++; continue }
-      if (it.status === 'ambiguo') { ambiguos++; continue }
-      if (it.status === 'igual')   { jaIguais++; continue }
+      if (it.status === 'sem_jogo' || it.status === 'sem_modalidade' || it.status === 'ambiguo') {
+        if (it.status === 'ambiguo') ambiguos++; else semCasar++
+        const motivo = it.status === 'ambiguo' ? 'ambíguo' : it.status === 'sem_modalidade' ? 'modalidade?' : 'sem jogo'
+        naoCasados.push(`${it.res.timeA} ${it.res.placarA}×${it.res.placarB} ${it.res.timeB} · ${it.res.modalidadeLabel} · ${it.res.aba} (${motivo})`)
+        continue
+      }
+      if (it.status === 'igual') { jaIguais++; continue }
       const r = await aplicarResultadoNoJogo(supabase, it)
       if (r === 'aplicado') aplicados++
       else if (r === 'erro') erros++
@@ -524,6 +529,6 @@ export async function sincronizarPlanilhaAgora(): Promise<
     revalidatePath('/esportivo/chaveamento')
     revalidatePath('/esportivo/classificacao')
     revalidatePath('/central')
-    return { lidos: resultados.length, aplicados, jaIguais, semCasar, ambiguos, erros }
+    return { lidos: resultados.length, aplicados, jaIguais, semCasar, ambiguos, erros, naoCasados }
   })
 }

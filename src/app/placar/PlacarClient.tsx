@@ -2084,9 +2084,15 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
       const r = await sincronizarPlanilhaAgora()
       if (r.ok && r.data) {
         const d = r.data
+        const naoCasados = d.naoCasados ?? []
+        if (naoCasados.length > 0) console.warn('[sincronizar] não casaram:\n' + naoCasados.join('\n'))
+        const semCasarTotal = d.semCasar + d.ambiguos
+        const extra = naoCasados.length
+          ? ` · ⚠ não casaram: ${naoCasados.slice(0, 4).join(' · ')}${naoCasados.length > 4 ? ` … +${naoCasados.length - 4} (ver console F12)` : ''}`
+          : ''
         toast.success('Planilha sincronizada', {
-          description: `${d.lidos} lidos · ${d.aplicados} aplicados · ${d.jaIguais} já ok · ${d.semCasar} sem casar${d.ambiguos ? ` · ${d.ambiguos} ambíguos` : ''}`,
-          duration: 8000,
+          description: `${d.lidos} lidos · ${d.aplicados} aplicados · ${d.jaIguais} já ok · ${semCasarTotal} sem casar` + extra,
+          duration: naoCasados.length ? 14000 : 7000,
         })
       } else {
         toast.error('Falha ao sincronizar planilha', { description: r.error })

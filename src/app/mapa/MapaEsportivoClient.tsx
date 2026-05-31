@@ -47,7 +47,7 @@ export function MapaEsportivoClient({ venues }: { venues: VenueEsportivo[] }) {
         </p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
+      <div className="space-y-5">
         {/* ── Mapa (imagem 3D + pins) ─────────────────────────────────── */}
         <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
           {imgOk ? (
@@ -102,9 +102,9 @@ export function MapaEsportivoClient({ venues }: { venues: VenueEsportivo[] }) {
         </div>
 
         {/* ── Lista de locais esportivos ──────────────────────────────── */}
-        <div className="space-y-2">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {venues.length === 0 ? (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-10 text-center text-sm text-[var(--muted-foreground)]">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-10 text-center text-sm text-[var(--muted-foreground)] sm:col-span-2 lg:col-span-3">
               Nenhum local de competição encontrado ainda (sem jogos com local definido).
             </div>
           ) : (

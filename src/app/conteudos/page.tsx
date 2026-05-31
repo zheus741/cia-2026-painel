@@ -47,7 +47,7 @@ export default async function ConteudosPage({
       id, titulo, tipo, status, prioridade, ordem,
       dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
       canal_publicacao, briefing, horario_previsto, link_publicado,
-      responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
+      responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, responsavel_influencer_id,
       status_captacao, status_design, status_edicao,
       jogo:jogo_id (equipe_a_nome, equipe_b_nome, modalidade:modalidade_id (nome, icone)),
       show:show_id (nome, inicio),

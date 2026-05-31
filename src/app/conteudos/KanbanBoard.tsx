@@ -52,6 +52,7 @@ export interface Conteudo {
   responsavel_captacao_id: string | null
   responsavel_design_id:   string | null
   responsavel_edicao_id:   string | null
+  responsavel_influencer_id: string | null
   status_captacao?:        string | null
   status_design?:          string | null
   status_edicao?:          string | null
@@ -292,6 +293,7 @@ function ConteudoCard({
     findPerfil(c.responsavel_captacao_id),
     findPerfil(c.responsavel_design_id),
     findPerfil(c.responsavel_edicao_id),
+    findPerfil(c.responsavel_influencer_id),
   ]
     .filter((p): p is Perfil => !!p)
     .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i) // dedup
@@ -577,6 +579,7 @@ function ConteudoViewDialog({
   const captacao = findPerfil(c.responsavel_captacao_id)
   const design   = findPerfil(c.responsavel_design_id)
   const edicao   = findPerfil(c.responsavel_edicao_id)
+  const influencer = findPerfil(c.responsavel_influencer_id)
 
   return (
     <Dialog open={!!conteudo} onOpenChange={(v) => { if (!v) onClose() }}>
@@ -675,6 +678,10 @@ function ConteudoViewDialog({
 
           <PropRow icon={Film} label="Edição">
             {edicao ? <PersonRow perfil={edicao} label="Edição" status={c.status_edicao} /> : <Empty />}
+          </PropRow>
+
+          <PropRow icon={Star} label="Influencer">
+            {influencer ? <PersonRow perfil={influencer} label="Influencer" /> : <Empty />}
           </PropRow>
         </div>
 
@@ -818,6 +825,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
   const [captacaoId, setCaptacaoId] = React.useState(editing?.responsavel_captacao_id ?? '')
   const [designId, setDesignId]     = React.useState(editing?.responsavel_design_id ?? '')
   const [edicaoId2, setEdicaoId2]   = React.useState(editing?.responsavel_edicao_id ?? '')
+  const [influencerId, setInfluencerId] = React.useState(editing?.responsavel_influencer_id ?? '')
   const [statusCaptacao, setStatusCaptacao] = React.useState(editing?.status_captacao ?? 'nao_iniciado')
   const [statusDesign, setStatusDesign]     = React.useState(editing?.status_design ?? 'nao_iniciado')
   const [statusEdicao, setStatusEdicao]     = React.useState(editing?.status_edicao ?? 'nao_iniciado')
@@ -839,6 +847,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
     setCaptacaoId(editing?.responsavel_captacao_id ?? '')
     setDesignId(editing?.responsavel_design_id ?? '')
     setEdicaoId2(editing?.responsavel_edicao_id ?? '')
+    setInfluencerId(editing?.responsavel_influencer_id ?? '')
     setStatusCaptacao(editing?.status_captacao ?? 'nao_iniciado')
     setStatusDesign(editing?.status_design ?? 'nao_iniciado')
     setStatusEdicao(editing?.status_edicao ?? 'nao_iniciado')
@@ -864,6 +873,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
         responsavel_captacao_id: nullIfNone(captacaoId),
         responsavel_design_id:   nullIfNone(designId),
         responsavel_edicao_id:   nullIfNone(edicaoId2),
+        responsavel_influencer_id: nullIfNone(influencerId),
         status_captacao:         statusCaptacao,
         status_design:           statusDesign,
         status_edicao:           statusEdicao,
@@ -1044,10 +1054,11 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
             <p className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
               <span>Responsáveis</span>
             </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <PerfisSelect label="📷 Captação" value={captacaoId} onChange={setCaptacaoId} perfis={perfis} status={statusCaptacao} onStatusChange={setStatusCaptacao} />
               <PerfisSelect label="🎨 Design"   value={designId}   onChange={setDesignId}   perfis={perfis} status={statusDesign}   onStatusChange={setStatusDesign} />
               <PerfisSelect label="🎬 Edição"   value={edicaoId2}  onChange={setEdicaoId2}  perfis={perfis} status={statusEdicao}   onStatusChange={setStatusEdicao} />
+              <PerfisSelect label="⭐ Influencer" value={influencerId} onChange={setInfluencerId} perfis={perfis} placeholder="— ninguém —" />
             </div>
           </div>
 
@@ -1286,7 +1297,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       id, titulo, tipo, status, prioridade, ordem,
       dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
       canal_publicacao, briefing, horario_previsto, link_publicado,
-      responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
+      responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, responsavel_influencer_id,
       status_captacao, status_design, status_edicao,
       dia:dia_id (nome_dia, data),
       setor:setor_id (nome),
@@ -1396,7 +1407,8 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       list = list.filter(c =>
         c.responsavel_captacao_id === filterPerfil ||
         c.responsavel_design_id   === filterPerfil ||
-        c.responsavel_edicao_id   === filterPerfil
+        c.responsavel_edicao_id   === filterPerfil ||
+        c.responsavel_influencer_id === filterPerfil
       )
     }
     if (filterCanal && filterCanal !== '__all__') {

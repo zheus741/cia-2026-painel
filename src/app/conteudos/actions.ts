@@ -28,6 +28,7 @@ export interface ConteudoPayload {
   responsavel_captacao_id?: string | null
   responsavel_design_id?:  string | null
   responsavel_edicao_id?:  string | null
+  responsavel_influencer_id?: string | null
   status_captacao?:        string
   status_design?:          string
   status_edicao?:          string
@@ -57,6 +58,7 @@ export async function createConteudo(payload: ConteudoPayload) {
       payload.responsavel_captacao_id,
       payload.responsavel_design_id,
       payload.responsavel_edicao_id,
+      payload.responsavel_influencer_id,
     ]
     await enviarNotifParaVarios(responsaveis, {
       titulo: `📋 Você foi designado: «${payload.titulo}»`,

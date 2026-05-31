@@ -33,6 +33,10 @@ interface Jogo {
   /** Pênaltis (futsal/futebol empatado no mata-mata) — vencedor = maior. */
   penaltis_a?: number | null
   penaltis_b?: number | null
+  /** Pontos por set (vôlei/peteca): [{a,b}, ...]. */
+  sets?: { a: number; b: number }[] | null
+  /** Quando entrou ao vivo (1ª vez) — base da tag de atraso/antecipação. */
+  ao_vivo_em?: string | null
   status: string
   /** W.O. — Art. 58-65. 'a'=A não compareceu, 'b'=B, 'duplo'=ambas. */
   wo: 'a' | 'b' | 'duplo' | null
@@ -143,6 +147,51 @@ function isMataMata(fase: string | null | undefined): boolean {
   if (!fase) return false
   const f = fase.toLowerCase().trim()
   return ['oitavas', 'quartas', 'semifinal', 'semi', 'final', '3lugar', 'terceiro'].includes(f)
+}
+
+/** Conta sets ganhos por cada lado a partir dos pontos de cada set. */
+function contarSets(sets: { a: number; b: number }[]): { a: number; b: number } {
+  let a = 0, b = 0
+  for (const s of sets) {
+    if (s.a > s.b) a++
+    else if (s.b > s.a) b++
+  }
+  return { a, b }
+}
+
+// ── Tag de atraso/antecipação (controle CO esportiva) ────────────────────────
+interface DelayTag { kind: 'atrasado' | 'antecipado' | 'no_horario'; minutos: number }
+
+/** Tolerância: dentro de ±2min = "no horário". */
+function computeDelayTag(
+  inicioAgendado: string | null | undefined,
+  aoVivoEm: string | null | undefined,
+): DelayTag | null {
+  if (!inicioAgendado || !aoVivoEm) return null
+  const ag = new Date(inicioAgendado).getTime()
+  const av = new Date(aoVivoEm).getTime()
+  if (Number.isNaN(ag) || Number.isNaN(av)) return null
+  const diffMin = Math.round((av - ag) / 60000)
+  if (diffMin >= 2)  return { kind: 'atrasado',   minutos: diffMin }
+  if (diffMin <= -2) return { kind: 'antecipado', minutos: Math.abs(diffMin) }
+  return { kind: 'no_horario', minutos: Math.abs(diffMin) }
+}
+
+function DelayBadge({ tag }: { tag: DelayTag }) {
+  const cfg = {
+    atrasado:   { label: `Atrasado +${tag.minutos}min`,   bg: 'rgba(239,68,68,0.12)',  fg: '#dc2626', br: 'rgba(239,68,68,0.35)' },
+    antecipado: { label: `Antecipado ${tag.minutos}min`,  bg: 'rgba(59,130,246,0.12)', fg: '#2563eb', br: 'rgba(59,130,246,0.35)' },
+    no_horario: { label: 'No horário',                    bg: 'rgba(34,197,94,0.10)',  fg: 'var(--green)', br: 'rgba(34,197,94,0.30)' },
+  }[tag.kind]
+  return (
+    <span
+      title="Início ao vivo vs horário agendado (controle CO esportiva)"
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+      style={{ background: cfg.bg, color: cfg.fg, border: `1px solid ${cfg.br}` }}
+    >
+      {tag.kind === 'atrasado' ? '⏱' : tag.kind === 'antecipado' ? '⏪' : '✓'} {cfg.label}
+    </span>
+  )
 }
 
 function getEventosTipos(modalidadeNome: string | null): string[] {
@@ -282,6 +331,8 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
   const [penaltiMode, setPenaltiMode] = useState(false)
   const [penA, setPenA] = useState('')
   const [penB, setPenB] = useState('')
+  // Sets do vôlei/peteca no "lançar resultado" — pontos de cada set.
+  const [resSets, setResSets] = useState<{ a: string; b: string }[]>([{ a: '', b: '' }, { a: '', b: '' }, { a: '', b: '' }])
   // SSR pre-fetch elimina N+1: cada card já vem com os eventos no mount.
   const [eventos, setEventos] = useState<EventoJogo[]>(initialEventos)
 
@@ -438,20 +489,64 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
     })
   }
 
-  // Lançar resultado direto — quadra sem operador ao vivo
+  // Lançar resultado final — sport-aware (sets / pênaltis / placar simples).
   function handleLancarResultado() {
+    const prev = snapshotJogo()
+    const ehSet = !!getSetConfig(jogo.modalidade?.nome)
+
+    // VÔLEI/PETECA → pontos por set
+    if (ehSet) {
+      const setsNum = resSets
+        .map(s => ({ a: parseInt(s.a, 10), b: parseInt(s.b, 10) }))
+        .filter(s => !Number.isNaN(s.a) && !Number.isNaN(s.b) && (s.a > 0 || s.b > 0))
+      if (setsNum.length === 0) return
+      const { a: setsA, b: setsB } = contarSets(setsNum)
+      if (setsA === setsB) return  // precisa de vencedor
+      onLocalUpdate(jogo.id, { placar_a: setsA, placar_b: setsB, sets: setsNum, status: 'encerrado' })
+      setResultadoMode(false)
+      startTransition(async () => {
+        await runAction(() => lancarResultado(jogo.id, setsA, setsB, { sets: setsNum }), {
+          label: 'lançar resultado', onError: () => onLocalUpdate(jogo.id, prev),
+        })
+      })
+      return
+    }
+
     const a = Math.max(0, parseInt(resA, 10) || 0)
     const b = Math.max(0, parseInt(resB, 10) || 0)
-    const prev = snapshotJogo()
+
+    // FUTSAL/FUTEBOL empatado em mata-mata → pênaltis
+    const empatePenaltis = usaPenaltis(jogo.modalidade?.nome) && isMataMata(jogo.fase) && a === b
+    if (empatePenaltis) {
+      const pa = Math.max(0, parseInt(penA, 10) || 0)
+      const pb = Math.max(0, parseInt(penB, 10) || 0)
+      if (pa === pb) return  // pênaltis precisam de vencedor
+      onLocalUpdate(jogo.id, { placar_a: a, placar_b: b, penaltis_a: pa, penaltis_b: pb, status: 'encerrado' })
+      setResultadoMode(false)
+      startTransition(async () => {
+        await runAction(() => lancarResultado(jogo.id, a, b, { penaltis_a: pa, penaltis_b: pb }), {
+          label: 'lançar resultado', onError: () => onLocalUpdate(jogo.id, prev),
+        })
+      })
+      return
+    }
+
+    // Placar simples (basquete, handebol, futsal sem empate, etc.)
     onLocalUpdate(jogo.id, { placar_a: a, placar_b: b, status: 'encerrado' })
     setResultadoMode(false)
     startTransition(async () => {
       await runAction(() => lancarResultado(jogo.id, a, b), {
-        label: 'lançar resultado',
-        onError: () => onLocalUpdate(jogo.id, prev),
+        label: 'lançar resultado', onError: () => onLocalUpdate(jogo.id, prev),
       })
     })
   }
+
+  // Helpers do painel de resultado (sets dinâmicos)
+  function updateSet(i: number, lado: 'a' | 'b', v: string) {
+    setResSets(prev => prev.map((s, idx) => idx === i ? { ...s, [lado]: v } : s))
+  }
+  function addSet()    { setResSets(prev => prev.length >= 5 ? prev : [...prev, { a: '', b: '' }]) }
+  function removeSet() { setResSets(prev => prev.length <= 1 ? prev : prev.slice(0, -1)) }
 
   function handleCancelar() {
     const prev = snapshotJogo()
@@ -743,6 +838,14 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
               </span>
             </div>
 
+            {/* Tag de atraso/antecipação (CO esportiva) — se o jogo foi operado ao vivo */}
+            {(() => {
+              const delayTag = computeDelayTag(jogo.inicio, jogo.ao_vivo_em)
+              return delayTag && (isAoVivo || isEncerrado) ? (
+                <div className="mb-2 flex justify-center"><DelayBadge tag={delayTag} /></div>
+              ) : null
+            })()}
+
             {/* Barra do scoreboard */}
             <div
               className="relative flex items-stretch overflow-hidden rounded-xl"
@@ -840,6 +943,17 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--gold)]/40 bg-[var(--gold)]/10 px-3 py-1 text-[11px] font-bold tabular-nums text-[var(--gold)]">
                   🥅 Pênaltis {jogo.penaltis_a} × {jogo.penaltis_b}
                 </span>
+              </div>
+            )}
+
+            {/* Detalhe dos sets (vôlei/peteca encerrado) — pontos de cada set */}
+            {isEncerrado && Array.isArray(jogo.sets) && jogo.sets.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                {jogo.sets.map((s, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--muted)]/40 px-2 py-0.5 text-[10px] font-bold tabular-nums text-[var(--muted-foreground)]">
+                    <span className="text-[8px] opacity-60">{i + 1}º</span> {s.a}-{s.b}
+                  </span>
+                ))}
               </div>
             )}
 
@@ -1253,42 +1367,83 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
         </div>
       )}
 
-      {/* Lançar resultado direto — quadra sem operador ao vivo */}
-      {canEdit && isAgendado && !isCancelado && !woMode && resultadoMode && (
+      {/* Lançar resultado final — agendado OU ao vivo (operador encerra digitando) */}
+      {canEdit && (isAgendado || isAoVivo) && !isCancelado && !woMode && resultadoMode && (() => {
+        // Detecta empate em mata-mata (futsal/futebol) → mostra pênaltis.
+        const ra = parseInt(resA, 10) || 0
+        const rb = parseInt(resB, 10) || 0
+        const empateMataMata = usaPenaltis(jogo.modalidade?.nome) && isMataMata(jogo.fase) && resA !== '' && resB !== '' && ra === rb
+        const setsPreview = isEsporteSet ? contarSets(resSets.map(s => ({ a: parseInt(s.a,10)||0, b: parseInt(s.b,10)||0 })).filter(s => s.a>0 || s.b>0)) : null
+
+        return (
         <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
           <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
-            Lançar resultado final
+            {isEsporteSet ? 'Resultado por sets' : 'Lançar resultado final'}
           </p>
-          <div className="flex items-end gap-2">
-            <div className="min-w-0 flex-1">
-              <label className="mb-1 block truncate text-[10px] font-semibold text-[var(--muted-foreground)]">
-                {jogo.equipe_a_nome ?? 'Equipe A'}
-              </label>
-              <input
-                type="number" min={0} inputMode="numeric"
-                value={resA}
-                onChange={e => setResA(e.target.value)}
-                placeholder="0"
-                className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-center text-lg font-extrabold tabular-nums focus:border-[var(--green-bright)] focus:outline-none"
-              />
+
+          {isEsporteSet ? (
+            /* ─── VÔLEI / PETECA — pontos por set ─── */
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1 text-[10px] font-semibold text-[var(--muted-foreground)]">
+                <span className="flex-1 truncate">{jogo.equipe_a_nome ?? 'A'}</span>
+                <span className="px-2">set</span>
+                <span className="flex-1 truncate text-right">{jogo.equipe_b_nome ?? 'B'}</span>
+              </div>
+              {resSets.map((s, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input type="number" min={0} inputMode="numeric" value={s.a} onChange={e => updateSet(i, 'a', e.target.value)} placeholder="0"
+                    className="h-10 flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] text-center text-base font-bold tabular-nums focus:border-[var(--green-bright)] focus:outline-none" />
+                  <span className="w-6 text-center text-[10px] font-bold text-[var(--muted-foreground)]">{i + 1}º</span>
+                  <input type="number" min={0} inputMode="numeric" value={s.b} onChange={e => updateSet(i, 'b', e.target.value)} placeholder="0"
+                    className="h-10 flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] text-center text-base font-bold tabular-nums focus:border-[var(--green-bright)] focus:outline-none" />
+                </div>
+              ))}
+              <div className="flex items-center justify-between pt-0.5">
+                <div className="flex gap-1.5">
+                  <button onClick={removeSet} disabled={resSets.length <= 1} className="rounded-md border border-[var(--border)] px-2 py-1 text-[11px] font-bold text-[var(--muted-foreground)] disabled:opacity-30">– set</button>
+                  <button onClick={addSet} disabled={resSets.length >= 5} className="rounded-md border border-[var(--border)] px-2 py-1 text-[11px] font-bold text-[var(--muted-foreground)] disabled:opacity-30">+ set</button>
+                </div>
+                {setsPreview && (
+                  <span className="text-[12px] font-extrabold tabular-nums text-[var(--foreground)]">
+                    Sets {setsPreview.a} × {setsPreview.b}
+                  </span>
+                )}
+              </div>
             </div>
-            <span className="pb-2.5 text-sm font-bold text-[var(--muted-foreground)]">×</span>
-            <div className="min-w-0 flex-1">
-              <label className="mb-1 block truncate text-[10px] font-semibold text-[var(--muted-foreground)]">
-                {jogo.equipe_b_nome ?? 'Equipe B'}
-              </label>
-              <input
-                type="number" min={0} inputMode="numeric"
-                value={resB}
-                onChange={e => setResB(e.target.value)}
-                placeholder="0"
-                className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-center text-lg font-extrabold tabular-nums focus:border-[var(--green-bright)] focus:outline-none"
-              />
+          ) : (
+            /* ─── PLACAR SIMPLES (gol / pontos) ─── */
+            <div className="flex items-end gap-2">
+              <div className="min-w-0 flex-1">
+                <label className="mb-1 block truncate text-[10px] font-semibold text-[var(--muted-foreground)]">{jogo.equipe_a_nome ?? 'Equipe A'}</label>
+                <input type="number" min={0} inputMode="numeric" value={resA} onChange={e => setResA(e.target.value)} placeholder="0"
+                  className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-center text-lg font-extrabold tabular-nums focus:border-[var(--green-bright)] focus:outline-none" />
+              </div>
+              <span className="pb-2.5 text-sm font-bold text-[var(--muted-foreground)]">×</span>
+              <div className="min-w-0 flex-1">
+                <label className="mb-1 block truncate text-[10px] font-semibold text-[var(--muted-foreground)]">{jogo.equipe_b_nome ?? 'Equipe B'}</label>
+                <input type="number" min={0} inputMode="numeric" value={resB} onChange={e => setResB(e.target.value)} placeholder="0"
+                  className="h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] text-center text-lg font-extrabold tabular-nums focus:border-[var(--green-bright)] focus:outline-none" />
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Pênaltis quando empate em mata-mata (futsal/futebol) */}
+          {empateMataMata && (
+            <div className="mt-3 rounded-lg border border-[var(--gold)]/40 bg-[var(--gold)]/8 p-2.5">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--gold)]">🥅 Empate {ra}×{rb} — pênaltis</p>
+              <div className="flex items-end gap-2">
+                <input type="number" min={0} inputMode="numeric" value={penA} onChange={e => setPenA(e.target.value)} placeholder="0"
+                  className="h-10 flex-1 rounded-md border border-[var(--border)] bg-[var(--background)] text-center text-base font-extrabold tabular-nums focus:border-[var(--gold)] focus:outline-none" />
+                <span className="pb-2 text-sm font-bold text-[var(--muted-foreground)]">×</span>
+                <input type="number" min={0} inputMode="numeric" value={penB} onChange={e => setPenB(e.target.value)} placeholder="0"
+                  className="h-10 flex-1 rounded-md border border-[var(--border)] bg-[var(--background)] text-center text-base font-extrabold tabular-nums focus:border-[var(--gold)] focus:outline-none" />
+              </div>
+            </div>
+          )}
+
           <div className="mt-3 flex gap-2">
             <button
-              onClick={() => { setResultadoMode(false); setResA(''); setResB('') }}
+              onClick={() => { setResultadoMode(false); setResA(''); setResB(''); setPenA(''); setPenB(''); setResSets([{a:'',b:''},{a:'',b:''},{a:'',b:''}]) }}
               disabled={isPending}
               className="flex-1 rounded-lg border border-[var(--border)] py-2 text-xs font-semibold text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)] disabled:opacity-40"
             >
@@ -1296,15 +1451,16 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
             </button>
             <button
               onClick={handleLancarResultado}
-              disabled={isPending}
+              disabled={isPending || (empateMataMata && (penA === '' || penB === '' || (parseInt(penA,10)||0) === (parseInt(penB,10)||0)))}
               className="flex flex-[2] items-center justify-center gap-1.5 rounded-lg bg-[var(--green)] py-2 text-xs font-bold text-white transition-colors hover:opacity-90 disabled:opacity-40"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
-              Salvar resultado
+              Salvar e encerrar
             </button>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Ações */}
       {canEdit && !isEncerrado && !isCancelado && !woMode && !resultadoMode && !penaltiMode && (
@@ -1331,15 +1487,26 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
             </>
           )}
           {isAoVivo && (
-            <button
-              onClick={handleEncerrar}
-              disabled={isPending}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--green-dim)]/40 bg-[var(--card)] py-2 text-xs font-semibold text-[var(--green-bright)] transition-colors hover:bg-[var(--green-dim)]/20 disabled:opacity-40"
-              title={precisaPenaltis ? 'Empate — vai abrir a disputa de pênaltis' : undefined}
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              {precisaPenaltis ? 'Encerrar (pênaltis)' : 'Encerrar'}
-            </button>
+            <>
+              <button
+                onClick={handleEncerrar}
+                disabled={isPending}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--green-dim)]/40 bg-[var(--card)] py-2 text-xs font-semibold text-[var(--green-bright)] transition-colors hover:bg-[var(--green-dim)]/20 disabled:opacity-40"
+                title={precisaPenaltis ? 'Empate — vai abrir a disputa de pênaltis' : 'Encerra com o placar atual'}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {precisaPenaltis ? 'Encerrar (pênaltis)' : 'Encerrar'}
+              </button>
+              <button
+                onClick={() => { setResultadoMode(true); setResA(String(placarA || '')); setResB(String(placarB || '')) }}
+                disabled={isPending}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--gold)]/45 bg-[var(--gold)]/10 py-2 text-xs font-semibold text-[var(--gold)] transition-colors hover:bg-[var(--gold)]/20 disabled:opacity-40"
+                title="Digitar o placar final e encerrar de uma vez"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Lançar placar
+              </button>
+            </>
           )}
           {/* W.O. — disponível em agendado e ao_vivo */}
           <button
@@ -1887,7 +2054,7 @@ interface Props {
 
 // Campos escalares que o realtime pode atualizar in-place (sem perder joins).
 const REALTIME_MERGEABLE: (keyof Jogo)[] = [
-  'status', 'placar_a', 'placar_b', 'penaltis_a', 'penaltis_b', 'wo',
+  'status', 'placar_a', 'placar_b', 'penaltis_a', 'penaltis_b', 'sets', 'ao_vivo_em', 'wo',
   'equipe_a_nome', 'equipe_b_nome',
   'inicio', 'fase', 'categoria', 'divisao', 'teste',
 ]

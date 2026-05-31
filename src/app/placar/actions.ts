@@ -29,6 +29,13 @@ export async function setJogoAoVivo(id: string): Promise<ActionResult> {
       .update({ status: 'ao_vivo' })
       .eq('id', id)
     if (error) throw error
+    // Marca o horário do 1º "ao vivo" (não sobrescreve em reativação) — base da
+    // tag de atraso/antecipação pra Coordenação Esportiva.
+    await supabase
+      .from('jogos')
+      .update({ ao_vivo_em: new Date().toISOString() })
+      .eq('id', id)
+      .is('ao_vivo_em', null)
     revalidatePath('/placar')
     bustHomeCache()
   })
@@ -166,6 +173,13 @@ export async function lancarResultado(
   id: string,
   placar_a: number,
   placar_b: number,
+  opts?: {
+    /** Pontos por set (vôlei/peteca): [{a,b}, ...]. placar_a/b = sets ganhos. */
+    sets?: { a: number; b: number }[]
+    /** Desempate por pênaltis (futsal/futebol empatado no mata-mata). */
+    penaltis_a?: number | null
+    penaltis_b?: number | null
+  },
 ): Promise<ActionResult> {
   try {
     await requireSportEditor()
@@ -173,9 +187,22 @@ export async function lancarResultado(
 
     const concurrent = await detectConcurrentEdit(id, supabase)
 
+    const update: Record<string, unknown> = {
+      placar_a: clampPlacar(placar_a),
+      placar_b: clampPlacar(placar_b),
+      status: 'encerrado',
+    }
+    if (opts?.sets && opts.sets.length > 0) {
+      update.sets = opts.sets.map(s => ({ a: clampPlacar(s.a), b: clampPlacar(s.b) }))
+    }
+    if (opts?.penaltis_a != null && opts?.penaltis_b != null) {
+      update.penaltis_a = clampPlacar(opts.penaltis_a)
+      update.penaltis_b = clampPlacar(opts.penaltis_b)
+    }
+
     const { error } = await supabase
       .from('jogos')
-      .update({ placar_a: clampPlacar(placar_a), placar_b: clampPlacar(placar_b), status: 'encerrado' })
+      .update(update)
       .eq('id', id)
     if (error) throw error
 

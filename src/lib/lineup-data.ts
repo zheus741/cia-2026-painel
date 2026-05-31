@@ -20,10 +20,11 @@ export interface Perf {
   diaId:     string
 }
 
-export type StageId = 'arena' | 'principal' | 'eletronico'
+export type StageId = 'arena' | 'paredao' | 'principal' | 'eletronico'
 
 export interface StageData {
   arena:      Perf[]
+  paredao:    Perf[]
   principal:  Perf[]
   eletronico: Perf[]
 }
@@ -72,6 +73,7 @@ export function setorToStageId(setorNome: string | null | undefined): StageId | 
   if (!setorNome) return null
   const n = setorNome.trim().toLowerCase()
   if (n.includes('arena') || n.includes('360'))     return 'arena'
+  if (n.includes('paredão') || n.includes('paredao') || n.includes('red bull')) return 'paredao'
   if (n.includes('eletr'))                          return 'eletronico'
   if (n.includes('principal'))                      return 'principal'
   return null
@@ -105,6 +107,19 @@ export const STAGES: StageConfig[] = [
     accentInk:  '#8b3a2a',
     accentSoft: 'rgba(196,107,74,0.10)',
     accentRing: 'rgba(196,107,74,0.30)',
+    liveColor:  '#FF4444',
+  },
+  {
+    id:         'paredao',
+    name:       'Paredão Red Bull',
+    eyebrow:    'PALCO',
+    tone:       'electric',
+    blockBg:    'linear-gradient(155deg, #16245E 0%, #25387F 100%)',
+    blockText:  '#FFFFFF',
+    blockTextMuted: 'rgba(255,255,255,0.78)',
+    accentInk:  '#0F1A45',
+    accentSoft: 'rgba(29,58,138,0.12)',
+    accentRing: 'rgba(29,58,138,0.34)',
     liveColor:  '#FF4444',
   },
   {
@@ -239,7 +254,7 @@ export function buildLineupFromShows(
       rangeStart: '23:59',
       rangeEnd:   '00:01',
       diaId:      diaIdByDay.get(d) ?? '',
-      stages: { arena: [], principal: [], eletronico: [] },
+      stages: { arena: [], paredao: [], principal: [], eletronico: [] },
     }]),
   ) as unknown as Lineup
 
@@ -272,7 +287,7 @@ export function buildLineupFromShows(
     let minStart = Infinity
     let maxEnd   = -Infinity
 
-    for (const stage of ['arena','principal','eletronico'] as const) {
+    for (const stage of ['arena','paredao','principal','eletronico'] as const) {
       cfg.stages[stage].sort((a, b) => toMin(a.start) - toMin(b.start))
       for (const p of cfg.stages[stage]) {
         const s = toMin(p.start)

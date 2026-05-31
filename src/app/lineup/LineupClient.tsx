@@ -423,17 +423,19 @@ export function LineupClient({ lineup, canEdit, palcoSetorMap }: LineupClientPro
   }, [startMin, endMin])
 
   const totalArtists =
-    day.stages.arena.length + day.stages.principal.length + day.stages.eletronico.length
+    day.stages.arena.length + day.stages.paredao.length + day.stages.principal.length + day.stages.eletronico.length
   const totalHours = Math.round(totalMin / 60)
   const isViewingLiveDay = nowPlaying.isLive && nowPlaying.todayDayId === activeDay
 
   function openNew(stageId: StageId) {
-    const setorName = STAGES.find(s => s.id === stageId)?.name === 'Arena 360'
-      ? 'Arena 360'
-      : STAGES.find(s => s.id === stageId)?.name === 'Principal'
-        ? 'Palco Principal'
-        : 'Palco Eletrônico'
-    const setorId = palcoSetorMap[setorName] ?? ''
+    // Mapeia o palco (StageId) → nome do setor no banco.
+    const STAGE_TO_SETOR: Record<StageId, string> = {
+      arena:      'Arena 360',
+      paredao:    'Paredão da Red Bull',
+      principal:  'Palco Principal',
+      eletronico: 'Palco Eletrônico',
+    }
+    const setorId = palcoSetorMap[STAGE_TO_SETOR[stageId]] ?? ''
     setEditState({
       open: true, perf: null, stage: stageId,
       diaId: day.diaId, setorId,
@@ -634,7 +636,7 @@ export function LineupClient({ lineup, canEdit, palcoSetorMap }: LineupClientPro
                   color: active ? 'rgba(250,247,240,0.55)' : 'rgba(10,15,11,0.45)',
                   letterSpacing: '-0.01em',
                 }}>
-                  {d.stages.arena.length + d.stages.principal.length + d.stages.eletronico.length} atrações
+                  {d.stages.arena.length + d.stages.paredao.length + d.stages.principal.length + d.stages.eletronico.length} atrações
                 </div>
               </button>
             )

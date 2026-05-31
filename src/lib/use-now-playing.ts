@@ -25,7 +25,7 @@ export interface NowPlayingState {
 
 const EMPTY_STAGE: StagePlayingState = { current: null, next: null, minutesLeft: 0, minutesToNext: 0 }
 const EMPTY_STAGES: Record<StageId, StagePlayingState> = {
-  arena: EMPTY_STAGE, principal: EMPTY_STAGE, eletronico: EMPTY_STAGE,
+  arena: EMPTY_STAGE, paredao: EMPTY_STAGE, principal: EMPTY_STAGE, eletronico: EMPTY_STAGE,
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -115,6 +115,7 @@ export function useNowPlaying(
 
   const stages: Record<StageId, StagePlayingState> = {
     arena:      findStageState(config.stages.arena,      nowMin),
+    paredao:    findStageState(config.stages.paredao,    nowMin),
     principal:  findStageState(config.stages.principal,  nowMin),
     eletronico: findStageState(config.stages.eletronico, nowMin),
   }

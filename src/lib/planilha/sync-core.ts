@@ -60,7 +60,7 @@ export interface JogoRow {
   penaltis_b: number | null
   equipe_a_nome: string | null
   equipe_b_nome: string | null
-  modalidade: { slug: string } | { slug: string }[] | null
+  modalidade: { slug: string; nome: string } | { slug: string; nome: string }[] | null
 }
 
 export interface PreviewItem {
@@ -78,11 +78,12 @@ export interface PreviewItem {
   placarAtual:     string | null
 }
 
-const modSlug = (j: JogoRow): string | null => {
+const modNome = (j: JogoRow): string => {
   const m = Array.isArray(j.modalidade) ? j.modalidade[0] : j.modalidade
-  return m?.slug ?? null
+  return m?.nome ?? ''
 }
-const normCat = (c: string | null | undefined): string => (c ?? '').trim().toLowerCase()
+const norm = (s: string) => (s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const normCat = (c: string | null | undefined): string => norm((c ?? '').trim())
 
 function paresCasam(jA: string | null, jB: string | null, pA: string, pB: string): 'direto' | 'invertido' | null {
   const ja = canonTeamName(jA), jb = canonTeamName(jB)
@@ -102,11 +103,16 @@ export function casarResultados(jogos: JogoRow[], resultados: ResultadoPlanilha[
       penAplicA: res.penA, penAplicB: res.penB,
       jogoLabel: null, jogoFase: null, jogoStatusAtual: null, placarAtual: null,
     }
-    if (!res.modalidadeSlug) return { ...base, status: 'sem_modalidade' }
+    if (res.inc.length === 0) return { ...base, status: 'sem_modalidade' }
 
-    const candidatos = jogos.filter(j =>
-      modSlug(j) === res.modalidadeSlug && normCat(j.categoria) === normCat(res.categoria),
-    )
+    // Casa pela modalidade cujo NOME contém todas as palavras `inc` e nenhuma
+    // `exc`, + categoria. Robusto aos dois esquemas de slug do banco.
+    const candidatos = jogos.filter(j => {
+      const nome = norm(modNome(j))
+      if (!res.inc.every(k => nome.includes(k))) return false
+      if (res.exc.some(k => nome.includes(k))) return false
+      return normCat(j.categoria) === normCat(res.categoria)
+    })
     const casados: { j: JogoRow; orient: 'direto' | 'invertido' }[] = []
     for (const j of candidatos) {
       const orient = paresCasam(j.equipe_a_nome, j.equipe_b_nome, res.timeA, res.timeB)
@@ -140,7 +146,7 @@ export function casarResultados(jogos: JogoRow[], resultados: ResultadoPlanilha[
 }
 
 export const JOGO_SELECT_COLS =
-  'id, modalidade_id, categoria, divisao, fase, status, placar_a, placar_b, penaltis_a, penaltis_b, equipe_a_nome, equipe_b_nome, modalidade:modalidades(slug)'
+  'id, modalidade_id, categoria, divisao, fase, status, placar_a, placar_b, penaltis_a, penaltis_b, equipe_a_nome, equipe_b_nome, modalidade:modalidades(slug, nome)'
 
 /**
  * Aplica UM resultado no jogo (update + propagação na chave). Idempotente:

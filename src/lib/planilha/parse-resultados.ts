@@ -11,23 +11,37 @@
  *   - "VENCEDOR JG N": jogo futuro (sem times reais) → ignorado.
  */
 
-// ── MOD code → modalidade slug + categoria ───────────────────────────────────
+// ── MOD code → família da modalidade (casa pelo NOME, não pelo slug) ──────────
+// O banco pode ter slugs "futsal" OU "futsal-feminino" (dois fluxos de import).
+// Por isso casamos pela modalidade do jogo cujo NOME contém estas palavras
+// (`inc`) e NÃO contém `exc` — robusto aos dois esquemas.
 
-const MOD_INFO: Record<string, { slug: string; categoria: 'Feminino' | 'Masculino' }> = {
-  FF: { slug: 'futsal', categoria: 'Feminino' }, FM: { slug: 'futsal', categoria: 'Masculino' },
-  FC: { slug: 'futebol', categoria: 'Masculino' },
-  F7: { slug: 'fut7', categoria: 'Masculino' }, F7M: { slug: 'fut7', categoria: 'Masculino' }, F7F: { slug: 'fut7', categoria: 'Feminino' },
-  BF: { slug: 'basquete', categoria: 'Feminino' }, BM: { slug: 'basquete', categoria: 'Masculino' },
-  HF: { slug: 'handebol', categoria: 'Feminino' }, HM: { slug: 'handebol', categoria: 'Masculino' },
-  VF: { slug: 'volei', categoria: 'Feminino' }, VM: { slug: 'volei', categoria: 'Masculino' },
-  VPF: { slug: 'volei-praia', categoria: 'Feminino' }, VPM: { slug: 'volei-praia', categoria: 'Masculino' },
-  PF: { slug: 'peteca', categoria: 'Feminino' }, PM: { slug: 'peteca', categoria: 'Masculino' },
-  PETF: { slug: 'peteca', categoria: 'Feminino' }, PETM: { slug: 'peteca', categoria: 'Masculino' },
-  TCF: { slug: 'tenis-campo', categoria: 'Feminino' }, TCM: { slug: 'tenis-campo', categoria: 'Masculino' },
-  TMSF: { slug: 'tenis-mesa', categoria: 'Feminino' }, TMSM: { slug: 'tenis-mesa', categoria: 'Masculino' },
+interface ModFamilia { inc: string[]; exc: string[]; isSet: boolean }
+
+function familiaDoCodigo(code: string): ModFamilia | null {
+  const c = code.toUpperCase()
+  if (c === 'FF' || c === 'FM')                       return { inc: ['futsal'], exc: [], isSet: false }
+  if (c === 'FC')                                     return { inc: ['futebol', 'campo'], exc: [], isSet: false }
+  if (c === 'F7' || c === 'F7M' || c === 'F7F')       return { inc: ['futebol', '7'], exc: [], isSet: false }
+  if (c === 'BF' || c === 'BM')                       return { inc: ['basquete'], exc: [], isSet: false }
+  if (c === 'HF' || c === 'HM')                       return { inc: ['hand'], exc: [], isSet: false }
+  if (c === 'VF' || c === 'VM')                       return { inc: ['volei'], exc: ['praia'], isSet: true }
+  if (c === 'VPF' || c === 'VPM')                     return { inc: ['praia'], exc: [], isSet: true }
+  if (c === 'PF' || c === 'PM' || c === 'PETF' || c === 'PETM') return { inc: ['peteca'], exc: [], isSet: true }
+  if (c === 'TCF' || c === 'TCM')                     return { inc: ['tenis', 'campo'], exc: [], isSet: false }
+  if (c === 'TMSF' || c === 'TMSM')                   return { inc: ['tenis', 'mesa'], exc: [], isSet: false }
+  return null
 }
 
-const SET_SLUGS = new Set(['volei', 'volei-praia', 'peteca'])
+const norm = (s: string) => (s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()
+
+/** Gênero pelo título do bloco ("… FEMININO"/"… MASCULINO") → fallback no código. */
+function generoDoBloco(blockTitle: string, code: string): 'Feminino' | 'Masculino' {
+  const t = norm(blockTitle)
+  if (/FEMININ|\bFEM\b/.test(t)) return 'Feminino'
+  if (/MASCULIN|\bMASC\b/.test(t)) return 'Masculino'
+  return code.toUpperCase().endsWith('F') ? 'Feminino' : 'Masculino'
+}
 
 const FASE_MAP: Record<string, string> = {
   OF: 'oitavas', QF: 'quartas', SF: 'semifinal', F: 'final', '3L': '3lugar', '3': '3lugar',
@@ -38,7 +52,11 @@ const FASE_MAP: Record<string, string> = {
 export interface ResultadoPlanilha {
   aba:            string
   modCode:        string
-  modalidadeSlug: string | null
+  modalidadeLabel: string          // título do bloco (ex: "FUTSAL FEMININO")
+  /** Palavras que o NOME da modalidade do jogo DEVE conter (ex: ['futsal']). */
+  inc:            string[]
+  /** Palavras que o nome NÃO pode conter (ex: ['praia'] p/ vôlei de quadra). */
+  exc:            string[]
   categoria:      'Feminino' | 'Masculino' | null
   fase:           string | null
   jogoNum:        number | null
@@ -120,13 +138,16 @@ export function parseAba(csv: string, aba: string): ResultadoPlanilha[] {
       const next = (rowCells[c + 1] ?? '').trim().toUpperCase()
       if (next !== 'DIV' && next !== 'CONF') continue
 
+      // Título do bloco (ex: "FUTSAL FEMININO MOD" → "FUTSAL FEMININO").
+      const blockTitle = (rowCells[c] ?? '').replace(/\s*MOD\s*$/i, '').trim()
+
       // Lê as linhas de dados abaixo, colunas c..c+8.
       for (let dr = r + 1; dr < grid.length; dr++) {
         const cells = grid[dr]
         const modRaw = (cells[c] ?? '').trim()
         if (modRaw === '' || isHeaderModCell(modRaw)) break  // fim do bloco
 
-        const info = MOD_INFO[modRaw.toUpperCase()]
+        const fam = familiaDoCodigo(modRaw)
         const fase = FASE_MAP[(cells[c + 2] ?? '').trim().toUpperCase()] ?? null
         const jogoNum = parseInt((cells[c + 3] ?? '').trim(), 10)
         const timeA = (cells[c + 4] ?? '').trim()
@@ -141,14 +162,16 @@ export function parseAba(csv: string, aba: string): ResultadoPlanilha[] {
         out.push({
           aba,
           modCode: modRaw.toUpperCase(),
-          modalidadeSlug: info?.slug ?? null,
-          categoria: info?.categoria ?? null,
+          modalidadeLabel: blockTitle,
+          inc: fam?.inc ?? [],
+          exc: fam?.exc ?? [],
+          categoria: fam ? generoDoBloco(blockTitle, modRaw) : null,
           fase,
           jogoNum: Number.isNaN(jogoNum) ? null : jogoNum,
           timeA, timeB,
           placarA: pa.score, placarB: pb.score,
           penA: pa.pen, penB: pb.pen,
-          isSet: info ? SET_SLUGS.has(info.slug) : false,
+          isSet: fam?.isSet ?? false,
         })
       }
     }

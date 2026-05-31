@@ -14,11 +14,6 @@ const STATUS_META: Record<PreviewItem['status'], { label: string; cor: string; b
   sem_modalidade:  { label: 'Modalidade ?',      cor: '#dc2626', bg: 'rgba(239,68,68,0.10)',  aplicavel: false },
 }
 
-const MOD_LABEL: Record<string, string> = {
-  futsal: 'Futsal', futebol: 'Futebol', fut7: 'Fut7', basquete: 'Basquete', handebol: 'Handebol',
-  volei: 'Vôlei', 'volei-praia': 'Vôlei de Praia', peteca: 'Peteca', 'tenis-campo': 'Tênis de Campo', 'tenis-mesa': 'Tênis de Mesa',
-}
-
 export function ImportResultadosClient() {
   const [loading, setLoading] = React.useState(false)
   const [applying, setApplying] = React.useState(false)
@@ -140,7 +135,7 @@ export function ImportResultadosClient() {
                           {it.res.timeA} <span className="tabular-nums text-[var(--green)]">{placarStr(it)}</span> {it.res.timeB}
                         </div>
                         <div className="truncate text-[11px] text-[var(--muted-foreground)]">
-                          {MOD_LABEL[it.res.modalidadeSlug ?? ''] ?? it.res.modCode} · {it.res.categoria} · {it.res.fase ?? '—'} · {it.res.aba}
+                          {it.res.modalidadeLabel || it.res.modCode} · {it.res.categoria} · {it.res.fase ?? '—'} · {it.res.aba}
                           {it.placarAtual && <span className="ml-1 text-amber-600">· atual no painel: {it.placarAtual} ({it.jogoStatusAtual})</span>}
                         </div>
                       </div>
@@ -172,7 +167,7 @@ export function ImportResultadosClient() {
                           {it.res.timeA} {it.res.placarA}×{it.res.placarB} {it.res.timeB}
                         </div>
                         <div className="truncate text-[10px] text-[var(--muted-foreground)]">
-                          {MOD_LABEL[it.res.modalidadeSlug ?? ''] ?? it.res.modCode} · {it.res.categoria} · {it.res.aba}
+                          {it.res.modalidadeLabel || it.res.modCode} · {it.res.categoria} · {it.res.aba}
                         </div>
                       </div>
                     </div>

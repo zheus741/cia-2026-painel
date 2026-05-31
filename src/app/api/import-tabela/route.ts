@@ -19,6 +19,7 @@ const MODALIDADE_MAP: Record<string, { nome: string; icone: string; duracao_min:
   BF:   { nome: 'Basquete Feminino',       icone: '🏀',  duracao_min: 60 },
   FC:   { nome: 'Futebol de Campo',        icone: '🏟️',  duracao_min: 90 },
   F7M:  { nome: 'Futebol 7 Masculino',     icone: '🥅',  duracao_min: 60 },
+  F7:   { nome: 'Futebol 7 Masculino',     icone: '🥅',  duracao_min: 60 },  // código curto usado na planilha
   F7F:  { nome: 'Futebol 7 Feminino',      icone: '🥅',  duracao_min: 60 },
   // Peteca — aceita códigos curto e do XLSX
   PM:   { nome: 'Peteca Masculino',        icone: '🏸',  duracao_min: 60 },

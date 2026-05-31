@@ -304,8 +304,14 @@ export interface AvancoResult {
  *
  * Idempotente: se o slot do parent já tem o vencedor, retorna { ok: true, reason: 'already' }.
  */
-export async function propagarVencedorNaChave(jogoId: string): Promise<AvancoResult> {
-  const supabase = await createClient()
+/** Cliente Supabase (server ou service) — service usado no webhook sem sessão. */
+type DbClient = Awaited<ReturnType<typeof createClient>>
+
+export async function propagarVencedorNaChave(
+  jogoId: string,
+  dbOverride?: DbClient,
+): Promise<AvancoResult> {
+  const supabase = dbOverride ?? await createClient()
 
   // 1. Carrega o jogo encerrado
   const { data: jogoRaw, error: jogoErr } = await supabase

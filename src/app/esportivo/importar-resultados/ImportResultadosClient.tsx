@@ -54,10 +54,7 @@ export function ImportResultadosClient() {
     const escolhidos = [...sel].map(i => itens[i]).filter(it => it.jogoId)
     if (escolhidos.length === 0) { toast.error('Selecione ao menos um resultado'); return }
     setApplying(true)
-    const r = await aplicarResultadosPlanilha(escolhidos.map(it => ({
-      jogoId: it.jogoId!, aplicA: it.aplicA, aplicB: it.aplicB,
-      penAplicA: it.penAplicA, penAplicB: it.penAplicB, isSet: it.res.isSet,
-    })))
+    const r = await aplicarResultadosPlanilha(escolhidos)
     setApplying(false)
     if (!r.ok || !r.data) { toast.error('Falha ao aplicar', { description: r.error }); return }
     toast.success('Resultados aplicados', { description: `${r.data.aplicados} aplicados · ${r.data.erros} erros` })

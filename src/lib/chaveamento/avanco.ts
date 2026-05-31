@@ -534,6 +534,63 @@ export interface RecalcResult {
 }
 
 /**
+ * Carimba `fase` + `bracket_num` nos jogos da chave casando cada jogo com a
+ * posição do bracket pelos NOMES dos seeds. Essencial: a planilha não traz fase,
+ * e sem fase nem a propagação nem a projeção de pontos funcionam.
+ *
+ * Só carimba o 1º round (bracket games com 2 seeds diretos). Fases seguintes
+ * são preenchidas pela propagação.
+ */
+export async function stampFasesNaChave(
+  modalidadeSlug: string,
+  categoria: string | null,
+  divisao: string,
+): Promise<{ carimbados: number }> {
+  const supabase = await createClient()
+
+  const modIds = await modalidadeIdsPorSlug(supabase, modalidadeSlug)
+  if (modIds.length === 0) return { carimbados: 0 }
+  const { data: configsRaw } = await supabase
+    .from('chave_config')
+    .select('categoria, divisao, num_teams, seeds')
+    .in('modalidade_id', modIds)
+  const wantCat = normCategoria(categoria), wantDiv = normDivisao(divisao)
+  const config = ((configsRaw ?? []) as ChaveConfig[]).find(c =>
+    normCategoria(c.categoria) === wantCat && normDivisao(c.divisao) === wantDiv,
+  )
+  if (!config || !config.seeds?.length) return { carimbados: 0 }
+
+  // 1º round = bracket games com 2 seeds diretos.
+  const bracket = buildGames(config.num_teams)
+  const firstRound: { fase: string; num: number; nA: string; nB: string }[] = []
+  for (const g of bracket) {
+    const seeds = g.slots.filter(s => s.type === 'direct' && s.pos).map(s => s.pos as number)
+    if (seeds.length !== 2) continue
+    const nA = config.seeds[seeds[0] - 1], nB = config.seeds[seeds[1] - 1]
+    const fase = ROUND_TO_FASE[g.round]
+    if (nA && nB && fase) firstRound.push({ fase, num: g.num, nA, nB })
+  }
+  if (firstRound.length === 0) return { carimbados: 0 }
+
+  const jogos = await fetchJogosDaChave(supabase, modalidadeSlug, categoria, divisao)
+  let carimbados = 0
+  for (const j of jogos) {
+    if (!j.equipe_a_nome || !j.equipe_b_nome) continue
+    const ja = canonTeamName(j.equipe_a_nome), jb = canonTeamName(j.equipe_b_nome)
+    const eq = (x: string, y: string) => !!x && !!y && (x === y || fuzzyMatchTeam(x, y))
+    const m = firstRound.find(fr => {
+      const a = canonTeamName(fr.nA), b = canonTeamName(fr.nB)
+      return (eq(ja, a) && eq(jb, b)) || (eq(ja, b) && eq(jb, a))
+    })
+    if (!m) continue
+    if (j.fase === m.fase && j.bracket_num === m.num) continue
+    const { error } = await supabase.from('jogos').update({ fase: m.fase, bracket_num: m.num }).eq('id', j.id)
+    if (!error) carimbados++
+  }
+  return { carimbados }
+}
+
+/**
  * Reprocessa TODOS os jogos encerrados de uma chave (modalidade+categoria+divisão),
  * em ordem de fase (oitavas → quartas → semi → final).
  * Útil quando o usuário declarou WO e quer rever a propagação, ou quando importou

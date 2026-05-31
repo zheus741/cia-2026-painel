@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireSportEditor, safe, type ActionResult } from '@/lib/admin/actions-helper'
 import { logError } from '@/lib/observability/log-error'
 import { detectConcurrentEdit } from '@/lib/competicao/concurrent-edit'
-import { propagarVencedorNaChave, recalcularChave, vincularEquipesNaChave } from '@/lib/chaveamento/avanco'
+import { propagarVencedorNaChave, recalcularChave, vincularEquipesNaChave, stampFasesNaChave } from '@/lib/chaveamento/avanco'
 import {
   buscarResultadosDasAbas, casarResultados, aplicarResultadoNoJogo,
   JOGO_SELECT_COLS, type JogoRow,
@@ -471,6 +471,9 @@ export async function recalcularChaveAction(
 ): Promise<ActionResult & { data?: { total: number; propagados: number; pulados: number; errors: number; vinculados: number; naoResolvidos: string[] } }> {
   return safe(async () => {
     await requireSportEditor()
+    // 0) Carimba fase + bracket_num (a planilha não traz fase; sem isso nem a
+    //    propagação nem a projeção funcionam).
+    await stampFasesNaChave(modalidadeSlug, categoria, divisao)
     // 1) Vincula equipe_nome → equipe_id (conserta apuração/previsão de jogos importados).
     const vinculo = await vincularEquipesNaChave(modalidadeSlug, categoria, divisao)
     // 2) Recalcula a chave — propaga vencedores e CRIA as fases seguintes faltantes.

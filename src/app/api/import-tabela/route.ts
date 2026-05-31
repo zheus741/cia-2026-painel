@@ -466,24 +466,33 @@ export async function POST(req: NextRequest) {
 
     // Insere jogos dia a dia
     let jogos_novos      = 0
-    let jogos_existentes = 0
+    let jogos_existentes = 0   // = atualizados (mesmo confronto já existia)
     const erros: string[] = []
     const dias_processados: Array<{ data: string; dia_nome: string; jogos_novos: number; jogos_existentes: number }> = []
+
+    // ── DEDUP GLOBAL POR CONFRONTO ────────────────────────────────────────────
+    // Chave = modalidade + categoria + divisão + par de times (sem ordem, sem
+    // hora). Imune a: reimport, mesmo jogo em dias diferentes, times invertidos.
+    // Se o confronto já existe → ATUALIZA (dia/horário/quadra) em vez de duplicar.
+    const canonNome = (s: string | null | undefined) =>
+      (s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim()
+    const confrontoKey = (modId: string, cat: string, div: string | null, a: string, b: string) =>
+      [modId, canonNome(cat), canonNome(div), [canonNome(a), canonNome(b)].sort().join('~')].join('|')
+
+    const { data: allExisting } = await supabase
+      .from('jogos')
+      .select('id, modalidade_id, categoria, divisao, equipe_a_nome, equipe_b_nome')
+      .eq('edicao_id', edicao_id)
+    const confrontoToId = new Map<string, string>()
+    for (const j of allExisting ?? []) {
+      confrontoToId.set(confrontoKey(j.modalidade_id, j.categoria ?? '', j.divisao, j.equipe_a_nome ?? '', j.equipe_b_nome ?? ''), j.id)
+    }
+    const toUpdate: Array<{ id: string; dia_id: string; setor_id: string | null; inicio: string; fim: string }> = []
 
     for (const data of datasOrdenadas) {
       const dia       = diasMap.get(data)!
       const diaGames  = gamesByDate.get(data)!
       const dia_id    = dia.id
-
-      // Duplicatas no banco pra este dia
-      const { data: existingJogos } = await supabase
-        .from('jogos')
-        .select('inicio, equipe_a_nome, equipe_b_nome')
-        .eq('dia_id', dia_id).eq('edicao_id', edicao_id)
-
-      const existingSet = new Set(
-        (existingJogos ?? []).map(j => `${j.inicio}|${j.equipe_a_nome}|${j.equipe_b_nome}`)
-      )
 
       const toInsert: Array<Record<string, unknown>> = []
       let dia_jogos_existentes = 0
@@ -497,19 +506,23 @@ export async function POST(req: NextRequest) {
         const inicio = new Date(`${g.date_str}T${g.hora}:00-03:00`).toISOString()
         const fim    = new Date(new Date(inicio).getTime() + info.duracao_min * 60000).toISOString()
 
-        const key = `${inicio}|${g.equipe_a}|${g.equipe_b}`
-        if (existingSet.has(key)) { dia_jogos_existentes++; continue }
-
         // Deriva categoria do código da modalidade
         const codeUpper = g.mod_code.toUpperCase()
         let categoria: 'Masculino' | 'Feminino'
-        if (codeUpper === 'FC' || codeUpper === 'F7M') {
-          categoria = 'Masculino'
-        } else if (codeUpper.endsWith('F')) {
-          categoria = 'Feminino'
-        } else {
-          categoria = 'Masculino'
+        if (codeUpper === 'FC' || codeUpper === 'F7M') categoria = 'Masculino'
+        else if (codeUpper.endsWith('F'))              categoria = 'Feminino'
+        else                                           categoria = 'Masculino'
+
+        const ck = confrontoKey(modId, categoria, g.divisao || null, g.equipe_a, g.equipe_b)
+        const existingId = confrontoToId.get(ck)
+        if (existingId === '__novo__') { dia_jogos_existentes++; continue } // dup dentro do próprio arquivo
+        if (existingId) {
+          // Confronto já no banco → atualiza data/horário/quadra (não duplica).
+          toUpdate.push({ id: existingId, dia_id, setor_id: setorId, inicio, fim })
+          dia_jogos_existentes++
+          continue
         }
+        confrontoToId.set(ck, '__novo__')
 
         toInsert.push({
           edicao_id,
@@ -524,7 +537,6 @@ export async function POST(req: NextRequest) {
           fim_previsto:  fim,
           status:        'agendado',
         })
-        existingSet.add(key)
       }
 
       // Inserir em batches de 50
@@ -544,6 +556,15 @@ export async function POST(req: NextRequest) {
         jogos_novos:      dia_jogos_novos,
         jogos_existentes: dia_jogos_existentes,
       })
+    }
+
+    // Atualiza os confrontos que já existiam (data/horário/quadra), sem duplicar.
+    for (const u of toUpdate) {
+      const { error } = await supabase
+        .from('jogos')
+        .update({ dia_id: u.dia_id, setor_id: u.setor_id, inicio: u.inicio, fim_previsto: u.fim })
+        .eq('id', u.id)
+      if (error) erros.push(`update ${u.id}: ${error.message}`)
     }
 
     // Data "principal" da resposta = primary_date (aba TABELA DIA NN) se existir,

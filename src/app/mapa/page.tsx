@@ -1,36 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
-import { MapaEsportivoClient, type VenueEsportivo } from './MapaEsportivoClient'
+import { requireProfile } from '@/lib/auth/current-user'
+import { MapaEsportivoClient, type Marcador } from './MapaEsportivoClient'
+
+const CAN_EDIT_ROLES = ['admin', 'coordenacao', 'coordenador_esportivo']
 
 export const dynamic = 'force-dynamic'
 
 export default async function MapaPage() {
+  const profile = await requireProfile()
+  const canEdit = CAN_EDIT_ROLES.includes(profile.role)
   const supabase = await createClient()
 
-  // Locais esportivos REAIS = setores onde há jogos. Para cada um, as
-  // modalidades que acontecem ali.
-  const { data: jogos } = await supabase
-    .from('jogos')
-    .select('setor:setores(id, nome), modalidade:modalidades(nome)')
-    .not('setor_id', 'is', null)
+  const { data } = await supabase
+    .from('mapa_marcadores')
+    .select('id, label, categoria, x, y')
+    .order('criado_em', { ascending: true })
 
-  type Row = {
-    setor: { id: string; nome: string } | { id: string; nome: string }[] | null
-    modalidade: { nome: string } | { nome: string }[] | null
-  }
-  const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v)
-
-  const mapa = new Map<string, { nome: string; modalidades: Set<string> }>()
-  for (const r of (jogos ?? []) as Row[]) {
-    const setor = one(r.setor)
-    if (!setor) continue
-    const mod = one(r.modalidade)
-    if (!mapa.has(setor.id)) mapa.set(setor.id, { nome: setor.nome, modalidades: new Set() })
-    if (mod?.nome) mapa.get(setor.id)!.modalidades.add(mod.nome)
-  }
-
-  const venues: VenueEsportivo[] = [...mapa.entries()]
-    .map(([id, v]) => ({ id, nome: v.nome, modalidades: [...v.modalidades].sort() }))
-    .sort((a, b) => a.nome.localeCompare(b.nome))
-
-  return <MapaEsportivoClient venues={venues} />
+  const marcadores = (data ?? []) as Marcador[]
+  return <MapaEsportivoClient marcadores={marcadores} canEdit={canEdit} />
 }

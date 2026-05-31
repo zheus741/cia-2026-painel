@@ -393,7 +393,16 @@ const oponenteDe = (j: JogoDetalhe, equipeId: string): string | null => {
 export function derivarColocacao(
   jogos: JogoComWO[],
   equipeId: string,
+  _visitados: Set<string> = new Set(),
 ): ColocacaoModalidade {
+  // Proteção contra ciclo: em round-robin (sem fases), o rastreamento
+  // "quem me venceu → até onde foi" pode entrar em loop A→B→A. Se já
+  // visitamos esta equipe nesta cadeia, corta (não dá pra rastrear adiante).
+  if (_visitados.has(equipeId)) {
+    return { colocacao: null, pontos: 0, penalidades: 0, total: 0, fase_eliminada: 'sem_jogos' }
+  }
+  _visitados.add(equipeId)
+
   // Filtra apenas jogos encerrados envolvendo a equipe
   const meusJogos = jogos.filter(j =>
     j.status === 'encerrado' &&
@@ -460,7 +469,7 @@ export function derivarColocacao(
     return { colocacao: null, pontos: 0, penalidades: 0, total: 0, fase_eliminada: 'sem_jogos' }
   }
 
-  const rankConquistador = rastrearVencedor(jogos, oponente)
+  const rankConquistador = rastrearVencedor(jogos, oponente, _visitados)
 
   // 6) Aplica a tabela do Art. 44 §§2-5
   if (isFase(ultimo, FASE_SEMI)) {
@@ -494,8 +503,8 @@ export function derivarColocacao(
  * Usado pela `derivarColocacao` para calcular a colocação de quem foi
  * eliminado em fases anteriores.
  */
-function rastrearVencedor(jogos: JogoComWO[], equipeId: string): 1 | 2 | 3 | 4 | null {
-  const recursivo = derivarColocacao(jogos, equipeId)
+function rastrearVencedor(jogos: JogoComWO[], equipeId: string, _visitados: Set<string> = new Set()): 1 | 2 | 3 | 4 | null {
+  const recursivo = derivarColocacao(jogos, equipeId, _visitados)
   if (recursivo.colocacao == null) return null
   if (recursivo.colocacao <= 4)    return recursivo.colocacao as 1 | 2 | 3 | 4
   return null

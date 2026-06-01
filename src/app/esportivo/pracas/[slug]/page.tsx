@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { aggregatePracas } from '@/lib/competicao/pracas'
 import { findLocalBySlug } from '@/lib/competicao/pracas-grupos'
-import { AppShell } from '@/components/app-shell'
 import { PracaPerfilClient } from './PracaPerfilClient'
 
 export const dynamic = 'force-dynamic'
@@ -108,10 +107,8 @@ export default async function PracaPerfilPage({ params }: PageProps) {
     })
 
   return (
-    <AppShell section={local.nome} fullWidth>
-      <div className="mx-auto w-full max-w-[1640px] px-4 py-6 sm:px-6 md:py-8 lg:px-10 xl:px-12">
-        <PracaPerfilClient local={local} jogos={jogosDoLocal} />
-      </div>
-    </AppShell>
+    <div className="mx-auto w-full max-w-[1640px] px-4 py-6 sm:px-6 md:py-8 lg:px-10 xl:px-12">
+      <PracaPerfilClient local={local} jogos={jogosDoLocal} />
+    </div>
   )
 }

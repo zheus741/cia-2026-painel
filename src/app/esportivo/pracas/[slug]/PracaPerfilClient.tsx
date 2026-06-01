@@ -6,14 +6,14 @@
  * Estrutura:
  * 1. Hero: nome do local + breadcrumb + countdown stats
  * 2. Hero card duplo: estado geral + quem está ao vivo agora
- * 3. Grid de quadras: 1 card por quadra com status individual
- * 4. Timeline cronológica de todos os jogos
+ * 3. Grid de quadras: 1 card por quadra com status individual (clicável = filtra)
+ * 4. Timeline cronológica de todos os jogos (filtrável por quadra)
  * 5. Lista de atléticas + modalidades agregadas
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Radio, MapPin, Clock, Trophy } from 'lucide-react'
+import { ArrowLeft, Radio, MapPin, Clock, Trophy, X } from 'lucide-react'
 import type { LocalAgrupado, QuadraDoLocal } from '@/lib/competicao/pracas-grupos'
 
 const SANS = 'var(--font-dm-sans), system-ui, sans-serif'
@@ -64,22 +64,31 @@ function fmtDateLong(iso: string | null): string {
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export function PracaPerfilClient({ local, jogos }: Props) {
+  // Filtro por quadra (null = todas)
+  const [quadraFiltro, setQuadraFiltro] = useState<string | null>(null)
+
+  const jogosFiltrados = useMemo(
+    () => quadraFiltro ? jogos.filter(j => j.setor_id === quadraFiltro) : jogos,
+    [jogos, quadraFiltro]
+  )
+
   // Agrupa jogos por dia (timeline)
   const jogosPorDia = useMemo(() => {
     const m = new Map<string, JogoDetalhado[]>()
-    for (const j of jogos) {
+    for (const j of jogosFiltrados) {
       if (!j.inicio) continue
       const key = j.inicio.slice(0, 10) // YYYY-MM-DD
       if (!m.has(key)) m.set(key, [])
       m.get(key)!.push(j)
     }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-  }, [jogos])
+  }, [jogosFiltrados])
 
   // Jogos ao vivo
   const aoVivoAgora = jogos.filter(j => j.status === 'ao_vivo')
-  // Próximo agendado
-  const proximo = jogos.find(j => j.status === 'agendado' && j.inicio && new Date(j.inicio) >= new Date())
+  // Próximo agendado (considera filtro)
+  const proximo = jogosFiltrados.find(j => j.status === 'agendado' && j.inicio && new Date(j.inicio) >= new Date())
+  const quadraAtiva = quadraFiltro ? local.quadras.find(q => q.id === quadraFiltro) : null
 
   const pctEncerrados = local.totalJogos > 0
     ? Math.round((local.encerrados / local.totalJogos) * 100)
@@ -149,24 +158,55 @@ export function PracaPerfilClient({ local, jogos }: Props) {
         )}
       </header>
 
-      {/* ─── Quadras (grid) ─── */}
+      {/* ─── Quadras (grid, clicável filtra a timeline) ─── */}
       {local.numQuadras > 1 && (
         <section className="mb-8">
-          <h2 className="mb-4" style={{
-            fontFamily: SANS,
-            fontSize: 'clamp(22px, 2.4vw, 30px)',
-            fontWeight: 800,
-            lineHeight: 1,
-            letterSpacing: '-0.025em',
-          }}>
-            Quadras · {local.numQuadras}
-          </h2>
+          <div className="mb-4 flex items-center gap-3 flex-wrap">
+            <h2 style={{
+              fontFamily: SANS,
+              fontSize: 'clamp(22px, 2.4vw, 30px)',
+              fontWeight: 800,
+              lineHeight: 1,
+              letterSpacing: '-0.025em',
+            }}>
+              Quadras · {local.numQuadras}
+            </h2>
+            {quadraAtiva && (
+              <button
+                onClick={() => setQuadraFiltro(null)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-3 py-1 text-xs font-bold text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors"
+              >
+                <X size={11} />
+                {quadraAtiva.nome} — ver todas
+              </button>
+            )}
+          </div>
           <div
             className="grid gap-3"
             style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}
           >
-            {local.quadras.map(q => <QuadraCard key={q.id} quadra={q} jogos={jogos} />)}
+            {local.quadras.map(q => (
+              <button
+                key={q.id}
+                onClick={() => setQuadraFiltro(q.id === quadraFiltro ? null : q.id)}
+                className="text-left w-full"
+                style={{ outline: 'none' }}
+              >
+                <div style={{
+                  outline: q.id === quadraFiltro ? '2px solid var(--accent)' : 'none',
+                  outlineOffset: 2,
+                  borderRadius: 16,
+                  opacity: quadraFiltro && q.id !== quadraFiltro ? 0.55 : 1,
+                  transition: 'opacity 0.2s, outline 0.2s',
+                }}>
+                  <QuadraCard quadra={q} jogos={jogos} />
+                </div>
+              </button>
+            ))}
           </div>
+          <p className="mt-2 text-[11px] text-[var(--muted-foreground)]">
+            Toque numa quadra para filtrar o cronograma
+          </p>
         </section>
       )}
 
@@ -224,15 +264,23 @@ export function PracaPerfilClient({ local, jogos }: Props) {
 
       {/* ─── Timeline cronológica ─── */}
       <section className="mb-8">
-        <h2 className="mb-4" style={{
-          fontFamily: SANS,
-          fontSize: 'clamp(22px, 2.4vw, 30px)',
-          fontWeight: 800,
-          lineHeight: 1,
-          letterSpacing: '-0.025em',
-        }}>
-          Cronograma
-        </h2>
+        <div className="mb-4 flex items-center gap-3 flex-wrap">
+          <h2 style={{
+            fontFamily: SANS,
+            fontSize: 'clamp(22px, 2.4vw, 30px)',
+            fontWeight: 800,
+            lineHeight: 1,
+            letterSpacing: '-0.025em',
+          }}>
+            Cronograma
+          </h2>
+          {quadraAtiva && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/10 px-3 py-1 text-xs font-bold text-[var(--accent)]">
+              {quadraAtiva.nome}
+              <span className="text-[var(--accent)]/60">· {jogosFiltrados.length} jogos</span>
+            </span>
+          )}
+        </div>
 
         <div className="flex flex-col gap-5">
           {jogosPorDia.map(([dia, jogosDoDia]) => (

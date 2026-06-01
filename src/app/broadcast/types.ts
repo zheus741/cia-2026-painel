@@ -18,8 +18,54 @@ export interface BroadcastEstado {
   placa_payload: PlacaPayload | null
   crawl_on: boolean
   crawl_texto: string | null
+  // Fase 2 — VT cue + segmento atual
+  vt_on?: boolean
+  vt_nome?: string | null
+  vt_fim_ts?: string | null
+  segmento_id?: string | null
+  segmento_titulo?: string | null
+  segmento_fim_ts?: string | null
   updated_at?: string
 }
+
+export interface VT {
+  id: string
+  nome: string
+  descricao: string | null
+  duracao_seg: number
+  patroc_id: string | null
+  ordem: number
+}
+
+export interface EscaletaItem {
+  id: string
+  ordem: number
+  tipo: string
+  titulo: string
+  duracao_seg: number
+  vt_id: string | null
+  notas: string | null
+  status: string
+}
+
+export interface ChecklistItem {
+  id: string
+  categoria: string
+  texto: string
+  feito: boolean
+  ordem: number
+}
+
+export const ESCALETA_TIPOS: { value: string; label: string; cor: string }[] = [
+  { value: 'vinheta',      label: 'Vinheta',      cor: '#B8A4E8' },
+  { value: 'vt',           label: 'VT',           cor: '#5C68E8' },
+  { value: 'atracao',      label: 'Atração',      cor: '#4aa06a' },
+  { value: 'fala',         label: 'Fala / Host',  cor: '#D4B36A' },
+  { value: 'bumper',       label: 'Bumper',       cor: '#69C9D0' },
+  { value: 'intervalo',    label: 'Intervalo',    cor: '#D8845F' },
+  { value: 'placa',        label: 'Placa',        cor: '#F0D04A' },
+  { value: 'encerramento', label: 'Encerramento', cor: '#EF4444' },
+]
 
 export interface PlacaPayload {
   titulo?: string

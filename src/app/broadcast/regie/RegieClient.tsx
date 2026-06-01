@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
-import { Radio, Copy, Check, Power, Music, User, Award, Megaphone, Tv2, X, Trash2 } from 'lucide-react'
-import { setBroadcast, logBroadcast, limparTudo, type BroadcastPatch } from '../actions'
-import type { BroadcastEstado, PatrocinadorRef } from '../types'
+import { Radio, Copy, Check, Power, Music, User, Award, Megaphone, Tv2, X, Trash2, Film, SkipForward, ListChecks, Play, Square } from 'lucide-react'
+import Link from 'next/link'
+import { setBroadcast, logBroadcast, limparTudo, irParaSegmento, rollVT, pararVT, type BroadcastPatch } from '../actions'
+import { ESCALETA_TIPOS, type BroadcastEstado, type PatrocinadorRef, type VT, type EscaletaItem } from '../types'
 
 const C = {
   bg: '#0A1410', card: 'rgba(250,247,240,0.04)', cardHi: 'rgba(250,247,240,0.07)',
@@ -18,11 +19,13 @@ const FS = 'var(--font-geist), system-ui, sans-serif'
 interface LineupItem { id: string; nome: string; inicio: string | null; setor: string }
 
 export function RegieClient({
-  estadoInicial, patrocinadores, lineup,
+  estadoInicial, patrocinadores, lineup, vts, escaleta,
 }: {
   estadoInicial: BroadcastEstado
   patrocinadores: PatrocinadorRef[]
   lineup: LineupItem[]
+  vts: VT[]
+  escaleta: EscaletaItem[]
 }) {
   const [e, setE] = useState<BroadcastEstado>(estadoInicial)
   const [, startTransition] = useTransition()
@@ -90,6 +93,10 @@ export function RegieClient({
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: e.ao_vivo ? C.red : C.mute, boxShadow: e.ao_vivo ? `0 0 10px ${C.red}` : 'none' }} />
           {e.ao_vivo ? 'NO AR' : 'FORA DO AR'}
         </button>
+        <Link href="/broadcast/preparar"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, borderRadius: 10, padding: '9px 12px', border: `1px solid ${C.border}`, background: C.card, color: C.dim, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+          <ListChecks size={14} /> Preparar
+        </Link>
         <a href="/broadcast/overlay" target="_blank" rel="noopener noreferrer"
           style={{ display: 'flex', alignItems: 'center', gap: 6, borderRadius: 10, padding: '9px 12px', border: `1px solid ${C.border}`, background: C.card, color: C.dim, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
           <Tv2 size={14} /> Ver overlay
@@ -99,6 +106,9 @@ export function RegieClient({
           {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copiado!' : 'Link p/ operador'}
         </button>
       </div>
+
+      {/* ── ESCALETA RUNNER ── */}
+      {escaleta.length > 0 && <EscaletaRunner escaleta={escaleta} estado={e} onSegmento={(it) => { setE(prev => ({ ...prev, segmento_id: it.id, segmento_titulo: it.titulo })); startTransition(() => { irParaSegmento({ id: it.id, titulo: it.titulo, duracao_seg: it.duracao_seg }) }) }} />}
 
       {/* ── TALLY (no ar agora) ── */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
@@ -161,6 +171,35 @@ export function RegieClient({
             onTirar={() => apply({ np_on: false })}
             ativo={e.np_on}
           />
+        </Painel>
+
+        {/* VT — cue + countdown */}
+        <Painel icon={<Film size={15} />} titulo="VT · Cue" ativo={!!e.vt_on}>
+          {e.vt_on && e.vt_fim_ts ? (
+            <div style={{ marginBottom: 10, textAlign: 'center', padding: '10px', borderRadius: 10, background: 'rgba(92,104,232,0.12)', border: `1px solid #5C68E855` }}>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.16em', color: '#8b95f0' }}>NO AR: {e.vt_nome}</div>
+              <Countdown alvo={e.vt_fim_ts} grande />
+              <div style={{ fontSize: 10, color: C.mute, marginTop: 2 }}>volta em…</div>
+            </div>
+          ) : null}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 160, overflowY: 'auto', marginBottom: 8 }}>
+            {vts.length === 0 && <p style={{ fontSize: 11, color: C.mute }}>Sem VTs. Cadastre em <Link href="/broadcast/preparar" style={{ color: C.gold }}>Preparar</Link>.</p>}
+            {vts.map(vt => {
+              const p = vt.patroc_id ? patrocinadores.find(x => x.id === vt.patroc_id) : null
+              return (
+                <button key={vt.id}
+                  onClick={() => { setE(prev => ({ ...prev, vt_on: true, vt_nome: vt.nome, vt_fim_ts: new Date(Date.now() + vt.duracao_seg * 1000).toISOString() })); startTransition(() => { rollVT(vt.nome, vt.duracao_seg, vt.patroc_id) }) }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, border: `1px solid ${C.border}`, background: C.card, color: C.cream, cursor: 'pointer', textAlign: 'left' }}>
+                  <Play size={13} style={{ color: '#5C68E8', flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{vt.nome}{p && <span style={{ color: C.mute }}> · {p.nome}</span>}</span>
+                  <span style={{ fontSize: 11, color: C.mute, fontVariantNumeric: 'tabular-nums' }}>{fmtDurShort(vt.duracao_seg)}</span>
+                </button>
+              )
+            })}
+          </div>
+          <button onClick={() => { setE(prev => ({ ...prev, vt_on: false })); startTransition(() => { pararVT() }) }} disabled={!e.vt_on} style={tirarStyle(!!e.vt_on)}>
+            <Square size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: -1 }} />ENCERRAR VT
+          </button>
         </Painel>
 
         {/* Patrocinador */}
@@ -247,6 +286,74 @@ export function RegieClient({
         </Painel>
       </div>
     </div>
+  )
+}
+
+function fmtDurShort(seg: number) {
+  const m = Math.floor(seg / 60), s = seg % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+// ── Escaleta Runner — segmento atual / próximo / TAKE NEXT ────────────────────
+function EscaletaRunner({ escaleta, estado, onSegmento }: {
+  escaleta: EscaletaItem[]
+  estado: BroadcastEstado
+  onSegmento: (it: EscaletaItem) => void
+}) {
+  const idx = estado.segmento_id ? escaleta.findIndex(i => i.id === estado.segmento_id) : -1
+  const atual = idx >= 0 ? escaleta[idx] : null
+  const prox = escaleta[idx + 1] ?? (idx < 0 ? escaleta[0] : null)
+  const meta = (t: string) => ESCALETA_TIPOS.find(x => x.value === t) ?? { label: t, cor: C.gold }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'stretch', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+      {/* Atual */}
+      <div style={{ flex: 2, minWidth: 240, background: C.card, border: `1px solid ${atual ? C.red + '40' : C.border}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.2em', color: atual ? C.red : C.mute }}>● NO AR AGORA</div>
+          {atual ? (
+            <>
+              <div style={{ fontFamily: FD, fontStyle: 'italic', fontWeight: 800, fontSize: 22, lineHeight: 1.05, marginTop: 2 }}>{atual.titulo}</div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: meta(atual.tipo).cor }}>{meta(atual.tipo).label}</span>
+            </>
+          ) : <div style={{ fontSize: 14, color: C.mute, marginTop: 4 }}>Nenhum segmento no ar</div>}
+        </div>
+        <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+          {atual && estado.segmento_fim_ts && <Countdown alvo={estado.segmento_fim_ts} />}
+        </div>
+      </div>
+      {/* Próximo + TAKE */}
+      <div style={{ flex: 1.4, minWidth: 220, background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.2em', color: C.gold }}>PRÓXIMO</div>
+          {prox ? (
+            <div style={{ fontFamily: FD, fontStyle: 'italic', fontWeight: 700, fontSize: 18, lineHeight: 1.05, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{prox.titulo}</div>
+          ) : <div style={{ fontSize: 13, color: C.mute, marginTop: 4 }}>Fim da escaleta</div>}
+        </div>
+        <button
+          onClick={() => prox && onSegmento(prox)}
+          disabled={!prox}
+          style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '12px 18px', borderRadius: 10, border: `1px solid ${C.green}`, background: prox ? `${C.green}22` : C.card, color: prox ? C.green : C.mute, fontWeight: 800, fontSize: 13, letterSpacing: '0.06em', cursor: prox ? 'pointer' : 'not-allowed', opacity: prox ? 1 : 0.5 }}>
+          <SkipForward size={16} /> TAKE
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Countdown — conta regressiva até um timestamp ISO ─────────────────────────
+function Countdown({ alvo, grande }: { alvo: string; grande?: boolean }) {
+  const [rest, setRest] = useState(0)
+  useEffect(() => {
+    const tick = () => setRest(Math.round((new Date(alvo).getTime() - Date.now()) / 1000))
+    tick(); const i = setInterval(tick, 250); return () => clearInterval(i)
+  }, [alvo])
+  const neg = rest < 0
+  const abs = Math.abs(rest)
+  const txt = `${neg ? '+' : ''}${Math.floor(abs / 60)}:${String(abs % 60).padStart(2, '0')}`
+  const cor = neg ? C.red : abs <= 10 ? C.gold : C.cream
+  return (
+    <span style={{ fontFamily: FD, fontStyle: 'italic', fontWeight: 800, fontSize: grande ? 34 : 24, color: cor, fontVariantNumeric: 'tabular-nums', lineHeight: 1, display: 'block' }}>{txt}</span>
   )
 }
 

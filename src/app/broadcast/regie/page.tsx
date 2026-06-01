@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { requireProfile } from '@/lib/auth/current-user'
 import { createServiceClient } from '@/lib/supabase/service'
 import { RegieClient } from './RegieClient'
-import { ESTADO_INICIAL, type BroadcastEstado, type PatrocinadorRef } from '../types'
+import { ESTADO_INICIAL, type BroadcastEstado, type PatrocinadorRef, type VT, type EscaletaItem } from '../types'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Régie · Broadcast CIA 2026' }
@@ -15,10 +15,12 @@ export default async function RegiePage() {
   if (!PAPEIS.includes(profile.role ?? '')) redirect('/')
 
   const sb = createServiceClient()
-  const [{ data: estado }, { data: patrocs }, { data: shows }] = await Promise.all([
+  const [{ data: estado }, { data: patrocs }, { data: shows }, { data: vts }, { data: escaleta }] = await Promise.all([
     sb.from('broadcast_estado').select('*').eq('id', 'palco-principal').maybeSingle(),
     sb.from('patrocinadores').select('id, nome, logo_url, cota, cor_marca').eq('ativo', true).eq('edicao_id', EDICAO_ID).order('cota'),
     sb.from('shows').select('id, nome, inicio, setor:setores(nome)').order('inicio'),
+    sb.from('broadcast_vt').select('*').eq('canal', 'palco-principal').order('ordem'),
+    sb.from('broadcast_escaleta').select('*').eq('canal', 'palco-principal').order('ordem'),
   ])
 
   // Filtra line-up do Palco Principal pra prefill rápido do GC
@@ -35,6 +37,8 @@ export default async function RegiePage() {
       estadoInicial={(estado as BroadcastEstado) ?? ESTADO_INICIAL}
       patrocinadores={(patrocs as PatrocinadorRef[]) ?? []}
       lineup={lineup}
+      vts={(vts as VT[]) ?? []}
+      escaleta={(escaleta as EscaletaItem[]) ?? []}
     />
   )
 }

@@ -1,5 +1,6 @@
 'use server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { safe, type ActionResult } from '@/lib/admin/actions-helper'
 import { requireProfile } from '@/lib/auth/current-user'
 
@@ -15,6 +16,7 @@ export async function atualizarStatusCaptacao(
   return safe(async () => {
     const profile = await requireProfile()
     if (!VALIDOS.includes(status)) throw new Error('Status inválido.')
+    // Usa cliente de usuário só pra leitura (verificar quem é o responsável)
     const supabase = await createClient()
     const { data: c } = await supabase
       .from('conteudos')
@@ -25,7 +27,9 @@ export async function atualizarStatusCaptacao(
     if (c?.responsavel_captacao_id !== profile.id && !roles.includes(profile.role ?? '')) {
       throw new Error('Só o operador designado pode atualizar seu status de captação.')
     }
-    const { error } = await supabase
+    // Usa service client p/ bypassar RLS — permissão já validada acima
+    const sb = createServiceClient()
+    const { error } = await sb
       .from('conteudos')
       .update({ status_captacao: status })
       .eq('id', conteudoId)

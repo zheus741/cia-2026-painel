@@ -99,6 +99,29 @@ export async function gerarGradeDoLineup(): Promise<ActionResult> {
   })
 }
 
+/** Recalcula os horários da grade em sequência a partir de uma hora inicial. */
+export async function recalcularHorarios(horaInicial: string): Promise<ActionResult> {
+  return safe(async () => {
+    await guard()
+    const sb = createServiceClient()
+    const { data: itens } = await sb.from('broadcast_escaleta').select('id, duracao_seg, ordem').eq('canal', CANAL).order('ordem')
+    if (!itens?.length) return
+    const [h, m] = horaInicial.split(':').map(Number)
+    let cursor = (h || 0) * 60 + (m || 0) // minutos do dia
+    for (const it of itens) {
+      const hh = String(Math.floor((cursor % 1440) / 60)).padStart(2, '0')
+      const mm = String(Math.floor(cursor % 60)).padStart(2, '0')
+      await sb.from('broadcast_escaleta').update({ horario: `${hh}:${mm}` }).eq('id', it.id)
+      cursor += Math.round((it.duracao_seg || 0) / 60)
+    }
+  })
+}
+
+/** Reordena um item da grade (define novo ordem fracionário). */
+export async function reordenarGrade(id: string, novaOrdem: number): Promise<ActionResult> {
+  return safe(async () => { await guard(); const sb = createServiceClient(); const { error } = await sb.from('broadcast_escaleta').update({ ordem: novaOrdem }).eq('id', id); if (error) throw error })
+}
+
 // ── Checklist ────────────────────────────────────────────────────────────────
 export async function toggleChecklist(id: string, feito: boolean): Promise<ActionResult> {
   return safe(async () => { await guard(); const sb = createServiceClient(); const { error } = await sb.from('broadcast_checklist').update({ feito }).eq('id', id); if (error) throw error })

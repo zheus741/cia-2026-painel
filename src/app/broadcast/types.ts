@@ -54,6 +54,15 @@ export interface EquipeItem {
   ordem: number
 }
 
+export interface LineupShow {
+  id: string
+  nome: string
+  horario: string | null
+  duracao_seg: number
+  embaixador: boolean
+  dia: number
+}
+
 export interface PatrocinadorRef {
   id: string
   nome: string

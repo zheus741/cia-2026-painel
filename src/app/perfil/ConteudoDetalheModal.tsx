@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { atualizarCaptacao } from './actions'
+import { setStatus } from '@/app/conteudos/actions'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export interface ConteudoDetalhe {
   captacao: Pessoa | null
   design: Pessoa | null
   edicao: Pessoa | null
+  captacao_id: string | null
 }
 
 // ── Config ─────────────────────────────────────────────────────────────────────
@@ -116,6 +118,60 @@ function PessoaCell({ pessoa }: { pessoa: Pessoa | null }) {
   )
 }
 
+// ── StatusSelector — operador designado atualiza o status ────────────────────
+
+const STATUS_OPTS: { value: string; label: string; color: string }[] = [
+  { value: 'rascunho',     label: 'Rascunho',     color: 'text-[var(--muted-foreground)]' },
+  { value: 'em_producao',  label: 'Em produção',  color: 'text-blue-600' },
+  { value: 'pronto',       label: 'Pronto',       color: 'text-amber-600' },
+  { value: 'publicado',    label: 'Publicado',    color: 'text-[var(--green-bright)]' },
+]
+
+function StatusSelector({
+  conteudoId,
+  current,
+}: {
+  conteudoId: string
+  current: string
+}) {
+  const [value, setValue] = useState(current)
+  const [pending, startTransition] = useTransition()
+  const [saved, setSaved] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const next = e.target.value
+    setValue(next)
+    setSaved(false)
+    setErr(null)
+    startTransition(async () => {
+      const res = await setStatus(conteudoId, next)
+      if (res.ok) setSaved(true)
+      else setErr(res.error ?? 'Erro ao salvar')
+    })
+  }
+
+  const opt = STATUS_OPTS.find(o => o.value === value)
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <select
+        value={value}
+        onChange={handleChange}
+        disabled={pending}
+        className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 text-[13px] text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--green)] disabled:opacity-50"
+      >
+        {STATUS_OPTS.map(o => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      {pending && <span className="text-[11px] text-[var(--muted-foreground)]">Salvando…</span>}
+      {saved && !pending && <span className="text-[11px] text-[var(--green-bright)] font-semibold">✓ Salvo</span>}
+      {err && <span className="text-[11px] text-red-500">{err}</span>}
+    </div>
+  )
+}
+
 // ── CaptacaoSelector — só aparece para lider_fv ───────────────────────────────
 
 function CaptacaoSelector({
@@ -170,11 +226,13 @@ export function ConteudoDetalheModal({
   conteudo,
   onClose,
   userRole,
+  userId,
   operadoresFV = [],
 }: {
   conteudo: ConteudoDetalhe | null
   onClose: () => void
   userRole?: string
+  userId?: string
   operadoresFV?: { id: string; nome: string; foto_url: string | null }[]
 }) {
   if (!conteudo) return null
@@ -184,6 +242,8 @@ export function ConteudoDetalheModal({
   const tipos = parseTipos(c.tipo)
   const prio = prioridadeInfo(c.prioridade)
   const podeEditarCaptacao = userRole === 'lider_fv' || userRole === 'lider_area' || userRole === 'coordenacao' || userRole === 'admin'
+  // Operador designado pode atualizar o status
+  const eOperadorDesignado = !!userId && userId === c.captacao_id
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
@@ -209,9 +269,13 @@ export function ConteudoDetalheModal({
 
         <div className="-mt-1">
           <Field label="Status">
-            <span className={cn('inline-block rounded border px-2 py-0.5 text-[10px] font-bold', statusCfg.color)}>
-              {statusCfg.label}
-            </span>
+            {eOperadorDesignado ? (
+              <StatusSelector conteudoId={c.id} current={c.status} />
+            ) : (
+              <span className={cn('inline-block rounded border px-2 py-0.5 text-[10px] font-bold', statusCfg.color)}>
+                {statusCfg.label}
+              </span>
+            )}
           </Field>
 
           <Field label="Prioridade">

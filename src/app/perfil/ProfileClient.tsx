@@ -125,6 +125,7 @@ interface Conteudo {
   setor: { nome: string } | null
   patrocinador: { nome: string } | null
   vinculadoA: string | null
+  captacao_id: string | null
   captacao: Pessoa | null
   design:   Pessoa | null
   edicao:   Pessoa | null
@@ -644,6 +645,7 @@ export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV
         conteudo={conteudoSel}
         onClose={() => setConteudoSel(null)}
         userRole={profile.role}
+        userId={userId}
         operadoresFV={operadoresFV}
       />
 

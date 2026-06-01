@@ -112,6 +112,7 @@ export default async function PerfilPage() {
       setor: arr(c.setor),
       patrocinador: arr(c.patrocinador),
       vinculadoA,
+      captacao_id: c.responsavel_captacao_id,
       captacao: c.responsavel_captacao_id ? profilesMap.get(c.responsavel_captacao_id) ?? null : null,
       design:   c.responsavel_design_id   ? profilesMap.get(c.responsavel_design_id)   ?? null : null,
       edicao:   c.responsavel_edicao_id   ? profilesMap.get(c.responsavel_edicao_id)   ?? null : null,

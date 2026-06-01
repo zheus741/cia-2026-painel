@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { requireProfile } from '@/lib/auth/current-user'
 import { createServiceClient } from '@/lib/supabase/service'
 import { PrepararClient } from './PrepararClient'
-import type { VT, EscaletaItem, ChecklistItem, PatrocinadorRef } from '../types'
+import type { VT, GradeItem, ChecklistItem, EquipeItem, PatrocinadorRef } from '../types'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Preparar · Broadcast CIA 2026' }
@@ -15,19 +15,24 @@ export default async function PrepararPage() {
   if (!PAPEIS.includes(profile.role ?? '')) redirect('/')
 
   const sb = createServiceClient()
-  const [{ data: escaleta }, { data: vts }, { data: checklist }, { data: patrocs }] = await Promise.all([
+  const [{ data: grade }, { data: vts }, { data: checklist }, { data: equipe }, { data: patrocs }, { data: cfg }] = await Promise.all([
     sb.from('broadcast_escaleta').select('*').eq('canal', 'palco-principal').order('ordem'),
     sb.from('broadcast_vt').select('*').eq('canal', 'palco-principal').order('ordem'),
     sb.from('broadcast_checklist').select('*').eq('canal', 'palco-principal').order('ordem'),
+    sb.from('broadcast_equipe').select('*').eq('canal', 'palco-principal').order('ordem'),
     sb.from('patrocinadores').select('id, nome, logo_url, cota, cor_marca').eq('ativo', true).eq('edicao_id', EDICAO_ID).order('cota'),
+    sb.from('broadcast_estado').select('programa_titulo, youtube_url').eq('id', 'palco-principal').maybeSingle(),
   ])
 
   return (
     <PrepararClient
-      escaleta={(escaleta as EscaletaItem[]) ?? []}
+      grade={(grade as GradeItem[]) ?? []}
       vts={(vts as VT[]) ?? []}
       checklist={(checklist as ChecklistItem[]) ?? []}
+      equipe={(equipe as EquipeItem[]) ?? []}
       patrocinadores={(patrocs as PatrocinadorRef[]) ?? []}
+      programaTitulo={(cfg?.programa_titulo as string) ?? ''}
+      youtubeUrl={(cfg?.youtube_url as string) ?? ''}
     />
   )
 }

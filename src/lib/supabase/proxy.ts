@@ -32,11 +32,8 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname
   const isAuthRoute   = path.startsWith('/login') || path.startsWith('/auth')
   const isWaitingPage = path.startsWith('/aguardando-aprovacao')
-  // Rotas PÚBLICAS — acessíveis sem login (telões, overlay do OBS, placar público).
-  // O overlay de broadcast é browser source no OBS e não consegue autenticar.
-  const isPublicRoute =
-    path.startsWith('/broadcast/overlay') ||
-    path === '/tv/placar'
+  // Rotas PÚBLICAS — acessíveis sem login (placar público no telão).
+  const isPublicRoute = path === '/tv/placar'
   // Rotas que devem funcionar mesmo pra usuários não aprovados (logout/auth)
   const allowsUnaproved = isAuthRoute || isWaitingPage || path.startsWith('/api/auth')
 

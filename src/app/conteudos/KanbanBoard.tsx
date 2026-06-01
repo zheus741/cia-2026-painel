@@ -1333,6 +1333,17 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
   // Sync filterDia com URL (caso o usuário navegue back/forward)
   React.useEffect(() => { setFilterDia(activeDiaId ?? '') }, [activeDiaId])
 
+  // Detector de conexão — avisa a equipe quando WiFi/4G cair
+  const [isOnline, setIsOnline] = React.useState(true)
+  React.useEffect(() => {
+    setIsOnline(navigator.onLine)
+    const up   = () => setIsOnline(true)
+    const down = () => setIsOnline(false)
+    window.addEventListener('online',  up)
+    window.addEventListener('offline', down)
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
+  }, [])
+
   // PERF: refs para acessar lookups mais recentes dentro do useEffect do canal
   // sem precisar re-inscrever a cada mudança de props (que são quase estáticas
   // mas o React não sabe disso).
@@ -1416,11 +1427,18 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       )
     }
 
-    // Enriquecimento em background — substitui o card com joins completos.
+    // Enriquecimento em background com debounce de 2s —
+    // evita N fetchOne simultâneos quando vários usuários atualizam ao mesmo tempo.
+    // Se o mesmo id chegar de novo antes dos 2s, cancela o anterior.
+    const enrichTimers = new Map<string, ReturnType<typeof setTimeout>>()
     function enrich(id: string) {
-      fetchOne(id).then(full => {
-        if (full) setConteudos(prev => prev.map(c => c.id === id ? full : c))
-      })
+      if (enrichTimers.has(id)) clearTimeout(enrichTimers.get(id)!)
+      enrichTimers.set(id, setTimeout(() => {
+        enrichTimers.delete(id)
+        fetchOne(id).then(full => {
+          if (full) setConteudos(prev => prev.map(c => c.id === id ? full : c))
+        })
+      }, 2000))
     }
 
     const channel = supabase
@@ -1461,7 +1479,11 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      enrichTimers.forEach(t => clearTimeout(t))
+      enrichTimers.clear()
+      supabase.removeChannel(channel)
+    }
   }, [activeDiaId])
 
   const filtered = React.useMemo(() => {
@@ -1561,6 +1583,13 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
       className="flex flex-col h-full"
       onDragEnd={() => { setDragId(null); setDragOver(null) }}
     >
+      {/* ── Banner offline ─────────────────────────────────────────── */}
+      {!isOnline && (
+        <div className="flex items-center gap-2.5 bg-amber-500/90 px-4 py-2 text-sm font-semibold text-white" role="alert">
+          <span className="text-base">📡</span>
+          <span>Sem conexão — as alterações não serão salvas até a internet voltar. Não feche a aba.</span>
+        </div>
+      )}
       {/* ── Filter bar ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-6 py-3" style={{ background: 'var(--cream)', backdropFilter: 'blur(8px)' }}>
         {/* Search */}

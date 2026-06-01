@@ -2073,6 +2073,16 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
   const [diaId, setDiaId] = useState(initialDia)
   const [recentIds, setRecentIds] = useState<Set<string>>(new Set())
   const [conectado, setConectado] = useState(false)
+  const [isOnline, setIsOnline] = useState(true)
+
+  useEffect(() => {
+    setIsOnline(navigator.onLine)
+    const up   = () => setIsOnline(true)
+    const down = () => setIsOnline(false)
+    window.addEventListener('online',  up)
+    window.addEventListener('offline', down)
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
+  }, [])
   const [filterDiv, setFilterDiv] = useState('')
   const [filterMod, setFilterMod] = useState('')
   const [filterConf, setFilterConf] = useState('')
@@ -2173,7 +2183,8 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
     const scheduleRefresh = () => {
       if (refreshTimeout) clearTimeout(refreshTimeout)
-      refreshTimeout = setTimeout(() => { router.refresh() }, 1000)
+      // 2s de debounce — evita N refreshes simultâneos com 77 operadores na tela
+      refreshTimeout = setTimeout(() => { router.refresh() }, 2000)
     }
 
     const channel = supabase
@@ -2301,6 +2312,31 @@ export function PlacarBoard({ dias, jogosPorDia: initialJogosPorDia, diaAtivo, c
 
   return (
     <div className="space-y-6">
+
+      {/* ─── Banner offline / sem conexão ─── */}
+      {(!isOnline || !conectado) && (
+        <div
+          role="alert"
+          className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold"
+          style={{
+            background: !isOnline ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.10)',
+            border:     !isOnline ? '1px solid rgba(239,68,68,0.35)' : '1px solid rgba(245,158,11,0.30)',
+            color:      !isOnline ? '#ef4444' : '#d97706',
+          }}
+        >
+          <span className="text-lg flex-shrink-0">{!isOnline ? '📡' : '⚡'}</span>
+          <div className="min-w-0">
+            <p className="font-bold uppercase tracking-wide text-[11px]">
+              {!isOnline ? 'Sem internet' : 'Reconectando…'}
+            </p>
+            <p className="text-[11px] font-normal opacity-80 mt-0.5">
+              {!isOnline
+                ? 'Sem WiFi ou 4G — os placares exibidos podem estar desatualizados. Não salve resultados agora.'
+                : 'Canal em tempo real caiu — tentando reconectar. Aguarde alguns segundos.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ─── HERO STATS — números editoriais grandes ─── */}
       <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)]/90 to-[var(--green-dim)]/15 p-4 md:p-5">

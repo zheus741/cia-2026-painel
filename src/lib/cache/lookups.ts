@@ -77,11 +77,11 @@ export const getCachedPerfis = unstable_cache(
   async () => {
     const { data, error } = await admin()
       .from('profiles')
-      .select('id, nome, foto_url')
+      .select('id, nome, foto_url, role, empresa_cobertura')
       .eq('ativo', true)
       .order('nome')
     if (error) console.error('[cache/lookups] profiles:', error.message)
-    return (data ?? []) as { id: string; nome: string; foto_url: string | null }[]
+    return (data ?? []) as { id: string; nome: string; foto_url: string | null; role: string | null; empresa_cobertura: string | null }[]
   },
   ['lookup-perfis'],
   { tags: ['lookup-perfis'], revalidate: 300 },

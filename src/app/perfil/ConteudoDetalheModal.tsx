@@ -4,8 +4,7 @@ import Image from 'next/image'
 import { useState, useTransition } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { atualizarCaptacao } from './actions'
-import { setStatus } from '@/app/conteudos/actions'
+import { atualizarCaptacao, atualizarStatusCaptacao } from './actions'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -32,6 +31,7 @@ export interface ConteudoDetalhe {
   design: Pessoa | null
   edicao: Pessoa | null
   captacao_id: string | null
+  status_captacao: string | null
 }
 
 // ── Config ─────────────────────────────────────────────────────────────────────
@@ -118,23 +118,23 @@ function PessoaCell({ pessoa }: { pessoa: Pessoa | null }) {
   )
 }
 
-// ── StatusSelector — operador designado atualiza o status ────────────────────
+// ── StatusCaptacaoSelector — operador designado atualiza seu status de captação
+// (Não iniciado / Produzindo / Concluído) — NÃO é o status geral do card ──────
 
-const STATUS_OPTS: { value: string; label: string; color: string }[] = [
-  { value: 'rascunho',     label: 'Rascunho',     color: 'text-[var(--muted-foreground)]' },
-  { value: 'em_producao',  label: 'Em produção',  color: 'text-blue-600' },
-  { value: 'pronto',       label: 'Pronto',       color: 'text-amber-600' },
-  { value: 'publicado',    label: 'Publicado',    color: 'text-[var(--green-bright)]' },
+const CAPTACAO_STATUS_OPTS = [
+  { value: 'nao_iniciado', label: 'Não iniciado', dot: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
+  { value: 'produzindo',   label: 'Produzindo',   dot: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  { value: 'concluido',    label: 'Concluído',    dot: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
 ]
 
-function StatusSelector({
+function StatusCaptacaoSelector({
   conteudoId,
   current,
 }: {
   conteudoId: string
-  current: string
+  current: string | null
 }) {
-  const [value, setValue] = useState(current)
+  const [value, setValue] = useState(current ?? 'nao_iniciado')
   const [pending, startTransition] = useTransition()
   const [saved, setSaved] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -145,26 +145,29 @@ function StatusSelector({
     setSaved(false)
     setErr(null)
     startTransition(async () => {
-      const res = await setStatus(conteudoId, next)
+      const res = await atualizarStatusCaptacao(conteudoId, next)
       if (res.ok) setSaved(true)
       else setErr(res.error ?? 'Erro ao salvar')
     })
   }
 
-  const opt = STATUS_OPTS.find(o => o.value === value)
+  const cur = CAPTACAO_STATUS_OPTS.find(o => o.value === value) ?? CAPTACAO_STATUS_OPTS[0]
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <select
-        value={value}
-        onChange={handleChange}
-        disabled={pending}
-        className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 text-[13px] text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--green)] disabled:opacity-50"
-      >
-        {STATUS_OPTS.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      <div className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5" style={{ background: cur.bg }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: cur.dot, flexShrink: 0 }} />
+        <select
+          value={value}
+          onChange={handleChange}
+          disabled={pending}
+          className="appearance-none bg-transparent text-[13px] font-semibold text-[var(--foreground)] focus:outline-none disabled:opacity-50 pr-1 cursor-pointer"
+        >
+          {CAPTACAO_STATUS_OPTS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
       {pending && <span className="text-[11px] text-[var(--muted-foreground)]">Salvando…</span>}
       {saved && !pending && <span className="text-[11px] text-[var(--green-bright)] font-semibold">✓ Salvo</span>}
       {err && <span className="text-[11px] text-red-500">{err}</span>}
@@ -269,13 +272,9 @@ export function ConteudoDetalheModal({
 
         <div className="-mt-1">
           <Field label="Status">
-            {eOperadorDesignado ? (
-              <StatusSelector conteudoId={c.id} current={c.status} />
-            ) : (
-              <span className={cn('inline-block rounded border px-2 py-0.5 text-[10px] font-bold', statusCfg.color)}>
-                {statusCfg.label}
-              </span>
-            )}
+            <span className={cn('inline-block rounded border px-2 py-0.5 text-[10px] font-bold', statusCfg.color)}>
+              {statusCfg.label}
+            </span>
           </Field>
 
           <Field label="Prioridade">
@@ -300,22 +299,31 @@ export function ConteudoDetalheModal({
           <Field label="Patrocinador">{c.patrocinador?.nome || <Vazio />}</Field>
           <Field label="Vinculado a">{c.vinculadoA || <Vazio />}</Field>
 
-          {/* Captação: editável para lider_fv+, read-only para os demais */}
+          {/* Captação: editável (quem designa) + status de captação (operador designado) */}
           <Field label="Captação">
-            {podeEditarCaptacao ? (
-              <div className="space-y-1">
-                <CaptacaoSelector
-                  conteudoId={c.id}
-                  current={c.captacao}
-                  operadores={operadoresFV}
-                />
-                <p className="text-[10px] text-[var(--muted-foreground)]">
-                  Só este campo pode ser alterado aqui.
-                </p>
-              </div>
-            ) : (
-              <PessoaCell pessoa={c.captacao} />
-            )}
+            <div className="space-y-2">
+              {podeEditarCaptacao ? (
+                <div className="space-y-1">
+                  <CaptacaoSelector
+                    conteudoId={c.id}
+                    current={c.captacao}
+                    operadores={operadoresFV}
+                  />
+                  <p className="text-[10px] text-[var(--muted-foreground)]">
+                    Só o campo captação pode ser alterado aqui.
+                  </p>
+                </div>
+              ) : (
+                <PessoaCell pessoa={c.captacao} />
+              )}
+              {/* Status de captação — editável pelo operador designado */}
+              {eOperadorDesignado && (
+                <div>
+                  <p className="mb-1 text-[10px] text-[var(--muted-foreground)]">Seu status de captação:</p>
+                  <StatusCaptacaoSelector conteudoId={c.id} current={c.status_captacao} />
+                </div>
+              )}
+            </div>
           </Field>
 
           <Field label="Design"><PessoaCell pessoa={c.design} /></Field>

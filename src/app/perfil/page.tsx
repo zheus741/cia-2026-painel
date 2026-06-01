@@ -27,7 +27,7 @@ export default async function PerfilPage() {
       .from('conteudos')
       .select(`
         id, titulo, tipo, status, prioridade, horario_previsto,
-        briefing, canal_publicacao,
+        briefing, canal_publicacao, status_captacao,
         responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id,
         patrocinador_id, jogo_id, show_id, festa_id,
         dia:dias_evento(nome_dia, data),
@@ -58,6 +58,7 @@ export default async function PerfilPage() {
     horario_previsto: string | null
     briefing: string | null
     canal_publicacao: string | null
+    status_captacao: string | null
     responsavel_captacao_id: string | null
     responsavel_design_id: string | null
     responsavel_edicao_id: string | null
@@ -113,6 +114,7 @@ export default async function PerfilPage() {
       patrocinador: arr(c.patrocinador),
       vinculadoA,
       captacao_id: c.responsavel_captacao_id,
+      status_captacao: c.status_captacao,
       captacao: c.responsavel_captacao_id ? profilesMap.get(c.responsavel_captacao_id) ?? null : null,
       design:   c.responsavel_design_id   ? profilesMap.get(c.responsavel_design_id)   ?? null : null,
       edicao:   c.responsavel_edicao_id   ? profilesMap.get(c.responsavel_edicao_id)   ?? null : null,

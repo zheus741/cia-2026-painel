@@ -25,7 +25,7 @@ import { uniqueChannel } from '@/lib/supabase/channel-name'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-export interface Perfil    { id: string; nome: string; foto_url: string | null }
+export interface Perfil    { id: string; nome: string; foto_url: string | null; role?: string | null; empresa_cobertura?: string | null }
 export interface Dia       { id: string; nome_dia: string; data: string }
 export interface Setor     { id: string; nome: string }
 export interface Patrocin  { id: string; nome: string }
@@ -729,28 +729,94 @@ function ConteudoViewDialog({
 
 function PerfisSelect({
   label, value, onChange, perfis, placeholder,
-  status, onStatusChange,
+  status, onStatusChange, filtrarEmpresa,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   perfis: Perfil[]
   placeholder?: string
-  /** Status de andamento deste papel. Se fornecido, mostra seletor de status. */
   status?: string
   onStatusChange?: (s: string) => void
+  /** Se true, exibe filtro de empresa antes dos perfis (usado em Captação) */
+  filtrarEmpresa?: boolean
 }) {
   const hasPerson = value && value !== '__none__'
+
+  // Empresas únicas dos perfis (excluindo nulos)
+  const empresas = React.useMemo(
+    () => filtrarEmpresa
+      ? [...new Set(perfis.map(p => p.empresa_cobertura).filter(Boolean) as string[])].sort()
+      : [],
+    [perfis, filtrarEmpresa],
+  )
+  const [empresaSel, setEmpresaSel] = React.useState<string>('__all__')
+
+  // Quando filtrarEmpresa ativo: mostra só LÍDER FV (ou admin/coord) da empresa selecionada
+  // Admin/coord vê todos; líder_fv vê só os da empresa dele para consistência
+  const perfisFiltrados = React.useMemo(() => {
+    if (!filtrarEmpresa) return perfis
+    const base = empresaSel === '__all__'
+      ? perfis
+      : perfis.filter(p => p.empresa_cobertura === empresaSel)
+    // Prioriza lider_fv no topo, depois outros
+    return [...base].sort((a, b) => {
+      const aL = a.role === 'lider_fv' ? 0 : 1
+      const bL = b.role === 'lider_fv' ? 0 : 1
+      return aL - bL || a.nome.localeCompare(b.nome, 'pt-BR')
+    })
+  }, [perfis, filtrarEmpresa, empresaSel])
+
   return (
     <div>
       <Label className="mb-1.5 block text-xs">{label}</Label>
+
+      {/* Filtro de empresa — só no campo Captação */}
+      {filtrarEmpresa && empresas.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => setEmpresaSel('__all__')}
+            className="rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors"
+            style={{
+              borderColor: empresaSel === '__all__' ? 'var(--green)' : 'var(--border)',
+              background:  empresaSel === '__all__' ? 'rgba(46,107,66,0.12)' : 'transparent',
+              color:       empresaSel === '__all__' ? 'var(--green)' : 'var(--muted-foreground)',
+            }}
+          >
+            Todas
+          </button>
+          {empresas.map(emp => (
+            <button
+              key={emp}
+              type="button"
+              onClick={() => setEmpresaSel(emp)}
+              className="rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors"
+              style={{
+                borderColor: empresaSel === emp ? 'var(--green)' : 'var(--border)',
+                background:  empresaSel === emp ? 'rgba(46,107,66,0.12)' : 'transparent',
+                color:       empresaSel === emp ? 'var(--green)' : 'var(--muted-foreground)',
+              }}
+            >
+              {emp}
+            </button>
+          ))}
+        </div>
+      )}
+
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={placeholder ?? '— ninguém —'} /></SelectTrigger>
         <SelectContent>
           <SelectItem value="__none__">— ninguém —</SelectItem>
-          {perfis.map(p => (
+          {perfisFiltrados.map(p => (
             <SelectItem key={p.id} value={p.id}>
-              {p.nome}
+              <span className="flex items-center gap-1.5">
+                {p.role === 'lider_fv' && <span className="text-[10px] text-[var(--gold)]">★</span>}
+                {p.nome}
+                {p.empresa_cobertura && filtrarEmpresa && empresaSel === '__all__' && (
+                  <span className="text-[10px] text-[var(--muted-foreground)]">· {p.empresa_cobertura}</span>
+                )}
+              </span>
             </SelectItem>
           ))}
         </SelectContent>
@@ -1055,7 +1121,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
               <span>Responsáveis</span>
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <PerfisSelect label="📷 Captação" value={captacaoId} onChange={setCaptacaoId} perfis={perfis} status={statusCaptacao} onStatusChange={setStatusCaptacao} />
+              <PerfisSelect label="📷 Captação" value={captacaoId} onChange={setCaptacaoId} perfis={perfis} status={statusCaptacao} onStatusChange={setStatusCaptacao} filtrarEmpresa />
               <PerfisSelect label="🎨 Design"   value={designId}   onChange={setDesignId}   perfis={perfis} status={statusDesign}   onStatusChange={setStatusDesign} />
               <PerfisSelect label="🎬 Edição"   value={edicaoId2}  onChange={setEdicaoId2}  perfis={perfis} status={statusEdicao}   onStatusChange={setStatusEdicao} />
               <PerfisSelect label="⭐ Influencer" value={influencerId} onChange={setInfluencerId} perfis={perfis} placeholder="— ninguém —" />

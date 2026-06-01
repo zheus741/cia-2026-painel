@@ -126,6 +126,7 @@ interface Conteudo {
   patrocinador: { nome: string } | null
   vinculadoA: string | null
   captacao_id: string | null
+  status_captacao: string | null
   captacao: Pessoa | null
   design:   Pessoa | null
   edicao:   Pessoa | null

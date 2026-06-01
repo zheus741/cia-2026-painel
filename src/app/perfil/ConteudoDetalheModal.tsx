@@ -1,8 +1,10 @@
 'use client'
 
 import Image from 'next/image'
+import { useState, useTransition } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { atualizarCaptacao } from './actions'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -114,14 +116,66 @@ function PessoaCell({ pessoa }: { pessoa: Pessoa | null }) {
   )
 }
 
+// ── CaptacaoSelector — só aparece para lider_fv ───────────────────────────────
+
+function CaptacaoSelector({
+  conteudoId,
+  current,
+  operadores,
+}: {
+  conteudoId: string
+  current: { id?: string; nome: string; foto_url: string | null } | null
+  operadores: { id: string; nome: string; foto_url: string | null }[]
+}) {
+  const [value, setValue] = useState(current ? operadores.find(o => o.nome === current.nome)?.id ?? '' : '')
+  const [pending, startTransition] = useTransition()
+  const [saved, setSaved] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newId = e.target.value || null
+    setValue(e.target.value)
+    setErr(null)
+    setSaved(false)
+    startTransition(async () => {
+      const res = await atualizarCaptacao(conteudoId, newId)
+      if (res.ok) setSaved(true)
+      else setErr(res.error ?? 'Erro ao salvar')
+    })
+  }
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <select
+        value={value}
+        onChange={handleChange}
+        disabled={pending}
+        className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 text-[13px] text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--green)] disabled:opacity-50"
+      >
+        <option value="">— sem responsável —</option>
+        {operadores.map(o => (
+          <option key={o.id} value={o.id}>{o.nome}</option>
+        ))}
+      </select>
+      {pending && <span className="text-[11px] text-[var(--muted-foreground)]">Salvando…</span>}
+      {saved  && !pending && <span className="text-[11px] text-[var(--green-bright)] font-semibold">✓ Salvo</span>}
+      {err    && <span className="text-[11px] text-red-500">{err}</span>}
+    </div>
+  )
+}
+
 // ── Modal ──────────────────────────────────────────────────────────────────────
 
 export function ConteudoDetalheModal({
   conteudo,
   onClose,
+  userRole,
+  operadoresFV = [],
 }: {
   conteudo: ConteudoDetalhe | null
   onClose: () => void
+  userRole?: string
+  operadoresFV?: { id: string; nome: string; foto_url: string | null }[]
 }) {
   if (!conteudo) return null
 
@@ -129,10 +183,11 @@ export function ConteudoDetalheModal({
   const statusCfg = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.rascunho
   const tipos = parseTipos(c.tipo)
   const prio = prioridadeInfo(c.prioridade)
+  const podeEditarCaptacao = userRole === 'lider_fv' || userRole === 'lider_area' || userRole === 'coordenacao' || userRole === 'admin'
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           {tipos.length > 0 && (
             <div className="mb-1 flex flex-wrap gap-1">
@@ -177,14 +232,28 @@ export function ConteudoDetalheModal({
           </Field>
 
           <Field label="Canal">{c.canal || <Vazio />}</Field>
-
           <Field label="Setor">{c.setor?.nome || <Vazio />}</Field>
-
           <Field label="Patrocinador">{c.patrocinador?.nome || <Vazio />}</Field>
-
           <Field label="Vinculado a">{c.vinculadoA || <Vazio />}</Field>
 
-          <Field label="Captação"><PessoaCell pessoa={c.captacao} /></Field>
+          {/* Captação: editável para lider_fv+, read-only para os demais */}
+          <Field label="Captação">
+            {podeEditarCaptacao ? (
+              <div className="space-y-1">
+                <CaptacaoSelector
+                  conteudoId={c.id}
+                  current={c.captacao}
+                  operadores={operadoresFV}
+                />
+                <p className="text-[10px] text-[var(--muted-foreground)]">
+                  Só este campo pode ser alterado aqui.
+                </p>
+              </div>
+            ) : (
+              <PessoaCell pessoa={c.captacao} />
+            )}
+          </Field>
+
           <Field label="Design"><PessoaCell pessoa={c.design} /></Field>
           <Field label="Edição"><PessoaCell pessoa={c.edicao} /></Field>
 

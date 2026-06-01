@@ -130,6 +130,8 @@ interface Conteudo {
   edicao:   Pessoa | null
 }
 
+interface OperadorFV { id: string; nome: string; foto_url: string | null }
+
 interface Props {
   userId: string
   profile: {
@@ -142,6 +144,7 @@ interface Props {
   }
   turnos: Turno[]
   conteudos: Conteudo[]
+  operadoresFV?: OperadorFV[]
 }
 
 // ── Iniciais ──────────────────────────────────────────────────────────────────
@@ -318,7 +321,7 @@ function SectionHeading({ title, count }: { title: string; count?: number }) {
 
 // ── Main ProfileClient ─────────────────────────────────────────────────────────
 
-export function ProfileClient({ userId, profile, turnos, conteudos }: Props) {
+export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV = [] }: Props) {
   const [fotoUrl, setFotoUrl] = useState(profile.foto_url)
   const [conteudoSel, setConteudoSel] = useState<Conteudo | null>(null)
   const isFV = profile.role === 'operador_fv' || profile.role === 'lider_fv'
@@ -636,8 +639,13 @@ export function ProfileClient({ userId, profile, turnos, conteudos }: Props) {
         </div>
       </div>
 
-      {/* ── Modal read-only de detalhe do conteúdo ──────────────────────────── */}
-      <ConteudoDetalheModal conteudo={conteudoSel} onClose={() => setConteudoSel(null)} />
+      {/* ── Modal de detalhe do conteúdo (captação editável para lider_fv) ──── */}
+      <ConteudoDetalheModal
+        conteudo={conteudoSel}
+        onClose={() => setConteudoSel(null)}
+        userRole={profile.role}
+        operadoresFV={operadoresFV}
+      />
 
       {/* ── Footer note ──────────────────────────────────────────────────────── */}
       <p className="mt-12 text-center text-[11px] text-[var(--muted-foreground)]/50">

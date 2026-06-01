@@ -43,8 +43,8 @@ export default async function PerfilPage() {
       .not('status', 'in', '(arquivado,cancelado)')
       .order('prioridade'),
 
-    // Lightweight profiles list to resolve responsável names
-    supabase.from('profiles').select('id, nome, foto_url'),
+    // Profiles: resolves names + filtra operadores FV para o seletor de captação
+    supabase.from('profiles').select('id, nome, foto_url, role'),
   ])
 
   type RawTurno = {
@@ -69,8 +69,6 @@ export default async function PerfilPage() {
     festa: { nome: string } | { nome: string }[] | null
   }
 
-  type RawProfile = { id: string; nome: string; foto_url: string | null }
-
   const arr = <T,>(v: T | T[] | null | undefined): T | null =>
     Array.isArray(v) ? (v[0] ?? null) : v ?? null
 
@@ -81,12 +79,17 @@ export default async function PerfilPage() {
   }))
 
   // Map de profiles para resolver responsáveis (conteudos tem 3 FKs p/ profiles)
+  type RawProfile = { id: string; nome: string; foto_url: string | null; role?: string | null }
   const profilesMap = new Map(
     (profilesRes.data ?? []).map((p) => {
       const rp = p as RawProfile
       return [rp.id, { nome: rp.nome, foto_url: rp.foto_url }]
     }),
   )
+  // Operadores FV disponíveis para o seletor de captação
+  const operadoresFV = (profilesRes.data ?? [])
+    .filter((p) => (p as RawProfile).role === 'operador_fv')
+    .map((p) => { const rp = p as RawProfile; return { id: rp.id, nome: rp.nome, foto_url: rp.foto_url } })
 
   const conteudos = (conteudosRes.data ?? []).map((raw) => {
     const c = raw as RawConteudo
@@ -177,6 +180,7 @@ export default async function PerfilPage() {
           profile={profile}
           turnos={turnos}
           conteudos={conteudos}
+          operadoresFV={operadoresFV}
         />
       </main>
     </div>

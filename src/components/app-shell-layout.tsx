@@ -76,6 +76,7 @@ const ADMIN_GROUPS: NavGroup[] = [
     label: 'Operacional',
     items: [
       { label: 'Minha Escala',   href: '/minha-escala',       icon: UserCircle },
+      { label: 'Régie (Broadcast)', href: '/broadcast/regie', icon: Tv2 },
       { label: 'Cronograma',     href: '/cronograma',         icon: Calendar },
       { label: 'Escala',         href: '/admin/escala',       icon: ClipboardList },
       { label: 'Foto & Vídeo',   href: '/admin/escala-av',    icon: Aperture },

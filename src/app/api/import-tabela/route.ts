@@ -365,14 +365,26 @@ export async function POST(req: NextRequest) {
     // quando a célula A1 estiver vazia (mapeia "TABELA DIA N" → N-ésimo dia).
     const { data: diasEventoRaw } = await supabase
       .from('dias_evento')
-      .select('data, nome_dia')
+      .select('id, data, nome_dia')
       .eq('edicao_id', edicao_id)
       .order('data', { ascending: true })
-    const diasEvento = (diasEventoRaw ?? []) as Array<{ data: string; nome_dia: string }>
+    const diasEventoAll = (diasEventoRaw ?? []) as Array<{ id: string; data: string; nome_dia: string }>
+
+    // BUG FIX: "TABELA DIA N" deve mapear para o N-ésimo dia OFICIAL do evento
+    // (04–07/06), NÃO para diasEvento[N-1] que incluía os dias de pré-evento
+    // (30/05–03/06, jogos adiantados). Os 4 dias oficiais têm IDs sentinela
+    // 00000000-0000-0001-0000-00000000000N. Antes, "DIA 01" caía em 30/05.
+    const SENTINEL = /^00000000-0000-0001-0000-/
+    const diasOficiais = diasEventoAll
+      .filter(d => SENTINEL.test(d.id))
+      .sort((a, b) => a.data.localeCompare(b.data))
+    // Fallback: se nenhum dia sentinela existir, usa todos (comportamento antigo).
+    const diasParaMapa = diasOficiais.length > 0 ? diasOficiais : diasEventoAll
+    const diasEvento = diasEventoAll as Array<{ data: string; nome_dia: string }>
 
     const buffer = await file.arrayBuffer()
     const wb     = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
-    const { games, primary_date } = parseWorkbook(wb, anoEvento, diasEvento)
+    const { games, primary_date } = parseWorkbook(wb, anoEvento, diasParaMapa)
 
     if (games.length === 0) {
       if (diasEvento.length === 0) {

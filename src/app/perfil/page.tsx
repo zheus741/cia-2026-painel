@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { requireProfile } from '@/lib/auth/current-user'
+import { getCachedPerfis } from '@/lib/cache/lookups'
 import { CiaLogo } from '@/components/cia-logo'
 import { signOut } from '@/app/actions'
 import { LogOut, ArrowLeft } from 'lucide-react'
@@ -71,8 +72,9 @@ export default async function PerfilPage() {
       .not('status', 'in', '(arquivado,cancelado)')
       .order('prioridade'),
 
-    // Profiles: resolve names + lista operadores FV para seletor de captação
-    supabase.from('profiles').select('id, nome, foto_url, role, empresa_cobertura'),
+    // Profiles via service-role (getCachedPerfis bypassa RLS) — garante
+    // que role + empresa_cobertura chegam corretos para o seletor de captação
+    getCachedPerfis(),
   ])
 
   type RawTurno = {
@@ -110,7 +112,7 @@ export default async function PerfilPage() {
   // Map de profiles para resolver responsáveis
   type RawProfile = { id: string; nome: string; foto_url: string | null; role?: string | null; empresa_cobertura?: string | null }
   const profilesMap = new Map(
-    (profilesRes.data ?? []).map((p) => {
+    (profilesRes ?? []).map((p) => {
       const rp = p as RawProfile
       return [rp.id, { nome: rp.nome, foto_url: rp.foto_url }]
     }),
@@ -119,7 +121,7 @@ export default async function PerfilPage() {
   // para que o modal possa exibir os chips de empresa (igual ao Kanban).
   // - lider_fv: só a própria empresa
   // - admin/coord/outros: todos operador_fv + lider_fv com empresa
-  const operadoresFV = (profilesRes.data ?? [])
+  const operadoresFV = (profilesRes ?? [])
     .filter((p) => {
       const rp = p as RawProfile
       if (isLiderFV && empresaFV) {

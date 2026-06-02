@@ -1307,18 +1307,22 @@ interface KanbanBoardProps {
   activeDiaId?:   string
   /** Oculta todos os botões de criar/editar/mover/excluir. Somente leitura. */
   readOnly?:      boolean
+  /** Quando true, exibe o seletor de empresa FV antes dos responsáveis. */
+  isAdmin?:       boolean
 }
 
-export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, perfis, activeDiaId, readOnly }: KanbanBoardProps) {
+export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, perfis, activeDiaId, readOnly, isAdmin }: KanbanBoardProps) {
   const router = useRouter()
   const [conteudos, setConteudos] = React.useState(initial)
   const [search, setSearch]             = React.useState('')
   // filterDia é controlado pela URL (?dia=) → inicia com activeDiaId se presente
-  const [filterDia, setFilterDia]       = React.useState(activeDiaId ?? '')
-  const [filterTipo, setFilterTipo]     = React.useState('')
-  const [filterPerfil, setFilterPerfil] = React.useState('')
-  const [filterCanal, setFilterCanal]   = React.useState('')
-  const [filterSetor, setFilterSetor]   = React.useState('')
+  const [filterDia, setFilterDia]         = React.useState(activeDiaId ?? '')
+  const [filterTipo, setFilterTipo]       = React.useState('')
+  const [filterPerfil, setFilterPerfil]   = React.useState('')
+  const [filterCanal, setFilterCanal]     = React.useState('')
+  const [filterSetor, setFilterSetor]     = React.useState('')
+  /** Admin: empresa FV selecionada ('') = todas */
+  const [filterEmpresa, setFilterEmpresa] = React.useState('')
 
   const [dragId, setDragId]     = React.useState<string | null>(null)
   const [dragOver, setDragOver] = React.useState<string | null>(null)
@@ -1486,17 +1490,59 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     }
   }, [activeDiaId])
 
+  // Admin: empresas únicas com operador_fv / lider_fv cadastrados
+  const empresasFV = React.useMemo(() => {
+    if (!isAdmin) return []
+    const set = new Set<string>()
+    perfis.forEach(p => {
+      if ((p.role === 'operador_fv' || p.role === 'lider_fv') && p.empresa_cobertura) {
+        set.add(p.empresa_cobertura)
+      }
+    })
+    return [...set].sort()
+  }, [perfis, isAdmin])
+
+  // Quando admin filtrou por empresa: mostra só FV daquela empresa no select
+  const perfisParaSelect = React.useMemo(() => {
+    if (!isAdmin || !filterEmpresa) return perfis
+    return perfis.filter(
+      p => (p.role === 'operador_fv' || p.role === 'lider_fv') &&
+           p.empresa_cobertura === filterEmpresa,
+    )
+  }, [perfis, isAdmin, filterEmpresa])
+
+  // Se a pessoa selecionada não está mais visível após trocar de empresa, reseta
+  React.useEffect(() => {
+    if (!filterEmpresa || !filterPerfil) return
+    const ainda = perfisParaSelect.find(p => p.id === filterPerfil)
+    if (!ainda) setFilterPerfil('')
+  }, [filterEmpresa, perfisParaSelect, filterPerfil])
+
   const filtered = React.useMemo(() => {
     let list = conteudos
     if (search)                        list = list.filter(c => c.titulo.toLowerCase().includes(search.toLowerCase()))
     if (filterDia && filterDia !== '__all__')     list = list.filter(c => c.dia_id === filterDia)
     if (filterTipo && filterTipo !== '__all__')   list = list.filter(c => parseTipos(c.tipo).includes(filterTipo))
+    // Admin + empresa selecionada: filtra cards com pelo menos 1 responsável da empresa
+    if (isAdmin && filterEmpresa) {
+      const idsFV = new Set(
+        perfis
+          .filter(p => (p.role === 'operador_fv' || p.role === 'lider_fv') && p.empresa_cobertura === filterEmpresa)
+          .map(p => p.id),
+      )
+      list = list.filter(c =>
+        (c.responsavel_captacao_id   && idsFV.has(c.responsavel_captacao_id))   ||
+        (c.responsavel_design_id     && idsFV.has(c.responsavel_design_id))     ||
+        (c.responsavel_edicao_id     && idsFV.has(c.responsavel_edicao_id))     ||
+        (c.responsavel_influencer_id && idsFV.has(c.responsavel_influencer_id)),
+      )
+    }
     if (filterPerfil && filterPerfil !== '__all__') {
       list = list.filter(c =>
-        c.responsavel_captacao_id === filterPerfil ||
-        c.responsavel_design_id   === filterPerfil ||
-        c.responsavel_edicao_id   === filterPerfil ||
-        c.responsavel_influencer_id === filterPerfil
+        c.responsavel_captacao_id    === filterPerfil ||
+        c.responsavel_design_id      === filterPerfil ||
+        c.responsavel_edicao_id      === filterPerfil ||
+        c.responsavel_influencer_id  === filterPerfil
       )
     }
     if (filterCanal && filterCanal !== '__all__') {
@@ -1508,7 +1554,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         : list.filter(c => c.setor_id === filterSetor)
     }
     return list
-  }, [conteudos, search, filterDia, filterTipo, filterPerfil, filterCanal, filterSetor])
+  }, [conteudos, search, filterDia, filterTipo, filterPerfil, filterCanal, filterSetor, isAdmin, filterEmpresa, perfis])
 
   async function handleMove(c: Conteudo, status: string) {
     // PERF: optimistic update — o ator vê o card mover INSTANTANEAMENTE.
@@ -1590,6 +1636,69 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
           <span>Sem conexão — as alterações não serão salvas até a internet voltar. Não feche a aba.</span>
         </div>
       )}
+
+      {/* ── Seletor de empresa FV (só admin) ───────────────────────── */}
+      {isAdmin && empresasFV.length > 0 && (
+        <div
+          className="flex shrink-0 items-center gap-2 border-b border-[var(--border)] px-6 py-2.5"
+          style={{ background: 'var(--cream)' }}
+        >
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(10,15,11,0.40)' }}>
+            📷 Equipe FV
+          </span>
+          <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            {/* Chip "Todas" */}
+            <button
+              onClick={() => { setFilterEmpresa(''); setFilterPerfil('') }}
+              className="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors"
+              style={{
+                border:     `1px solid ${!filterEmpresa ? 'var(--green)' : 'rgba(10,15,11,0.12)'}`,
+                background: !filterEmpresa ? 'rgba(46,107,66,0.12)' : 'rgba(10,15,11,0.03)',
+                color:      !filterEmpresa ? 'var(--green)' : 'rgba(10,15,11,0.50)',
+              }}
+            >
+              Todas as empresas
+            </button>
+
+            {/* Chips por empresa */}
+            {empresasFV.map(emp => {
+              const isActive = filterEmpresa === emp
+              const count = perfis.filter(
+                p => (p.role === 'operador_fv' || p.role === 'lider_fv') && p.empresa_cobertura === emp,
+              ).length
+              return (
+                <button
+                  key={emp}
+                  onClick={() => { setFilterEmpresa(isActive ? '' : emp); setFilterPerfil('') }}
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-colors"
+                  style={{
+                    border:     `1px solid ${isActive ? 'var(--green)' : 'rgba(10,15,11,0.12)'}`,
+                    background: isActive ? 'rgba(46,107,66,0.12)' : 'rgba(10,15,11,0.03)',
+                    color:      isActive ? 'var(--green)' : 'rgba(10,15,11,0.50)',
+                  }}
+                >
+                  {emp}
+                  <span
+                    className="rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums"
+                    style={{
+                      background: isActive ? 'rgba(46,107,66,0.20)' : 'rgba(10,15,11,0.06)',
+                      color:      isActive ? 'var(--green)' : 'rgba(10,15,11,0.35)',
+                    }}
+                  >
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          {filterEmpresa && (
+            <span className="ml-auto shrink-0 text-[10px]" style={{ color: 'var(--green)' }}>
+              {perfisParaSelect.length} pessoa{perfisParaSelect.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* ── Filter bar ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-6 py-3" style={{ background: 'var(--cream)', backdropFilter: 'blur(8px)' }}>
         {/* Search */}
@@ -1643,11 +1752,22 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
 
         <Select value={filterPerfil} onValueChange={setFilterPerfil}>
           <SelectTrigger className="h-8 w-36 text-[11px] rounded-full border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)]">
-            <SelectValue placeholder="Responsável" />
+            <SelectValue placeholder={filterEmpresa ? `${filterEmpresa}…` : 'Responsável'} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">Todos</SelectItem>
-            {perfis.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+            <SelectItem value="__all__">
+              {filterEmpresa ? `Toda a ${filterEmpresa}` : 'Todos'}
+            </SelectItem>
+            {perfisParaSelect.map(p => (
+              <SelectItem key={p.id} value={p.id}>
+                <span className="flex items-center gap-1.5">
+                  {p.nome}
+                  {p.role === 'lider_fv' && (
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--gold)]">líder</span>
+                  )}
+                </span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

@@ -158,6 +158,7 @@ export default async function ConteudosPage({
           perfis={perfis as Perfil[]}
           activeDiaId={activeDiaId}
           readOnly={false}
+          isAdmin={profile?.role === 'admin'}
         />
       </div>
     </div>

@@ -582,13 +582,6 @@ export function HomeClient({
                 diaAtualId={coordDiaAtualId}
               />
 
-              {/* Asana CIA — visível para coord/admin */}
-              {asanaData && isCoord && (
-                <div style={{ marginTop: 20 }}>
-                  <AsanaCard data={asanaData} />
-                </div>
-              )}
-
               {/* Operacional — só para role operador */}
               {isOperador && (
                 <div className="mt-6 grid" style={{

@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useState, useTransition, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { atualizarCaptacao, atualizarStatusCaptacao } from './actions'
@@ -130,9 +131,11 @@ const CAPTACAO_STATUS_OPTS = [
 function StatusCaptacaoSelector({
   conteudoId,
   current,
+  onSaved,
 }: {
   conteudoId: string
   current: string | null
+  onSaved?: () => void
 }) {
   const [value, setValue] = useState(current ?? 'nao_iniciado')
   const [pending, startTransition] = useTransition()
@@ -146,7 +149,7 @@ function StatusCaptacaoSelector({
     setErr(null)
     startTransition(async () => {
       const res = await atualizarStatusCaptacao(conteudoId, next)
-      if (res.ok) setSaved(true)
+      if (res.ok) { setSaved(true); onSaved?.() }
       else setErr(res.error ?? 'Erro ao salvar')
     })
   }
@@ -182,12 +185,14 @@ function CaptacaoSelector({
   current,
   operadores,
   empresaInicial,
+  onSaved,
 }: {
   conteudoId:    string
   current:       { id?: string; nome: string; foto_url: string | null } | null
   operadores:    { id: string; nome: string; foto_url: string | null; empresa_cobertura?: string | null }[]
   /** Empresa pré-selecionada (ex: lider_fv vê só a sua) */
   empresaInicial?: string | null
+  onSaved?:      () => void
 }) {
   // Empresas únicas com pelo menos 1 operador
   const empresas = useMemo(() => {
@@ -227,7 +232,7 @@ function CaptacaoSelector({
     setSaved(false)
     startTransition(async () => {
       const res = await atualizarCaptacao(conteudoId, newId)
-      if (res.ok) setSaved(true)
+      if (res.ok) { setSaved(true); onSaved?.() }
       else setErr(res.error ?? 'Erro ao salvar')
     })
   }
@@ -307,12 +312,19 @@ export function ConteudoDetalheModal({
   if (!conteudo) return null
 
   const c = conteudo
+  const router = useRouter()
   const statusCfg = STATUS_CONFIG[c.status] ?? STATUS_CONFIG.rascunho
   const tipos = parseTipos(c.tipo)
   const prio = prioridadeInfo(c.prioridade)
   const podeEditarCaptacao = userRole === 'lider_fv' || userRole === 'lider_area' || userRole === 'coordenacao' || userRole === 'admin'
   // Operador designado pode atualizar o status
   const eOperadorDesignado = !!userId && userId === c.captacao_id
+
+  // Após qualquer save: fecha o modal e recarrega os dados do servidor
+  function handleSaved() {
+    onClose()
+    router.refresh()
+  }
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
@@ -375,6 +387,7 @@ export function ConteudoDetalheModal({
                     current={c.captacao}
                     operadores={operadoresFV}
                     empresaInicial={empresaFV}
+                    onSaved={handleSaved}
                   />
                   <p className="text-[10px] text-[var(--muted-foreground)]">
                     Só o campo captação pode ser alterado aqui.
@@ -387,7 +400,7 @@ export function ConteudoDetalheModal({
               {eOperadorDesignado && (
                 <div>
                   <p className="mb-1 text-[10px] text-[var(--muted-foreground)]">Seu status de captação:</p>
-                  <StatusCaptacaoSelector conteudoId={c.id} current={c.status_captacao} />
+                  <StatusCaptacaoSelector conteudoId={c.id} current={c.status_captacao} onSaved={handleSaved} />
                 </div>
               )}
             </div>

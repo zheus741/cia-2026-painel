@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import * as XLSX from 'xlsx'
 import { createClient } from '@/lib/supabase/server'
+import { stampTodasAsChaves } from '@/lib/chaveamento/avanco'
 
 // ── Modalidade map: código Excel → dados completos ────────────────────────────
 
@@ -580,6 +581,17 @@ export async function POST(req: NextRequest) {
       if (error) erros.push(`update ${u.id}: ${error.message}`)
     }
 
+    // Carimba fase + bracket_num em TODAS as chaves logo após inserir/atualizar.
+    // Sem isso, jogos entram com fase=null → classificação não deriva colocação
+    // e a propagação de chave não funciona. Batch eficiente (uma passada).
+    let jogos_carimbados = 0
+    try {
+      const { carimbados } = await stampTodasAsChaves(supabase)
+      jogos_carimbados = carimbados
+    } catch (e) {
+      erros.push(`stamp fases: ${String(e)}`)
+    }
+
     // Data "principal" da resposta = primary_date (aba TABELA DIA NN) se existir,
     // senão a primeira data cronológica encontrada.
     const date_str_resp = primary_date && diasMap.has(primary_date) ? primary_date : datasOrdenadas[0]
@@ -598,6 +610,7 @@ export async function POST(req: NextRequest) {
         jogos_novos,
         jogos_existentes,
         jogos_total:        games.length,
+        jogos_carimbados,
         modalidades_criadas,
         setores_criados,
         dias_processados,

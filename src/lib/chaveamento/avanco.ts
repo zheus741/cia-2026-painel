@@ -591,6 +591,77 @@ export async function stampFasesNaChave(
 }
 
 /**
+ * Carimba fase + bracket_num em TODAS as chaves de uma vez (batch eficiente).
+ * Faz UMA leitura de chave_config + modalidades + jogos e cruza em memória —
+ * ideal para chamar no fim de um import (em vez de N chamadas a stampFasesNaChave).
+ *
+ * Recebe um client (service ou sessão) para poder rodar dentro do import-tabela
+ * E de scripts/webhooks. Idempotente: só atualiza o que mudou.
+ */
+export async function stampTodasAsChaves(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ carimbados: number }> {
+  const [{ data: configs }, { data: mods }, { data: jogos }] = await Promise.all([
+    supabase.from('chave_config').select('modalidade_id, categoria, divisao, num_teams, seeds'),
+    supabase.from('modalidades').select('id, slug'),
+    supabase.from('jogos').select('id, modalidade_id, categoria, divisao, fase, bracket_num, equipe_a_nome, equipe_b_nome'),
+  ])
+  if (!configs || !mods || !jogos) return { carimbados: 0 }
+
+  const slugById = new Map<string, string>()
+  const idsBySlug = new Map<string, string[]>()
+  for (const m of mods as Array<{ id: string; slug: string }>) {
+    slugById.set(m.id, m.slug)
+    const arr = idsBySlug.get(m.slug) ?? []
+    arr.push(m.id); idsBySlug.set(m.slug, arr)
+  }
+
+  type J = { id: string; modalidade_id: string; categoria: string | null; divisao: string | null; fase: string | null; bracket_num: number | null; equipe_a_nome: string | null; equipe_b_nome: string | null }
+  const updates: Array<{ id: string; fase: string; num: number }> = []
+
+  for (const cfg of configs as ChaveConfig[]) {
+    if (!cfg.seeds?.length) continue
+    const slug = slugById.get(cfg.modalidade_id)
+    if (!slug) continue
+    const modIds = new Set(idsBySlug.get(slug) ?? [cfg.modalidade_id])
+    const wantCat = normCategoria(cfg.categoria), wantDiv = normDivisao(cfg.divisao)
+
+    const bracket = buildGames(cfg.num_teams)
+    const firstRound: Array<{ fase: string; num: number; nA: string; nB: string }> = []
+    for (const g of bracket) {
+      const seeds = g.slots.filter(s => s.type === 'direct' && s.pos).map(s => s.pos as number)
+      if (seeds.length !== 2) continue
+      const nA = cfg.seeds[seeds[0] - 1], nB = cfg.seeds[seeds[1] - 1]
+      const fase = ROUND_TO_FASE[g.round]
+      if (nA && nB && fase) firstRound.push({ fase, num: g.num, nA, nB })
+    }
+    if (!firstRound.length) continue
+
+    for (const j of jogos as J[]) {
+      if (!modIds.has(j.modalidade_id)) continue
+      if (normCategoria(j.categoria) !== wantCat || normDivisao(j.divisao) !== wantDiv) continue
+      if (!j.equipe_a_nome || !j.equipe_b_nome) continue
+      const ja = canonTeamName(j.equipe_a_nome), jb = canonTeamName(j.equipe_b_nome)
+      const eq = (x: string, y: string) => !!x && !!y && (x === y || fuzzyMatchTeam(x, y))
+      const m = firstRound.find(fr => {
+        const a = canonTeamName(fr.nA), b = canonTeamName(fr.nB)
+        return (eq(ja, a) && eq(jb, b)) || (eq(ja, b) && eq(jb, a))
+      })
+      if (!m) continue
+      if (j.fase === m.fase && j.bracket_num === m.num) continue
+      updates.push({ id: j.id, fase: m.fase, num: m.num })
+    }
+  }
+
+  let carimbados = 0
+  for (const u of updates) {
+    const { error } = await supabase.from('jogos').update({ fase: u.fase, bracket_num: u.num }).eq('id', u.id)
+    if (!error) carimbados++
+  }
+  return { carimbados }
+}
+
+/**
  * Reprocessa TODOS os jogos encerrados de uma chave (modalidade+categoria+divisão),
  * em ordem de fase (oitavas → quartas → semi → final).
  * Útil quando o usuário declarou WO e quer rever a propagação, ou quando importou

@@ -15,13 +15,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
-  Music, Swords, PartyPopper, Clock, Sparkles, MapPin, Radio,
+  Music, Swords, PartyPopper, Clock, Sparkles, MapPin, Radio, Trophy,
 } from 'lucide-react'
 import { PageContainer } from '@/components/page-container'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type EventoTipo = 'show' | 'jogo' | 'festa'
+export type EventoTipo = 'show' | 'jogo' | 'festa' | 'individual'
 
 export interface Evento {
   id:        string
@@ -84,6 +84,14 @@ const TIPO_CFG: Record<EventoTipo, {
     accent: 'var(--terracotta-soft, #D8845F)',
     bg:     'rgba(216,132,95,0.08)',
     border: 'rgba(216,132,95,0.35)',
+  },
+  individual: {
+    label:  'Individual',
+    plural: 'Individuais',
+    Icon:   Trophy,
+    accent: '#7C3AED',
+    bg:     'rgba(124,58,237,0.08)',
+    border: 'rgba(124,58,237,0.35)',
   },
 }
 
@@ -160,7 +168,7 @@ export function CronogramaClient({ dias, eventos }: Props) {
   // Stats globais
   const totalEventos = eventos.length
   const countByTipo = useMemo(() => {
-    const m: Record<EventoTipo, number> = { show: 0, jogo: 0, festa: 0 }
+    const m: Record<EventoTipo, number> = { show: 0, jogo: 0, festa: 0, individual: 0 }
     for (const e of eventos) m[e.tipo]++
     return m
   }, [eventos])

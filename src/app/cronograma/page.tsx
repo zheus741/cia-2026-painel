@@ -37,16 +37,18 @@ export default async function CronogramaPage() {
   for (const s of showsRes.data ?? []) {
     if (!s.inicio || !s.dia_id) continue
     const setor = s.setor as unknown as { nome: string } | null
+    // shows com tipo=null são esportes individuais (Natação, Judô, Peteca…)
+    const isIndividual = s.tipo == null
     eventos.push({
       id:      s.id,
       nome:    s.nome,
-      tipo:    'show',
-      subtipo: s.tipo === 'dj_set' ? 'DJ Set' : 'Show',
+      tipo:    isIndividual ? 'individual' : 'show',
+      subtipo: isIndividual ? null : s.tipo === 'dj_set' ? 'DJ Set' : 'Show',
       inicio:  s.inicio,
       fim:     s.fim_previsto,
       local:   setor?.nome ?? null,
       dia_id:  s.dia_id,
-      destaque: !!s.embaixador,  // embaixador = visual mais forte
+      destaque: !!s.embaixador,
       badge:   s.embaixador ? 'Embaixador' : null,
     })
   }

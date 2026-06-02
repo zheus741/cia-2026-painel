@@ -4,7 +4,7 @@ import { PlacarBoard } from './PlacarClient'
 import { PageHeader } from '@/components/page-header'
 import { Tv2 } from 'lucide-react'
 
-const CAN_EDIT_ROLES = ['admin', 'coordenador_esportivo']
+const CAN_EDIT_ROLES = ['admin', 'coordenador_esportivo', 'operador_esportivo']
 
 const DIAS_FIXOS = [
   { id: '00000000-0000-0001-0000-000000000001', nome_dia: 'Quinta', data: '2026-06-04' },

@@ -132,8 +132,8 @@ export async function requireSportEditor() {
     .select('role')
     .eq('id', u.user.id)
     .maybeSingle()
-  if (!p || !['admin', 'coordenador_esportivo'].includes(p.role)) {
-    throw new Error('Sem permissão. Apenas admin ou coord. esportivo podem alterar.')
+  if (!p || !['admin', 'coordenador_esportivo', 'operador_esportivo'].includes(p.role)) {
+    throw new Error('Sem permissão. Apenas admin, coord. ou operador esportivo podem alterar.')
   }
 }
 

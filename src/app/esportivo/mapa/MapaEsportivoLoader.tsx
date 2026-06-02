@@ -15,6 +15,14 @@ const Dyn = dynamic(
   },
 )
 
-export function MapaEsportivoLoader({ venues, semGeo }: { venues: Venue[]; semGeo: string[] }) {
-  return <Dyn venues={venues} semGeo={semGeo} />
+export function MapaEsportivoLoader({
+  venues,
+  semGeo,
+  isAdmin = false,
+}: {
+  venues: Venue[]
+  semGeo: string[]
+  isAdmin?: boolean
+}) {
+  return <Dyn venues={venues} semGeo={semGeo} isAdmin={isAdmin} />
 }

@@ -36,7 +36,8 @@ function prefixoComum(nomes: string[]): string {
 }
 
 export default async function MapaEsportivoPage() {
-  await requireProfile()
+  const profile = await requireProfile()
+  const isAdmin = ['admin', 'coordenacao', 'coordenador_esportivo'].includes(profile.role)
   const supabase = await createClient()
 
   const [{ data: setoresRaw }, { data: jogosRaw }, { data: modsRaw }] = await Promise.all([
@@ -101,5 +102,5 @@ export default async function MapaEsportivoPage() {
   // reatribui ids estáveis após sort
   venues.forEach((v, i) => { v.id = i })
 
-  return <MapaEsportivoLoader venues={venues} semGeo={semGeo.sort()} />
+  return <MapaEsportivoLoader venues={venues} semGeo={semGeo.sort()} isAdmin={isAdmin} />
 }

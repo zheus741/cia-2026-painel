@@ -738,13 +738,13 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
               {jogo.setor_id ? (
                 <Link
                   href={`/esportivo/escala?dia=${jogo.dia_id ?? ''}#setor-${jogo.setor_id}`}
-                  className="underline decoration-dotted decoration-[var(--muted-foreground)]/30 underline-offset-2 transition-colors hover:text-[var(--green-bright)] hover:decoration-[var(--green-bright)]/60"
-                  title="Ver delegado e jogos desta praça"
+                  className="max-w-[180px] truncate underline decoration-dotted decoration-[var(--muted-foreground)]/30 underline-offset-2 transition-colors hover:text-[var(--green-bright)] hover:decoration-[var(--green-bright)]/60"
+                  title={jogo.setor.nome}
                 >
                   {jogo.setor.nome}
                 </Link>
               ) : (
-                <span className="text-[var(--muted-foreground)]/70">{jogo.setor.nome}</span>
+                <span className="max-w-[180px] truncate text-[var(--muted-foreground)]/70" title={jogo.setor.nome}>{jogo.setor.nome}</span>
               )}
             </>
           )}

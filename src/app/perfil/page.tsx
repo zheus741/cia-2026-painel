@@ -13,7 +13,37 @@ export default async function PerfilPage() {
   const user = { id: profile.id }
   const supabase = await createClient()
 
+  const isLiderFV = profile.role === 'lider_fv'
+
+  // ── Se lider_fv: busca empresa + IDs da equipe antes das queries principais ──
+  let empresaFV: string | null = null
+  let teamIds: string[] = [user.id] // começa com o próprio lider
+
+  if (isLiderFV) {
+    const { data: selfData } = await supabase
+      .from('profiles')
+      .select('empresa_cobertura')
+      .eq('id', user.id)
+      .single()
+    empresaFV = selfData?.empresa_cobertura ?? null
+
+    if (empresaFV) {
+      const { data: teamData } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('empresa_cobertura', empresaFV)
+        .in('role', ['operador_fv', 'lider_fv'])
+      teamIds = (teamData ?? []).map((p) => p.id)
+      if (!teamIds.includes(user.id)) teamIds.push(user.id)
+    }
+  }
+
   // ── Fetch personal data in parallel ──────────────────────────────────────
+  const inClause = `(${teamIds.join(',')})`
+  const orConteudos = isLiderFV
+    ? `responsavel_captacao_id.in.${inClause},responsavel_design_id.in.${inClause},responsavel_edicao_id.in.${inClause}`
+    : `responsavel_captacao_id.eq.${user.id},responsavel_design_id.eq.${user.id},responsavel_edicao_id.eq.${user.id}`
+
   const [turnosRes, conteudosRes, profilesRes] = await Promise.all([
     // All turnos assigned to this user (all event days)
     supabase
@@ -22,7 +52,7 @@ export default async function PerfilPage() {
       .eq('user_id', user.id)
       .order('inicio'),
 
-    // Conteúdos where user is responsible in any role
+    // Conteúdos: próprios (operador) ou de toda a equipe (lider_fv)
     supabase
       .from('conteudos')
       .select(`
@@ -37,14 +67,12 @@ export default async function PerfilPage() {
         show:shows(nome),
         festa:festas(nome)
       `)
-      .or(
-        `responsavel_captacao_id.eq.${user.id},responsavel_design_id.eq.${user.id},responsavel_edicao_id.eq.${user.id}`
-      )
+      .or(orConteudos)
       .not('status', 'in', '(arquivado,cancelado)')
       .order('prioridade'),
 
-    // Profiles: resolves names + filtra operadores FV para o seletor de captação
-    supabase.from('profiles').select('id, nome, foto_url, role'),
+    // Profiles: resolve names + lista operadores FV para seletor de captação
+    supabase.from('profiles').select('id, nome, foto_url, role, empresa_cobertura'),
   ])
 
   type RawTurno = {
@@ -79,17 +107,26 @@ export default async function PerfilPage() {
     setor: arr((t as RawTurno).setor),
   }))
 
-  // Map de profiles para resolver responsáveis (conteudos tem 3 FKs p/ profiles)
-  type RawProfile = { id: string; nome: string; foto_url: string | null; role?: string | null }
+  // Map de profiles para resolver responsáveis
+  type RawProfile = { id: string; nome: string; foto_url: string | null; role?: string | null; empresa_cobertura?: string | null }
   const profilesMap = new Map(
     (profilesRes.data ?? []).map((p) => {
       const rp = p as RawProfile
       return [rp.id, { nome: rp.nome, foto_url: rp.foto_url }]
     }),
   )
-  // Operadores FV disponíveis para o seletor de captação
+  // Operadores FV para o seletor de captação:
+  // - lider_fv vê só a própria empresa (operadores + o próprio lider)
+  // - outros papéis veem todos os operadores_fv
   const operadoresFV = (profilesRes.data ?? [])
-    .filter((p) => (p as RawProfile).role === 'operador_fv')
+    .filter((p) => {
+      const rp = p as RawProfile
+      if (isLiderFV && empresaFV) {
+        return (rp.role === 'operador_fv' || rp.role === 'lider_fv') &&
+               rp.empresa_cobertura === empresaFV
+      }
+      return rp.role === 'operador_fv'
+    })
     .map((p) => { const rp = p as RawProfile; return { id: rp.id, nome: rp.nome, foto_url: rp.foto_url } })
 
   const conteudos = (conteudosRes.data ?? []).map((raw) => {
@@ -184,6 +221,8 @@ export default async function PerfilPage() {
           turnos={turnos}
           conteudos={conteudos}
           operadoresFV={operadoresFV}
+          isLiderFV={isLiderFV}
+          empresaFV={empresaFV}
         />
       </main>
     </div>

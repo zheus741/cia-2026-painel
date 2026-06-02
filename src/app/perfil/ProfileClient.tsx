@@ -147,6 +147,10 @@ interface Props {
   turnos: Turno[]
   conteudos: Conteudo[]
   operadoresFV?: OperadorFV[]
+  /** Verdadeiro quando o usuário é lider_fv — ativa a visão de equipe */
+  isLiderFV?: boolean
+  /** Empresa do lider_fv (ex: "Olharr") — exibida no cabeçalho da seção */
+  empresaFV?: string | null
 }
 
 // ── Iniciais ──────────────────────────────────────────────────────────────────
@@ -323,9 +327,10 @@ function SectionHeading({ title, count }: { title: string; count?: number }) {
 
 // ── Main ProfileClient ─────────────────────────────────────────────────────────
 
-export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV = [] }: Props) {
+export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV = [], isLiderFV = false, empresaFV = null }: Props) {
   const [fotoUrl, setFotoUrl] = useState(profile.foto_url)
   const [conteudoSel, setConteudoSel] = useState<Conteudo | null>(null)
+  const [filtroEquipe, setFiltroEquipe] = useState<'todos' | 'meus'>('todos')
   const isFV = profile.role === 'operador_fv' || profile.role === 'lider_fv'
 
   // ── KPI computation ─────────────────────────────────────────────────────────
@@ -343,8 +348,13 @@ export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV
   }, {})
   const diasOrdenados = Object.keys(turnosByDia).sort()
 
+  // ── Filtro de equipe (lider_fv): todos os cards vs só os do próprio lider ──
+  const conteudosFiltrados = isLiderFV && filtroEquipe === 'meus'
+    ? conteudos.filter(c => c.myRoles.length > 0)
+    : conteudos
+
   // ── Active conteúdos first (em_producao before rascunho) ───────────────────
-  const conteudosSorted = [...conteudos].sort((a, b) => {
+  const conteudosSorted = [...conteudosFiltrados].sort((a, b) => {
     const order = { em_producao: 0, rascunho: 1, publicado: 2 }
     const ao = order[a.status as keyof typeof order] ?? 3
     const bo = order[b.status as keyof typeof order] ?? 3
@@ -512,16 +522,74 @@ export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV
           )}
         </div>
 
-        {/* ── RIGHT: Kanban ─────────────────────────────────────────────────── */}
+        {/* ── RIGHT: Conteúdos ──────────────────────────────────────────────── */}
         <div>
-          <SectionHeading title="Meus conteúdos" count={conteudos.length} />
+          {/* Cabeçalho da seção — lider_fv vê a equipe toda */}
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <div className="flex items-baseline gap-3">
+              <h2 style={{
+                fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                fontSize: 22, fontWeight: 800,
+                letterSpacing: '-0.03em',
+                color: '#0A0F0B',
+              }}>
+                {isLiderFV ? 'Equipe' : 'Meus conteúdos'}
+              </h2>
+              {isLiderFV && empresaFV && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  color: 'var(--green)',
+                  background: 'rgba(46,107,66,0.10)',
+                  border: '1px solid rgba(46,107,66,0.20)',
+                  borderRadius: 999, padding: '2px 10px',
+                  letterSpacing: '0.02em',
+                }}>
+                  {empresaFV}
+                </span>
+              )}
+              <span style={{
+                fontSize: 11, fontWeight: 700,
+                color: 'rgba(10,15,11,0.40)',
+                letterSpacing: '0.04em',
+                background: 'rgba(10,15,11,0.06)',
+                borderRadius: 999,
+                padding: '2px 9px',
+              }}>
+                {conteudosFiltrados.length}
+              </span>
+            </div>
+            {/* Toggle Todos / Meus — só para lider_fv */}
+            {isLiderFV && (
+              <div className="flex overflow-hidden rounded-lg border border-[rgba(10,15,11,0.12)]">
+                {(['todos', 'meus'] as const).map(opt => (
+                  <button
+                    key={opt}
+                    onClick={() => setFiltroEquipe(opt)}
+                    className="px-3 py-1.5 text-[11px] font-semibold transition-colors"
+                    style={{
+                      background: filtroEquipe === opt ? 'rgba(46,107,66,0.12)' : 'transparent',
+                      color: filtroEquipe === opt ? '#2e6b42' : 'rgba(10,15,11,0.45)',
+                    }}
+                  >
+                    {opt === 'todos' ? 'Equipe toda' : 'Só meus'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-          {conteudos.length === 0 ? (
+          {conteudosFiltrados.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center">
               <Layers className="mx-auto mb-3 h-8 w-8 opacity-20" />
-              <p className="text-sm text-[var(--muted-foreground)]">Nenhum conteúdo atribuído.</p>
+              <p className="text-sm text-[var(--muted-foreground)]">
+                {isLiderFV && filtroEquipe === 'todos'
+                  ? 'Nenhum conteúdo atribuído à equipe ainda.'
+                  : 'Nenhum conteúdo atribuído.'}
+              </p>
               <p className="mt-1 text-xs text-[var(--muted-foreground)]/60">
-                Aparecem aqui quando a coord te definir como responsável.
+                {isLiderFV
+                  ? 'Clique num card para designar um operador de captação.'
+                  : 'Aparecem aqui quando a coord te definir como responsável.'}
               </p>
             </div>
           ) : (
@@ -603,6 +671,17 @@ export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV
                           </span>
                         )}
                       </div>
+
+                      {/* Captação visível no card — útil para o lider ver quem está designado */}
+                      {isLiderFV && (
+                        <div className="mt-1.5 flex items-center gap-1.5 text-[10px]" style={{ color: 'rgba(10,15,11,0.50)' }}>
+                          <Camera style={{ width: 9, height: 9, flexShrink: 0 }} />
+                          {c.captacao
+                            ? <span className="font-semibold" style={{ color: '#0A0F0B' }}>{c.captacao.nome}</span>
+                            : <span className="italic" style={{ color: 'rgba(10,15,11,0.35)' }}>sem operador — toque para designar</span>
+                          }
+                        </div>
+                      )}
 
                       {/* My roles + status */}
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">

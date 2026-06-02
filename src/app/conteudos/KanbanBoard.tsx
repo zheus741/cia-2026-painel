@@ -1503,14 +1503,17 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     return [...set].sort()
   }, [perfis, isAdmin])
 
-  // Quando admin filtrou por empresa: mostra só FV daquela empresa no select
+  // Select de responsável no contexto FV:
+  // - sempre restrito a operador_fv + lider_fv (nunca mistura com coord/admin)
+  // - se empresa selecionada: filtra adicionalmente por empresa
   const perfisParaSelect = React.useMemo(() => {
-    if (!isAdmin || !filterEmpresa) return perfis
-    return perfis.filter(
-      p => (p.role === 'operador_fv' || p.role === 'lider_fv') &&
-           p.empresa_cobertura === filterEmpresa,
+    if (!isAdmin || empresasFV.length === 0) return perfis
+    const fv = perfis.filter(
+      p => p.role === 'operador_fv' || p.role === 'lider_fv',
     )
-  }, [perfis, isAdmin, filterEmpresa])
+    if (!filterEmpresa) return fv
+    return fv.filter(p => p.empresa_cobertura === filterEmpresa)
+  }, [perfis, isAdmin, filterEmpresa, empresasFV])
 
   // Se a pessoa selecionada não está mais visível após trocar de empresa, reseta
   React.useEffect(() => {

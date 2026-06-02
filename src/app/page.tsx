@@ -6,6 +6,7 @@ import { AppShell } from '@/components/app-shell'
 import { getStaticEventData } from '@/lib/home/static-event-data'
 import { HomeClient } from './HomeClient'
 import { HomeFotoVideo } from './HomeFotoVideo'
+import { fetchCIAAsanaData } from '@/lib/asana/cia-tasks'
 import type {
   CoordConteudoHoje,
   CoordJogo,
@@ -101,8 +102,8 @@ export default async function Home() {
   const todaySP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const today   = new Date().toISOString().slice(0, 10)
 
-  // Fetch all data in parallel
-  const [conteudosRes, diasRes, turnosRes, checklistsRes, weather] = await Promise.all([
+  // Fetch all data in parallel (inclui Asana CIA)
+  const [conteudosRes, diasRes, turnosRes, checklistsRes, weather, asanaData] = await Promise.all([
     // All active conteudos — inclui campos de análise + status de produção
     supabase
       .from('conteudos')
@@ -140,6 +141,9 @@ export default async function Home() {
       : Promise.resolve({ data: [] as unknown[] }),
 
     fetchWeather(),
+
+    // Asana — Copa Inter Atléticas (cache 5 min, não bloqueia se falhar)
+    fetchCIAAsanaData().catch(() => null),
   ])
 
   // ── Coord-only data ───────────────────────────────────────────────────────
@@ -151,6 +155,7 @@ export default async function Home() {
   let coordTurnosHoje:            CoordTurnoCount[]                                        = []
   let coordPatrocinadores:        CoordPatrocinador[]                                      = []
   let coordConteudosPorPatroc:    { patrocinador_id: string | null; status: string }[]     = []
+  let coordEscopoItens:           { patrocinador_id: string; quantidade_prevista: number | null }[] = []
   let coordChecklistItens:        { id: string; status: string }[]                         = []
   let coordDiaAtualId:            string | null                                            = null
   let coordTurnosCoberturaAV:     { setor_id: string; funcao: string; dia_id: string }[]  = []
@@ -184,6 +189,7 @@ export default async function Home() {
         festasRes,
         turnosRes,
         contPatrocRes,
+        escopoRes,
         ckItensRes,
         turnosCoberturaAVRes,
         profilesRes,
@@ -221,6 +227,11 @@ export default async function Home() {
           .not('patrocinador_id', 'is', null)
           .not('status', 'in', '(arquivado,cancelado)'),
 
+        // 5b. Escopo de patrocinadores — para indicador de cobertura
+        supabase
+          .from('escopo_itens')
+          .select('patrocinador_id, quantidade_prevista'),
+
         // 6. Checklist items do dia
         supabase
           .from('checklist_itens')
@@ -248,6 +259,7 @@ export default async function Home() {
       coordTurnosHoje         = (turnosRes.data      ?? []) as CoordTurnoCount[]
       coordPatrocinadores     = staticData.patrocinadores
       coordConteudosPorPatroc = (contPatrocRes.data  ?? []) as { patrocinador_id: string | null; status: string }[]
+      coordEscopoItens        = (escopoRes.data      ?? []) as { patrocinador_id: string; quantidade_prevista: number | null }[]
       coordChecklistItens     = ((ckItensRes.data ?? []) as { id: string; status: string }[])
         .map(i => ({ id: i.id, status: i.status }))
       coordTurnosCoberturaAV  = (turnosCoberturaAVRes.data ?? []) as { setor_id: string; funcao: string; dia_id: string }[]
@@ -470,6 +482,7 @@ export default async function Home() {
         coordTurnosHoje={coordTurnosHoje}
         coordPatrocinadores={coordPatrocinadores}
         coordConteudosPorPatrocinador={coordConteudosPorPatroc}
+        coordEscopoItens={coordEscopoItens}
         coordChecklistItens={coordChecklistItens}
         coordDiasEvento={diasSorted}
         coordDiaAtualId={coordDiaAtualId}
@@ -481,6 +494,7 @@ export default async function Home() {
         analyticsAtleticas={analyticsAtleticas}
         analyticsPracas={analyticsPracas}
         analyticsFunil={analyticsFunil}
+        asanaData={asanaData ?? undefined}
       />
     </div>
     </AppShell>

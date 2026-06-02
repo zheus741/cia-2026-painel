@@ -18,6 +18,8 @@ import { AnalyticsCards } from './AnalyticsCards'
 import type { RankingItem, LacunaItem, VolumePorHora, AtleticaItem } from './AnalyticsCards'
 import { HomeBriefing } from './HomeBriefing'
 import { HomeMetrics } from './HomeMetrics'
+import { AsanaCard } from './AsanaCard'
+import type { AsanaCIAData } from '@/lib/asana/cia-tasks'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -78,6 +80,7 @@ interface Props {
   coordTurnosHoje?: CoordTurnoCount[]
   coordPatrocinadores?: CoordPatrocinador[]
   coordConteudosPorPatrocinador?: { patrocinador_id: string | null; status: string }[]
+  coordEscopoItens?: { patrocinador_id: string; quantidade_prevista: number | null }[]
   coordChecklistItens?: { id: string; status: string }[]
   coordDiasEvento?: { id: string; data: string }[]
   coordDiaAtualId?: string | null
@@ -89,6 +92,7 @@ interface Props {
   analyticsAtleticas?:     AtleticaItem[]
   analyticsPracas?:        import('@/lib/competicao/pracas').PracaStats[]
   analyticsFunil?:         import('@/lib/conteudos/funil-producao').FunilProducao | null
+  asanaData?:              AsanaCIAData
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -433,6 +437,7 @@ export function HomeClient({
   coordTurnosHoje         = [],
   coordPatrocinadores     = [],
   coordConteudosPorPatrocinador = [],
+  coordEscopoItens        = [],
   coordChecklistItens     = [],
   coordDiasEvento         = [],
   coordDiaAtualId         = null,
@@ -444,6 +449,7 @@ export function HomeClient({
   analyticsAtleticas      = [],
   analyticsPracas         = [],
   analyticsFunil          = null,
+  asanaData,
 }: Props) {
   const [tab, setTab] = useState<'comandos' | 'analises'>('comandos')
 
@@ -555,10 +561,18 @@ export function HomeClient({
                 turnosHoje={coordTurnosHoje}
                 patrocinadores={coordPatrocinadores}
                 conteudosPorPatrocinador={coordConteudosPorPatrocinador}
+                escopoItens={coordEscopoItens}
                 checklistItens={coordChecklistItens}
                 diasEvento={coordDiasEvento}
                 diaAtualId={coordDiaAtualId}
               />
+
+              {/* Asana CIA — visível para coord/admin */}
+              {asanaData && isCoord && (
+                <div style={{ marginTop: 20 }}>
+                  <AsanaCard data={asanaData} />
+                </div>
+              )}
 
               {/* Operacional — só para role operador */}
               {isOperador && (

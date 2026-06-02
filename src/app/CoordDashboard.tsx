@@ -67,6 +67,7 @@ export interface CoordDashboardProps {
   turnosHoje: CoordTurnoCount[]
   patrocinadores: CoordPatrocinador[]
   conteudosPorPatrocinador: { patrocinador_id: string | null; status: string }[]
+  escopoItens?: { patrocinador_id: string; quantidade_prevista: number | null }[]
   checklistItens: CoordChecklistItem[]
   diasEvento?: { id: string; data: string }[]
   diaAtualId?: string | null
@@ -439,9 +440,11 @@ function ChecklistCard({ checklistItens }: { checklistItens: CoordChecklistItem[
 function PatrocinioCard({
   patrocinadores,
   conteudosPorPatrocinador,
+  escopoItens = [],
 }: {
   patrocinadores: CoordPatrocinador[]
   conteudosPorPatrocinador: { patrocinador_id: string | null; status: string }[]
+  escopoItens?: { patrocinador_id: string; quantidade_prevista: number | null }[]
 }) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
@@ -450,17 +453,32 @@ function PatrocinioCard({
   }, [])
 
   const ativos = patrocinadores.filter(p => p.ativo)
+
+  // Escopo por patrocinador: soma de quantidade_prevista (ou 1 por item se null)
+  const escopoPorId: Record<string, number> = {}
+  for (const item of escopoItens) {
+    escopoPorId[item.patrocinador_id] = (escopoPorId[item.patrocinador_id] ?? 0) + (item.quantidade_prevista ?? 1)
+  }
+
   const stats = ativos.map(p => {
-    const conteudos = conteudosPorPatrocinador.filter(c => c.patrocinador_id === p.id)
-    const total     = conteudos.length
-    const published = conteudos.filter(c => c.status === 'publicado').length
-    const pct       = total > 0 ? Math.round((published / total) * 100) : 0
-    return { ...p, total, published, pct }
+    const conteudos  = conteudosPorPatrocinador.filter(c => c.patrocinador_id === p.id)
+    const total      = conteudos.length
+    const published  = conteudos.filter(c => c.status === 'publicado').length
+    const pct        = total > 0 ? Math.round((published / total) * 100) : 0
+    const escopoMeta = escopoPorId[p.id] ?? 0  // 0 = sem escopo definido
+    // cobertura: quantos itens do escopo têm ao menos 1 card criado
+    // proxy simples: min(cards_criados, escopo_meta) — sem matching por tipo
+    const cobertos   = escopoMeta > 0 ? Math.min(total, escopoMeta) : total
+    return { ...p, total, published, pct, escopoMeta, cobertos }
   })
 
-  const totalGeral = stats.reduce((s, p) => s + p.total, 0)
-  const pubGeral   = stats.reduce((s, p) => s + p.published, 0)
-  const pctGeral   = totalGeral > 0 ? Math.round((pubGeral / totalGeral) * 100) : 0
+  const totalGeral    = stats.reduce((s, p) => s + p.total, 0)
+  const pubGeral      = stats.reduce((s, p) => s + p.published, 0)
+  const pctGeral      = totalGeral > 0 ? Math.round((pubGeral / totalGeral) * 100) : 0
+  const escopoTotal   = stats.reduce((s, p) => s + p.escopoMeta, 0)
+  const cobertosTotal = stats.reduce((s, p) => s + p.cobertos, 0)
+  // Marcas com lacuna: tem escopo mas menos cards que o previsto
+  const marcasComLacuna = stats.filter(p => p.escopoMeta > 0 && p.total < p.escopoMeta).length
 
   return (
     <div className="cia-edit-card cia-edit-card--gold cia-metrics-cell" style={{ minHeight: 280 }}>
@@ -498,13 +516,29 @@ function PatrocinioCard({
         }}>
           {pctGeral}<span style={{ fontSize: 22, color: 'rgba(10,15,11,0.45)' }}>%</span>
         </span>
-        <span style={{
-          fontSize: 14, fontWeight: 500,
-          color: 'rgba(70,50,5,0.65)',
-        }}>
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'rgba(70,50,5,0.65)' }}>
           entregue
         </span>
       </div>
+
+      {/* Indicador de cobertura de escopo */}
+      {escopoTotal > 0 && (
+        <div className="flex items-center gap-2 mt-1.5">
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            color: marcasComLacuna > 0 ? '#A04A2E' : '#2e6b42',
+            background: marcasComLacuna > 0 ? 'rgba(160,74,46,0.12)' : 'rgba(46,107,66,0.12)',
+            border: `1px solid ${marcasComLacuna > 0 ? 'rgba(160,74,46,0.25)' : 'rgba(46,107,66,0.25)'}`,
+            borderRadius: 999,
+            padding: '2px 8px',
+          }}>
+            {marcasComLacuna > 0
+              ? `⚠ ${marcasComLacuna} marca${marcasComLacuna > 1 ? 's' : ''} com lacuna no escopo`
+              : `✓ escopo coberto`
+            }
+          </span>
+        </div>
+      )}
 
       <div className="flex-1 mt-4 overflow-y-auto" style={{ maxHeight: 180 }}>
         {stats.length === 0 ? (
@@ -543,16 +577,32 @@ function PatrocinioCard({
                         {p.nome}
                       </span>
                     </div>
-                    <span style={{
-                      fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                      fontSize: 13, fontWeight: 800,
-                      color: '#0A0F0B',
-                      letterSpacing: '-0.02em',
-                      flexShrink: 0,
-                      marginLeft: 8,
-                    }}>
-                      {p.published}<span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11 }}>/{p.total}</span>
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {/* Badge escopo: cards criados / meta */}
+                      {p.escopoMeta > 0 && (() => {
+                        const ok = p.total >= p.escopoMeta
+                        const zero = p.total === 0
+                        const cor = zero ? '#A04A2E' : ok ? '#2e6b42' : '#B58812'
+                        const bg  = zero ? 'rgba(160,74,46,0.14)' : ok ? 'rgba(46,107,66,0.14)' : 'rgba(181,136,18,0.14)'
+                        return (
+                          <span title={`${p.total} card${p.total !== 1 ? 's' : ''} criado${p.total !== 1 ? 's' : ''} / ${p.escopoMeta} no escopo`} style={{
+                            fontSize: 10, fontWeight: 700,
+                            color: cor, background: bg,
+                            borderRadius: 999, padding: '1px 6px',
+                          }}>
+                            {p.total}/{p.escopoMeta}
+                          </span>
+                        )
+                      })()}
+                      {/* Publicados */}
+                      <span style={{
+                        fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                        fontSize: 13, fontWeight: 800,
+                        color: '#0A0F0B', letterSpacing: '-0.02em',
+                      }}>
+                        {p.published}<span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11 }}>/{p.total}</span>
+                      </span>
+                    </div>
                   </div>
                   <div style={{
                     height: 4,
@@ -842,6 +892,7 @@ export function CoordDashboard({
   turnosHoje,
   patrocinadores,
   conteudosPorPatrocinador,
+  escopoItens = [],
   checklistItens,
   diasEvento: _diasEvento = [],
   diaAtualId: _diaAtualId = null,
@@ -866,6 +917,7 @@ export function CoordDashboard({
           <PatrocinioCard
             patrocinadores={patrocinadores}
             conteudosPorPatrocinador={conteudosPorPatrocinador}
+            escopoItens={escopoItens}
           />
         </div>
       </div>

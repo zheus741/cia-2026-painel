@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Camera, Loader2, CheckCircle2, AlertCircle, Calendar, Clock,
-  MapPin, Layers, Radio, ChevronRight,
+  MapPin, Layers, Radio, ChevronRight, Search, X,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -331,6 +331,13 @@ export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV
   const [fotoUrl, setFotoUrl] = useState(profile.foto_url)
   const [conteudoSel, setConteudoSel] = useState<Conteudo | null>(null)
   const [filtroEquipe, setFiltroEquipe] = useState<'todos' | 'meus'>('todos')
+  // Filtros (mesmo conjunto do Kanban) — derivados dos próprios conteúdos
+  const [busca, setBusca]           = useState('')
+  const [filtroDia, setFiltroDia]   = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('')
+  const [filtroCanal, setFiltroCanal] = useState('')
+  const [filtroSetor, setFiltroSetor] = useState('')
+  const [filtroPatroc, setFiltroPatroc] = useState('')
   const isFV = profile.role === 'operador_fv' || profile.role === 'lider_fv'
 
   // ── KPI computation ─────────────────────────────────────────────────────────
@@ -348,10 +355,26 @@ export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV
   }, {})
   const diasOrdenados = Object.keys(turnosByDia).sort()
 
-  // ── Filtro de equipe (lider_fv): todos os cards vs só os do próprio lider ──
-  const conteudosFiltrados = isLiderFV && filtroEquipe === 'meus'
-    ? conteudos.filter(c => c.myRoles.length > 0)
-    : conteudos
+  // ── Opções de filtro derivadas dos próprios conteúdos ──────────────────────
+  const parseCanais = (s: string | null) => (s ?? '').split(',').map(x => x.trim()).filter(Boolean)
+  const optDias   = [...new Map(conteudos.filter(c => c.dia).map(c => [c.dia!.data, c.dia!])).values()]
+    .sort((a, b) => a.data.localeCompare(b.data))
+  const optTipos  = [...new Set(conteudos.flatMap(c => parseTipos(c.tipo)))].sort()
+  const optCanais = [...new Set(conteudos.flatMap(c => parseCanais(c.canal)))].sort()
+  const optSetores = [...new Set(conteudos.filter(c => c.setor).map(c => c.setor!.nome))].sort()
+  const optPatroc  = [...new Set(conteudos.filter(c => c.patrocinador).map(c => c.patrocinador!.nome))].sort()
+
+  // ── Filtro de equipe (lider_fv) + filtros do Kanban ─────────────────────────
+  const conteudosFiltrados = conteudos.filter(c => {
+    if (isLiderFV && filtroEquipe === 'meus' && c.myRoles.length === 0) return false
+    if (busca && !c.titulo.toLowerCase().includes(busca.toLowerCase())) return false
+    if (filtroDia && c.dia?.data !== filtroDia) return false
+    if (filtroTipo && !parseTipos(c.tipo).includes(filtroTipo)) return false
+    if (filtroCanal && !parseCanais(c.canal).includes(filtroCanal)) return false
+    if (filtroSetor && c.setor?.nome !== filtroSetor) return false
+    if (filtroPatroc && c.patrocinador?.nome !== filtroPatroc) return false
+    return true
+  })
 
   // ── Active conteúdos first (em_producao before rascunho) ───────────────────
   const conteudosSorted = [...conteudosFiltrados].sort((a, b) => {
@@ -578,19 +601,87 @@ export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV
             )}
           </div>
 
+          {/* ── Barra de filtros (mesmo conjunto do Kanban) ─────────────────── */}
+          {conteudos.length > 0 && (() => {
+            const selStyle: React.CSSProperties = {
+              height: 30, borderRadius: 999, paddingInline: 12,
+              fontSize: 11, fontWeight: 600,
+              border: '1px solid rgba(10,15,11,0.12)',
+              background: 'rgba(10,15,11,0.03)', color: '#0A0F0B',
+              cursor: 'pointer', appearance: 'none',
+            }
+            const ativos = [busca, filtroDia, filtroTipo, filtroCanal, filtroSetor, filtroPatroc].filter(Boolean).length
+            return (
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style={{ color: 'rgba(10,15,11,0.35)' }} />
+                  <input
+                    value={busca}
+                    onChange={e => setBusca(e.target.value)}
+                    placeholder="Buscar conteúdo…"
+                    style={{ ...selStyle, width: 190, paddingLeft: 32, cursor: 'text' }}
+                  />
+                </div>
+                <select value={filtroDia} onChange={e => setFiltroDia(e.target.value)} style={selStyle}>
+                  <option value="">Todos os dias</option>
+                  {optDias.map(d => <option key={d.data} value={d.data}>{d.nome_dia}</option>)}
+                </select>
+                <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={selStyle}>
+                  <option value="">Todos os tipos</option>
+                  {optTipos.map(t => <option key={t} value={t}>{TIPO_CONFIG[t]?.label ?? t}</option>)}
+                </select>
+                {optCanais.length > 0 && (
+                  <select value={filtroCanal} onChange={e => setFiltroCanal(e.target.value)} style={selStyle}>
+                    <option value="">Todos os canais</option>
+                    {optCanais.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                )}
+                {optSetores.length > 0 && (
+                  <select value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)} style={selStyle}>
+                    <option value="">Todos os setores</option>
+                    {optSetores.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                )}
+                {optPatroc.length > 0 && (
+                  <select value={filtroPatroc} onChange={e => setFiltroPatroc(e.target.value)} style={selStyle}>
+                    <option value="">Patrocinador</option>
+                    {optPatroc.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                )}
+                {ativos > 0 && (
+                  <button
+                    onClick={() => { setBusca(''); setFiltroDia(''); setFiltroTipo(''); setFiltroCanal(''); setFiltroSetor(''); setFiltroPatroc('') }}
+                    className="inline-flex items-center gap-1 transition-colors"
+                    style={{ height: 30, borderRadius: 999, paddingInline: 10, fontSize: 11, fontWeight: 600, color: '#A04A2E', background: 'rgba(160,74,46,0.10)', border: '1px solid rgba(160,74,46,0.20)' }}
+                  >
+                    <X className="h-3 w-3" /> Limpar ({ativos})
+                  </button>
+                )}
+              </div>
+            )
+          })()}
+
           {conteudosFiltrados.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center">
               <Layers className="mx-auto mb-3 h-8 w-8 opacity-20" />
-              <p className="text-sm text-[var(--muted-foreground)]">
-                {isLiderFV && filtroEquipe === 'todos'
-                  ? 'Nenhum conteúdo atribuído à equipe ainda.'
-                  : 'Nenhum conteúdo atribuído.'}
-              </p>
-              <p className="mt-1 text-xs text-[var(--muted-foreground)]/60">
-                {isLiderFV
-                  ? 'Clique num card para designar um operador de captação.'
-                  : 'Aparecem aqui quando a coord te definir como responsável.'}
-              </p>
+              {conteudos.length > 0 ? (
+                <p className="text-sm text-[var(--muted-foreground)]">
+                  Nenhum conteúdo com esses filtros.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-[var(--muted-foreground)]">
+                    {isLiderFV && filtroEquipe === 'todos'
+                      ? 'Nenhum conteúdo atribuído à equipe ainda.'
+                      : 'Nenhum conteúdo atribuído.'}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--muted-foreground)]/60">
+                    {isLiderFV
+                      ? 'Clique num card para designar um operador de captação.'
+                      : 'Aparecem aqui quando a coord te definir como responsável.'}
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-2">

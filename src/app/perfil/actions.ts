@@ -52,8 +52,11 @@ export async function atualizarCaptacao(
     if (!allowed.includes(profile.role ?? '')) {
       throw new Error('Sem permissão para alterar captação.')
     }
-    const supabase = await createClient()
-    const { error } = await supabase
+    // Usa service client p/ bypassar RLS — permissão já validada acima.
+    // (Igual atualizarStatusCaptacao.) Com o session client, a RLS de `conteudos`
+    // filtrava o UPDATE do lider_fv silenciosamente: "salvava" mas não gravava.
+    const sb = createServiceClient()
+    const { error } = await sb
       .from('conteudos')
       .update({ responsavel_captacao_id: operadorId })
       .eq('id', conteudoId)

@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { atualizarCaptacao, atualizarStatusCaptacao } from './actions'
@@ -175,21 +175,50 @@ function StatusCaptacaoSelector({
   )
 }
 
-// ── CaptacaoSelector — só aparece para lider_fv ───────────────────────────────
+// ── CaptacaoSelector — chips de empresa + dropdown de pessoa ─────────────────
 
 function CaptacaoSelector({
   conteudoId,
   current,
   operadores,
+  empresaInicial,
 }: {
-  conteudoId: string
-  current: { id?: string; nome: string; foto_url: string | null } | null
-  operadores: { id: string; nome: string; foto_url: string | null }[]
+  conteudoId:    string
+  current:       { id?: string; nome: string; foto_url: string | null } | null
+  operadores:    { id: string; nome: string; foto_url: string | null; empresa_cobertura?: string | null }[]
+  /** Empresa pré-selecionada (ex: lider_fv vê só a sua) */
+  empresaInicial?: string | null
 }) {
-  const [value, setValue] = useState(current ? operadores.find(o => o.nome === current.nome)?.id ?? '' : '')
+  // Empresas únicas com pelo menos 1 operador
+  const empresas = useMemo(() => {
+    const s = new Set<string>()
+    operadores.forEach(o => { if (o.empresa_cobertura) s.add(o.empresa_cobertura) })
+    return [...s].sort()
+  }, [operadores])
+
+  const [empresaSel, setEmpresaSel] = useState<string>(empresaInicial ?? '')
+  const [value, setValue] = useState(
+    current ? operadores.find(o => o.nome === current.nome)?.id ?? '' : ''
+  )
   const [pending, startTransition] = useTransition()
-  const [saved, setSaved] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
+  const [saved, setSaved]           = useState(false)
+  const [err, setErr]               = useState<string | null>(null)
+
+  // Operadores filtrados pela empresa selecionada
+  const opsFiltrados = useMemo(
+    () => empresaSel
+      ? operadores.filter(o => o.empresa_cobertura === empresaSel)
+      : operadores,
+    [operadores, empresaSel],
+  )
+
+  function handleEmpresa(emp: string) {
+    const next = empresaSel === emp ? '' : emp
+    setEmpresaSel(next)
+    // Se a pessoa selecionada não está na nova empresa, reseta
+    const ainda = operadores.find(o => o.id === value && (next === '' || o.empresa_cobertura === next))
+    if (!ainda) setValue('')
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newId = e.target.value || null
@@ -204,21 +233,55 @@ function CaptacaoSelector({
   }
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <select
-        value={value}
-        onChange={handleChange}
-        disabled={pending}
-        className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 text-[13px] text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--green)] disabled:opacity-50"
-      >
-        <option value="">— sem responsável —</option>
-        {operadores.map(o => (
-          <option key={o.id} value={o.id}>{o.nome}</option>
-        ))}
-      </select>
-      {pending && <span className="text-[11px] text-[var(--muted-foreground)]">Salvando…</span>}
-      {saved  && !pending && <span className="text-[11px] text-[var(--green-bright)] font-semibold">✓ Salvo</span>}
-      {err    && <span className="text-[11px] text-red-500">{err}</span>}
+    <div className="space-y-2">
+      {/* Chips de empresa — só aparece quando há mais de uma */}
+      {empresas.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => { setEmpresaSel(''); setValue('') }}
+            className="rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors"
+            style={{
+              border:     `1px solid ${!empresaSel ? 'var(--green)' : 'var(--border)'}`,
+              background: !empresaSel ? 'rgba(46,107,66,0.12)' : 'transparent',
+              color:      !empresaSel ? 'var(--green)' : 'var(--muted-foreground)',
+            }}
+          >
+            Todas
+          </button>
+          {empresas.map(emp => (
+            <button
+              key={emp}
+              onClick={() => handleEmpresa(emp)}
+              className="rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors"
+              style={{
+                border:     `1px solid ${empresaSel === emp ? 'var(--green)' : 'var(--border)'}`,
+                background: empresaSel === emp ? 'rgba(46,107,66,0.12)' : 'transparent',
+                color:      empresaSel === emp ? 'var(--green)' : 'var(--muted-foreground)',
+              }}
+            >
+              {emp}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Dropdown de pessoa */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <select
+          value={value}
+          onChange={handleChange}
+          disabled={pending}
+          className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 text-[13px] text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--green)] disabled:opacity-50"
+        >
+          <option value="">— ninguém —</option>
+          {opsFiltrados.map(o => (
+            <option key={o.id} value={o.id}>{o.nome}</option>
+          ))}
+        </select>
+        {pending && <span className="text-[11px] text-[var(--muted-foreground)]">Salvando…</span>}
+        {saved  && !pending && <span className="text-[11px] text-[var(--green-bright)] font-semibold">✓ Salvo</span>}
+        {err    && <span className="text-[11px] text-red-500">{err}</span>}
+      </div>
     </div>
   )
 }
@@ -231,12 +294,15 @@ export function ConteudoDetalheModal({
   userRole,
   userId,
   operadoresFV = [],
+  empresaFV,
 }: {
-  conteudo: ConteudoDetalhe | null
-  onClose: () => void
-  userRole?: string
-  userId?: string
-  operadoresFV?: { id: string; nome: string; foto_url: string | null }[]
+  conteudo:     ConteudoDetalhe | null
+  onClose:      () => void
+  userRole?:    string
+  userId?:      string
+  operadoresFV?: { id: string; nome: string; foto_url: string | null; empresa_cobertura?: string | null }[]
+  /** Empresa pré-selecionada para lider_fv */
+  empresaFV?:   string | null
 }) {
   if (!conteudo) return null
 
@@ -308,6 +374,7 @@ export function ConteudoDetalheModal({
                     conteudoId={c.id}
                     current={c.captacao}
                     operadores={operadoresFV}
+                    empresaInicial={empresaFV}
                   />
                   <p className="text-[10px] text-[var(--muted-foreground)]">
                     Só o campo captação pode ser alterado aqui.

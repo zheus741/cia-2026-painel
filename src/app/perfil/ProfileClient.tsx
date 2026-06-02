@@ -132,7 +132,7 @@ interface Conteudo {
   edicao:   Pessoa | null
 }
 
-interface OperadorFV { id: string; nome: string; foto_url: string | null }
+interface OperadorFV { id: string; nome: string; foto_url: string | null; empresa_cobertura?: string | null }
 
 interface Props {
   userId: string
@@ -727,6 +727,7 @@ export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV
         userRole={profile.role}
         userId={userId}
         operadoresFV={operadoresFV}
+        empresaFV={empresaFV}
       />
 
       {/* ── Footer note ──────────────────────────────────────────────────────── */}

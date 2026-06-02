@@ -115,9 +115,10 @@ export default async function PerfilPage() {
       return [rp.id, { nome: rp.nome, foto_url: rp.foto_url }]
     }),
   )
-  // Operadores FV para o seletor de captação:
-  // - lider_fv vê só a própria empresa (operadores + o próprio lider)
-  // - outros papéis veem todos os operadores_fv
+  // Operadores FV para o seletor de captação — sempre inclui empresa_cobertura
+  // para que o modal possa exibir os chips de empresa (igual ao Kanban).
+  // - lider_fv: só a própria empresa
+  // - admin/coord/outros: todos operador_fv + lider_fv com empresa
   const operadoresFV = (profilesRes.data ?? [])
     .filter((p) => {
       const rp = p as RawProfile
@@ -125,9 +126,12 @@ export default async function PerfilPage() {
         return (rp.role === 'operador_fv' || rp.role === 'lider_fv') &&
                rp.empresa_cobertura === empresaFV
       }
-      return rp.role === 'operador_fv'
+      return rp.role === 'operador_fv' || rp.role === 'lider_fv'
     })
-    .map((p) => { const rp = p as RawProfile; return { id: rp.id, nome: rp.nome, foto_url: rp.foto_url } })
+    .map((p) => {
+      const rp = p as RawProfile
+      return { id: rp.id, nome: rp.nome, foto_url: rp.foto_url, empresa_cobertura: rp.empresa_cobertura ?? null }
+    })
 
   const conteudos = (conteudosRes.data ?? []).map((raw) => {
     const c = raw as RawConteudo

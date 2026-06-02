@@ -4,15 +4,14 @@ import { useState, useEffect, useRef, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  ListChecks, Film, ClipboardList, Plus, Trash2, Wand2, RotateCcw, Activity,
-  Users, Radio, Save, GripVertical, Star, Sparkles, Megaphone, Music2, Timer, ChevronDown,
+  ListChecks, Film, Plus, Trash2, Wand2, Activity,
+  Radio, Save, GripVertical, Star, Sparkles, Megaphone, Music2, Timer, ChevronDown,
 } from 'lucide-react'
 import {
   criarItemGrade, deletarItemGrade, atualizarItemGrade, gerarGradeDoLineup, recalcularHorarios, reordenarGrade,
-  criarVT, deletarVT, toggleChecklist, resetChecklist,
-  atualizarEquipe, criarEquipe, deletarEquipe, setPrograma,
+  criarVT, deletarVT, setPrograma,
 } from '../actions'
-import { GRADE_TIPOS, parseYoutubeId, type VT, type GradeItem, type ChecklistItem, type EquipeItem, type PatrocinadorRef, type LineupShow } from '../types'
+import { GRADE_TIPOS, parseYoutubeId, type VT, type GradeItem, type PatrocinadorRef, type LineupShow } from '../types'
 
 // ── tokens (control-room dark) ───────────────────────────────────────────────
 const C = {
@@ -44,9 +43,9 @@ const BLOCOS_GENERICOS = [
 const DIAS_LABEL = ['Qui', 'Sex', 'Sáb', 'Dom']
 
 export function PrepararClient({
-  grade, vts, checklist, equipe, patrocinadores, lineup, programaTitulo, youtubeUrl,
+  grade, vts, patrocinadores, lineup, programaTitulo, youtubeUrl,
 }: {
-  grade: GradeItem[]; vts: VT[]; checklist: ChecklistItem[]; equipe: EquipeItem[]
+  grade: GradeItem[]; vts: VT[]
   patrocinadores: PatrocinadorRef[]; lineup: LineupShow[]; programaTitulo: string; youtubeUrl: string
 }) {
   const router = useRouter()
@@ -72,9 +71,6 @@ export function PrepararClient({
   const [vtNome, setVtNome] = useState(''); const [vtDur, setVtDur] = useState('30'); const [vtPatroc] = useState('')
 
   const duracaoTotal = items.reduce((a, i) => a + (i.duracao_seg || 0), 0)
-  const ckFeitos = checklist.filter(c => c.feito).length
-  const ckPct = checklist.length ? Math.round(ckFeitos / checklist.length * 100) : 0
-  const porCategoria = checklist.reduce<Record<string, ChecklistItem[]>>((a, c) => { (a[c.categoria] ??= []).push(c); return a }, {})
   const lineupDia = lineup.filter(s => s.dia === dia)
 
   const addItem = useCallback((novo: { tipo: string; titulo: string; duracao_seg: number; horario?: string | null; vt_id?: string | null }) => {
@@ -128,7 +124,6 @@ export function PrepararClient({
         <div style={{ flex: 1 }} />
         <Stat label="Blocos" valor={String(items.length)} />
         <Stat label="Duração" valor={fmtTotal(duracaoTotal)} accent={C.gold} />
-        <Stat label="Checklist" valor={`${ckPct}%`} accent={ckPct === 100 ? C.green : C.gold} />
         <button onClick={() => setCfgOpen(o => !o)} style={btnGhost}>
           <Radio size={14} style={{ color: C.red }} /> Config <ChevronDown size={13} style={{ transform: cfgOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
         </button>
@@ -331,50 +326,6 @@ export function PrepararClient({
           )}
         </div>
       </div>
-
-      {/* CHECKLIST + EQUIPE */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14, marginTop: 14 }}>
-        <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <ClipboardList size={15} style={{ color: C.green }} />
-            <h2 style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Checklist Go-Live</h2>
-            <div style={{ flex: 1 }} />
-            <button onClick={() => start(async () => { await resetChecklist(); refresh() })} style={{ background: 'none', border: 'none', color: C.mute, cursor: 'pointer' }}><RotateCcw size={13} /></button>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <div style={{ flex: 1, height: 7, borderRadius: 4, background: C.panelHi, overflow: 'hidden' }}><div style={{ height: '100%', width: `${ckPct}%`, background: ckPct === 100 ? C.green : C.gold, transition: 'width .4s' }} /></div>
-            <span style={{ fontSize: 12, fontWeight: 800, color: ckPct === 100 ? C.green : C.gold }}>{ckPct}%</span>
-          </div>
-          {Object.entries(porCategoria).map(([cat, its]) => (
-            <div key={cat} style={{ marginBottom: 6 }}>
-              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', color: C.fade, textTransform: 'uppercase', marginBottom: 3 }}>{cat}</p>
-              {its.map(c => (
-                <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={c.feito} onChange={() => start(async () => { await toggleChecklist(c.id, !c.feito); refresh() })} style={{ width: 15, height: 15, accentColor: C.green }} />
-                  <span style={{ fontSize: 12.5, color: c.feito ? C.mute : C.cream, textDecoration: c.feito ? 'line-through' : 'none' }}>{c.texto}</span>
-                </label>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <Users size={15} style={{ color: C.blue }} />
-            <h2 style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Equipe do programa</h2>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {equipe.map(m => (
-              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 132, flexShrink: 0, fontSize: 11, color: C.mute, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.funcao}</span>
-                <input defaultValue={m.nome} placeholder="Nome…" onBlur={e => { if (e.target.value !== m.nome) start(async () => { await atualizarEquipe(m.id, { nome: e.target.value }) }) }} style={{ ...inp, flex: 1, padding: '6px 9px' }} />
-                <button onClick={() => start(async () => { await deletarEquipe(m.id); refresh() })} style={{ background: 'none', border: 'none', color: C.fade, cursor: 'pointer' }}><Trash2 size={13} /></button>
-              </div>
-            ))}
-          </div>
-          <AddEquipe onAdd={(f, n) => start(async () => { await criarEquipe(f, n); refresh() })} />
-        </div>
-      </div>
     </div>
   )
 }
@@ -396,16 +347,6 @@ function Field({ label, w, children }: { label: string; w: number; children: Rea
     <div style={{ flex: `1 1 ${w}px`, minWidth: Math.min(w, 160) }}>
       <label style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.mute, textTransform: 'uppercase', marginBottom: 4 }}>{label}</label>
       {children}
-    </div>
-  )
-}
-function AddEquipe({ onAdd }: { onAdd: (f: string, n: string) => void }) {
-  const [f, setF] = useState(''); const [n, setN] = useState('')
-  return (
-    <div style={{ display: 'flex', gap: 6, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
-      <input value={f} onChange={e => setF(e.target.value)} placeholder="Função" style={{ ...inp, width: 130, padding: '6px 9px' }} />
-      <input value={n} onChange={e => setN(e.target.value)} placeholder="Nome" style={{ ...inp, flex: 1, padding: '6px 9px' }} />
-      <button disabled={!f.trim()} onClick={() => { onAdd(f, n); setF(''); setN('') }} style={{ ...btnSolid, background: C.blue, color: '#fff', padding: '7px 10px', opacity: f.trim() ? 1 : 0.4 }}><Plus size={14} /></button>
     </div>
   )
 }

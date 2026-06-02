@@ -15,7 +15,7 @@ const DIAS = [
 export interface AVEvento {
   id: string
   nome: string
-  tipo: 'individual' | 'coletivo' | 'show' | 'festa'
+  tipo: 'individual' | 'coletivo'
   inicio: string
   fim: string | null
   setor_nome: string | null
@@ -39,24 +39,22 @@ export default async function AVGuiaPage() {
   await requireProfile()
   const supabase = await createClient()
 
-  const [showsRes, jogosRes, festasRes, setoresRes] = await Promise.all([
-    supabase.from('shows').select('id, nome, inicio, fim_previsto, dia_id, setor:setores(id, nome, tem_youtube_live)').order('inicio'),
+  const [showsRes, jogosRes, setoresRes] = await Promise.all([
+    // Só modalidades individuais (tipo=null, marcadas com emoji no nome)
+    supabase.from('shows').select('id, nome, inicio, fim_previsto, dia_id, setor:setores(id, nome, tem_youtube_live)').is('tipo', null).order('inicio'),
     supabase.from('jogos').select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id, divisao, modalidade:modalidades(nome), setor:setores(id, nome, tem_youtube_live)').not('setor_id', 'is', null).order('inicio'),
-    supabase.from('festas').select('id, nome, inicio, fim_previsto, dia_id, setor:setores(id, nome, tem_youtube_live)').order('inicio'),
     supabase.from('setores').select('id, nome, tem_youtube_live, endereco, notas_acesso').eq('tipo', 'esportivo').order('nome'),
   ])
 
   const eventos: AVEvento[] = []
 
-  // Modalidades individuais inseridas como shows (têm emoji no nome)
-  const INDIVIDUAIS_RE = /🏊|🥋|🏸|🏓|♟|🏃/
+  // Modalidades individuais (shows com tipo=null — Natação, Judô, Peteca…)
   for (const s of showsRes.data ?? []) {
     if (!s.inicio || !s.dia_id) continue
     const set = (Array.isArray(s.setor) ? s.setor[0] : s.setor) as { id: string; nome: string; tem_youtube_live: boolean } | null
-    const isIndividual = INDIVIDUAIS_RE.test(s.nome)
     eventos.push({
       id: s.id, nome: s.nome,
-      tipo: isIndividual ? 'individual' : 'show',
+      tipo: 'individual',
       inicio: s.inicio, fim: s.fim_previsto,
       setor_nome: set?.nome ?? null,
       setor_id: set?.id ?? null,
@@ -82,20 +80,6 @@ export default async function AVGuiaPage() {
       equipe_b: j.equipe_b_nome,
       modalidade: mod?.nome,
       dia_id: j.dia_id,
-    })
-  }
-
-  for (const f of festasRes.data ?? []) {
-    if (!f.inicio || !f.dia_id) continue
-    const set = (Array.isArray(f.setor) ? f.setor[0] : f.setor) as { id: string; nome: string; tem_youtube_live: boolean } | null
-    eventos.push({
-      id: f.id, nome: f.nome ?? 'Festa',
-      tipo: 'festa',
-      inicio: f.inicio, fim: f.fim_previsto,
-      setor_nome: set?.nome ?? null,
-      setor_id: set?.id ?? null,
-      tem_live: set?.tem_youtube_live ?? false,
-      dia_id: f.dia_id,
     })
   }
 

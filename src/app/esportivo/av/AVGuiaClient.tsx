@@ -15,17 +15,13 @@ function fmtTime(iso: string) {
 function tipoColor(tipo: AVEvento['tipo'], live: boolean): string {
   if (live) return '#ef4444'
   if (tipo === 'individual') return '#D4B36A'
-  if (tipo === 'coletivo')  return '#4aa06a'
-  if (tipo === 'show')      return '#B8A4E8'
-  return '#6b7280'
+  return '#4aa06a'
 }
 
 function tipoBadge(tipo: AVEvento['tipo'], live: boolean) {
   if (live && tipo === 'coletivo') return { label: '● TRANSMISSÃO', color: '#ef4444', bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.28)' }
   if (tipo === 'individual')       return { label: '★ INDIVIDUAL',  color: '#D4B36A', bg: 'rgba(212,179,106,0.10)', border: 'rgba(212,179,106,0.28)' }
-  if (tipo === 'coletivo')         return { label: '⚡ COLETIVO',   color: '#4aa06a', bg: 'rgba(74,160,106,0.10)', border: 'rgba(74,160,106,0.25)' }
-  if (tipo === 'show')             return { label: '🎤 SHOW',       color: '#B8A4E8', bg: 'rgba(184,164,232,0.10)', border: 'rgba(184,164,232,0.25)' }
-  return { label: '🎉 FESTA', color: '#D8845F', bg: 'rgba(216,132,95,0.10)', border: 'rgba(216,132,95,0.25)' }
+  return { label: '⚡ COLETIVO', color: '#4aa06a', bg: 'rgba(74,160,106,0.10)', border: 'rgba(74,160,106,0.25)' }
 }
 
 // base do nome da praça (UIRAP V01 → UIRAP, FUNEL Q01 → FUNEL)

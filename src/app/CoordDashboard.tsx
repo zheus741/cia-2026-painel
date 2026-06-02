@@ -437,7 +437,7 @@ function ChecklistCard({ checklistItens }: { checklistItens: CoordChecklistItem[
 // PatrocinioCard — gold, sponsors progress
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PatrocinioCard({
+export function PatrocinioCard({
   patrocinadores,
   conteudosPorPatrocinador,
   escopoItens = [],
@@ -911,15 +911,8 @@ export function CoordDashboard({
           gap: 14,
         }}
       >
-        <div className="cia-metrics-col-4"><RedesCard       conteudosHoje={conteudosHoje} /></div>
-        <div className="cia-metrics-col-4"><ChecklistCard   checklistItens={checklistItens} /></div>
-        <div className="cia-metrics-col-4">
-          <PatrocinioCard
-            patrocinadores={patrocinadores}
-            conteudosPorPatrocinador={conteudosPorPatrocinador}
-            escopoItens={escopoItens}
-          />
-        </div>
+        <div className="cia-metrics-col-6"><RedesCard       conteudosHoje={conteudosHoje} /></div>
+        <div className="cia-metrics-col-6"><ChecklistCard   checklistItens={checklistItens} /></div>
       </div>
     </div>
   )

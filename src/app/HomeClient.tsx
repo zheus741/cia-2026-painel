@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   CheckSquare, BarChart3, Tv2, LayoutGrid,
 } from 'lucide-react'
-import { CoordDashboard, TimelineVertical, dayLabel } from './CoordDashboard'
+import { CoordDashboard, TimelineVertical, dayLabel, PatrocinioCard } from './CoordDashboard'
 import type {
   CoordConteudoHoje,
   CoordJogo,
@@ -474,6 +474,21 @@ export function HomeClient({
         heatmapData={heatmapData}
         weatherDays={weatherDays}
       />
+
+      {/* ══════════════════════════════════════════════════════════
+          PATROCÍNIO — widget sempre visível (coord/admin)
+          ══════════════════════════════════════════════════════════ */}
+      {isCoord && coordPatrocinadores.length > 0 && (
+        <section style={{ padding: '0 24px 8px' }}>
+          <div className="mx-auto max-w-7xl">
+            <PatrocinioCard
+              patrocinadores={coordPatrocinadores}
+              conteudosPorPatrocinador={coordConteudosPorPatrocinador}
+              escopoItens={coordEscopoItens}
+            />
+          </div>
+        </section>
+      )}
 
       {/* ══════════════════════════════════════════════════════════
           TABS — Comandos / Análises

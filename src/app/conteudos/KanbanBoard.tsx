@@ -1321,6 +1321,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
   const [filterPerfil, setFilterPerfil]   = React.useState('')
   const [filterCanal, setFilterCanal]     = React.useState('')
   const [filterSetor, setFilterSetor]     = React.useState('')
+  const [filterPatroc, setFilterPatroc]   = React.useState('')
   /** Admin: empresa FV selecionada ('') = todas */
   const [filterEmpresa, setFilterEmpresa] = React.useState('')
 
@@ -1553,8 +1554,13 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         ? list.filter(c => !c.setor_id)
         : list.filter(c => c.setor_id === filterSetor)
     }
+    if (filterPatroc && filterPatroc !== '__all__') {
+      list = filterPatroc === '__none__'
+        ? list.filter(c => !c.patrocinador_id)
+        : list.filter(c => c.patrocinador_id === filterPatroc)
+    }
     return list
-  }, [conteudos, search, filterDia, filterTipo, filterPerfil, filterCanal, filterSetor, isAdmin, filterEmpresa, perfis])
+  }, [conteudos, search, filterDia, filterTipo, filterPerfil, filterCanal, filterSetor, filterPatroc, isAdmin, filterEmpresa, perfis])
 
   async function handleMove(c: Conteudo, status: string) {
     // PERF: optimistic update — o ator vê o card mover INSTANTANEAMENTE.
@@ -1796,6 +1802,19 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
             <SelectItem value="__all__">Todos os setores</SelectItem>
             {setores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
             <SelectItem value="__none__">Sem setor</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={filterPatroc} onValueChange={setFilterPatroc}>
+          <SelectTrigger className="h-8 w-40 text-[11px] rounded-full border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)]">
+            <SelectValue placeholder="Patrocinador" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos</SelectItem>
+            {patrocinadores.map(p => (
+              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+            ))}
+            <SelectItem value="__none__">Sem patrocinador</SelectItem>
           </SelectContent>
         </Select>
 

@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/toast'
+import { sincronizarTabelaJogos } from './actions'
 
 interface ImportStats {
   date_str:            string
@@ -15,12 +16,14 @@ interface ImportStats {
   jogos_novos:         number
   jogos_existentes:    number
   jogos_total:         number
+  jogos_carimbados?:   number
   modalidades_criadas: number
   setores_criados:     number
   erros:               string[]
 }
 
 export function ImportClient() {
+  const [syncing, setSyncing] = React.useState(false)
   const [file,      setFile]      = React.useState<File | null>(null)
   const [overwrite, setOverwrite] = React.useState(false)
   const [loading,   setLoading]   = React.useState(false)
@@ -62,8 +65,51 @@ export function ImportClient() {
     setOverwrite(false)
   }
 
+  async function handleSync() {
+    setSyncing(true)
+    setResult(null)
+    try {
+      const r = await sincronizarTabelaJogos()
+      if (r.ok) {
+        setResult({ ok: true, stats: r.stats })
+        toast.success('Tabela sincronizada', {
+          description: `${r.stats.jogos_novos} novos · ${r.stats.jogos_existentes} atualizados · ${r.stats.jogos_carimbados} carimbados`,
+        })
+      } else {
+        setResult({ ok: false, error: r.error })
+        toast.error('Falha na sincronização', { description: r.error })
+      }
+    } catch (e) {
+      setResult({ ok: false, error: String(e) })
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
+
+      {/* Sincronizar da planilha mestre (fonte da verdade) */}
+      <div className="cia-metric-card flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-semibold text-[var(--foreground)]">Sincronizar da planilha mestre</p>
+          <p className="mt-0.5 text-sm text-[var(--muted-foreground)]">
+            Puxa a tabela oficial do Google direto — DIA 01–04 + Jogos Adiantados.
+            Casa por confronto (não duplica) e carimba as chaves. Rode sempre que editar a planilha.
+          </p>
+        </div>
+        <Button onClick={handleSync} disabled={syncing} className="shrink-0 gap-2">
+          {syncing
+            ? <><Loader2 className="h-4 w-4 animate-spin" /> Sincronizando…</>
+            : <><RefreshCw className="h-4 w-4" /> Sincronizar agora</>}
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
+        <span className="h-px flex-1 bg-[var(--border)]" />
+        ou envie o arquivo manualmente
+        <span className="h-px flex-1 bg-[var(--border)]" />
+      </div>
 
       {/* Drop zone */}
       <div

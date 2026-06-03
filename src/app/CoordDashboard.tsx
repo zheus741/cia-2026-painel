@@ -456,21 +456,41 @@ export function PatrocinioCard({
 
   const ativos = patrocinadores.filter(p => p.ativo)
 
-  // FONTE ÚNICA: % entregue = unidades entregues ÷ contratadas (escopo_itens).
-  // Mesmo cálculo do Dossiê, TV e Fichário (src/lib/patrocinio/entrega).
+  // DOIS LADO A LADO: produção (cards do kanban) + contrato (escopo_itens).
+  // Escopo = unidades entregues ÷ contratadas (mesmo cálculo do Dossiê/TV/Fichário).
   const entregaMap = entregaPorPatrocinador(escopoItens)
   const ativosIds  = new Set(ativos.map(p => p.id))
-  const geral      = computeEntrega(escopoItens.filter(e => ativosIds.has(e.patrocinador_id)))
-  const pctGeral   = geral.pct
+
+  // Cards por patrocinador (produção real no kanban).
+  const cardsMap = new Map<string, { total: number; publicados: number }>()
+  for (const c of conteudosPorPatrocinador) {
+    if (!c.patrocinador_id || !ativosIds.has(c.patrocinador_id)) continue
+    const cur = cardsMap.get(c.patrocinador_id) ?? { total: 0, publicados: 0 }
+    cur.total += 1
+    if (c.status === 'publicado') cur.publicados += 1
+    cardsMap.set(c.patrocinador_id, cur)
+  }
+
+  const geral       = computeEntrega(escopoItens.filter(e => ativosIds.has(e.patrocinador_id)))
+  const pctGeral    = geral.pct          // % escopo entregue (contrato)
   const escopoTotal = geral.total
+  const cardsTotal  = [...cardsMap.values()].reduce((a, c) => a + c.total, 0)
+  const cardsPub    = [...cardsMap.values()].reduce((a, c) => a + c.publicados, 0)
 
   const stats = ativos.map(p => {
     const e = entregaMap.get(p.id) ?? { total: 0, entregues: 0, pct: 0 }
-    return { ...p, total: e.total, entregues: e.entregues, pct: e.pct }
+    const c = cardsMap.get(p.id) ?? { total: 0, publicados: 0 }
+    return {
+      ...p,
+      total: e.total, entregues: e.entregues, pct: e.pct,
+      cardsTotal: c.total, cardsPub: c.publicados,
+    }
   })
 
   // Marcas com lacuna: têm escopo contratado mas ainda não entregaram tudo.
   const marcasComLacuna = stats.filter(p => p.total > 0 && p.pct < 100).length
+  // Descompasso: cards produzidos passam (ou não cobrem) as unidades de escopo.
+  const marcasDescompasso = stats.filter(p => p.cardsTotal !== p.total).length
 
   return (
     <div className="cia-edit-card cia-edit-card--gold cia-metrics-cell" style={{ minHeight: 280 }}>
@@ -509,13 +529,27 @@ export function PatrocinioCard({
           {pctGeral}<span style={{ fontSize: 22, color: 'rgba(10,15,11,0.45)' }}>%</span>
         </span>
         <span style={{ fontSize: 14, fontWeight: 500, color: 'rgba(70,50,5,0.65)' }}>
-          entregue
+          do escopo entregue
         </span>
       </div>
 
-      {/* Indicador de cobertura de escopo */}
-      {escopoTotal > 0 && (
-        <div className="flex items-center gap-2 mt-1.5">
+      {/* Produção real no kanban (cards) — fonte que atualiza sozinha */}
+      <div className="flex items-baseline gap-1.5 mt-1">
+        <span style={{
+          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+          fontSize: 15, fontWeight: 700, color: 'rgba(10,15,11,0.78)',
+          letterSpacing: '-0.02em',
+        }}>
+          {cardsPub}<span style={{ color: 'rgba(10,15,11,0.40)' }}>/{cardsTotal}</span>
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(70,50,5,0.55)' }}>
+          cards publicados no kanban
+        </span>
+      </div>
+
+      {/* Indicadores: lacuna de escopo + descompasso cards×escopo */}
+      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+        {escopoTotal > 0 && (
           <span style={{
             fontSize: 11, fontWeight: 700,
             color: marcasComLacuna > 0 ? '#A04A2E' : '#2e6b42',
@@ -525,12 +559,26 @@ export function PatrocinioCard({
             padding: '2px 8px',
           }}>
             {marcasComLacuna > 0
-              ? `⚠ ${marcasComLacuna} marca${marcasComLacuna > 1 ? 's' : ''} com lacuna no escopo`
+              ? `⚠ ${marcasComLacuna} com lacuna no escopo`
               : `✓ escopo coberto`
             }
           </span>
-        </div>
-      )}
+        )}
+        {marcasDescompasso > 0 && (
+          <span
+            title="Marcas onde o nº de cards no kanban difere das unidades de escopo contratadas"
+            style={{
+              fontSize: 11, fontWeight: 700,
+              color: '#7A5C0E',
+              background: 'rgba(181,136,18,0.12)',
+              border: '1px solid rgba(181,136,18,0.25)',
+              borderRadius: 999,
+              padding: '2px 8px',
+            }}>
+            {`≠ ${marcasDescompasso} cards ≠ escopo`}
+          </span>
+        )}
+      </div>
 
       <div className="flex-1 mt-4 overflow-y-auto" style={{ maxHeight: 180 }}>
         {stats.length === 0 ? (
@@ -569,19 +617,34 @@ export function PatrocinioCard({
                         {p.nome}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      {/* Entregue / meta contratada (unidades de escopo) */}
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      {/* Cards no kanban (produção) */}
                       <span
-                        title={p.total > 0 ? `${p.entregues} de ${p.total} unidades entregues` : 'Sem escopo cadastrado'}
+                        title={`${p.cardsPub} publicados de ${p.cardsTotal} cards no kanban`}
                         style={{
                           fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
                           fontSize: 13, fontWeight: 800,
                           color: '#0A0F0B', letterSpacing: '-0.02em',
                         }}
                       >
+                        {p.cardsPub}<span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11 }}>/{p.cardsTotal}</span>
+                        <span style={{ color: 'rgba(10,15,11,0.35)', fontSize: 9, fontWeight: 600, marginLeft: 2 }}>cards</span>
+                      </span>
+                      <span style={{ color: 'rgba(70,50,5,0.20)', fontSize: 11 }}>·</span>
+                      {/* Escopo entregue / contratado */}
+                      <span
+                        title={p.total > 0 ? `${p.entregues} de ${p.total} unidades de escopo entregues` : 'Sem escopo cadastrado'}
+                        style={{
+                          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                          fontSize: 13, fontWeight: 800,
+                          color: p.total > 0 && p.cardsTotal !== p.total ? '#7A5C0E' : 'rgba(10,15,11,0.55)',
+                          letterSpacing: '-0.02em',
+                        }}
+                      >
                         {p.total > 0
                           ? <>{p.entregues}<span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11 }}>/{p.total}</span></>
-                          : <span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11, fontWeight: 600 }}>sem escopo</span>}
+                          : <span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11, fontWeight: 600 }}>—</span>}
+                        <span style={{ color: 'rgba(10,15,11,0.35)', fontSize: 9, fontWeight: 600, marginLeft: 2 }}>escopo</span>
                       </span>
                     </div>
                   </div>

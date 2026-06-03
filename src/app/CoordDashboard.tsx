@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertTriangle, Users, MapPin, FileText, Camera, Video } from 'lucide-react'
+import { AlertTriangle, Users, MapPin, FileText, Camera, Video, Zap } from 'lucide-react'
 import { computeEntrega, entregaPorPatrocinador, type EscopoItemLite } from '@/lib/patrocinio/entrega'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -672,6 +672,24 @@ export function PatrocinioCard({
           </ul>
         )}
       </div>
+
+      {escopoTotal > 0 && (
+        <a
+          href="/admin/patrocinadores/entregas"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            marginTop: 10, padding: '8px 12px',
+            borderRadius: 10,
+            background: 'rgba(70,50,5,0.06)',
+            border: '1px solid rgba(70,50,5,0.14)',
+            fontSize: 12, fontWeight: 700, color: '#46320C',
+            textDecoration: 'none', letterSpacing: '-0.01em',
+          }}
+        >
+          <Zap style={{ width: 13, height: 13 }} />
+          Entrega rápida — marcar entregue ao vivo
+        </a>
+      )}
     </div>
   )
 }

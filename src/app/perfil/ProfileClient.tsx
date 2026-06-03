@@ -624,7 +624,7 @@ export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV
                 </div>
                 <select value={filtroDia} onChange={e => setFiltroDia(e.target.value)} style={selStyle}>
                   <option value="">Todos os dias</option>
-                  {optDias.map(d => <option key={d.data} value={d.data}>{d.nome_dia}</option>)}
+                  {optDias.map(d => <option key={d.data} value={d.data}>{d.nome_dia} · {d.data.slice(8, 10)}/{d.data.slice(5, 7)}</option>)}
                 </select>
                 <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={selStyle}>
                   <option value="">Todos os tipos</option>

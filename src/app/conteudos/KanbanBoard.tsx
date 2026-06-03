@@ -1745,7 +1745,12 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">Todos os dias</SelectItem>
-            {dias.map(d => <SelectItem key={d.id} value={d.id}>{d.nome_dia}</SelectItem>)}
+            {dias.map(d => (
+              <SelectItem key={d.id} value={d.id}>
+                {d.nome_dia}
+                {d.data && <span className="text-[var(--muted-foreground)]"> · {d.data.slice(8, 10)}/{d.data.slice(5, 7)}</span>}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

@@ -1566,6 +1566,8 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     if (filterPatroc && filterPatroc !== '__all__') {
       list = filterPatroc === '__none__'
         ? list.filter(c => !c.patrocinador_id)
+        : filterPatroc === '__com__'
+        ? list.filter(c => !!c.patrocinador_id)
         : list.filter(c => c.patrocinador_id === filterPatroc)
     }
     return list
@@ -1825,6 +1827,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">Todos</SelectItem>
+            <SelectItem value="__com__">🤝 Todos os patrocinados</SelectItem>
             {patrocinadores.map(p => (
               <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
             ))}

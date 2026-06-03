@@ -89,6 +89,7 @@ interface Props {
   coordYoutubeSetorIds?: string[]
   coordSetoresMap?: Record<string, string>
   coordModalidadesMap?: Record<string, string>
+  coordAtrasados?: number
   analyticsRanking?:       RankingItem[]
   analyticsLacunas?:       LacunaItem[]
   analyticsVolumePorHora?: VolumePorHora[]
@@ -448,6 +449,7 @@ export function HomeClient({
   coordYoutubeSetorIds    = [],
   coordSetoresMap         = {},
   coordModalidadesMap     = {},
+  coordAtrasados          = 0,
   analyticsRanking        = [],
   analyticsLacunas        = [],
   analyticsVolumePorHora  = [],
@@ -489,6 +491,7 @@ export function HomeClient({
           diaAtualId={coordDiaAtualId}
           setoresMap={coordSetoresMap}
           modalidadesMap={coordModalidadesMap}
+          atrasados={coordAtrasados}
         />
       )}
 

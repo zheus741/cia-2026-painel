@@ -22,6 +22,7 @@ interface Props {
   diaAtualId: string | null
   setoresMap:    Record<string, string>
   modalidadesMap: Record<string, string>
+  atrasados: number
 }
 
 function useNow(intervalMs = 30_000): Date | null {
@@ -43,7 +44,7 @@ function fmtFalta(ms: number): string {
 }
 
 export function HomeAgora({
-  jogos, shows, festas, turnosCoberturaAV, contentStats, diaAtualId, setoresMap, modalidadesMap,
+  jogos, shows, festas, turnosCoberturaAV, contentStats, diaAtualId, setoresMap, modalidadesMap, atrasados,
 }: Props) {
   const now = useNow()
   const ms = now?.getTime() ?? 0
@@ -143,6 +144,16 @@ export function HomeAgora({
       title: pracasDescobertas.length === 0 ? 'tudo coberto' : pracasDescobertas.length === 1 ? 'praça descoberta' : 'praças descobertas',
       meta:  pracasDescobertas.length > 0 ? pracasDescobertas.slice(0, 3).join(' · ') : null,
       live: pracasDescobertas.length > 0,
+    },
+    {
+      key: 'atraso', href: '/conteudos',
+      icon: atrasados > 0 ? AlertTriangle : Clock,
+      accent: atrasados > 0 ? '#DC2626' : '#2e6b42',
+      eyebrow: 'Termômetro',
+      value: `${atrasados}`,
+      title: atrasados === 0 ? 'nada atrasado' : atrasados === 1 ? 'atrasado' : 'atrasados',
+      meta:  atrasados > 0 ? 'horário previsto vencido, não publicado' : 'tudo no prazo',
+      live: atrasados > 0,
     },
   ]
 

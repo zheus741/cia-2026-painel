@@ -107,7 +107,7 @@ export default async function Home() {
     // All active conteudos — inclui campos de análise + status de produção
     supabase
       .from('conteudos')
-      .select('id, status, tipo, dia_id, jogo_id, responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, status_captacao, status_design, status_edicao')
+      .select('id, status, tipo, dia_id, horario_previsto, jogo_id, responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, status_captacao, status_design, status_edicao')
       .not('status', 'in', '(arquivado,cancelado)'),
 
     // Event days to map dia_id → day index 1–4
@@ -370,6 +370,7 @@ export default async function Home() {
     status: string
     tipo: string
     dia_id: string | null
+    horario_previsto: string | null
   }[]
 
   const contentStats = {
@@ -377,6 +378,24 @@ export default async function Home() {
     rascunho:    allConteudos.filter(c => c.status === 'rascunho').length,
     em_producao: allConteudos.filter(c => c.status === 'em_producao').length,
     publicado:   allConteudos.filter(c => c.status === 'publicado').length,
+  }
+
+  // ── Termômetro de atraso: conteúdos com horário previsto JÁ VENCIDO e ainda
+  // não publicados. Datetime = data do dia + horario_previsto ("HH:MM" ou ISO).
+  let coordAtrasados = 0
+  {
+    const diaData = new Map((diasRes.data ?? []).map(d => [d.id as string, d.data as string]))
+    const agora = Date.now()
+    for (const c of allConteudos) {
+      if (c.status === 'publicado' || c.status === 'pronto') continue
+      if (!c.horario_previsto || !c.dia_id) continue
+      const data = diaData.get(c.dia_id)
+      if (!data) continue
+      const hp = c.horario_previsto
+      const iso = hp.includes('T') ? hp : `${data}T${hp.length === 5 ? hp : hp.slice(0, 5)}:00-03:00`
+      const t = new Date(iso).getTime()
+      if (!Number.isNaN(t) && t < agora) coordAtrasados++
+    }
   }
 
   // ── Funil de produção (status captação/design/edição por responsável) ─────
@@ -494,6 +513,7 @@ export default async function Home() {
         coordYoutubeSetorIds={coordYoutubeSetorIds}
         coordSetoresMap={coordSetoresMap}
         coordModalidadesMap={coordModalidadesMap}
+        coordAtrasados={coordAtrasados}
         analyticsRanking={analyticsRanking}
         analyticsLacunas={analyticsLacunas}
         analyticsVolumePorHora={analyticsVolumePorHora}

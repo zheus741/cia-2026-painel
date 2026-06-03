@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import {
   requireLiderOrAbove,
   requireCoordOrAdmin,
@@ -17,7 +18,9 @@ export async function assignTurnoUser(
 ): Promise<ActionResult> {
   return safe(async () => {
     await requireLiderOrAbove()
-    const supabase = await createClient()
+    // Service client: RLS de `turnos` só permite admin/coord; o lider_area
+    // (liberado por requireLiderOrAbove) era filtrado silenciosamente.
+    const supabase = createServiceClient()
 
     // Busca detalhes do turno para a notificação
     const { data: turno } = await supabase

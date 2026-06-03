@@ -186,7 +186,7 @@ export default async function TVPage() {
   const pipelineStats = {
     total:        allConteudos.length,
     rascunho:     allConteudos.filter(c => c.status === 'rascunho').length,
-    em_producao:  allConteudos.filter(c => ['em_andamento', 'pendente', 'pausado'].includes(c.status)).length,
+    em_producao:  allConteudos.filter(c => ['em_producao', 'em_andamento', 'pendente', 'pausado'].includes(c.status)).length,
     pronto:       allConteudos.filter(c => c.status === 'pronto').length,
     publicado:    allConteudos.filter(c => c.status === 'publicado').length,
   }

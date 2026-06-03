@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { requireProfile } from '@/lib/auth/current-user'
 import { sendPushToUser } from '@/app/actions/push'
 
@@ -68,11 +69,12 @@ export async function removerDelegado(escalaId: string): Promise<ActionResult> {
 export async function confirmarChegada(escalaId: string): Promise<ActionResult> {
   try {
     const profile = await requireProfile()
-    const supabase = await createClient()
+    // Service client: a RLS de escalas_esportivo só permite admin/coord/coord_esp
+    // escreverem; o delegado comum (operador/operador_esportivo) confirmando a
+    // PRÓPRIA chegada era filtrado silenciosamente. Permissão garantida abaixo
+    // pelo escopo .eq('user_id', profile.id) (só altera a própria linha).
+    const supabase = createServiceClient()
 
-    // Garante que o usuário só confirma a própria escala (admin pode confirmar qualquer uma).
-    // BUG ANTERIOR: query.eq() retorna NOVO builder; sem reatribuir, o filtro user_id
-    // era descartado e coord_esportivo conseguia confirmar chegada de qualquer um.
     let query = supabase
       .from('escalas_esportivo')
       .update({ confirmado_em: new Date().toISOString() })

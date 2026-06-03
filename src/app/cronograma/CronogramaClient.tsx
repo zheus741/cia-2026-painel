@@ -152,7 +152,7 @@ export function CronogramaClient({ dias, eventos }: Props) {
   const nowMs = now?.getTime() ?? 0
 
   // Filtros (chips toggle)
-  const [filtros, setFiltros] = useState<Set<EventoTipo>>(new Set(['show', 'jogo', 'festa']))
+  const [filtros, setFiltros] = useState<Set<EventoTipo>>(new Set(['show', 'jogo', 'festa', 'individual']))
 
   // Dia ativo — default: dia atual se durante o evento, senão primeiro dia
   const [diaAtivo, setDiaAtivo] = useState<string>(() => {
@@ -256,7 +256,7 @@ export function CronogramaClient({ dias, eventos }: Props) {
         <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted-foreground)]/55">
           Mostrar
         </span>
-        {(['show', 'jogo', 'festa'] as const).map(tipo => {
+        {(['show', 'jogo', 'festa', 'individual'] as const).map(tipo => {
           const cfg = TIPO_CFG[tipo]
           const active = filtros.has(tipo)
           const count = countByTipo[tipo]

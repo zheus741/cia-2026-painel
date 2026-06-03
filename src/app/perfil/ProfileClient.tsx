@@ -445,7 +445,7 @@ export function ProfileClient({ userId, profile, turnos, conteudos, operadoresFV
       </div>
 
       {/* ── KPI row ──────────────────────────────────────────────────────────── */}
-      <div className="mb-10 grid gap-3" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      <div className="mb-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KpiCard label="Conteúdos"    value={total}      sub="atribuídos a mim"    tone="cream" />
         <KpiCard label="Publicados"   value={publicados} sub="entregues"            tone="green" />
         <KpiCard label="Em produção"  value={producao}   sub="em andamento"         tone="electric" />

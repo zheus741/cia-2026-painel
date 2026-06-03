@@ -11,7 +11,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp, ClipboardList, Download } from 'lucide-react'
+import { ArrowUpRight, Trophy, Crown, Radio, TrendingUp, ClipboardList, Download, Drum, Megaphone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
 import { useRealtimeRevival } from '@/lib/supabase/use-realtime-revival'
@@ -1137,6 +1137,22 @@ export function EsportivoClient({
       meta: 'Playoff dos campeões',
       tone: 'electric' as const,
       icon: Crown,
+      span: 'sm' as const,
+    },
+    {
+      href: '/esportivo/baterias',
+      label: 'Desafio de Baterias',
+      meta: '40 baterias · 3 divisões',
+      tone: 'gold' as const,
+      icon: Drum,
+      span: 'sm' as const,
+    },
+    {
+      href: '/esportivo/cheer',
+      label: 'Torneio de Cheer',
+      meta: '23 apresentações · Sáb',
+      tone: 'lavender' as const,
+      icon: Megaphone,
       span: 'sm' as const,
     },
     {

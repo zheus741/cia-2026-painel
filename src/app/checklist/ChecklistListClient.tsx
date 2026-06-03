@@ -38,6 +38,7 @@ const TIPO_LABEL: Record<string, string> = {
   show: 'Shows',
   festa: 'Festas',
   ativacao_patrocinador: 'Ativações',
+  geral: 'Gerais',
 }
 
 const TIPO_BADGE_COLOR: Record<string, string> = {
@@ -45,6 +46,7 @@ const TIPO_BADGE_COLOR: Record<string, string> = {
   show: 'text-purple-700 bg-purple-50',
   festa: 'text-rose-700 bg-rose-50',
   ativacao_patrocinador: 'text-yellow-700 bg-yellow-50',
+  geral: 'text-[var(--muted-foreground)] bg-[var(--muted)]',
 }
 
 const TIPO_BADGE_LABEL: Record<string, string> = {
@@ -52,6 +54,7 @@ const TIPO_BADGE_LABEL: Record<string, string> = {
   show: 'Show',
   festa: 'Festa',
   ativacao_patrocinador: 'Ativação',
+  geral: 'Geral',
 }
 
 function TipoIcon({ tipo, className }: { tipo: string; className?: string }) {
@@ -198,7 +201,7 @@ interface TipoSection {
 }
 
 export function ChecklistListClient({ rows, isCoord, deletarInstancia }: Props) {
-  const TIPO_ORDER = ['jogo', 'show', 'festa', 'ativacao_patrocinador', '']
+  const TIPO_ORDER = ['jogo', 'show', 'festa', 'ativacao_patrocinador', 'geral', '']
 
   // Group by tipo
   const grouped = new Map<string, RowItem[]>()
@@ -208,7 +211,13 @@ export function ChecklistListClient({ rows, isCoord, deletarInstancia }: Props) 
     grouped.set(tipo, [...existing, row])
   }
 
-  const sections: TipoSection[] = TIPO_ORDER
+  // Ordena os conhecidos primeiro, mas NÃO esconde nenhum tipo novo (à prova
+  // de futuro — antes 'geral' não estava em TIPO_ORDER e as instâncias sumiam).
+  const ordemFinal = [
+    ...TIPO_ORDER,
+    ...[...grouped.keys()].filter((t) => !TIPO_ORDER.includes(t)),
+  ]
+  const sections: TipoSection[] = ordemFinal
     .filter((tipo) => grouped.has(tipo))
     .map((tipo) => ({
       tipo,

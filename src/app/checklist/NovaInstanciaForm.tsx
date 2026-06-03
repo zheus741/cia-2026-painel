@@ -23,7 +23,7 @@ interface Props {
 }
 
 const TIPO_LABEL: Record<string, string> = {
-  jogo: 'Jogo', show: 'Show', festa: 'Festa', ativacao_patrocinador: 'Ativação',
+  jogo: 'Jogo', show: 'Show', festa: 'Festa', ativacao_patrocinador: 'Ativação', geral: 'Geral',
 }
 
 export function NovaInstanciaForm({ edicaoId, templates, jogos, shows, festas, patrocinadores, dias }: Props) {
@@ -86,7 +86,7 @@ export function NovaInstanciaForm({ edicaoId, templates, jogos, shows, festas, p
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-[var(--green-dim)]/40 bg-[var(--card)] p-5 space-y-4 shadow-lg"
+      className="w-full rounded-xl border border-[var(--green-dim)]/40 bg-[var(--card)] p-5 space-y-4 shadow-lg"
     >
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold">Novo checklist</p>

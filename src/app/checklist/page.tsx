@@ -3,8 +3,21 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { CheckSquare } from 'lucide-react'
 import { NovaInstanciaForm } from './NovaInstanciaForm'
+import { NovoTemplateForm } from './NovoTemplateForm'
 import { ChecklistListClient } from './ChecklistListClient'
 import { deletarInstancia } from './actions'
+
+const FUNCOES_CHECKLIST = [
+  { value: 'foto',        label: 'Foto' },
+  { value: 'video',       label: 'Vídeo' },
+  { value: 'editor',      label: 'Editor' },
+  { value: 'design',      label: 'Design' },
+  { value: 'social',      label: 'Social' },
+  { value: 'storymaker',  label: 'Storymaker' },
+  { value: 'roaming',     label: 'Roaming' },
+  { value: 'coordenacao', label: 'Coordenação' },
+  { value: 'producao',    label: 'Produção' },
+]
 import { getCurrentProfile, hasRole } from '@/lib/auth/current-user'
 
 export default async function ChecklistPage() {
@@ -90,15 +103,18 @@ export default async function ChecklistPage() {
         </div>
       </div>
 
-      <NovaInstanciaForm
-        edicaoId={edicaoId}
-        templates={(templates ?? []) as { id: string; nome: string; tipo: string }[]}
-        jogos={jogosForm}
-        shows={showsForm}
-        festas={festasForm}
-        patrocinadores={(patrocinadores ?? []) as { id: string; nome: string }[]}
-        dias={diasForm}
-      />
+      <div className="flex flex-wrap items-start gap-3">
+        <NovaInstanciaForm
+          edicaoId={edicaoId}
+          templates={(templates ?? []) as { id: string; nome: string; tipo: string }[]}
+          jogos={jogosForm}
+          shows={showsForm}
+          festas={festasForm}
+          patrocinadores={(patrocinadores ?? []) as { id: string; nome: string }[]}
+          dias={diasForm}
+        />
+        {isCoord && <NovoTemplateForm edicaoId={edicaoId} funcoes={FUNCOES_CHECKLIST} />}
+      </div>
 
       {rows.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[var(--border)] p-12 text-center">

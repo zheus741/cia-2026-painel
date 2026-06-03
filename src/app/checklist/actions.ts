@@ -90,3 +90,42 @@ export async function renomearInstancia(id: string, nome: string | null) {
     revalidatePath(`/checklist/${id}`)
   })
 }
+
+// ── Criar template novo (coord/admin) ────────────────────────────────────────
+// Cria o template + seus itens. tipo='geral' = sem vínculo obrigatório.
+export async function criarTemplate(payload: {
+  edicao_id: string
+  nome: string
+  tipo: 'geral' | 'jogo' | 'show' | 'festa' | 'ativacao_patrocinador'
+  itens: { label: string; obrigatorio: boolean; funcao_requerida?: string | null }[]
+}) {
+  return safe(async () => {
+    await requireCoordOrAdmin()
+    const nome = payload.nome.trim()
+    if (!nome) throw new Error('Dê um nome ao template.')
+    const itens = payload.itens.map(i => ({ ...i, label: i.label.trim() })).filter(i => i.label)
+    if (itens.length === 0) throw new Error('Adicione ao menos um item.')
+
+    const supabase = await createClient()
+
+    const { data: tpl, error: errTpl } = await supabase
+      .from('checklist_templates')
+      .insert({ edicao_id: payload.edicao_id, nome, tipo: payload.tipo, ativo: true })
+      .select('id')
+      .single()
+    if (errTpl) throw errTpl
+
+    const rows = itens.map((i, ordem) => ({
+      template_id:      tpl.id,
+      label:            i.label,
+      obrigatorio:      i.obrigatorio,
+      funcao_requerida: i.funcao_requerida || null,
+      ordem,
+    }))
+    const { error: errItens } = await supabase.from('checklist_template_itens').insert(rows)
+    if (errItens) throw errItens
+
+    revalidatePath('/checklist')
+    return { id: tpl.id, itens: itens.length }
+  })
+}

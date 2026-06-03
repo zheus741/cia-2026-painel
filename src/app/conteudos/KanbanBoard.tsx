@@ -441,49 +441,55 @@ function ConteudoCard({
           )
         })()}
 
-        {/* Actions — aparecem no hover */}
-        <div className="mt-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {/* Actions — SEMPRE visíveis no mobile (touch não tem hover); revelam no
+            hover só no desktop. Alvos maiores no celular (≥40px). */}
+        <div className="mt-2 flex items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
           {!readOnly && hasPrev && (
             <button
               title="Voltar status"
+              aria-label="Voltar status"
               onClick={(e) => { e.stopPropagation(); onMove(PREV_STATUS[c.status]) }}
-              className="rounded p-1 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              className="rounded p-2 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] md:p-1"
             >
-              <ChevronLeft className="h-3 w-3" />
+              <ChevronLeft className="h-4 w-4 md:h-3 md:w-3" />
             </button>
           )}
           <button
             onClick={(e) => { e.stopPropagation(); onView() }}
             title="Ver detalhes"
-            className="rounded p-1 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--green-bright)]"
+            aria-label="Ver detalhes"
+            className="rounded p-2 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--green-bright)] md:p-1"
           >
-            <Eye className="h-3 w-3" />
+            <Eye className="h-4 w-4 md:h-3 md:w-3" />
           </button>
           {!readOnly && (
             <button
               onClick={(e) => { e.stopPropagation(); onEdit() }}
               title="Editar"
-              className="rounded p-1 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              aria-label="Editar"
+              className="rounded p-2 hover:bg-[var(--muted)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] md:p-1"
             >
-              <Pencil className="h-3 w-3" />
+              <Pencil className="h-4 w-4 md:h-3 md:w-3" />
             </button>
           )}
           {!readOnly && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete() }}
               title="Excluir"
-              className="rounded p-1 hover:bg-red-500/20 text-[var(--muted-foreground)] hover:text-red-400"
+              aria-label="Excluir"
+              className="rounded p-2 hover:bg-red-500/20 text-[var(--muted-foreground)] hover:text-red-400 md:p-1"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4 md:h-3 md:w-3" />
             </button>
           )}
           {!readOnly && hasNext && (
             <button
               title="Avançar status"
+              aria-label="Avançar status"
               onClick={(e) => { e.stopPropagation(); onMove(NEXT_STATUS[c.status]) }}
-              className="ml-auto rounded p-1 hover:bg-[var(--green)]/20 text-[var(--muted-foreground)] hover:text-[var(--green-bright)]"
+              className="ml-auto rounded p-2 hover:bg-[var(--green)]/20 text-[var(--muted-foreground)] hover:text-[var(--green-bright)] md:p-1"
             >
-              <ChevronRight className="h-3 w-3" />
+              <ChevronRight className="h-4 w-4 md:h-3 md:w-3" />
             </button>
           )}
         </div>

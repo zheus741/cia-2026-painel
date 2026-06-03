@@ -411,6 +411,8 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
   }
 
   function adjustScore(team: 'a' | 'b', delta: number) {
+    // Snapshot do placar ANTES da mudança — pra reverter se o servidor recusar.
+    const prevA = placarA, prevB = placarB
     const na = team === 'a' ? Math.max(0, placarA + delta) : placarA
     const nb = team === 'b' ? Math.max(0, placarB + delta) : placarB
     onLocalUpdate(jogo.id, { placar_a: na, placar_b: nb })
@@ -429,8 +431,13 @@ function PlacarCard({ jogo, onLocalUpdate, recentlyChanged, canEdit, initialEven
       return
     }
 
+    // Com rollback: se a rede/permissão falhar, reverte o placar local e avisa
+    // (antes "salvava" só no celular e dessincronizava da TV sem aviso).
     startTransition(async () => {
-      await atualizarPlacar(jogo.id, na, nb)
+      await runAction(() => atualizarPlacar(jogo.id, na, nb), {
+        label: 'atualizar placar',
+        onError: () => onLocalUpdate(jogo.id, { placar_a: prevA, placar_b: prevB }),
+      })
     })
   }
 

@@ -80,7 +80,7 @@ interface Props {
   coordTurnosHoje?: CoordTurnoCount[]
   coordPatrocinadores?: CoordPatrocinador[]
   coordConteudosPorPatrocinador?: { patrocinador_id: string | null; status: string }[]
-  coordEscopoItens?: { patrocinador_id: string; quantidade_prevista: number | null }[]
+  coordEscopoItens?: { patrocinador_id: string; quantidade_prevista: number | null; status: string | null }[]
   coordChecklistItens?: { id: string; status: string }[]
   coordDiasEvento?: { id: string; data: string }[]
   coordDiaAtualId?: string | null

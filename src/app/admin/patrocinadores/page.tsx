@@ -8,31 +8,31 @@ import { FicharioClient, type PatrocinadorRow, type ConteudoStat } from './Ficha
 export default async function PatrocinadoresPage() {
   const supabase = await createClient()
 
-  const [profile, { data: patData }, { data: contData }] = await Promise.all([
+  const [profile, { data: patData }, { data: escopoData }] = await Promise.all([
     requireProfile(),
     supabase
       .from('patrocinadores')
       .select('id, nome, slug, logo_url, cor_marca, cota, contato_nome, contato_email, contato_telefone, observacoes, ativo')
       .order('nome'),
-    supabase
-      .from('conteudos')
-      .select('patrocinador_id, status')
-      .not('patrocinador_id', 'is', null)
-      .not('status', 'in', '(arquivado,cancelado)'),
+    // FONTE ÚNICA: % entregue por escopo contratado (igual home/TV/dossiê)
+    supabase.from('escopo_itens').select('patrocinador_id, quantidade_prevista, status'),
   ])
 
   const patrocinadores = (patData ?? []) as PatrocinadorRow[]
   const canEdit = ['admin', 'coordenacao'].includes(profile.role)
 
-  // Build per-sponsor stats
+  // Stats por patrocinador a partir do ESCOPO: total = unidades contratadas,
+  // publicados = unidades entregues, em_producao = unidades em produção.
   const statsMap = new Map<string, { publicados: number; em_producao: number; total: number }>()
-  for (const row of (contData ?? [])) {
+  for (const row of (escopoData ?? [])) {
     const pid = row.patrocinador_id as string
+    if (!pid) continue
     if (!statsMap.has(pid)) statsMap.set(pid, { publicados: 0, em_producao: 0, total: 0 })
     const s = statsMap.get(pid)!
-    s.total++
-    if (row.status === 'publicado') s.publicados++
-    if (['em_andamento', 'pendente', 'pausado', 'em_producao'].includes(row.status)) s.em_producao++
+    const q = (row.quantidade_prevista as number | null) ?? 1
+    s.total += q
+    if (row.status === 'entregue')    s.publicados  += q
+    if (row.status === 'em_producao') s.em_producao += q
   }
 
   const conteudoStats: ConteudoStat[] = Array.from(statsMap.entries()).map(([patrocinador_id, s]) => ({

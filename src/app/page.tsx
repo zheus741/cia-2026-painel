@@ -155,7 +155,7 @@ export default async function Home() {
   let coordTurnosHoje:            CoordTurnoCount[]                                        = []
   let coordPatrocinadores:        CoordPatrocinador[]                                      = []
   let coordConteudosPorPatroc:    { patrocinador_id: string | null; status: string }[]     = []
-  let coordEscopoItens:           { patrocinador_id: string; quantidade_prevista: number | null }[] = []
+  let coordEscopoItens:           { patrocinador_id: string; quantidade_prevista: number | null; status: string | null }[] = []
   let coordChecklistItens:        { id: string; status: string }[]                         = []
   let coordDiaAtualId:            string | null                                            = null
   let coordTurnosCoberturaAV:     { setor_id: string; funcao: string; dia_id: string }[]  = []
@@ -230,7 +230,7 @@ export default async function Home() {
         // 5b. Escopo de patrocinadores — para indicador de cobertura
         supabase
           .from('escopo_itens')
-          .select('patrocinador_id, quantidade_prevista'),
+          .select('patrocinador_id, quantidade_prevista, status'),
 
         // 6. Checklist items do dia
         supabase
@@ -259,7 +259,7 @@ export default async function Home() {
       coordTurnosHoje         = (turnosRes.data      ?? []) as CoordTurnoCount[]
       coordPatrocinadores     = staticData.patrocinadores
       coordConteudosPorPatroc = (contPatrocRes.data  ?? []) as { patrocinador_id: string | null; status: string }[]
-      coordEscopoItens        = (escopoRes.data      ?? []) as { patrocinador_id: string; quantidade_prevista: number | null }[]
+      coordEscopoItens        = (escopoRes.data      ?? []) as { patrocinador_id: string; quantidade_prevista: number | null; status: string | null }[]
       coordChecklistItens     = ((ckItensRes.data ?? []) as { id: string; status: string }[])
         .map(i => ({ id: i.id, status: i.status }))
       coordTurnosCoberturaAV  = (turnosCoberturaAVRes.data ?? []) as { setor_id: string; funcao: string; dia_id: string }[]

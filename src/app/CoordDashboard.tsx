@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Users, MapPin, FileText, Camera, Video } from 'lucide-react'
+import { computeEntrega, entregaPorPatrocinador, type EscopoItemLite } from '@/lib/patrocinio/entrega'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -67,7 +68,7 @@ export interface CoordDashboardProps {
   turnosHoje: CoordTurnoCount[]
   patrocinadores: CoordPatrocinador[]
   conteudosPorPatrocinador: { patrocinador_id: string | null; status: string }[]
-  escopoItens?: { patrocinador_id: string; quantidade_prevista: number | null }[]
+  escopoItens?: EscopoItemLite[]
   checklistItens: CoordChecklistItem[]
   diasEvento?: { id: string; data: string }[]
   diaAtualId?: string | null
@@ -444,7 +445,7 @@ export function PatrocinioCard({
 }: {
   patrocinadores: CoordPatrocinador[]
   conteudosPorPatrocinador: { patrocinador_id: string | null; status: string }[]
-  escopoItens?: { patrocinador_id: string; quantidade_prevista: number | null }[]
+  escopoItens?: EscopoItemLite[]
 }) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
@@ -454,31 +455,21 @@ export function PatrocinioCard({
 
   const ativos = patrocinadores.filter(p => p.ativo)
 
-  // Escopo por patrocinador: soma de quantidade_prevista (ou 1 por item se null)
-  const escopoPorId: Record<string, number> = {}
-  for (const item of escopoItens) {
-    escopoPorId[item.patrocinador_id] = (escopoPorId[item.patrocinador_id] ?? 0) + (item.quantidade_prevista ?? 1)
-  }
+  // FONTE ÚNICA: % entregue = unidades entregues ÷ contratadas (escopo_itens).
+  // Mesmo cálculo do Dossiê, TV e Fichário (src/lib/patrocinio/entrega).
+  const entregaMap = entregaPorPatrocinador(escopoItens)
+  const ativosIds  = new Set(ativos.map(p => p.id))
+  const geral      = computeEntrega(escopoItens.filter(e => ativosIds.has(e.patrocinador_id)))
+  const pctGeral   = geral.pct
+  const escopoTotal = geral.total
 
   const stats = ativos.map(p => {
-    const conteudos  = conteudosPorPatrocinador.filter(c => c.patrocinador_id === p.id)
-    const total      = conteudos.length
-    const published  = conteudos.filter(c => c.status === 'publicado').length
-    const pct        = total > 0 ? Math.round((published / total) * 100) : 0
-    const escopoMeta = escopoPorId[p.id] ?? 0  // 0 = sem escopo definido
-    // cobertura: quantos itens do escopo têm ao menos 1 card criado
-    // proxy simples: min(cards_criados, escopo_meta) — sem matching por tipo
-    const cobertos   = escopoMeta > 0 ? Math.min(total, escopoMeta) : total
-    return { ...p, total, published, pct, escopoMeta, cobertos }
+    const e = entregaMap.get(p.id) ?? { total: 0, entregues: 0, pct: 0 }
+    return { ...p, total: e.total, entregues: e.entregues, pct: e.pct }
   })
 
-  const totalGeral    = stats.reduce((s, p) => s + p.total, 0)
-  const pubGeral      = stats.reduce((s, p) => s + p.published, 0)
-  const pctGeral      = totalGeral > 0 ? Math.round((pubGeral / totalGeral) * 100) : 0
-  const escopoTotal   = stats.reduce((s, p) => s + p.escopoMeta, 0)
-  const cobertosTotal = stats.reduce((s, p) => s + p.cobertos, 0)
-  // Marcas com lacuna: tem escopo mas menos cards que o previsto
-  const marcasComLacuna = stats.filter(p => p.escopoMeta > 0 && p.total < p.escopoMeta).length
+  // Marcas com lacuna: têm escopo contratado mas ainda não entregaram tudo.
+  const marcasComLacuna = stats.filter(p => p.total > 0 && p.pct < 100).length
 
   return (
     <div className="cia-edit-card cia-edit-card--gold cia-metrics-cell" style={{ minHeight: 280 }}>
@@ -578,29 +569,18 @@ export function PatrocinioCard({
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      {/* Badge escopo: cards criados / meta */}
-                      {p.escopoMeta > 0 && (() => {
-                        const ok = p.total >= p.escopoMeta
-                        const zero = p.total === 0
-                        const cor = zero ? '#A04A2E' : ok ? '#2e6b42' : '#B58812'
-                        const bg  = zero ? 'rgba(160,74,46,0.14)' : ok ? 'rgba(46,107,66,0.14)' : 'rgba(181,136,18,0.14)'
-                        return (
-                          <span title={`${p.total} card${p.total !== 1 ? 's' : ''} criado${p.total !== 1 ? 's' : ''} / ${p.escopoMeta} no escopo`} style={{
-                            fontSize: 10, fontWeight: 700,
-                            color: cor, background: bg,
-                            borderRadius: 999, padding: '1px 6px',
-                          }}>
-                            {p.total}/{p.escopoMeta}
-                          </span>
-                        )
-                      })()}
-                      {/* Publicados */}
-                      <span style={{
-                        fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
-                        fontSize: 13, fontWeight: 800,
-                        color: '#0A0F0B', letterSpacing: '-0.02em',
-                      }}>
-                        {p.published}<span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11 }}>/{p.total}</span>
+                      {/* Entregue / meta contratada (unidades de escopo) */}
+                      <span
+                        title={p.total > 0 ? `${p.entregues} de ${p.total} unidades entregues` : 'Sem escopo cadastrado'}
+                        style={{
+                          fontFamily: 'var(--font-dm-sans), system-ui, sans-serif',
+                          fontSize: 13, fontWeight: 800,
+                          color: '#0A0F0B', letterSpacing: '-0.02em',
+                        }}
+                      >
+                        {p.total > 0
+                          ? <>{p.entregues}<span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11 }}>/{p.total}</span></>
+                          : <span style={{ color: 'rgba(10,15,11,0.30)', fontSize: 11, fontWeight: 600 }}>sem escopo</span>}
                       </span>
                     </div>
                   </div>

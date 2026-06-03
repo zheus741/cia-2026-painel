@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { TVDisplay } from './TVDisplay'
+import { entregaPorPatrocinador, type EscopoItemLite } from '@/lib/patrocinio/entrega'
 
 // ── WMO weather codes ──────────────────────────────────────────────────────────
 function weatherEmoji(code: number): string {
@@ -61,6 +62,7 @@ export default async function TVPage() {
     weatherData,
     atleticasRes,
     resultadosExtRes,
+    escopoRes,
   ] = await Promise.all([
     supabase.from('dias_evento').select('id, data').order('data'),
     supabase.from('conteudos')
@@ -77,6 +79,8 @@ export default async function TVPage() {
     supabase.from('resultados_externos')
       .select('equipe_id, colocacao, pontos, modalidades:modalidade_id(nome, icone), divisao')
       .order('colocacao'),
+    // Escopo de patrocínio — fonte da % entregue (igual home/dossiê/fichário)
+    supabase.from('escopo_itens').select('patrocinador_id, quantidade_prevista, status'),
   ])
 
   const dias = (diasRes.data ?? []) as { id: string; data: string }[]
@@ -173,12 +177,15 @@ export default async function TVPage() {
 
   // Patrocínio
   const patrocinadores = (patrocinadoresRes.data ?? []) as { id: string; nome: string; ativo: boolean; logo_url: string | null }[]
+  // % entregue por escopo contratado (fonte única — igual home/dossiê/fichário)
+  const escopoItens = (escopoRes.data ?? []) as EscopoItemLite[]
+  const entregaMap = entregaPorPatrocinador(escopoItens)
   const patrocStats = patrocinadores.filter(p => p.ativo).map(p => {
-    const list = allConteudos.filter(c => c.patrocinador_id === p.id)
+    const e = entregaMap.get(p.id) ?? { total: 0, entregues: 0, pct: 0 }
     return {
       id: p.id, nome: p.nome, logo_url: p.logo_url ?? null,
-      total: list.length,
-      publicados: list.filter(c => c.status === 'publicado').length,
+      total: e.total,
+      publicados: e.entregues,  // "publicados" no TVDisplay = unidades entregues
     }
   }).filter(p => p.total > 0)
 

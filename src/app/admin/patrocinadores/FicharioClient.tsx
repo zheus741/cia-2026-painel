@@ -484,7 +484,7 @@ function FichaCard({
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[10px] text-[var(--muted-foreground)]">
             <span>
-              <span className="font-semibold text-[var(--foreground)]">{stat.publicados}</span> publicados
+              <span className="font-semibold text-[var(--foreground)]">{stat.publicados}</span> entregues
               {' · '}
               <span className="font-semibold text-[var(--foreground)]">{stat.em_producao}</span> em produção
               {' · '}
@@ -678,7 +678,7 @@ function SummaryStrip({ patrocinadores, conteudoStats }: { patrocinadores: Patro
         <>
           <div className="ml-auto h-8 w-px bg-[var(--border)]" />
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-[var(--muted-foreground)]">Conteúdos</p>
+            <p className="text-[10px] uppercase tracking-widest text-[var(--muted-foreground)]">Escopo entregue</p>
             <p className="text-sm font-bold text-[var(--foreground)]">
               <span className="text-[var(--green-bright)]">{totalPublicados}</span>
               <span className="text-[var(--muted-foreground)]">/{totalConteudos}</span>

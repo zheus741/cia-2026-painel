@@ -68,11 +68,16 @@ function toSlug(s: string): string {
 
 function parseTime(val: unknown): string | null {
   if (val === null || val === undefined) return null
+  // Date só como fallback (lemos SEM cellDates → horas chegam como número).
+  // getUTC* aqui é timezone-frágil; por isso preferimos a fração numérica.
   if (val instanceof Date) {
     return `${val.getUTCHours().toString().padStart(2, '0')}:${val.getUTCMinutes().toString().padStart(2, '0')}`
   }
   if (typeof val === 'number') {
-    const totalMin = Math.round(val * 24 * 60)
+    // Fração do dia (0–1) = hora. Serial com data+hora → usa só a parte fracionária.
+    // 100% timezone-free (evita o bug de cellDates + getUTCHours em máquina BRT).
+    const frac = val - Math.floor(val)
+    const totalMin = Math.round(frac * 24 * 60)
     return `${(Math.floor(totalMin / 60) % 24).toString().padStart(2, '0')}:${(totalMin % 60).toString().padStart(2, '0')}`
   }
   if (typeof val === 'string') {
@@ -85,6 +90,14 @@ function parseTime(val: unknown): string | null {
 function parseDate(val: unknown): string | null {
   if (val instanceof Date && val.getUTCFullYear() > 1900) {
     return `${val.getUTCFullYear()}-${(val.getUTCMonth() + 1).toString().padStart(2, '0')}-${val.getUTCDate().toString().padStart(2, '0')}`
+  }
+  // Sem cellDates, uma data vem como serial do Excel (dias desde 1899-12-30).
+  // Conversão por UTC puro = timezone-free.
+  if (typeof val === 'number' && val > 60) {
+    const d = new Date(Date.UTC(1899, 11, 30) + val * 86400000)
+    if (d.getUTCFullYear() > 1900) {
+      return `${d.getUTCFullYear()}-${(d.getUTCMonth() + 1).toString().padStart(2, '0')}-${d.getUTCDate().toString().padStart(2, '0')}`
+    }
   }
   return null
 }
@@ -398,6 +411,7 @@ export async function sincronizarTabelaJogosCore(
   } catch (e) {
     return { ok: false, error: `Erro de rede ao baixar a planilha: ${String(e)}`, status: 502 }
   }
-  const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
+  // SEM cellDates: horas chegam como fração numérica (parse timezone-free).
+  const wb = XLSX.read(new Uint8Array(buffer), { type: 'array' })
   return processarWorkbookJogos(supabase, wb, { overwrite: opts.overwrite ?? false })
 }

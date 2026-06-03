@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = await file.arrayBuffer()
-    const wb     = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
+    // SEM cellDates: horas chegam como fração numérica (parse timezone-free).
+    const wb     = XLSX.read(new Uint8Array(buffer), { type: 'array' })
 
     const result = await processarWorkbookJogos(supabase, wb, { overwrite })
     if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: result.status })

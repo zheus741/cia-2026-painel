@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { ArrowUpRight, Radio, Users, FileCheck } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -291,8 +292,22 @@ function FootArrow() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function HomeBriefing({ userName, userRole, diffDays, eventActive, liveStats }: BriefingProps) {
-  const now = useNow()
+  const realNow = useNow()
   const firstName = userName?.split(' ')[0] ?? 'time'
+
+  // ── Modo-preview temporário: ?preview=pre|live|post ──────────────────────────
+  // Desloca o "agora" pra dentro da janela alvo, mantendo a hora real (greeting
+  // e ticker continuam vivos). Sem o param, não tem efeito nenhum.
+  const preview = useSearchParams().get('preview') as 'pre' | 'live' | 'post' | null
+  let now = realNow
+  if (preview && realNow) {
+    const eff = new Date(realNow)
+    // mês 5 = junho (0-indexed). Mantém hora:min:seg reais → tudo segue tickando.
+    if (preview === 'pre')  eff.setFullYear(2026, 5, 2)   // 02/06 → pré
+    if (preview === 'live') eff.setFullYear(2026, 5, 5)   // 05/06 → dia 2 ao vivo
+    if (preview === 'post') eff.setFullYear(2026, 5, 8)   // 08/06 → pós
+    now = eff
+  }
 
   // Fase: antes de hidratar usa o eventActive do servidor (evita flash).
   let fase: Fase
@@ -301,6 +316,14 @@ export function HomeBriefing({ userName, userRole, diffDays, eventActive, liveSt
   } else {
     fase = eventActive ? 'live' : 'pre'
   }
+
+  // No preview 'live' os dados reais estão zerados (pré-evento) — injeta exemplo
+  // só pra ilustrar o layout completo. Em produção usa os números reais.
+  const semDados = !liveStats || (liveStats.jogosAoVivo + liveStats.publicadosHoje + liveStats.emCampo) === 0
+  const liveStatsEff: LiveStats | undefined =
+    preview === 'live' && semDados
+      ? { jogosAoVivo: 3, publicadosHoje: 47, emCampo: 31 }
+      : liveStats
 
   // Saudação descontraída — viva só no AO VIVO; estática nas outras fases.
   const linha =
@@ -327,12 +350,23 @@ export function HomeBriefing({ userName, userRole, diffDays, eventActive, liveSt
           </div>
 
           <div className="cia-brf-grid">
-            {fase === 'live' && now ? <HeroLive now={now} liveStats={liveStats} />
+            {fase === 'live' && now ? <HeroLive now={now} liveStats={liveStatsEff} />
               : fase === 'post'    ? <HeroPost />
               : <HeroPre diffDays={diffDays} now={now} />}
           </div>
 
         </div>
+
+        {preview && (
+          <div style={{
+            marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
+            color: '#7a5c20', background: 'rgba(200,151,58,0.14)',
+            border: '1px solid rgba(200,151,58,0.35)', borderRadius: 999, padding: '3px 10px',
+          }}>
+            ⚠ Preview · {preview} · não é o estado real
+          </div>
+        )}
       </div>
 
       <style>{`

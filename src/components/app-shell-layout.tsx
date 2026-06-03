@@ -227,6 +227,7 @@ const OP_FV_GROUPS: NavGroup[] = [
     label: 'Esportivo',
     items: [
       { label: 'Hub Esportivo',    href: '/esportivo',               icon: Trophy },
+      { label: 'Guia AV',          href: '/esportivo/av',            icon: Camera },
       { label: 'Central de Jogos', href: '/central',                 icon: AlignLeft },
       { label: 'Atléticas',        href: '/atleticas',               icon: Users },
       { label: 'Mapa Esportivo',   href: '/esportivo/mapa',          icon: Navigation },
@@ -260,6 +261,7 @@ const LIDER_FV_GROUPS: NavGroup[] = [
     label: 'Esportivo',
     items: [
       { label: 'Hub Esportivo',    href: '/esportivo',               icon: Trophy },
+      { label: 'Guia AV',          href: '/esportivo/av',            icon: Camera },
       { label: 'Central de Jogos', href: '/central',                 icon: AlignLeft },
       { label: 'Atléticas',        href: '/atleticas',               icon: Users },
       { label: 'Mapa Esportivo',   href: '/esportivo/mapa',          icon: Navigation },

@@ -23,6 +23,7 @@ export interface CoordJogo {
   dia_id: string | null
   modalidade_id?: string | null
   setor_id?: string | null
+  status?: string | null
 }
 
 export interface CoordShow {

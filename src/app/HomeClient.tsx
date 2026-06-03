@@ -464,6 +464,11 @@ export function HomeClient({
         userRole={profile?.role ? ROLE_LABEL[profile.role] ?? null : null}
         diffDays={diffDays}
         eventActive={eventActive}
+        liveStats={{
+          jogosAoVivo:    coordJogosHoje.filter(j => j.status === 'ao_vivo').length,
+          publicadosHoje: coordConteudosHoje.filter(c => c.status === 'publicado').length,
+          emCampo:        new Set(coordTurnosHoje.map(t => t.user_id).filter(Boolean)).size,
+        }}
       />
 
       {/* ══════════════════════════════════════════════════════════

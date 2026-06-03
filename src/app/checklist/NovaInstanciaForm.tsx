@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { Plus, X } from 'lucide-react'
 import { criarInstancia } from './actions'
 import { useRouter } from 'next/navigation'
+import { toast } from '@/components/toast'
 
 interface Template { id: string; nome: string; tipo: string }
 interface Jogo { id: string; label: string }
@@ -56,7 +57,7 @@ export function NovaInstanciaForm({ edicaoId, templates, jogos, shows, festas, p
     e.preventDefault()
     if (!templateId) return
     startTransition(async () => {
-      await criarInstancia({
+      const r = await criarInstancia({
         template_id: templateId,
         edicao_id: edicaoId,
         dia_id: diaId || null,
@@ -66,6 +67,12 @@ export function NovaInstanciaForm({ edicaoId, templates, jogos, shows, festas, p
         patrocinador_id: vinculo === 'patrocinador' ? vinculoId || null : null,
         nome_override: nomeOverride.trim() || null,
       })
+      // Só fecha/atualiza se gravou. Antes fechava mesmo falhando → "não salvava".
+      if (r && !r.ok) {
+        toast.error('Não foi possível criar o checklist', { description: r.error })
+        return
+      }
+      toast.success('Checklist criado')
       reset()
       router.refresh()
     })

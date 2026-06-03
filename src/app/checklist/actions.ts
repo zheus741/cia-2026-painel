@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { safe, requireCoordOrAdmin } from '@/lib/admin/actions-helper'
 import { revalidatePath } from 'next/cache'
 
@@ -44,7 +45,10 @@ export async function criarInstancia(payload: {
 }) {
   return safe(async () => {
     await requireCoordOrAdmin()
-    const supabase = await createClient()
+    // Service client: a RLS de checklist_instancias usa is_coord_or_admin()
+    // (auth_role do JWT) — se o token não tiver o claim certo, a coordenação
+    // passa no app mas o INSERT é filtrado silenciosamente. Permissão já validada.
+    const supabase = createServiceClient()
 
     const { data: instancia, error: errInst } = await supabase
       .from('checklist_instancias')
@@ -67,7 +71,7 @@ export async function criarInstancia(payload: {
 export async function deletarInstancia(id: string) {
   return safe(async () => {
     await requireCoordOrAdmin()
-    const supabase = await createClient()
+    const supabase = createServiceClient()
     const { error } = await supabase
       .from('checklist_instancias')
       .delete()
@@ -80,7 +84,7 @@ export async function deletarInstancia(id: string) {
 export async function renomearInstancia(id: string, nome: string | null) {
   return safe(async () => {
     await requireCoordOrAdmin()
-    const supabase = await createClient()
+    const supabase = createServiceClient()
     const { error } = await supabase
       .from('checklist_instancias')
       .update({ nome_override: nome || null })
@@ -106,7 +110,7 @@ export async function criarTemplate(payload: {
     const itens = payload.itens.map(i => ({ ...i, label: i.label.trim() })).filter(i => i.label)
     if (itens.length === 0) throw new Error('Adicione ao menos um item.')
 
-    const supabase = await createClient()
+    const supabase = createServiceClient()
 
     const { data: tpl, error: errTpl } = await supabase
       .from('checklist_templates')

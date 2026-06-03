@@ -18,6 +18,7 @@ import { AnalyticsCards } from './AnalyticsCards'
 import type { RankingItem, LacunaItem, VolumePorHora, AtleticaItem } from './AnalyticsCards'
 import { HomeBriefing } from './HomeBriefing'
 import { HomeMetrics } from './HomeMetrics'
+import { HomeAgora } from './HomeAgora'
 import { AsanaCard } from './AsanaCard'
 import type { AsanaCIAData } from '@/lib/asana/cia-tasks'
 
@@ -86,6 +87,8 @@ interface Props {
   coordDiaAtualId?: string | null
   coordTurnosCoberturaAV?: { setor_id: string; funcao: string; dia_id: string }[]
   coordYoutubeSetorIds?: string[]
+  coordSetoresMap?: Record<string, string>
+  coordModalidadesMap?: Record<string, string>
   analyticsRanking?:       RankingItem[]
   analyticsLacunas?:       LacunaItem[]
   analyticsVolumePorHora?: VolumePorHora[]
@@ -443,6 +446,8 @@ export function HomeClient({
   coordDiaAtualId         = null,
   coordTurnosCoberturaAV  = [],
   coordYoutubeSetorIds    = [],
+  coordSetoresMap         = {},
+  coordModalidadesMap     = {},
   analyticsRanking        = [],
   analyticsLacunas        = [],
   analyticsVolumePorHora  = [],
@@ -470,6 +475,22 @@ export function HomeClient({
           emCampo:        new Set(coordTurnosHoje.map(t => t.user_id).filter(Boolean)).size,
         }}
       />
+
+      {/* ══════════════════════════════════════════════════════════
+          AGORA — strip de comando ao vivo (coord/admin)
+          ══════════════════════════════════════════════════════════ */}
+      {isCoord && (
+        <HomeAgora
+          jogos={coordJogosHoje}
+          shows={coordShowsHoje}
+          festas={coordFestasHoje}
+          turnosCoberturaAV={coordTurnosCoberturaAV}
+          contentStats={contentStats}
+          diaAtualId={coordDiaAtualId}
+          setoresMap={coordSetoresMap}
+          modalidadesMap={coordModalidadesMap}
+        />
+      )}
 
       {/* ══════════════════════════════════════════════════════════
           METRICS — saúde · pipeline · clima · cobertura (editorial)

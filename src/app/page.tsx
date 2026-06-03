@@ -160,6 +160,8 @@ export default async function Home() {
   let coordDiaAtualId:            string | null                                            = null
   let coordTurnosCoberturaAV:     { setor_id: string; funcao: string; dia_id: string }[]  = []
   let coordYoutubeSetorIds:       string[]                                                 = []
+  let coordSetoresMap:            Record<string, string>                                   = {}
+  let coordModalidadesMap:        Record<string, string>                                   = {}
 
   // ── Analytics ─────────────────────────────────────────────────────────────
   let analyticsRanking:       { id: string; nome: string; total: number; publicados: number; funcao: string | null }[] = []
@@ -264,6 +266,8 @@ export default async function Home() {
         .map(i => ({ id: i.id, status: i.status }))
       coordTurnosCoberturaAV  = (turnosCoberturaAVRes.data ?? []) as { setor_id: string; funcao: string; dia_id: string }[]
       coordYoutubeSetorIds    = staticData.youtubeSetorIds
+      coordSetoresMap         = Object.fromEntries(staticData.setoresEsportivos.map(s => [s.id, s.nome]))
+      coordModalidadesMap     = Object.fromEntries(staticData.modalidades.map(m => [m.id, m.nome]))
 
       // ── Analytics (dados já vieram no Promise.all acima) ─────────────────
       const profilesList = (profilesRes.data ?? []) as { id: string; nome: string; funcao_principal: string | null }[]
@@ -488,6 +492,8 @@ export default async function Home() {
         coordDiaAtualId={coordDiaAtualId}
         coordTurnosCoberturaAV={coordTurnosCoberturaAV}
         coordYoutubeSetorIds={coordYoutubeSetorIds}
+        coordSetoresMap={coordSetoresMap}
+        coordModalidadesMap={coordModalidadesMap}
         analyticsRanking={analyticsRanking}
         analyticsLacunas={analyticsLacunas}
         analyticsVolumePorHora={analyticsVolumePorHora}

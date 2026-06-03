@@ -63,3 +63,80 @@ export async function atualizarCaptacao(
     if (error) throw error
   })
 }
+
+// ── DESIGN ───────────────────────────────────────────────────────────────────
+// Mesmo padrão de captação: o designer designado (ou roles acima) atualiza seu
+// status e cola o link de entrega; líderes podem delegar a pessoa.
+
+// Design é time separado de FV — gerido por coordenação/admin (e lider_area de design).
+const ROLES_DESIGN = ['admin', 'coordenacao', 'lider_area']
+
+/** Lê o responsável de design e valida permissão (designado OU role acima). */
+async function assertPodeMexerDesign(conteudoId: string, profileId: string, role: string) {
+  const supabase = await createClient()
+  const { data: c } = await supabase
+    .from('conteudos')
+    .select('responsavel_design_id')
+    .eq('id', conteudoId)
+    .maybeSingle()
+  if (c?.responsavel_design_id !== profileId && !ROLES_DESIGN.includes(role)) {
+    throw new Error('Só o responsável de design designado pode atualizar isto.')
+  }
+}
+
+/** Status de design (Não iniciado / Produzindo / Concluído). */
+export async function atualizarStatusDesign(
+  conteudoId: string,
+  status: string,
+): Promise<ActionResult> {
+  const VALIDOS = ['nao_iniciado', 'produzindo', 'concluido']
+  return safe(async () => {
+    const profile = await requireProfile()
+    if (!VALIDOS.includes(status)) throw new Error('Status inválido.')
+    await assertPodeMexerDesign(conteudoId, profile.id, profile.role ?? '')
+    const sb = createServiceClient()
+    const { error } = await sb
+      .from('conteudos')
+      .update({ status_design: status })
+      .eq('id', conteudoId)
+    if (error) throw error
+  })
+}
+
+/** Link de entrega do design (Drive etc). String vazia limpa o campo. */
+export async function atualizarLinkDesign(
+  conteudoId: string,
+  link: string,
+): Promise<ActionResult> {
+  return safe(async () => {
+    const profile = await requireProfile()
+    await assertPodeMexerDesign(conteudoId, profile.id, profile.role ?? '')
+    const limpo = link.trim()
+    if (limpo.length > 2000) throw new Error('Link muito longo.')
+    const sb = createServiceClient()
+    const { error } = await sb
+      .from('conteudos')
+      .update({ link_design: limpo || null })
+      .eq('id', conteudoId)
+    if (error) throw error
+  })
+}
+
+/** Delega o responsável de design. Restrito a líderes/coord/admin. */
+export async function atualizarDesign(
+  conteudoId: string,
+  designerId: string | null,
+): Promise<ActionResult> {
+  return safe(async () => {
+    const profile = await requireProfile()
+    if (!ROLES_DESIGN.includes(profile.role ?? '')) {
+      throw new Error('Sem permissão para alterar design.')
+    }
+    const sb = createServiceClient()
+    const { error } = await sb
+      .from('conteudos')
+      .update({ responsavel_design_id: designerId })
+      .eq('id', conteudoId)
+    if (error) throw error
+  })
+}

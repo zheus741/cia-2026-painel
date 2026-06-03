@@ -20,6 +20,7 @@ import {
   createConteudo, updateConteudo, deleteConteudo, setStatus, reordenarColuna,
   type ConteudoPayload,
 } from './actions'
+import { atualizarStatusDesign, atualizarLinkDesign } from '../perfil/actions'
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
 
@@ -56,6 +57,7 @@ export interface Conteudo {
   status_captacao?:        string | null
   status_design?:          string | null
   status_edicao?:          string | null
+  link_design?:            string | null
   dia?:             { nome_dia: string; data: string } | null
   setor?:           { nome: string } | null
   patrocinador?:    { nome: string } | null
@@ -567,14 +569,119 @@ function PersonRow({ perfil, label, status }: { perfil: Perfil | null | undefine
   )
 }
 
+// ── Editor inline de design (status + link) no drawer de visualização ─────────
+// Liberado ao designer designado e à gestão de design (coord/admin/lider_area).
+
+function hrefSeguro(u: string) {
+  return /^https?:\/\//i.test(u) ? u : `https://${u}`
+}
+
+function DesignInlineEdit({
+  conteudoId, statusInicial, linkInicial,
+}: {
+  conteudoId: string
+  statusInicial: string | null
+  linkInicial: string | null
+}) {
+  const [status, setStatusLocal] = React.useState(statusInicial ?? 'nao_iniciado')
+  const [link, setLinkLocal] = React.useState<string | null>(linkInicial)
+  const [draft, setDraft] = React.useState(linkInicial ?? '')
+  const [editingLink, setEditingLink] = React.useState(false)
+  const [pending, startT] = React.useTransition()
+  const [msg, setMsg] = React.useState<string | null>(null)
+
+  function salvarStatus(novo: string) {
+    setStatusLocal(novo); setMsg(null)
+    startT(async () => {
+      const res = await atualizarStatusDesign(conteudoId, novo)
+      setMsg(res.ok ? '✓ Status salvo' : (res.error ?? 'Erro'))
+    })
+  }
+  function salvarLink() {
+    setMsg(null)
+    startT(async () => {
+      const res = await atualizarLinkDesign(conteudoId, draft)
+      if (res.ok) { setLinkLocal(draft.trim() || null); setEditingLink(false); setMsg('✓ Link salvo') }
+      else setMsg(res.error ?? 'Erro')
+    })
+  }
+
+  const cur = RESP_STATUS_META[status] ?? RESP_STATUS_META.nao_iniciado
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Status inline */}
+      <div className="flex items-center gap-1.5 rounded-md px-2 py-1 w-fit" style={{ background: cur.bg }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: cur.dot }} />
+        <select
+          value={status}
+          onChange={(e) => salvarStatus(e.target.value)}
+          disabled={pending}
+          className="appearance-none bg-transparent text-[11px] font-semibold focus:outline-none cursor-pointer"
+          style={{ color: cur.text }}
+        >
+          {RESP_STATUS_ORDER.map(s => (
+            <option key={s} value={s}>{RESP_STATUS_META[s].label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Link de entrega */}
+      {editingLink || (!link) ? (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <input
+            type="url"
+            inputMode="url"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Cole o link do Drive…"
+            className="min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 py-1 text-[11px] text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--green-bright)]"
+          />
+          <button
+            onClick={salvarLink}
+            disabled={pending}
+            className="rounded-md px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-50"
+            style={{ background: 'var(--green-bright)' }}
+          >
+            Salvar
+          </button>
+          {link && (
+            <button onClick={() => { setDraft(link); setEditingLink(false) }} className="text-[11px] text-[var(--muted-foreground)]">
+              Cancelar
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <a
+            href={hrefSeguro(link)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-fit items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--green-bright)]"
+            style={{ background: 'rgba(46,107,66,0.12)' }}
+          >
+            🔗 Abrir entrega ↗
+          </a>
+          <button onClick={() => { setDraft(link); setEditingLink(true) }} className="text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
+            editar
+          </button>
+        </div>
+      )}
+      {msg && <span className="text-[10px] text-[var(--muted-foreground)]">{pending ? 'Salvando…' : msg}</span>}
+    </div>
+  )
+}
+
 function ConteudoViewDialog({
-  conteudo, perfis, onClose, onEdit, onDelete,
+  conteudo, perfis, onClose, onEdit, onDelete, viewerId, viewerRole,
 }: {
   conteudo: Conteudo | null
   perfis: Perfil[]
   onClose: () => void
   onEdit: () => void
   onDelete: () => void
+  viewerId?: string | null
+  viewerRole?: string | null
 }) {
   if (!conteudo) return null
   const c = conteudo
@@ -679,7 +786,34 @@ function ConteudoViewDialog({
           </PropRow>
 
           <PropRow icon={Palette} label="Design">
-            {design ? <PersonRow perfil={design} label="Design" status={c.status_design} /> : <Empty />}
+            {(() => {
+              const podeEditarDesign =
+                (!!viewerId && viewerId === c.responsavel_design_id) ||
+                viewerRole === 'admin' || viewerRole === 'coordenacao' || viewerRole === 'lider_area'
+              if (!design && !c.link_design && !podeEditarDesign) return <Empty />
+              return (
+                <div className="flex flex-col gap-1.5">
+                  {design ? <PersonRow perfil={design} label="Design" status={c.status_design} /> : null}
+                  {podeEditarDesign ? (
+                    <DesignInlineEdit
+                      conteudoId={c.id}
+                      statusInicial={c.status_design ?? null}
+                      linkInicial={c.link_design ?? null}
+                    />
+                  ) : c.link_design ? (
+                    <a
+                      href={hrefSeguro(c.link_design)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex w-fit items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--green-bright)]"
+                      style={{ background: 'rgba(46,107,66,0.12)' }}
+                    >
+                      🔗 Abrir entrega ↗
+                    </a>
+                  ) : null}
+                </div>
+              )
+            })()}
           </PropRow>
 
           <PropRow icon={Film} label="Edição">
@@ -901,6 +1035,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
   const [statusCaptacao, setStatusCaptacao] = React.useState(editing?.status_captacao ?? 'nao_iniciado')
   const [statusDesign, setStatusDesign]     = React.useState(editing?.status_design ?? 'nao_iniciado')
   const [statusEdicao, setStatusEdicao]     = React.useState(editing?.status_edicao ?? 'nao_iniciado')
+  const [linkDesign, setLinkDesign]         = React.useState(editing?.link_design ?? '')
 
   React.useEffect(() => {
     if (!open) return
@@ -923,6 +1058,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
     setStatusCaptacao(editing?.status_captacao ?? 'nao_iniciado')
     setStatusDesign(editing?.status_design ?? 'nao_iniciado')
     setStatusEdicao(editing?.status_edicao ?? 'nao_iniciado')
+    setLinkDesign(editing?.link_design ?? '')
   }, [open, editing, defaultStatus])
 
   async function submit() {
@@ -949,6 +1085,7 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
         status_captacao:         statusCaptacao,
         status_design:           statusDesign,
         status_edicao:           statusEdicao,
+        link_design:             linkDesign.trim() || null,
         ...(link ? { link_publicado: link } : {}),
       }
       const res = editing ? await updateConteudo(editing.id, payload) : await createConteudo(payload)
@@ -1134,6 +1271,17 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
             </div>
           </div>
 
+          {/* Link de entrega do Design (Drive) */}
+          <div>
+            <Label className="mb-1.5 block text-xs">🔗 Link de entrega (Design)</Label>
+            <Input
+              className="text-xs"
+              placeholder="https://drive.google.com/..."
+              value={linkDesign}
+              onChange={(e) => setLinkDesign(e.target.value)}
+            />
+          </div>
+
           {/* Briefing */}
           <div>
             <Label className="mb-1.5 block text-xs">Briefing / Descrição</Label>
@@ -1315,9 +1463,12 @@ interface KanbanBoardProps {
   readOnly?:      boolean
   /** Quando true, exibe o seletor de empresa FV antes dos responsáveis. */
   isAdmin?:       boolean
+  /** Usuário logado — para liberar edição inline do design ao designado. */
+  currentUserId?:   string | null
+  currentUserRole?: string | null
 }
 
-export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, perfis, activeDiaId, readOnly, isAdmin }: KanbanBoardProps) {
+export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patrocinadores, perfis, activeDiaId, readOnly, isAdmin, currentUserId, currentUserRole }: KanbanBoardProps) {
   const router = useRouter()
   const [conteudos, setConteudos] = React.useState(initial)
   const [search, setSearch]             = React.useState('')
@@ -1384,7 +1535,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     const SELECT_COLS = `
       id, titulo, tipo, status, prioridade, ordem,
       dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
-      canal_publicacao, briefing, horario_previsto, link_publicado,
+      canal_publicacao, briefing, horario_previsto, link_publicado, link_design,
       responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, responsavel_influencer_id,
       status_captacao, status_design, status_edicao,
       dia:dia_id (nome_dia, data),
@@ -1906,6 +2057,8 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         onClose={() => setViewCard(null)}
         onEdit={() => { if (viewCard) { setDialog({ open: true, editing: viewCard }); setViewCard(null) } }}
         onDelete={() => { if (viewCard) { setDeleteTarget(viewCard); setViewCard(null) } }}
+        viewerId={currentUserId}
+        viewerRole={currentUserRole}
       />
 
       <ConteudoDialog

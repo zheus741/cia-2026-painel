@@ -48,6 +48,7 @@ export interface ConteudoPayload {
   status_captacao?:        string
   status_design?:          string
   status_edicao?:          string
+  link_design?:            string | null
 }
 
 export async function createConteudo(payload: ConteudoPayload) {

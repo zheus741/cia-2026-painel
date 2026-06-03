@@ -127,6 +127,9 @@ interface Conteudo {
   vinculadoA: string | null
   captacao_id: string | null
   status_captacao: string | null
+  design_id: string | null
+  status_design: string | null
+  link_design: string | null
   captacao: Pessoa | null
   design:   Pessoa | null
   edicao:   Pessoa | null

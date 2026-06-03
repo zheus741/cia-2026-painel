@@ -5,7 +5,10 @@ import { useState, useTransition, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { atualizarCaptacao, atualizarStatusCaptacao } from './actions'
+import {
+  atualizarCaptacao, atualizarStatusCaptacao,
+  atualizarStatusDesign, atualizarLinkDesign,
+} from './actions'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -33,6 +36,9 @@ export interface ConteudoDetalhe {
   edicao: Pessoa | null
   captacao_id: string | null
   status_captacao: string | null
+  design_id: string | null
+  status_design: string | null
+  link_design: string | null
 }
 
 // ── Config ─────────────────────────────────────────────────────────────────────
@@ -291,6 +297,155 @@ function CaptacaoSelector({
   )
 }
 
+// ── StatusDesignSelector — mesmo padrão de captação, para o status_design ─────
+
+function StatusDesignSelector({
+  conteudoId, current, onSaved,
+}: {
+  conteudoId: string
+  current: string | null
+  onSaved?: () => void
+}) {
+  const [value, setValue] = useState(current ?? 'nao_iniciado')
+  const [pending, startTransition] = useTransition()
+  const [saved, setSaved] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const next = e.target.value
+    setValue(next); setSaved(false); setErr(null)
+    startTransition(async () => {
+      const res = await atualizarStatusDesign(conteudoId, next)
+      if (res.ok) { setSaved(true); onSaved?.() }
+      else setErr(res.error ?? 'Erro ao salvar')
+    })
+  }
+
+  const cur = CAPTACAO_STATUS_OPTS.find(o => o.value === value) ?? CAPTACAO_STATUS_OPTS[0]
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <div className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5" style={{ background: cur.bg }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: cur.dot, flexShrink: 0 }} />
+        <select
+          value={value}
+          onChange={handleChange}
+          disabled={pending}
+          className="appearance-none bg-transparent text-[13px] font-semibold text-[var(--foreground)] focus:outline-none disabled:opacity-50 pr-1 cursor-pointer"
+        >
+          {CAPTACAO_STATUS_OPTS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+      {pending && <span className="text-[11px] text-[var(--muted-foreground)]">Salvando…</span>}
+      {saved && !pending && <span className="text-[11px] text-[var(--green-bright)] font-semibold">✓ Salvo</span>}
+      {err && <span className="text-[11px] text-red-500">{err}</span>}
+    </div>
+  )
+}
+
+// ── LinkDesignField — cola o link do Drive (editável) + link clicável (todos) ──
+
+function normalizeUrl(u: string) {
+  const t = u.trim()
+  if (!t) return ''
+  return /^https?:\/\//i.test(t) ? t : `https://${t}`
+}
+
+function LinkDesignField({
+  conteudoId, current, canEdit, onChanged,
+}: {
+  conteudoId: string
+  current: string | null
+  canEdit: boolean
+  onChanged?: (novo: string | null) => void
+}) {
+  const [link, setLink] = useState<string | null>(current)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(current ?? '')
+  const [pending, startTransition] = useTransition()
+  const [saved, setSaved] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  function save() {
+    setErr(null); setSaved(false)
+    startTransition(async () => {
+      const res = await atualizarLinkDesign(conteudoId, draft)
+      if (res.ok) {
+        const novo = draft.trim() || null
+        setLink(novo); setEditing(false); setSaved(true); onChanged?.(novo)
+      } else {
+        setErr(res.error ?? 'Erro ao salvar')
+      }
+    })
+  }
+
+  // Modo edição (ou ainda sem link e pode editar)
+  if (editing || (!link && canEdit)) {
+    return (
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="url"
+            inputMode="url"
+            value={draft}
+            onChange={(e) => { setDraft(e.target.value); setSaved(false) }}
+            placeholder="Cole o link do Drive…"
+            className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2.5 py-1.5 text-[13px] text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--green)]"
+          />
+          <button
+            onClick={save}
+            disabled={pending}
+            className="rounded-lg px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+            style={{ background: 'var(--green)' }}
+          >
+            {pending ? 'Salvando…' : 'Salvar'}
+          </button>
+          {link != null && (
+            <button
+              onClick={() => { setDraft(link ?? ''); setEditing(false); setErr(null) }}
+              disabled={pending}
+              className="text-[12px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            >
+              Cancelar
+            </button>
+          )}
+        </div>
+        {err && <span className="text-[11px] text-red-500">{err}</span>}
+      </div>
+    )
+  }
+
+  // Sem link e não pode editar
+  if (!link) return <Vazio />
+
+  // Tem link: clicável para todos
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <a
+        href={normalizeUrl(link)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex max-w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold"
+        style={{ background: 'rgba(46,107,66,0.12)', color: 'var(--green-bright)' }}
+      >
+        <span className="truncate">🔗 Abrir entrega</span>
+        <span aria-hidden>↗</span>
+      </a>
+      {canEdit && (
+        <button
+          onClick={() => { setDraft(link); setEditing(true); setSaved(false) }}
+          className="text-[12px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+        >
+          editar
+        </button>
+      )}
+      {saved && !pending && <span className="text-[11px] text-[var(--green-bright)] font-semibold">✓ Salvo</span>}
+    </div>
+  )
+}
+
 // ── Modal ──────────────────────────────────────────────────────────────────────
 
 export function ConteudoDetalheModal({
@@ -317,8 +472,13 @@ export function ConteudoDetalheModal({
   const tipos = parseTipos(c.tipo)
   const prio = prioridadeInfo(c.prioridade)
   const podeEditarCaptacao = userRole === 'lider_fv' || userRole === 'lider_area' || userRole === 'coordenacao' || userRole === 'admin'
-  // Operador designado pode atualizar o status
+  // Operador designado pode atualizar o próprio status de captação
   const eOperadorDesignado = !!userId && userId === c.captacao_id
+  // Design é um time separado de FV: quem gere é coord/admin (e lider_area de design).
+  const podeGerirDesign = userRole === 'admin' || userRole === 'coordenacao' || userRole === 'lider_area'
+  const eDesignerDesignado = !!userId && userId === c.design_id
+  // Quem pode mexer no link/status de design: o designer designado OU gestão de design
+  const podeMexerDesign = eDesignerDesignado || podeGerirDesign
 
   // Após qualquer save: fecha o modal e recarrega os dados do servidor
   function handleSaved() {
@@ -406,7 +566,29 @@ export function ConteudoDetalheModal({
             </div>
           </Field>
 
-          <Field label="Design"><PessoaCell pessoa={c.design} /></Field>
+          {/* Design: pessoa (read-only) + status + link de entrega */}
+          <Field label="Design">
+            <div className="space-y-2">
+              <PessoaCell pessoa={c.design} />
+              {/* Status de design — editável pelo designer designado ou gestão */}
+              {podeMexerDesign && (
+                <div>
+                  <p className="mb-1 text-[10px] text-[var(--muted-foreground)]">Status de design:</p>
+                  <StatusDesignSelector conteudoId={c.id} current={c.status_design} onSaved={handleSaved} />
+                </div>
+              )}
+              {/* Link de entrega — clicável p/ todos; editável p/ designer/gestão */}
+              <div>
+                <p className="mb-1 text-[10px] text-[var(--muted-foreground)]">Link de entrega (Drive):</p>
+                <LinkDesignField
+                  conteudoId={c.id}
+                  current={c.link_design}
+                  canEdit={podeMexerDesign}
+                />
+              </div>
+            </div>
+          </Field>
+
           <Field label="Edição"><PessoaCell pessoa={c.edicao} /></Field>
 
           <Field label="Briefing">

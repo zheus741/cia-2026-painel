@@ -28,10 +28,30 @@ const C = {
   lavender:  '#B8A4E8',
 } as const
 
+// MESMA FONTE em tudo — Fraunces (display serif) unificada
 const FD = 'var(--font-fraunces), Georgia, serif'
-const FS = 'var(--font-geist), system-ui, sans-serif'
+const FS = FD
 const NUM = 'tabular-nums' as const
 const SCENE_MS = 11_000
+
+const CANAL_LABEL: Record<string, string> = {
+  instagram_cia: 'IG CIA', instagram_jogo_rapido: 'IG Jogo Rápido', tiktok_cia: 'TikTok CIA', instagram_exp: 'IG EXP',
+  instagram_grupo_exp: 'IG Grupo EXP', tiktok_exp: 'TikTok EXP', instagram_nix: 'IG NIX',
+  x_cia: 'X CIA', x_exp: 'X EXP', whats_comunidade: 'WhatsApp', youtube_exp: 'YouTube EXP', outro: 'Outros',
+}
+const CANAL_COLOR: Record<string, string> = {
+  instagram_cia: '#E1306C', instagram_jogo_rapido: '#F472B6', tiktok_cia: '#69C9D0', instagram_exp: '#A855F7',
+  instagram_grupo_exp: '#7C3AED', tiktok_exp: '#EE1D52', instagram_nix: '#F97316',
+  x_cia: '#94A3B8', x_exp: '#64748B', whats_comunidade: '#25D366', youtube_exp: '#EF4444', outro: '#6B7280',
+}
+const TIPO_LABEL: Record<string, string> = {
+  story_rapido: 'Story Rápido', story_editado: 'Story Editado', reels: 'Reels', card_feed: 'Card Feed',
+  card_patrocinado: 'Patrocinado', texto_legenda: 'Legenda', repost: 'Repost', cobertura_ao_vivo: 'Ao Vivo', outro: 'Outros',
+}
+const TIPO_COLOR: Record<string, string> = {
+  story_rapido: '#F97316', story_editado: '#EF4444', reels: '#E1306C', card_feed: '#52B074',
+  card_patrocinado: '#F0D04A', texto_legenda: '#B8A4E8', repost: '#69C9D0', cobertura_ao_vivo: '#FF4D4D', outro: '#6B7280',
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (mesmas props do TVDisplay; Jogo enriquecido com modalidade/divisão)
@@ -262,7 +282,10 @@ type Scene =
   | { kind: 'result'; games: Jogo[]; page: number; pages: number }
   | { kind: 'next'; games: Jogo[]; page: number; pages: number }
   | { kind: 'central' }
+  | { kind: 'producao' }
+  | { kind: 'patroc' }
   | { kind: 'ranking' }
+  | { kind: 'podios' }
   | { kind: 'agenda' }
 
 export function TVCarrossel(p: Props) {
@@ -290,7 +313,10 @@ export function TVCarrossel(p: Props) {
   chunk(p.jogosEncerrados, 8).forEach((g, i, arr) => sports.push({ kind: 'result', games: g, page: i + 1, pages: arr.length }))
   chunk(proxJogos, 8).forEach((g, i, arr) => sports.push({ kind: 'next', games: g, page: i + 1, pages: arr.length }))
   const dataScenes: Scene[] = [{ kind: 'central' }]
+  if (p.pipelineStats.total > 0) dataScenes.push({ kind: 'producao' })
+  if (p.patrocStats.length > 0) dataScenes.push({ kind: 'patroc' })
   if (p.rankingEquipes.length > 0) dataScenes.push({ kind: 'ranking' })
+  if (p.podiosRecentes.length > 0) dataScenes.push({ kind: 'podios' })
   dataScenes.push({ kind: 'agenda' })
   const scenes: Scene[] = interleave(sports, dataScenes)
   if (scenes.length === 0) scenes.push({ kind: 'central' })
@@ -396,6 +422,105 @@ export function TVCarrossel(p: Props) {
               })}
             </div>
           )}
+        </>
+      )
+    }
+    if (s.kind === 'producao') {
+      const maxC = Math.max(1, ...p.canalBreakdown.map(c => c.total))
+      const maxT = Math.max(1, ...p.tipoBreakdown.map(t => t.total))
+      const Bars = ({ title, accent, rows }: { title: string; accent: string; rows: { label: string; color: string; total: number; pub: number; max: number }[] }) => (
+        <div className="tvc-card" style={{ flex: 1, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 'clamp(14px,1.5vw,24px)', display: 'flex', flexDirection: 'column', gap: 'clamp(7px,0.8vw,13px)', minHeight: 0, overflow: 'hidden' }}>
+          <span style={{ fontFamily: FS, fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: accent }}>{title}</span>
+          {rows.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 13 }}>Sem dados ainda.</span>}
+          {rows.map((r, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ flex: 1, minWidth: 0, fontFamily: FS, fontSize: 'clamp(11px,1.05vw,16px)', fontWeight: 600, color: C.creamDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</span>
+              <div style={{ width: '42%', height: 8, borderRadius: 99, background: 'rgba(250,247,240,0.06)', overflow: 'hidden', flexShrink: 0 }}>
+                <div style={{ height: '100%', width: `${Math.round(r.total / r.max * 100)}%`, background: r.color, borderRadius: 99 }} />
+              </div>
+              <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,22px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '2.6em', textAlign: 'right' }}>
+                {r.pub}<span style={{ color: C.creamFade, fontSize: '0.7em' }}>/{r.total}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )
+      return (
+        <>
+          <SceneHead accent={C.blue} kicker="Produção · Conteúdo" title="Produção & canais"
+            right={<span style={{ fontFamily: FS, fontSize: 12, fontWeight: 700, color: C.creamMute, letterSpacing: '0.08em' }}>{p.velocidade}/h · {p.capturasCount} capturas</span>} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'clamp(10px,1.1vw,18px)', minHeight: 0 }}>
+            <div style={{ display: 'flex', gap: 'clamp(10px,1.1vw,18px)', flex: 1, minHeight: 0 }}>
+              <Bars title="Por canal" accent={C.lavender} rows={p.canalBreakdown.map(c => ({ label: CANAL_LABEL[c.canal] ?? c.canal, color: CANAL_COLOR[c.canal] ?? C.creamMute, total: c.total, pub: c.publicados, max: maxC }))} />
+              <Bars title="Por tipo" accent={C.gold} rows={p.tipoBreakdown.map(t => ({ label: TIPO_LABEL[t.tipo] ?? t.tipo, color: TIPO_COLOR[t.tipo] ?? C.creamMute, total: t.total, pub: t.publicados, max: maxT }))} />
+            </div>
+            <div style={{ display: 'flex', gap: 'clamp(10px,1.1vw,18px)', flexShrink: 0 }}>
+              {p.conteudosPorDia.map(d => {
+                const pct = d.total > 0 ? Math.round(d.publicados / d.total * 100) : 0
+                const isHoje = p.diasEvento[d.idx - 1]?.id === p.diaAtualId
+                return (
+                  <div key={d.idx} style={{ flex: 1, background: isHoje ? C.panelHi : C.panel, border: `1px solid ${isHoje ? C.gold + '55' : C.border}`, borderRadius: 14, padding: '10px 16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                      <span style={{ fontFamily: FS, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: isHoje ? C.gold : C.creamMute }}>{d.label}</span>
+                      <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 18, fontWeight: 800, color: C.cream, fontVariantNumeric: NUM }}>{d.publicados}<span style={{ color: C.creamFade, fontSize: '0.7em' }}>/{d.total}</span></span>
+                    </div>
+                    <div style={{ height: 5, borderRadius: 99, background: 'rgba(250,247,240,0.08)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: pct >= 70 ? C.green : C.gold }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )
+    }
+    if (s.kind === 'patroc') {
+      const list = [...p.patrocStats].sort((a, b) => (b.total > 0 ? b.publicados / b.total : 0) - (a.total > 0 ? a.publicados / a.total : 0))
+      return (
+        <>
+          <SceneHead accent={C.goldHi} kicker="Comercial · Entregas" title="Patrocínio" />
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: list.length > 4 ? '1fr 1fr' : '1fr', gridAutoRows: '1fr', gap: 'clamp(8px,0.9vw,14px)', minHeight: 0 }}>
+            {list.map((pt, i) => {
+              const pct = pt.total > 0 ? Math.round(pt.publicados / pt.total * 100) : 0
+              return (
+                <div key={pt.id} className="tvc-card" style={{ animationDelay: `${i * 50}ms`, display: 'flex', alignItems: 'center', gap: 16, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, padding: '0 clamp(14px,1.5vw,24px)', overflow: 'hidden' }}>
+                  {pt.logo_url
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    ? <img src={pt.logo_url} alt={pt.nome} style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'contain', background: 'white', padding: 3, flexShrink: 0 }} />
+                    : <span style={{ width: 38, height: 38, borderRadius: 8, background: C.greenDeep, flexShrink: 0 }} />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: FS, fontWeight: 700, fontSize: 'clamp(13px,1.3vw,21px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pt.nome}</div>
+                    <div style={{ height: 6, borderRadius: 99, background: 'rgba(250,247,240,0.07)', overflow: 'hidden', marginTop: 6 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: pct >= 70 ? C.green : pct >= 40 ? C.gold : C.red }} />
+                    </div>
+                  </div>
+                  <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(18px,1.9vw,30px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0 }}>{pt.publicados}<span style={{ color: C.creamFade, fontSize: '0.7em' }}>/{pt.total}</span></span>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )
+    }
+    if (s.kind === 'podios') {
+      const medal = (c: number) => c === 1 ? '🥇' : c === 2 ? '🥈' : c === 3 ? '🥉' : `${c}º`
+      return (
+        <>
+          <SceneHead accent={C.gold} kicker="Esportivo · Resultados" title="Pódios" />
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: p.podiosRecentes.length > 4 ? '1fr 1fr' : '1fr', gridAutoRows: '1fr', gap: 'clamp(8px,0.9vw,14px)', minHeight: 0 }}>
+            {p.podiosRecentes.map((pd, i) => (
+              <div key={i} className="tvc-card" style={{ animationDelay: `${i * 50}ms`, display: 'flex', alignItems: 'center', gap: 16, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, padding: '0 clamp(14px,1.5vw,24px)', overflow: 'hidden' }}>
+                <span style={{ fontSize: 'clamp(22px,2.4vw,40px)', flexShrink: 0, width: '1.6em', textAlign: 'center' }}>{pd.modalidade_icone ?? medal(pd.colocacao)}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: FS, fontWeight: 700, fontSize: 'clamp(13px,1.3vw,21px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pd.equipe_nome}</div>
+                  <div style={{ fontFamily: FS, fontSize: 11, color: C.creamMute }}>{pd.modalidade_nome}</div>
+                </div>
+                <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(16px,1.6vw,26px)', fontWeight: 800, color: pd.colocacao === 1 ? C.goldHi : C.cream, flexShrink: 0 }}>{medal(pd.colocacao)}</span>
+                <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,24px)', fontWeight: 800, color: C.green, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '2.4em', textAlign: 'right' }}>+{pd.pontos}</span>
+              </div>
+            ))}
+          </div>
         </>
       )
     }

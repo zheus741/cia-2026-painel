@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { TVDisplay } from './TVDisplay'
+import { TVCarrossel } from './TVCarrossel'
 import { entregaPorPatrocinador, type EscopoItemLite } from '@/lib/patrocinio/entrega'
 
 // ── WMO weather codes ──────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ export default async function TVPage() {
     capturasRes,
   ] = await Promise.all([
     supabase.from('jogos')
-      .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id, status, placar_a, placar_b')
+      .select('id, equipe_a_nome, equipe_b_nome, inicio, fim_previsto, dia_id, status, placar_a, placar_b, divisao, modalidade:modalidades(nome, icone), setor:setores(nome)')
       .order('inicio'),
     supabase.from('shows').select('id, nome, inicio, fim_previsto, dia_id').order('inicio'),
     supabase.from('festas').select('id, nome, inicio, fim_previsto, dia_id').order('inicio'),
@@ -251,11 +251,28 @@ export default async function TVPage() {
   const ckFeitos = ckItens.filter(i => i.status === 'feito').length
 
   // ── Jogos ─────────────────────────────────────────────────────────────────
-  const jogos = (jogosRes.data ?? []) as {
+  type RawJogo = {
     id: string; equipe_a_nome: string | null; equipe_b_nome: string | null
     inicio: string | null; fim_previsto: string | null; dia_id: string | null
     status: string | null; placar_a: number | null; placar_b: number | null
-  }[]
+    divisao: string | null
+    modalidade: { nome: string | null; icone: string | null } | { nome: string | null; icone: string | null }[] | null
+    setor: { nome: string | null } | { nome: string | null }[] | null
+  }
+  const jogos = (jogosRes.data ?? []).map((j) => {
+    const r = j as RawJogo
+    const mod = Array.isArray(r.modalidade) ? r.modalidade[0] : r.modalidade
+    const set = Array.isArray(r.setor) ? r.setor[0] : r.setor
+    return {
+      id: r.id, equipe_a_nome: r.equipe_a_nome, equipe_b_nome: r.equipe_b_nome,
+      inicio: r.inicio, fim_previsto: r.fim_previsto, dia_id: r.dia_id,
+      status: r.status, placar_a: r.placar_a, placar_b: r.placar_b,
+      divisao: r.divisao ?? null,
+      modalidade_nome: mod?.nome ?? null,
+      modalidade_icone: mod?.icone ?? null,
+      setor_nome: set?.nome ?? null,
+    }
+  })
   const jogosAoVivo    = jogos.filter(j => j.status === 'ao_vivo')
   const jogosEncerrados = jogos.filter(j => j.status === 'encerrado')
   const jogosHoje      = diaId ? jogos.filter(j => j.dia_id === diaId) : []
@@ -304,7 +321,7 @@ export default async function TVPage() {
     })
 
   return (
-    <TVDisplay
+    <TVCarrossel
       pipelineStats={pipelineStats}
       conteudosPorDia={conteudosPorDia}
       canalBreakdown={canalBreakdown}

@@ -255,21 +255,39 @@ function gridCols(n: number) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tile de KPI (central de dados)
 // ─────────────────────────────────────────────────────────────────────────────
-function Tile({ label, value, sub, accent, big }: { label: string; value: React.ReactNode; sub?: string; accent: string; big?: boolean }) {
+// KPI compacto (linha de topo do painel)
+function MiniKpi({ label, value, sub, accent }: { label: string; value: React.ReactNode; sub?: string; accent: string }) {
   return (
-    <div className="tvc-card" style={{
-      background: C.panel, border: `1px solid ${C.border}`, borderRadius: 18,
-      padding: 'clamp(14px,1.6vw,26px)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8,
-      position: 'relative', overflow: 'hidden',
-    }}>
-      <div style={{ position: 'absolute', top: 0, left: 'clamp(14px,1.6vw,26px)', right: 'clamp(14px,1.6vw,26px)', height: 2, background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
-      <span style={{ fontFamily: FS, fontSize: 'clamp(9px,0.8vw,12px)', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.creamMute }}>{label}</span>
-      <span style={{
-        fontFamily: FD, fontStyle: 'italic', fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
-        fontSize: big ? 'clamp(44px,6vw,104px)' : 'clamp(30px,3.6vw,60px)', fontWeight: 800, color: accent,
-        letterSpacing: '-0.04em', lineHeight: 0.88, fontVariantNumeric: NUM,
-      }}>{value}</span>
-      {sub && <span style={{ fontFamily: FS, fontSize: 'clamp(9px,0.85vw,13px)', color: C.creamMute, fontWeight: 500 }}>{sub}</span>}
+    <div className="tvc-card" style={{ flex: 1, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, padding: 'clamp(8px,0.9vw,15px) clamp(10px,1.1vw,18px)', display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: 0, left: 12, right: 12, height: 2, background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
+      <span style={{ fontFamily: FS, fontSize: 'clamp(8px,0.72vw,11px)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.creamMute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+      <span style={{ fontFamily: FD, fontStyle: 'italic', fontVariationSettings: "'opsz' 96, 'SOFT' 0, 'WONK' 1", fontSize: 'clamp(22px,2.6vw,42px)', fontWeight: 800, color: accent, letterSpacing: '-0.03em', lineHeight: 0.9, fontVariantNumeric: NUM }}>{value}</span>
+      {sub && <span style={{ fontFamily: FS, fontSize: 'clamp(8px,0.72vw,11px)', color: C.creamMute, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</span>}
+    </div>
+  )
+}
+
+// Painel compacto com título (usado na tela única de dados)
+function MiniPanel({ title, accent, children, style }: { title: string; accent: string; children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div className="tvc-card" style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 'clamp(11px,1.2vw,18px) clamp(13px,1.4vw,20px)', display: 'flex', flexDirection: 'column', gap: 'clamp(6px,0.7vw,11px)', minHeight: 0, overflow: 'hidden', ...style }}>
+      <span style={{ fontFamily: FS, fontSize: 'clamp(9px,0.82vw,12px)', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: accent, flexShrink: 0 }}>{title}</span>
+      {children}
+    </div>
+  )
+}
+
+// Linha de barra (canal/tipo/funil)
+function BarRow({ label, color, total, pub, max }: { label: string; color: string; total: number; pub: number; max: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <span style={{ flex: 1, minWidth: 0, fontFamily: FS, fontSize: 'clamp(10px,0.95vw,15px)', fontWeight: 600, color: C.creamDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+      <div style={{ width: '38%', height: 7, borderRadius: 99, background: 'rgba(250,247,240,0.06)', overflow: 'hidden', flexShrink: 0 }}>
+        <div style={{ height: '100%', width: `${Math.round(total / max * 100)}%`, background: color, borderRadius: 99 }} />
+      </div>
+      <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(12px,1.2vw,19px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '2.6em', textAlign: 'right' }}>
+        {pub}<span style={{ color: C.creamFade, fontSize: '0.7em' }}>/{total}</span>
+      </span>
     </div>
   )
 }
@@ -281,12 +299,9 @@ type Scene =
   | { kind: 'live'; games: Jogo[]; page: number; pages: number }
   | { kind: 'result'; games: Jogo[]; page: number; pages: number }
   | { kind: 'next'; games: Jogo[]; page: number; pages: number }
-  | { kind: 'central' }
-  | { kind: 'producao' }
-  | { kind: 'patroc' }
   | { kind: 'ranking' }
   | { kind: 'podios' }
-  | { kind: 'agenda' }
+  | { kind: 'painel' }
 
 export function TVCarrossel(p: Props) {
   const router = useRouter()
@@ -307,19 +322,18 @@ export function TVCarrossel(p: Props) {
   const diaIdx = p.diaAtualId ? p.diasEvento.findIndex(d => d.id === p.diaAtualId) + 1 : 0
   const proxJogos = p.jogosHoje.filter(j => j.status === 'agendado')
 
-  // ── Cenas (intercala esportes × dados) ──
+  // ── Cenas: esportivas (legíveis, em cenas próprias) intercaladas com UMA
+  //    tela de dados que mostra tudo de uma vez (Painel de dados). ──
   const sports: Scene[] = []
   chunk(p.jogosAoVivo, 6).forEach((g, i, arr) => sports.push({ kind: 'live', games: g, page: i + 1, pages: arr.length }))
   chunk(p.jogosEncerrados, 8).forEach((g, i, arr) => sports.push({ kind: 'result', games: g, page: i + 1, pages: arr.length }))
   chunk(proxJogos, 8).forEach((g, i, arr) => sports.push({ kind: 'next', games: g, page: i + 1, pages: arr.length }))
-  const dataScenes: Scene[] = [{ kind: 'central' }]
-  if (p.pipelineStats.total > 0) dataScenes.push({ kind: 'producao' })
-  if (p.patrocStats.length > 0) dataScenes.push({ kind: 'patroc' })
-  if (p.rankingEquipes.length > 0) dataScenes.push({ kind: 'ranking' })
-  if (p.podiosRecentes.length > 0) dataScenes.push({ kind: 'podios' })
-  dataScenes.push({ kind: 'agenda' })
-  const scenes: Scene[] = interleave(sports, dataScenes)
-  if (scenes.length === 0) scenes.push({ kind: 'central' })
+  if (p.rankingEquipes.length > 0) sports.push({ kind: 'ranking' })
+  if (p.podiosRecentes.length > 0) sports.push({ kind: 'podios' })
+  // Tela de dados aparece entre cada cena esportiva.
+  const scenes: Scene[] = []
+  sports.forEach(s => { scenes.push(s); scenes.push({ kind: 'painel' }) })
+  if (scenes.length === 0) scenes.push({ kind: 'painel' })
   const scene = scenes[idx % scenes.length]
   const scenePos = idx % scenes.length
 
@@ -390,115 +404,118 @@ export function TVCarrossel(p: Props) {
         </>
       )
     }
-    if (s.kind === 'central') {
+    if (s.kind === 'painel') {
       const f = p.funilProducao
-      return (
-        <>
-          <SceneHead accent={C.gold} kicker="Cobertura · Tempo real" title="Central de dados" />
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 'clamp(10px,1.1vw,18px)', minHeight: 0 }}>
-            <div style={{ gridRow: '1 / 3' }}>
-              <Tile label="Saúde da operação" value={`${healthPct}%`} sub={`${p.pipelineStats.publicado} de ${p.pipelineStats.total} publicados`} accent={healthColor} big />
-            </div>
-            <Tile label="Publicados hoje" value={`${publicadosHoje}/${totalConteudosHoje}`} sub={`${p.velocidade}/h · ritmo`} accent={C.goldHi} />
-            <Tile label="Em campo agora" value={p.emCampo.length} sub={`${presPct}% presença`} accent={p.emCampo.length > 0 ? C.green : C.creamFade} />
-            <Tile label="Setores cobertos" value={p.setoresCobertos} sub={p.setoresFrios.length > 0 ? `${p.setoresFrios.length} sem cobertura` : 'todos ativos'} accent={p.setoresFrios.length > 0 ? C.gold : C.green} />
-            <Tile label="Checklist do dia" value={`${ckPct}%`} sub={`${p.ckFeitos}/${p.ckTotal} itens`} accent={ckPct >= 70 ? C.green : C.gold} />
-          </div>
-          {f && f.etapas.length > 0 && (
-            <div style={{ display: 'flex', gap: 'clamp(10px,1.1vw,18px)', flexShrink: 0 }}>
-              {f.etapas.map((et) => {
-                const pct = et.total > 0 ? Math.round(et.concluido / et.total * 100) : 0
-                return (
-                  <div key={et.etapa} style={{ flex: 1, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, padding: '10px 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                      <span style={{ fontFamily: FS, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.creamMute }}>{et.label}</span>
-                      <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 18, fontWeight: 800, color: C.cream, fontVariantNumeric: NUM }}>{et.concluido}<span style={{ color: C.creamFade, fontSize: '0.7em' }}>/{et.total}</span></span>
-                    </div>
-                    <div style={{ height: 5, borderRadius: 99, background: 'rgba(250,247,240,0.08)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: pct >= 70 ? C.green : C.gold }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </>
-      )
-    }
-    if (s.kind === 'producao') {
       const maxC = Math.max(1, ...p.canalBreakdown.map(c => c.total))
       const maxT = Math.max(1, ...p.tipoBreakdown.map(t => t.total))
-      const Bars = ({ title, accent, rows }: { title: string; accent: string; rows: { label: string; color: string; total: number; pub: number; max: number }[] }) => (
-        <div className="tvc-card" style={{ flex: 1, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 'clamp(14px,1.5vw,24px)', display: 'flex', flexDirection: 'column', gap: 'clamp(7px,0.8vw,13px)', minHeight: 0, overflow: 'hidden' }}>
-          <span style={{ fontFamily: FS, fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: accent }}>{title}</span>
-          {rows.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 13 }}>Sem dados ainda.</span>}
-          {rows.map((r, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ flex: 1, minWidth: 0, fontFamily: FS, fontSize: 'clamp(11px,1.05vw,16px)', fontWeight: 600, color: C.creamDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</span>
-              <div style={{ width: '42%', height: 8, borderRadius: 99, background: 'rgba(250,247,240,0.06)', overflow: 'hidden', flexShrink: 0 }}>
-                <div style={{ height: '100%', width: `${Math.round(r.total / r.max * 100)}%`, background: r.color, borderRadius: 99 }} />
-              </div>
-              <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,22px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '2.6em', textAlign: 'right' }}>
-                {r.pub}<span style={{ color: C.creamFade, fontSize: '0.7em' }}>/{r.total}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      )
+      const patroc = [...p.patrocStats].sort((a, b) => (b.total > 0 ? b.publicados / b.total : 0) - (a.total > 0 ? a.publicados / a.total : 0)).slice(0, 6)
+      const agenda = [
+        ...p.jogosHoje.map(j => ({ t: j.inicio, label: `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`, tag: j.modalidade_nome || 'Jogo', color: j.status === 'ao_vivo' ? C.red : j.status === 'encerrado' ? C.green : C.gold, live: j.status === 'ao_vivo' })),
+        ...p.showsHoje.map(s2 => ({ t: s2.inicio, label: s2.nome ?? 'Show', tag: 'Show', color: C.lavender, live: false })),
+        ...p.festasHoje.map(f2 => ({ t: f2.inicio, label: f2.nome ?? 'Festa', tag: 'Festa', color: C.blue, live: false })),
+      ].filter(x => x.t).sort((x, y) => (x.t! < y.t! ? -1 : 1)).slice(0, 6)
+      const G = 'clamp(8px,0.9vw,14px)'
       return (
         <>
-          <SceneHead accent={C.blue} kicker="Produção · Conteúdo" title="Produção & canais"
-            right={<span style={{ fontFamily: FS, fontSize: 12, fontWeight: 700, color: C.creamMute, letterSpacing: '0.08em' }}>{p.velocidade}/h · {p.capturasCount} capturas</span>} />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'clamp(10px,1.1vw,18px)', minHeight: 0 }}>
-            <div style={{ display: 'flex', gap: 'clamp(10px,1.1vw,18px)', flex: 1, minHeight: 0 }}>
-              <Bars title="Por canal" accent={C.lavender} rows={p.canalBreakdown.map(c => ({ label: CANAL_LABEL[c.canal] ?? c.canal, color: CANAL_COLOR[c.canal] ?? C.creamMute, total: c.total, pub: c.publicados, max: maxC }))} />
-              <Bars title="Por tipo" accent={C.gold} rows={p.tipoBreakdown.map(t => ({ label: TIPO_LABEL[t.tipo] ?? t.tipo, color: TIPO_COLOR[t.tipo] ?? C.creamMute, total: t.total, pub: t.publicados, max: maxT }))} />
+          <SceneHead accent={C.gold} kicker="Cobertura · Tempo real" title="Painel de dados"
+            right={diaIdx > 0 ? <span style={{ fontFamily: FS, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: C.creamMute }}>{p.velocidade}/h · {p.capturasCount} capturas</span> : undefined} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: G, minHeight: 0 }}>
+            {/* KPIs */}
+            <div style={{ display: 'flex', gap: G, flexShrink: 0 }}>
+              <MiniKpi label="Saúde" value={`${healthPct}%`} sub={`${p.pipelineStats.publicado}/${p.pipelineStats.total} pub`} accent={healthColor} />
+              <MiniKpi label="Publicados hoje" value={`${publicadosHoje}/${totalConteudosHoje}`} sub={`${p.velocidade}/h`} accent={C.goldHi} />
+              <MiniKpi label="Em campo" value={p.emCampo.length} sub={`${presPct}% presença`} accent={p.emCampo.length > 0 ? C.green : C.creamFade} />
+              <MiniKpi label="Setores" value={p.setoresCobertos} sub={p.setoresFrios.length > 0 ? `${p.setoresFrios.length} frios` : 'todos ok'} accent={p.setoresFrios.length > 0 ? C.gold : C.green} />
+              <MiniKpi label="Checklist" value={`${ckPct}%`} sub={`${p.ckFeitos}/${p.ckTotal}`} accent={ckPct >= 70 ? C.green : C.gold} />
+              <MiniKpi label="Capturas" value={p.capturasCount} sub="pendentes" accent={p.capturasCount > 0 ? C.gold : C.creamFade} />
             </div>
-            <div style={{ display: 'flex', gap: 'clamp(10px,1.1vw,18px)', flexShrink: 0 }}>
-              {p.conteudosPorDia.map(d => {
-                const pct = d.total > 0 ? Math.round(d.publicados / d.total * 100) : 0
-                const isHoje = p.diasEvento[d.idx - 1]?.id === p.diaAtualId
-                return (
-                  <div key={d.idx} style={{ flex: 1, background: isHoje ? C.panelHi : C.panel, border: `1px solid ${isHoje ? C.gold + '55' : C.border}`, borderRadius: 14, padding: '10px 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                      <span style={{ fontFamily: FS, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: isHoje ? C.gold : C.creamMute }}>{d.label}</span>
-                      <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 18, fontWeight: 800, color: C.cream, fontVariantNumeric: NUM }}>{d.publicados}<span style={{ color: C.creamFade, fontSize: '0.7em' }}>/{d.total}</span></span>
-                    </div>
-                    <div style={{ height: 5, borderRadius: 99, background: 'rgba(250,247,240,0.08)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: pct >= 70 ? C.green : C.gold }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </>
-      )
-    }
-    if (s.kind === 'patroc') {
-      const list = [...p.patrocStats].sort((a, b) => (b.total > 0 ? b.publicados / b.total : 0) - (a.total > 0 ? a.publicados / a.total : 0))
-      return (
-        <>
-          <SceneHead accent={C.goldHi} kicker="Comercial · Entregas" title="Patrocínio" />
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: list.length > 4 ? '1fr 1fr' : '1fr', gridAutoRows: '1fr', gap: 'clamp(8px,0.9vw,14px)', minHeight: 0 }}>
-            {list.map((pt, i) => {
-              const pct = pt.total > 0 ? Math.round(pt.publicados / pt.total * 100) : 0
-              return (
-                <div key={pt.id} className="tvc-card" style={{ animationDelay: `${i * 50}ms`, display: 'flex', alignItems: 'center', gap: 16, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, padding: '0 clamp(14px,1.5vw,24px)', overflow: 'hidden' }}>
-                  {pt.logo_url
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    ? <img src={pt.logo_url} alt={pt.nome} style={{ width: 38, height: 38, borderRadius: 8, objectFit: 'contain', background: 'white', padding: 3, flexShrink: 0 }} />
-                    : <span style={{ width: 38, height: 38, borderRadius: 8, background: C.greenDeep, flexShrink: 0 }} />}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: FS, fontWeight: 700, fontSize: 'clamp(13px,1.3vw,21px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pt.nome}</div>
-                    <div style={{ height: 6, borderRadius: 99, background: 'rgba(250,247,240,0.07)', overflow: 'hidden', marginTop: 6 }}>
-                      <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: pct >= 70 ? C.green : pct >= 40 ? C.gold : C.red }} />
-                    </div>
-                  </div>
-                  <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(18px,1.9vw,30px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0 }}>{pt.publicados}<span style={{ color: C.creamFade, fontSize: '0.7em' }}>/{pt.total}</span></span>
+            {/* Meio: funil+dias · canais+tipos · patrocínio */}
+            <div style={{ flex: 1.15, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: G, minHeight: 0 }}>
+              <MiniPanel title="Funil de produção" accent={C.green} style={{ justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(7px,0.8vw,12px)' }}>
+                  {f?.etapas.map(et => <BarRow key={et.etapa} label={et.label} color={et.pct >= 70 ? C.green : C.gold} total={Math.max(1, et.total)} pub={et.concluido} max={Math.max(1, et.total)} />)}
                 </div>
-              )
-            })}
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  {p.conteudosPorDia.map(d => {
+                    const isHoje = p.diasEvento[d.idx - 1]?.id === p.diaAtualId
+                    return (
+                      <div key={d.idx} style={{ flex: 1, textAlign: 'center', background: isHoje ? C.panelHi : 'transparent', border: `1px solid ${isHoje ? C.gold + '55' : C.border}`, borderRadius: 10, padding: '6px 3px' }}>
+                        <div style={{ fontFamily: FS, fontSize: 9, color: isHoje ? C.gold : C.creamMute, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(d.label.split(' ')[0]) || `D${d.idx}`}</div>
+                        <div style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(13px,1.3vw,19px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM }}>{d.publicados}<span style={{ color: C.creamFade, fontSize: '0.62em' }}>/{d.total}</span></div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </MiniPanel>
+
+              <MiniPanel title="Por canal" accent={C.lavender}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5vw,8px)' }}>
+                  {p.canalBreakdown.slice(0, 5).map((c, i) => <BarRow key={i} label={CANAL_LABEL[c.canal] ?? c.canal} color={CANAL_COLOR[c.canal] ?? C.creamMute} total={c.total} pub={c.publicados} max={maxC} />)}
+                  {p.canalBreakdown.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 12 }}>Sem publicações ainda.</span>}
+                </div>
+                <span style={{ fontFamily: FS, fontSize: 'clamp(9px,0.82vw,12px)', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.gold, marginTop: 'auto', paddingTop: 4 }}>Por tipo</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5vw,8px)' }}>
+                  {p.tipoBreakdown.slice(0, 5).map((t, i) => <BarRow key={i} label={TIPO_LABEL[t.tipo] ?? t.tipo} color={TIPO_COLOR[t.tipo] ?? C.creamMute} total={t.total} pub={t.publicados} max={maxT} />)}
+                </div>
+              </MiniPanel>
+
+              <MiniPanel title="Patrocínio" accent={C.goldHi}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'clamp(6px,0.7vw,11px)', overflow: 'hidden' }}>
+                  {patroc.map(pt => {
+                    const pct = pt.total > 0 ? Math.round(pt.publicados / pt.total * 100) : 0
+                    return (
+                      <div key={pt.id} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                        {pt.logo_url
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          ? <img src={pt.logo_url} alt={pt.nome} style={{ width: 30, height: 30, borderRadius: 7, objectFit: 'contain', background: 'white', padding: 2, flexShrink: 0 }} />
+                          : <span style={{ width: 30, height: 30, borderRadius: 7, background: C.greenDeep, flexShrink: 0 }} />}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontFamily: FS, fontWeight: 700, fontSize: 'clamp(11px,1.05vw,16px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pt.nome}</div>
+                          <div style={{ height: 5, borderRadius: 99, background: 'rgba(250,247,240,0.07)', overflow: 'hidden', marginTop: 4 }}>
+                            <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: pct >= 70 ? C.green : pct >= 40 ? C.gold : C.red }} />
+                          </div>
+                        </div>
+                        <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(13px,1.3vw,20px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0 }}>{pt.publicados}<span style={{ color: C.creamFade, fontSize: '0.7em' }}>/{pt.total}</span></span>
+                      </div>
+                    )
+                  })}
+                  {patroc.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 12 }}>Sem escopo cadastrado.</span>}
+                </div>
+              </MiniPanel>
+            </div>
+            {/* Baixo: agenda + clima */}
+            <div style={{ flex: 1, display: 'flex', gap: G, minHeight: 0 }}>
+              <MiniPanel title="Agenda de hoje" accent={C.green} style={{ flex: 2.2 }}>
+                <div style={{ flex: 1, display: 'grid', gridAutoRows: '1fr', gap: 'clamp(3px,0.4vw,7px)', minHeight: 0 }}>
+                  {agenda.map((x, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, overflow: 'hidden' }}>
+                      <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(13px,1.3vw,20px)', fontWeight: 800, color: x.color, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '2.6em' }}>{fmtTime(x.t)}</span>
+                      <span className={x.live ? 'tvc-ping' : undefined} style={{ width: 7, height: 7, borderRadius: '50%', background: x.color, flexShrink: 0, boxShadow: x.live ? `0 0 10px ${x.color}` : 'none' }} />
+                      <span style={{ flex: 1, fontFamily: FS, fontWeight: 600, fontSize: 'clamp(11px,1.05vw,17px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.label}</span>
+                      <span style={{ fontFamily: FS, fontSize: 'clamp(8px,0.72vw,11px)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: x.color, flexShrink: 0 }}>{x.live ? '● ao vivo' : x.tag}</span>
+                    </div>
+                  ))}
+                  {agenda.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 13, alignSelf: 'center' }}>Sem programação hoje.</span>}
+                </div>
+              </MiniPanel>
+              {p.weatherData && p.weatherData.length > 0 && (
+                <MiniPanel title="Clima · Uberaba" accent={C.blue} style={{ flex: 1 }}>
+                  <div style={{ flex: 1, display: 'flex', gap: 'clamp(5px,0.6vw,9px)', minHeight: 0 }}>
+                    {p.weatherData.slice(0, 4).map((w, i) => {
+                      const dt = new Date(w.date + 'T12:00:00-03:00')
+                      return (
+                        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, background: 'rgba(250,247,240,0.02)', border: `1px solid ${C.border}`, borderRadius: 11, padding: '6px 2px' }}>
+                          <span style={{ fontFamily: FS, fontSize: 9, fontWeight: 700, textTransform: 'capitalize', color: C.creamMute }}>{dt.toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '')}</span>
+                          <span style={{ fontSize: 'clamp(17px,1.8vw,28px)' }}>{w.emoji}</span>
+                          <span style={{ fontFamily: FD, fontStyle: 'italic', fontWeight: 800, fontSize: 'clamp(12px,1.2vw,18px)', color: C.cream, fontVariantNumeric: NUM }}>{Math.round(w.tMax)}°<span style={{ color: C.creamFade, fontSize: '0.62em' }}>/{Math.round(w.tMin)}°</span></span>
+                          <span style={{ fontFamily: FS, fontSize: 8.5, color: C.creamFade }}>💧{w.rain}%</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </MiniPanel>
+              )}
+            </div>
           </div>
         </>
       )
@@ -551,49 +568,7 @@ export function TVCarrossel(p: Props) {
         </>
       )
     }
-    // agenda
-    const ag = [
-      ...p.jogosHoje.map(j => ({ t: j.inicio, label: `${j.equipe_a_nome ?? '?'} × ${j.equipe_b_nome ?? '?'}`, tag: j.modalidade_nome || 'Jogo', color: j.status === 'ao_vivo' ? C.red : j.status === 'encerrado' ? C.green : C.gold, live: j.status === 'ao_vivo' })),
-      ...p.showsHoje.map(s2 => ({ t: s2.inicio, label: s2.nome ?? 'Show', tag: 'Show', color: C.lavender, live: false })),
-      ...p.festasHoje.map(f2 => ({ t: f2.inicio, label: f2.nome ?? 'Festa', tag: 'Festa', color: C.blue, live: false })),
-    ].filter(x => x.t).sort((x, y) => (x.t! < y.t! ? -1 : 1)).slice(0, 9)
-    return (
-      <>
-        <SceneHead accent={C.green} kicker="Programação · Hoje" title="Agenda do dia" />
-        <div style={{ flex: 1, display: 'flex', gap: 'clamp(12px,1.4vw,22px)', minHeight: 0 }}>
-          <div style={{ flex: 2.4, display: 'grid', gridAutoRows: '1fr', gap: 'clamp(6px,0.7vw,11px)', minHeight: 0 }}>
-            {ag.map((x, i) => (
-              <div key={i} className="tvc-card" style={{ animationDelay: `${i * 40}ms`, display: 'flex', alignItems: 'center', gap: 16, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '0 clamp(14px,1.4vw,22px)', overflow: 'hidden' }}>
-                <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,26px)', fontWeight: 800, color: x.color, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '2.6em' }}>{fmtTime(x.t)}</span>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: x.color, flexShrink: 0, boxShadow: x.live ? `0 0 10px ${x.color}` : 'none' }} className={x.live ? 'tvc-ping' : undefined} />
-                <span style={{ flex: 1, fontFamily: FS, fontWeight: 600, fontSize: 'clamp(12px,1.2vw,20px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.label}</span>
-                <span style={{ fontFamily: FS, fontSize: 'clamp(8px,0.75vw,11px)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: x.color, flexShrink: 0 }}>{x.live ? '● ao vivo' : x.tag}</span>
-              </div>
-            ))}
-            {ag.length === 0 && <div style={{ fontFamily: FS, color: C.creamMute, alignSelf: 'center', justifySelf: 'center' }}>Sem programação para hoje.</div>}
-          </div>
-          {p.weatherData && p.weatherData.length > 0 && (
-            <div style={{ flex: 1, display: 'grid', gridAutoRows: '1fr', gap: 'clamp(6px,0.7vw,11px)', minHeight: 0 }}>
-              {p.weatherData.slice(0, 4).map((w, i) => {
-                const dt = new Date(w.date + 'T12:00:00-03:00')
-                return (
-                  <div key={i} className="tvc-card" style={{ animationDelay: `${i * 60}ms`, display: 'flex', alignItems: 'center', gap: 14, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '0 clamp(14px,1.4vw,20px)' }}>
-                    <span style={{ fontSize: 'clamp(20px,2.2vw,34px)', flexShrink: 0 }}>{w.emoji}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: FS, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'capitalize', color: C.creamMute }}>{dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })}</div>
-                      <div style={{ fontFamily: FS, fontSize: 10, color: C.creamFade }}>💧 {w.rain}%</div>
-                    </div>
-                    <div style={{ fontFamily: FD, fontStyle: 'italic', fontWeight: 800, fontSize: 'clamp(16px,1.7vw,26px)', color: C.cream, fontVariantNumeric: NUM, flexShrink: 0 }}>
-                      {Math.round(w.tMax)}°<span style={{ color: C.creamFade, fontSize: '0.65em' }}>/{Math.round(w.tMin)}°</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </>
-    )
+    return null
   }
 
   return (

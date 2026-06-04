@@ -122,6 +122,15 @@ function getMediaGroups(role: string): NavGroup[] {
         { label: 'Line Up',       href: '/lineup',       icon: Music },
       ],
     },
+    // Hub esportivo — somente visualização (placar, classificação, chaveamento)
+    ...(isOperador ? [{
+      label: 'Esportivo',
+      items: [
+        { label: 'Placar Ao Vivo', href: '/placar',                  icon: Radio },
+        { label: 'Classificação',  href: '/esportivo/classificacao', icon: BarChart2 },
+        { label: 'Chaveamento',    href: '/esportivo/chaveamento',   icon: GitBranch },
+      ],
+    }] : []),
     {
       label: 'Escala',
       items: [
@@ -230,6 +239,7 @@ const OP_FV_GROUPS: NavGroup[] = [
       { label: 'Guia AV',          href: '/esportivo/av',            icon: Camera },
       { label: 'Central de Jogos', href: '/central',                 icon: AlignLeft },
       { label: 'Atléticas',        href: '/atleticas',               icon: Users },
+      { label: 'Classificação',    href: '/esportivo/classificacao', icon: BarChart2 },
       { label: 'Mapa Esportivo',   href: '/esportivo/mapa',          icon: Navigation },
       { label: 'Chaveamento',      href: '/esportivo/chaveamento',   icon: GitBranch },
     ],

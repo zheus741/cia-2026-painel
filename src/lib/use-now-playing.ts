@@ -75,9 +75,15 @@ function resolveActiveDay(now: Date, lineup: Lineup): { dayId: DayId | null; con
         return { dayId: id, config: cfg, nowMin }
       }
     }
+    // De madrugada o programa de HOJE ainda NÃO começou (começa à tarde). Se a
+    // véspera não cobre (madrugada da 1ª noite, ou já passou das ~05h), NADA está
+    // no ar. NÃO cair pro dia do calendário — senão marcaria como "no ar" uma
+    // atração da madrugada do dia SEGUINTE, porque a comparação é só por HH:MM
+    // (ignora a data). Ex: 00:35 de quinta ≠ 00:35 de sexta, mas dão o mesmo HH:MM.
+    return { dayId: null, config: null, nowMin }
   }
 
-  // 2) Senão, o dia do calendário — se for dia de evento.
+  // 2) Senão (tarde/noite), o dia do calendário — se for dia de evento.
   if (todayIso in EVENT_DATE_MAP) {
     const id = EVENT_DATE_MAP[todayIso]
     return { dayId: id, config: lineup[id], nowMin }

@@ -140,3 +140,77 @@ export async function atualizarDesign(
     if (error) throw error
   })
 }
+
+// ── CAPTAÇÃO: link de entrega ──────────────────────────────────────────────────
+const ROLES_CAPTACAO = ['admin', 'coordenacao', 'lider_fv', 'lider_area']
+
+/** Link de entrega da captação (Drive etc). Designado de captação ou líderes+. */
+export async function atualizarLinkCaptacao(
+  conteudoId: string,
+  link: string,
+): Promise<ActionResult> {
+  return safe(async () => {
+    const profile = await requireProfile()
+    const supabase = await createClient()
+    const { data: c } = await supabase
+      .from('conteudos')
+      .select('responsavel_captacao_id')
+      .eq('id', conteudoId)
+      .maybeSingle()
+    if (c?.responsavel_captacao_id !== profile.id && !ROLES_CAPTACAO.includes(profile.role ?? '')) {
+      throw new Error('Só o responsável de captação designado pode atualizar isto.')
+    }
+    const limpo = link.trim()
+    if (limpo.length > 2000) throw new Error('Link muito longo.')
+    const sb = createServiceClient()
+    const { error } = await sb.from('conteudos').update({ link_captacao: limpo || null }).eq('id', conteudoId)
+    if (error) throw error
+  })
+}
+
+// ── EDIÇÃO: status + link de entrega ───────────────────────────────────────────
+const ROLES_EDICAO = ['admin', 'coordenacao', 'lider_area']
+
+async function assertPodeMexerEdicao(conteudoId: string, profileId: string, role: string) {
+  const supabase = await createClient()
+  const { data: c } = await supabase
+    .from('conteudos')
+    .select('responsavel_edicao_id')
+    .eq('id', conteudoId)
+    .maybeSingle()
+  if (c?.responsavel_edicao_id !== profileId && !ROLES_EDICAO.includes(role)) {
+    throw new Error('Só o responsável de edição designado pode atualizar isto.')
+  }
+}
+
+/** Status de edição (Não iniciado / Produzindo / Concluído). */
+export async function atualizarStatusEdicao(
+  conteudoId: string,
+  status: string,
+): Promise<ActionResult> {
+  const VALIDOS = ['nao_iniciado', 'produzindo', 'concluido']
+  return safe(async () => {
+    const profile = await requireProfile()
+    if (!VALIDOS.includes(status)) throw new Error('Status inválido.')
+    await assertPodeMexerEdicao(conteudoId, profile.id, profile.role ?? '')
+    const sb = createServiceClient()
+    const { error } = await sb.from('conteudos').update({ status_edicao: status }).eq('id', conteudoId)
+    if (error) throw error
+  })
+}
+
+/** Link de entrega da edição (Drive etc). Designado de edição ou gestão. */
+export async function atualizarLinkEdicao(
+  conteudoId: string,
+  link: string,
+): Promise<ActionResult> {
+  return safe(async () => {
+    const profile = await requireProfile()
+    await assertPodeMexerEdicao(conteudoId, profile.id, profile.role ?? '')
+    const limpo = link.trim()
+    if (limpo.length > 2000) throw new Error('Link muito longo.')
+    const sb = createServiceClient()
+    const { error } = await sb.from('conteudos').update({ link_edicao: limpo || null }).eq('id', conteudoId)
+    if (error) throw error
+  })
+}

@@ -6,9 +6,14 @@ import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import {
-  atualizarCaptacao, atualizarStatusCaptacao,
+  atualizarCaptacao, atualizarStatusCaptacao, atualizarLinkCaptacao,
   atualizarStatusDesign, atualizarLinkDesign,
+  atualizarStatusEdicao, atualizarLinkEdicao,
 } from './actions'
+
+type SaveResult = { ok: boolean; error?: string }
+type StatusAction = (conteudoId: string, status: string) => Promise<SaveResult>
+type LinkAction = (conteudoId: string, link: string) => Promise<SaveResult>
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -36,9 +41,13 @@ export interface ConteudoDetalhe {
   edicao: Pessoa | null
   captacao_id: string | null
   status_captacao: string | null
+  link_captacao: string | null
   design_id: string | null
   status_design: string | null
   link_design: string | null
+  edicao_id: string | null
+  status_edicao: string | null
+  link_edicao: string | null
 }
 
 // ── Config ─────────────────────────────────────────────────────────────────────
@@ -297,14 +306,15 @@ function CaptacaoSelector({
   )
 }
 
-// ── StatusDesignSelector — mesmo padrão de captação, para o status_design ─────
+// ── StatusEtapaSelector — status (não iniciado/produzindo/concluído) genérico ─
 
-function StatusDesignSelector({
-  conteudoId, current, onSaved,
+function StatusEtapaSelector({
+  conteudoId, current, onSaved, action,
 }: {
   conteudoId: string
   current: string | null
   onSaved?: () => void
+  action: StatusAction
 }) {
   const [value, setValue] = useState(current ?? 'nao_iniciado')
   const [pending, startTransition] = useTransition()
@@ -315,7 +325,7 @@ function StatusDesignSelector({
     const next = e.target.value
     setValue(next); setSaved(false); setErr(null)
     startTransition(async () => {
-      const res = await atualizarStatusDesign(conteudoId, next)
+      const res = await action(conteudoId, next)
       if (res.ok) { setSaved(true); onSaved?.() }
       else setErr(res.error ?? 'Erro ao salvar')
     })
@@ -345,7 +355,7 @@ function StatusDesignSelector({
   )
 }
 
-// ── LinkDesignField — cola o link do Drive (editável) + link clicável (todos) ──
+// ── LinkField — cola o link do Drive (editável) + link clicável (todos) ──────
 
 function normalizeUrl(u: string) {
   const t = u.trim()
@@ -353,12 +363,13 @@ function normalizeUrl(u: string) {
   return /^https?:\/\//i.test(t) ? t : `https://${t}`
 }
 
-function LinkDesignField({
-  conteudoId, current, canEdit, onChanged,
+function LinkField({
+  conteudoId, current, canEdit, action, onChanged,
 }: {
   conteudoId: string
   current: string | null
   canEdit: boolean
+  action: LinkAction
   onChanged?: (novo: string | null) => void
 }) {
   const [link, setLink] = useState<string | null>(current)
@@ -371,7 +382,7 @@ function LinkDesignField({
   function save() {
     setErr(null); setSaved(false)
     startTransition(async () => {
-      const res = await atualizarLinkDesign(conteudoId, draft)
+      const res = await action(conteudoId, draft)
       if (res.ok) {
         const novo = draft.trim() || null
         setLink(novo); setEditing(false); setSaved(true); onChanged?.(novo)
@@ -472,13 +483,17 @@ export function ConteudoDetalheModal({
   const tipos = parseTipos(c.tipo)
   const prio = prioridadeInfo(c.prioridade)
   const podeEditarCaptacao = userRole === 'lider_fv' || userRole === 'lider_area' || userRole === 'coordenacao' || userRole === 'admin'
-  // Operador designado pode atualizar o próprio status de captação
+  // Operador designado pode atualizar o próprio status/link de captação
   const eOperadorDesignado = !!userId && userId === c.captacao_id
+  const podeMexerCaptacao = eOperadorDesignado || podeEditarCaptacao
   // Design é um time separado de FV: quem gere é coord/admin (e lider_area de design).
   const podeGerirDesign = userRole === 'admin' || userRole === 'coordenacao' || userRole === 'lider_area'
   const eDesignerDesignado = !!userId && userId === c.design_id
-  // Quem pode mexer no link/status de design: o designer designado OU gestão de design
   const podeMexerDesign = eDesignerDesignado || podeGerirDesign
+  // Edição: gerida por coord/admin (e lider_area); o editor designado mexe no seu.
+  const podeGerirEdicao = userRole === 'admin' || userRole === 'coordenacao' || userRole === 'lider_area'
+  const eEditorDesignado = !!userId && userId === c.edicao_id
+  const podeMexerEdicao = eEditorDesignado || podeGerirEdicao
 
   // Após qualquer save: fecha o modal e recarrega os dados do servidor
   function handleSaved() {
@@ -563,6 +578,11 @@ export function ConteudoDetalheModal({
                   <StatusCaptacaoSelector conteudoId={c.id} current={c.status_captacao} onSaved={handleSaved} />
                 </div>
               )}
+              {/* Link de entrega da captação */}
+              <div>
+                <p className="mb-1 text-[10px] text-[var(--muted-foreground)]">Link de entrega (Drive):</p>
+                <LinkField conteudoId={c.id} current={c.link_captacao} canEdit={podeMexerCaptacao} action={atualizarLinkCaptacao} />
+              </div>
             </div>
           </Field>
 
@@ -570,26 +590,35 @@ export function ConteudoDetalheModal({
           <Field label="Design">
             <div className="space-y-2">
               <PessoaCell pessoa={c.design} />
-              {/* Status de design — editável pelo designer designado ou gestão */}
               {podeMexerDesign && (
                 <div>
                   <p className="mb-1 text-[10px] text-[var(--muted-foreground)]">Status de design:</p>
-                  <StatusDesignSelector conteudoId={c.id} current={c.status_design} onSaved={handleSaved} />
+                  <StatusEtapaSelector conteudoId={c.id} current={c.status_design} onSaved={handleSaved} action={atualizarStatusDesign} />
                 </div>
               )}
-              {/* Link de entrega — clicável p/ todos; editável p/ designer/gestão */}
               <div>
                 <p className="mb-1 text-[10px] text-[var(--muted-foreground)]">Link de entrega (Drive):</p>
-                <LinkDesignField
-                  conteudoId={c.id}
-                  current={c.link_design}
-                  canEdit={podeMexerDesign}
-                />
+                <LinkField conteudoId={c.id} current={c.link_design} canEdit={podeMexerDesign} action={atualizarLinkDesign} />
               </div>
             </div>
           </Field>
 
-          <Field label="Edição"><PessoaCell pessoa={c.edicao} /></Field>
+          {/* Edição: pessoa (read-only) + status + link de entrega */}
+          <Field label="Edição">
+            <div className="space-y-2">
+              <PessoaCell pessoa={c.edicao} />
+              {podeMexerEdicao && (
+                <div>
+                  <p className="mb-1 text-[10px] text-[var(--muted-foreground)]">Status de edição:</p>
+                  <StatusEtapaSelector conteudoId={c.id} current={c.status_edicao} onSaved={handleSaved} action={atualizarStatusEdicao} />
+                </div>
+              )}
+              <div>
+                <p className="mb-1 text-[10px] text-[var(--muted-foreground)]">Link de entrega (Drive):</p>
+                <LinkField conteudoId={c.id} current={c.link_edicao} canEdit={podeMexerEdicao} action={atualizarLinkEdicao} />
+              </div>
+            </div>
+          </Field>
 
           <Field label="Briefing">
             {c.briefing

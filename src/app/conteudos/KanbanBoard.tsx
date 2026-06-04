@@ -20,7 +20,13 @@ import {
   createConteudo, updateConteudo, deleteConteudo, setStatus, reordenarColuna,
   type ConteudoPayload,
 } from './actions'
-import { atualizarStatusDesign, atualizarLinkDesign } from '../perfil/actions'
+import {
+  atualizarStatusDesign, atualizarLinkDesign,
+  atualizarStatusCaptacao, atualizarLinkCaptacao,
+  atualizarStatusEdicao, atualizarLinkEdicao,
+} from '../perfil/actions'
+type EtapaSaveResult = { ok: boolean; error?: string }
+type EtapaAction = (conteudoId: string, valor: string) => Promise<EtapaSaveResult>
 import { createClient } from '@/lib/supabase/client'
 import { uniqueChannel } from '@/lib/supabase/channel-name'
 
@@ -58,6 +64,8 @@ export interface Conteudo {
   status_design?:          string | null
   status_edicao?:          string | null
   link_design?:            string | null
+  link_captacao?:          string | null
+  link_edicao?:            string | null
   dia?:             { nome_dia: string; data: string } | null
   setor?:           { nome: string } | null
   patrocinador?:    { nome: string } | null
@@ -576,12 +584,14 @@ function hrefSeguro(u: string) {
   return /^https?:\/\//i.test(u) ? u : `https://${u}`
 }
 
-function DesignInlineEdit({
-  conteudoId, statusInicial, linkInicial,
+function EtapaInlineEdit({
+  conteudoId, statusInicial, linkInicial, statusAction, linkAction,
 }: {
   conteudoId: string
   statusInicial: string | null
   linkInicial: string | null
+  statusAction: EtapaAction
+  linkAction: EtapaAction
 }) {
   const [status, setStatusLocal] = React.useState(statusInicial ?? 'nao_iniciado')
   const [link, setLinkLocal] = React.useState<string | null>(linkInicial)
@@ -593,14 +603,14 @@ function DesignInlineEdit({
   function salvarStatus(novo: string) {
     setStatusLocal(novo); setMsg(null)
     startT(async () => {
-      const res = await atualizarStatusDesign(conteudoId, novo)
+      const res = await statusAction(conteudoId, novo)
       setMsg(res.ok ? '✓ Status salvo' : (res.error ?? 'Erro'))
     })
   }
   function salvarLink() {
     setMsg(null)
     startT(async () => {
-      const res = await atualizarLinkDesign(conteudoId, draft)
+      const res = await linkAction(conteudoId, draft)
       if (res.ok) { setLinkLocal(draft.trim() || null); setEditingLink(false); setMsg('✓ Link salvo') }
       else setMsg(res.error ?? 'Erro')
     })
@@ -668,6 +678,32 @@ function DesignInlineEdit({
         </div>
       )}
       {msg && <span className="text-[10px] text-[var(--muted-foreground)]">{pending ? 'Salvando…' : msg}</span>}
+    </div>
+  )
+}
+
+// Linha de responsável no drawer: pessoa + (edição inline OU link clicável)
+function RespInline({ conteudoId, perfil, label, status, link, podeEditar, statusAction, linkAction }: {
+  conteudoId: string
+  perfil: Perfil | null
+  label: string
+  status: string | null | undefined
+  link: string | null | undefined
+  podeEditar: boolean
+  statusAction: EtapaAction
+  linkAction: EtapaAction
+}) {
+  if (!perfil && !link && !podeEditar) return <Empty />
+  return (
+    <div className="flex flex-col gap-1.5">
+      {perfil ? <PersonRow perfil={perfil} label={label} status={status ?? null} /> : null}
+      {podeEditar ? (
+        <EtapaInlineEdit conteudoId={conteudoId} statusInicial={status ?? null} linkInicial={link ?? null} statusAction={statusAction} linkAction={linkAction} />
+      ) : link ? (
+        <a href={hrefSeguro(link)} target="_blank" rel="noopener noreferrer" className="inline-flex w-fit items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--green-bright)]" style={{ background: 'rgba(46,107,66,0.12)' }}>
+          🔗 Abrir entrega ↗
+        </a>
+      ) : null}
     </div>
   )
 }
@@ -782,42 +818,21 @@ function ConteudoViewDialog({
 
           {/* ── Responsáveis ────────────────────────────── */}
           <PropRow icon={Camera} label="Captação">
-            {captacao ? <PersonRow perfil={captacao} label="Captação" status={c.status_captacao} /> : <Empty />}
+            <RespInline conteudoId={c.id} perfil={captacao} label="Captação" status={c.status_captacao} link={c.link_captacao}
+              podeEditar={(!!viewerId && viewerId === c.responsavel_captacao_id) || viewerRole === 'admin' || viewerRole === 'coordenacao' || viewerRole === 'lider_fv' || viewerRole === 'lider_area'}
+              statusAction={atualizarStatusCaptacao} linkAction={atualizarLinkCaptacao} />
           </PropRow>
 
           <PropRow icon={Palette} label="Design">
-            {(() => {
-              const podeEditarDesign =
-                (!!viewerId && viewerId === c.responsavel_design_id) ||
-                viewerRole === 'admin' || viewerRole === 'coordenacao' || viewerRole === 'lider_area'
-              if (!design && !c.link_design && !podeEditarDesign) return <Empty />
-              return (
-                <div className="flex flex-col gap-1.5">
-                  {design ? <PersonRow perfil={design} label="Design" status={c.status_design} /> : null}
-                  {podeEditarDesign ? (
-                    <DesignInlineEdit
-                      conteudoId={c.id}
-                      statusInicial={c.status_design ?? null}
-                      linkInicial={c.link_design ?? null}
-                    />
-                  ) : c.link_design ? (
-                    <a
-                      href={hrefSeguro(c.link_design)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex w-fit items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--green-bright)]"
-                      style={{ background: 'rgba(46,107,66,0.12)' }}
-                    >
-                      🔗 Abrir entrega ↗
-                    </a>
-                  ) : null}
-                </div>
-              )
-            })()}
+            <RespInline conteudoId={c.id} perfil={design} label="Design" status={c.status_design} link={c.link_design}
+              podeEditar={(!!viewerId && viewerId === c.responsavel_design_id) || viewerRole === 'admin' || viewerRole === 'coordenacao' || viewerRole === 'lider_area'}
+              statusAction={atualizarStatusDesign} linkAction={atualizarLinkDesign} />
           </PropRow>
 
           <PropRow icon={Film} label="Edição">
-            {edicao ? <PersonRow perfil={edicao} label="Edição" status={c.status_edicao} /> : <Empty />}
+            <RespInline conteudoId={c.id} perfil={edicao} label="Edição" status={c.status_edicao} link={c.link_edicao}
+              podeEditar={(!!viewerId && viewerId === c.responsavel_edicao_id) || viewerRole === 'admin' || viewerRole === 'coordenacao' || viewerRole === 'lider_area'}
+              statusAction={atualizarStatusEdicao} linkAction={atualizarLinkEdicao} />
           </PropRow>
 
           <PropRow icon={Star} label="Influencer">
@@ -1036,6 +1051,8 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
   const [statusDesign, setStatusDesign]     = React.useState(editing?.status_design ?? 'nao_iniciado')
   const [statusEdicao, setStatusEdicao]     = React.useState(editing?.status_edicao ?? 'nao_iniciado')
   const [linkDesign, setLinkDesign]         = React.useState(editing?.link_design ?? '')
+  const [linkCaptacao, setLinkCaptacao]     = React.useState(editing?.link_captacao ?? '')
+  const [linkEdicao, setLinkEdicao]         = React.useState(editing?.link_edicao ?? '')
 
   React.useEffect(() => {
     if (!open) return
@@ -1059,6 +1076,8 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
     setStatusDesign(editing?.status_design ?? 'nao_iniciado')
     setStatusEdicao(editing?.status_edicao ?? 'nao_iniciado')
     setLinkDesign(editing?.link_design ?? '')
+    setLinkCaptacao(editing?.link_captacao ?? '')
+    setLinkEdicao(editing?.link_edicao ?? '')
   }, [open, editing, defaultStatus])
 
   async function submit() {
@@ -1086,6 +1105,8 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
         status_design:           statusDesign,
         status_edicao:           statusEdicao,
         link_design:             linkDesign.trim() || null,
+        link_captacao:           linkCaptacao.trim() || null,
+        link_edicao:             linkEdicao.trim() || null,
         ...(link ? { link_publicado: link } : {}),
       }
       const res = editing ? await updateConteudo(editing.id, payload) : await createConteudo(payload)
@@ -1271,15 +1292,20 @@ function ConteudoDialog({ open, onClose, edicaoId, dias, setores, patrocinadores
             </div>
           </div>
 
-          {/* Link de entrega do Design (Drive) */}
-          <div>
-            <Label className="mb-1.5 block text-xs">🔗 Link de entrega (Design)</Label>
-            <Input
-              className="text-xs"
-              placeholder="https://drive.google.com/..."
-              value={linkDesign}
-              onChange={(e) => setLinkDesign(e.target.value)}
-            />
+          {/* Links de entrega (Drive) — captação · design · edição */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <Label className="mb-1.5 block text-xs">🔗 Link captação</Label>
+              <Input className="text-xs" placeholder="https://drive…" value={linkCaptacao} onChange={(e) => setLinkCaptacao(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs">🔗 Link design</Label>
+              <Input className="text-xs" placeholder="https://drive…" value={linkDesign} onChange={(e) => setLinkDesign(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs">🔗 Link edição</Label>
+              <Input className="text-xs" placeholder="https://drive…" value={linkEdicao} onChange={(e) => setLinkEdicao(e.target.value)} />
+            </div>
           </div>
 
           {/* Briefing */}
@@ -1447,6 +1473,70 @@ function KanbanColumn({
   )
 }
 
+// ── Filtro de canal multi-seleção (collabs em vários canais) ──────────────────
+function CanalMultiFilter({ selected, onChange }: { selected: string[]; onChange: (v: string[]) => void }) {
+  const [open, setOpen] = React.useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    if (!open) return
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+  const toggle = (v: string) => onChange(selected.includes(v) ? selected.filter(x => x !== v) : [...selected, v])
+  const label = selected.length === 0
+    ? 'Canal'
+    : selected.length === 1
+    ? (CANAL_CONFIG[selected[0]]?.label ?? '1 canal')
+    : `${selected.length} canais`
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex h-8 w-40 items-center justify-between gap-1 rounded-full border border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)] px-3 text-[11px]"
+        style={{ color: selected.length > 0 ? '#0A0F0B' : 'rgba(10,15,11,0.55)' }}
+      >
+        <span className="truncate">{label}</span>
+        <span style={{ fontSize: 9, opacity: 0.6 }}>▾</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-40 mt-1 max-h-72 w-52 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-xl">
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="mb-1 flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-[var(--muted-foreground)] hover:bg-[var(--muted)]"
+            >
+              Limpar seleção <span>✕</span>
+            </button>
+          )}
+          {CANAL_OPTIONS.map(o => {
+            const on = selected.includes(o.value)
+            return (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => toggle(o.value)}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[var(--foreground)] hover:bg-[var(--muted)]"
+              >
+                <span
+                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold text-white"
+                  style={{ background: on ? 'var(--green)' : 'transparent', borderColor: on ? 'var(--green)' : 'var(--border)' }}
+                >
+                  {on ? '✓' : ''}
+                </span>
+                <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: CANAL_CONFIG[o.value]?.cor }} />
+                <span className="flex-1 truncate">{o.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main KanbanBoard ──────────────────────────────────────────────────────────
 
 interface KanbanBoardProps {
@@ -1476,7 +1566,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
   const [filterDia, setFilterDia]         = React.useState(activeDiaId ?? '')
   const [filterTipo, setFilterTipo]       = React.useState('')
   const [filterPerfil, setFilterPerfil]   = React.useState('')
-  const [filterCanal, setFilterCanal]     = React.useState('')
+  const [filterCanal, setFilterCanal]     = React.useState<string[]>([])
   const [filterSetor, setFilterSetor]     = React.useState('')
   const [filterPatroc, setFilterPatroc]   = React.useState('')
   /** Admin: empresa FV selecionada ('') = todas */
@@ -1535,7 +1625,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
     const SELECT_COLS = `
       id, titulo, tipo, status, prioridade, ordem,
       dia_id, setor_id, patrocinador_id, jogo_id, show_id, festa_id, modalidade_id,
-      canal_publicacao, briefing, horario_previsto, link_publicado, link_design,
+      canal_publicacao, briefing, horario_previsto, link_publicado, link_design, link_captacao, link_edicao,
       responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, responsavel_influencer_id,
       status_captacao, status_design, status_edicao,
       dia:dia_id (nome_dia, data),
@@ -1706,8 +1796,11 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
         c.responsavel_influencer_id  === filterPerfil
       )
     }
-    if (filterCanal && filterCanal !== '__all__') {
-      list = list.filter(c => parseCanais(c.canal_publicacao).includes(filterCanal))
+    if (filterCanal.length > 0) {
+      list = list.filter(c => {
+        const cs = parseCanais(c.canal_publicacao)
+        return filterCanal.some(fc => cs.includes(fc))
+      })
     }
     if (filterSetor && filterSetor !== '__all__') {
       list = filterSetor === '__none__'
@@ -1944,22 +2037,7 @@ export function KanbanBoard({ edicaoId, conteudos: initial, dias, setores, patro
           </SelectContent>
         </Select>
 
-        <Select value={filterCanal} onValueChange={setFilterCanal}>
-          <SelectTrigger className="h-8 w-40 text-[11px] rounded-full border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)]">
-            <SelectValue placeholder="Canal" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos os canais</SelectItem>
-            {CANAL_OPTIONS.map(o => (
-              <SelectItem key={o.value} value={o.value}>
-                <span className="flex items-center gap-2">
-                  <span className="inline-block h-2 w-2 rounded-full shrink-0" style={{ background: CANAL_CONFIG[o.value]?.cor }} />
-                  {o.label}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <CanalMultiFilter selected={filterCanal} onChange={setFilterCanal} />
 
         <Select value={filterSetor} onValueChange={setFilterSetor}>
           <SelectTrigger className="h-8 w-36 text-[11px] rounded-full border-[rgba(10,15,11,0.12)] bg-[rgba(10,15,11,0.04)]">

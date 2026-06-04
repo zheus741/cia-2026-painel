@@ -114,8 +114,7 @@ function subInfo(j: Jogo): string {
   if (j.modalidade_nome) bits.push(j.modalidade_nome)
   if (j.divisao) bits.push(j.divisao)
   if (j.setor_nome) bits.push(j.setor_nome)
-  bits.push(fmtTime(j.inicio))
-  return bits.join('  ·  ')
+  return bits.join(' · ')
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -170,56 +169,56 @@ function SceneHead({ accent, kicker, title, right }: { accent: string; kicker: s
 // Linha de jogo compacta (ao vivo / resultado / próximo) — usada nas colunas
 // ─────────────────────────────────────────────────────────────────────────────
 function JogoMini({ j, mode }: { j: Jogo; mode: 'live' | 'result' | 'next' }) {
-  const accent = mode === 'live' ? C.red : mode === 'result' ? C.green : C.gold
   const a = j.placar_a ?? 0, b = j.placar_b ?? 0
   const winA = mode === 'result' && a > b, winB = mode === 'result' && b > a
-  const nameStyle = (win: boolean, align: 'right' | 'left'): React.CSSProperties => ({
-    flex: 1, minWidth: 0, textAlign: align,
-    fontFamily: FS, fontWeight: win ? 800 : 600, fontSize: 'clamp(12px,1.15vw,19px)',
-    color: win ? C.cream : (mode === 'result' ? C.creamDim : C.cream),
-    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-  })
+  const scoreCol = mode === 'live' ? C.red : C.cream
+
+  function TeamRow({ name, score, win, lose }: { name: string | null; score: number; win: boolean; lose: boolean }) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, minHeight: 0 }}>
+        <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: win ? (mode === 'live' ? C.red : C.green) : C.creamFade }} />
+        <span style={{ flex: 1, minWidth: 0, fontFamily: FS, fontWeight: win ? 800 : 600, fontSize: 'clamp(12px,1.2vw,19px)', color: lose ? C.creamMute : C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.01em' }}>{name ?? 'A definir'}</span>
+        {mode !== 'next' && (
+          <span style={{ fontFamily: FD, fontStyle: 'italic', fontVariationSettings: "'opsz' 96, 'SOFT' 0, 'WONK' 1", fontSize: 'clamp(17px,1.7vw,28px)', fontWeight: 800, color: win ? (mode === 'live' ? C.red : C.green) : (lose ? C.creamMute : scoreCol), fontVariantNumeric: NUM, flexShrink: 0, minWidth: '1.3em', textAlign: 'right', lineHeight: 1 }}>{score}</span>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="tvc-card" style={{
-      background: mode === 'live' ? 'rgba(255,77,77,0.06)' : C.panel,
-      border: `1px solid ${mode === 'live' ? 'rgba(255,77,77,0.22)' : C.border}`,
-      borderRadius: 13, padding: 'clamp(7px,0.8vw,13px) clamp(11px,1.2vw,18px)',
-      display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden',
+      background: mode === 'live' ? 'rgba(255,77,77,0.055)' : C.panel,
+      border: `1px solid ${mode === 'live' ? 'rgba(255,77,77,0.20)' : C.border}`,
+      borderLeft: `3px solid ${mode === 'live' ? C.red : mode === 'result' ? C.green : C.gold}`,
+      borderRadius: 11, padding: 'clamp(7px,0.75vw,12px) clamp(11px,1.1vw,16px)',
+      display: 'flex', flexDirection: 'column', gap: 'clamp(3px,0.4vw,6px)', flexShrink: 0, overflow: 'hidden',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: FS, fontSize: 'clamp(9px,0.78vw,12px)', fontWeight: 600, color: C.creamMute, letterSpacing: '0.03em' }}>
-        {j.modalidade_icone && <span style={{ fontSize: '1.15em' }}>{j.modalidade_icone}</span>}
-        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subInfo(j)}</span>
+      {/* meta: modalidade/divisão/setor + horário */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {j.modalidade_icone && <span style={{ fontSize: 'clamp(10px,0.85vw,13px)', flexShrink: 0 }}>{j.modalidade_icone}</span>}
+        <span style={{ flex: 1, minWidth: 0, fontFamily: FS, fontSize: 'clamp(8.5px,0.74vw,11.5px)', fontWeight: 600, color: C.creamMute, letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subInfo(j)}</span>
+        <span style={{ flexShrink: 0, fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(11px,1vw,16px)', fontWeight: 800, color: mode === 'next' ? C.gold : C.creamMute, fontVariantNumeric: NUM }}>{fmtTime(j.inicio)}</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(7px,0.8vw,12px)' }}>
-        <span style={nameStyle(winA, 'right')}>{j.equipe_a_nome ?? 'A definir'}</span>
-        {mode === 'next' ? (
-          <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,25px)', fontWeight: 800, color: C.gold, flexShrink: 0, fontVariantNumeric: NUM }}>{fmtTime(j.inicio)}</span>
-        ) : (
-          <span style={{ fontFamily: FD, fontStyle: 'italic', fontVariationSettings: "'opsz' 96, 'SOFT' 0, 'WONK' 1", fontSize: 'clamp(20px,2.1vw,36px)', fontWeight: 900, color: accent, letterSpacing: '-0.04em', flexShrink: 0, display: 'flex', alignItems: 'baseline', gap: 6, lineHeight: 1, fontVariantNumeric: NUM }}>
-            <span style={{ opacity: winB ? 0.4 : 1 }}>{a}</span>
-            <span style={{ fontSize: '0.42em', color: C.creamFade, fontWeight: 400, fontStyle: 'normal' }}>×</span>
-            <span style={{ opacity: winA ? 0.4 : 1 }}>{b}</span>
-          </span>
-        )}
-        <span style={nameStyle(winB, 'left')}>{j.equipe_b_nome ?? 'A definir'}</span>
-      </div>
+      <TeamRow name={j.equipe_a_nome} score={a} win={winA} lose={winB} />
+      <TeamRow name={j.equipe_b_nome} score={b} win={winB} lose={winA} />
     </div>
   )
 }
 
 // Coluna de jogos (Ao vivo / Resultados / Próximos)
 function ColunaJogos({ icon, label, accent, games, mode, live }: { icon: string; label: string; accent: string; games: Jogo[]; mode: 'live' | 'result' | 'next'; live?: boolean }) {
-  const CAP = 9
+  const CAP = 7
+  const extra = games.length - CAP
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(7px,0.8vw,12px)', minHeight: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0, paddingBottom: 4, borderBottom: `2px solid ${accent}33` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0, paddingBottom: 6, borderBottom: `2px solid ${accent}33` }}>
         <span className={live ? 'tvc-ping' : undefined} style={{ fontSize: 'clamp(12px,1.1vw,17px)', flexShrink: 0, filter: live ? `drop-shadow(0 0 8px ${accent})` : 'none' }}>{icon}</span>
         <span style={{ fontFamily: FS, fontSize: 'clamp(11px,1.05vw,16px)', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: accent }}>{label}</span>
         <span style={{ marginLeft: 'auto', fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,24px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM }}>{games.length}</span>
       </div>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'clamp(6px,0.7vw,10px)', minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'clamp(5px,0.6vw,9px)', minHeight: 0, overflow: 'hidden' }}>
         {games.slice(0, CAP).map(j => <JogoMini key={j.id} j={j} mode={mode} />)}
-        {games.length > CAP && <div style={{ fontFamily: FS, fontSize: 12, fontWeight: 700, color: C.creamMute, textAlign: 'center', paddingTop: 2 }}>+{games.length - CAP} jogos</div>}
+        {extra > 0 && <div style={{ flexShrink: 0, fontFamily: FS, fontSize: 'clamp(10px,0.9vw,13px)', fontWeight: 700, letterSpacing: '0.06em', color: accent, textAlign: 'center', paddingTop: 2 }}>+{extra} jogos</div>}
         {games.length === 0 && <div style={{ fontFamily: FS, fontSize: 13, color: C.creamFade, textAlign: 'center', paddingTop: 16 }}>—</div>}
       </div>
     </div>

@@ -58,20 +58,29 @@ function resolveActiveDay(now: Date, lineup: Lineup): { dayId: DayId | null; con
   const todayIso = todayIsoBR(now)
   const nowMin = nowAbsMinBR(now)
 
+  // 1) CAUDA PÓS-MEIA-NOITE tem PRIORIDADE. Num festival de dias consecutivos,
+  //    entre 00:00 e o fim do programa da véspera (~05h) ainda estamos no programa
+  //    do dia ANTERIOR — não no dia do calendário (que só começa à tarde).
+  //    nowAbsMinBR usa a convenção <12h → +24h, então nowMin >= 24*60 (1440) ⇔
+  //    estamos de madrugada (00:00–11:59). Sem este bloco vir primeiro, à meia-noite
+  //    o sistema pulava pro dia seguinte e perdia o que está realmente no ar.
+  if (nowMin >= 24 * 60) {
+    const yesterday = new Date(now)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayIso = todayIsoBR(yesterday)
+    if (yesterdayIso in EVENT_DATE_MAP) {
+      const id = EVENT_DATE_MAP[yesterdayIso]
+      const cfg = lineup[id]
+      if (cfg && nowMin <= toMin(cfg.rangeEnd)) {
+        return { dayId: id, config: cfg, nowMin }
+      }
+    }
+  }
+
+  // 2) Senão, o dia do calendário — se for dia de evento.
   if (todayIso in EVENT_DATE_MAP) {
     const id = EVENT_DATE_MAP[todayIso]
     return { dayId: id, config: lineup[id], nowMin }
-  }
-
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  const yesterdayIso = todayIsoBR(yesterday)
-  if (yesterdayIso in EVENT_DATE_MAP) {
-    const id = EVENT_DATE_MAP[yesterdayIso]
-    const cfg = lineup[id]
-    if (cfg && nowMin <= toMin(cfg.rangeEnd)) {
-      return { dayId: id, config: cfg, nowMin }
-    }
   }
 
   return { dayId: null, config: null, nowMin }

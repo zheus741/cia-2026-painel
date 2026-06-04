@@ -532,17 +532,35 @@ export function TVCarrossel(p: Props) {
       )
     }
     if (s.kind === 'classificacao') {
-      const top = p.rankingEquipes.slice(0, 8)
-      const max = top[0]?.total_pontos || 1
       const medal = (c: number) => c === 1 ? '🥇' : c === 2 ? '🥈' : c === 3 ? '🥉' : `${c}º`
+      const hasOficial = p.rankingEquipes.length > 0
+      const hasPodios = p.podiosRecentes.length > 0
+      // Ranking de vitórias AO VIVO a partir dos jogos encerrados (provisório).
+      const winsMap = new Map<string, { v: number; j: number }>()
+      for (const g of p.jogosEncerrados) {
+        const a = g.placar_a ?? 0, b = g.placar_b ?? 0
+        const upd = (nome: string | null | undefined, won: boolean) => {
+          if (!nome) return
+          const w = winsMap.get(nome) ?? { v: 0, j: 0 }
+          w.j++; if (won) w.v++
+          winsMap.set(nome, w)
+        }
+        upd(g.equipe_a_nome, a > b)
+        upd(g.equipe_b_nome, b > a)
+      }
+      const vitorias = [...winsMap.entries()].map(([nome, w]) => ({ nome, ...w })).sort((x, y) => y.v - x.v || y.j - x.j).slice(0, 9)
+      const maxV = vitorias[0]?.v || 1
+      const goleadas = [...p.jogosEncerrados].map(g => ({ g, m: Math.abs((g.placar_a ?? 0) - (g.placar_b ?? 0)) })).filter(x => x.m > 0).sort((x, y) => y.m - x.m).slice(0, 7).map(x => x.g)
+      const top = p.rankingEquipes.slice(0, 9)
+      const maxP = top[0]?.total_pontos || 1
       return (
         <>
-          <SceneHead accent={C.lavender} kicker="Esportivo · Classificação" title="Ranking & pódios" />
+          <SceneHead accent={C.lavender} kicker="Esportivo · Classificação ao vivo" title={hasOficial ? 'Ranking & pódios' : 'Vitórias de hoje'} />
           <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 'clamp(12px,1.4vw,22px)', minHeight: 0 }}>
-            {/* Ranking */}
-            <MiniPanel title="Ranking das atléticas" accent={C.lavender}>
+            {/* Esquerda: ranking oficial (pontos) OU vitórias dos jogos */}
+            <MiniPanel title={hasOficial ? 'Ranking das atléticas' : 'Mais vitórias hoje'} accent={C.lavender}>
               <div style={{ flex: 1, display: 'grid', gridAutoRows: '1fr', gap: 'clamp(5px,0.6vw,9px)', minHeight: 0 }}>
-                {top.map((e, i) => (
+                {hasOficial ? top.map((e, i) => (
                   <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 13, overflow: 'hidden' }}>
                     <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(18px,1.9vw,32px)', fontWeight: 800, color: i === 0 ? C.goldHi : i === 1 ? C.cream : i === 2 ? C.gold : C.creamFade, width: '1.5em', textAlign: 'center', fontVariantNumeric: NUM, flexShrink: 0 }}>{i + 1}</span>
                     <span style={{ width: 5, height: '60%', borderRadius: 99, background: e.cor_primaria || C.greenDeep, flexShrink: 0 }} />
@@ -551,18 +569,30 @@ export function TVCarrossel(p: Props) {
                       {e.divisao && <div style={{ fontFamily: FS, fontSize: 9.5, color: C.creamMute, letterSpacing: '0.06em' }}>{e.divisao}</div>}
                     </div>
                     <div style={{ width: '22%', height: 5, borderRadius: 99, background: 'rgba(250,247,240,0.07)', overflow: 'hidden', flexShrink: 0 }}>
-                      <div style={{ height: '100%', width: `${Math.round(e.total_pontos / max * 100)}%`, background: C.lavender, borderRadius: 99 }} />
+                      <div style={{ height: '100%', width: `${Math.round(e.total_pontos / maxP * 100)}%`, background: C.lavender, borderRadius: 99 }} />
                     </div>
                     <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.6vw,26px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '1.7em', textAlign: 'right' }}>{e.total_pontos}</span>
                   </div>
+                )) : vitorias.map((e, i) => (
+                  <div key={e.nome} style={{ display: 'flex', alignItems: 'center', gap: 13, overflow: 'hidden' }}>
+                    <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(18px,1.9vw,32px)', fontWeight: 800, color: i === 0 ? C.goldHi : i === 1 ? C.cream : i === 2 ? C.gold : C.creamFade, width: '1.5em', textAlign: 'center', fontVariantNumeric: NUM, flexShrink: 0 }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: FS, fontWeight: 700, fontSize: 'clamp(12px,1.2vw,19px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.nome}</div>
+                      <div style={{ fontFamily: FS, fontSize: 9.5, color: C.creamMute, letterSpacing: '0.04em' }}>{e.j} {e.j === 1 ? 'jogo' : 'jogos'}</div>
+                    </div>
+                    <div style={{ width: '22%', height: 5, borderRadius: 99, background: 'rgba(250,247,240,0.07)', overflow: 'hidden', flexShrink: 0 }}>
+                      <div style={{ height: '100%', width: `${Math.round(e.v / maxV * 100)}%`, background: C.green, borderRadius: 99 }} />
+                    </div>
+                    <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.6vw,26px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '1.7em', textAlign: 'right' }}>{e.v}<span style={{ fontSize: '0.55em', color: C.creamMute, fontStyle: 'normal', marginLeft: 1 }}>V</span></span>
+                  </div>
                 ))}
-                {top.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 13, alignSelf: 'center' }}>Sem pontuação ainda.</span>}
+                {!hasOficial && vitorias.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 13, alignSelf: 'center' }}>Sem jogos encerrados ainda.</span>}
               </div>
             </MiniPanel>
-            {/* Pódios */}
-            <MiniPanel title="Pódios recentes" accent={C.gold}>
-              <div style={{ flex: 1, display: 'grid', gridAutoRows: '1fr', gap: 'clamp(5px,0.6vw,9px)', minHeight: 0 }}>
-                {p.podiosRecentes.slice(0, 8).map((pd, i) => (
+            {/* Direita: pódios oficiais OU maiores goleadas */}
+            <MiniPanel title={hasPodios ? 'Pódios recentes' : 'Maiores goleadas de hoje'} accent={C.gold}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'clamp(5px,0.6vw,9px)', minHeight: 0, overflow: 'hidden' }}>
+                {hasPodios ? p.podiosRecentes.slice(0, 8).map((pd, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 13, overflow: 'hidden' }}>
                     <span style={{ fontSize: 'clamp(18px,1.9vw,30px)', flexShrink: 0, width: '1.5em', textAlign: 'center' }}>{pd.modalidade_icone ?? medal(pd.colocacao)}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -572,8 +602,8 @@ export function TVCarrossel(p: Props) {
                     <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,22px)', fontWeight: 800, color: pd.colocacao === 1 ? C.goldHi : C.cream, flexShrink: 0 }}>{medal(pd.colocacao)}</span>
                     <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(13px,1.4vw,21px)', fontWeight: 800, color: C.green, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '2.2em', textAlign: 'right' }}>+{pd.pontos}</span>
                   </div>
-                ))}
-                {p.podiosRecentes.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 13, alignSelf: 'center' }}>Sem pódios ainda.</span>}
+                )) : goleadas.map(g => <JogoMini key={g.id} j={g} mode="result" />)}
+                {!hasPodios && goleadas.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 13, alignSelf: 'center' }}>Sem resultados ainda.</span>}
               </div>
             </MiniPanel>
           </div>

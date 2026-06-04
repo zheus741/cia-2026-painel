@@ -32,7 +32,6 @@ const C = {
 const FD = 'var(--font-fraunces), Georgia, serif'
 const FS = FD
 const NUM = 'tabular-nums' as const
-const SCENE_MS = 11_000
 
 const CANAL_LABEL: Record<string, string> = {
   instagram_cia: 'IG CIA', instagram_jogo_rapido: 'IG Jogo Rápido', tiktok_cia: 'TikTok CIA', instagram_exp: 'IG EXP',
@@ -265,6 +264,48 @@ function BarRow({ label, color, total, pub, max }: { label: string; color: strin
   )
 }
 
+// Donut do pipeline — gráfico elaborado (composição por status)
+function PipelineDonut({ stats }: { stats: PipelineStats }) {
+  const total = Math.max(1, stats.total)
+  const pct = stats.total > 0 ? Math.round(stats.publicado / stats.total * 100) : 0
+  const segs = [
+    { v: stats.publicado, c: C.green, label: 'Publicado' },
+    { v: stats.pronto, c: C.blue, label: 'Pronto' },
+    { v: stats.em_producao, c: C.gold, label: 'Em produção' },
+    { v: stats.rascunho, c: 'rgba(250,247,240,0.20)', label: 'Rascunho' },
+  ]
+  const R = 54, SW = 16, CIRC = 2 * Math.PI * R
+  let acc = 0
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(14px,1.6vw,30px)' }}>
+      <div style={{ position: 'relative', flexShrink: 0, lineHeight: 0 }}>
+        <svg viewBox="0 0 140 140" style={{ width: 'clamp(108px,9vw,162px)', height: 'auto', transform: 'rotate(-90deg)' }}>
+          <circle cx="70" cy="70" r={R} fill="none" stroke="rgba(250,247,240,0.05)" strokeWidth={SW} />
+          {segs.map((s, i) => {
+            const len = (s.v / total) * CIRC
+            const el = <circle key={i} cx="70" cy="70" r={R} fill="none" stroke={s.c} strokeWidth={SW} strokeDasharray={`${len} ${CIRC - len}`} strokeDashoffset={-acc} />
+            acc += len
+            return el
+          })}
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontFamily: FD, fontStyle: 'italic', fontVariationSettings: "'opsz' 96, 'SOFT' 0, 'WONK' 1", fontSize: 'clamp(26px,2.8vw,46px)', fontWeight: 800, color: C.green, lineHeight: 1, fontVariantNumeric: NUM }}>{pct}%</span>
+          <span style={{ fontFamily: FS, fontSize: 'clamp(7px,0.62vw,9.5px)', color: C.creamMute, letterSpacing: '0.16em', textTransform: 'uppercase' }}>publicado</span>
+        </div>
+      </div>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 'clamp(5px,0.6vw,10px)' }}>
+        {segs.map((s, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: s.c, flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, fontFamily: FS, fontSize: 'clamp(10px,0.95vw,15px)', color: C.creamDim, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</span>
+            <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(13px,1.3vw,21px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0 }}>{s.v}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Componente principal
 // ─────────────────────────────────────────────────────────────────────────────
@@ -282,8 +323,6 @@ export function TVCarrossel(p: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Derived ──
-  const healthPct = p.pipelineStats.total > 0 ? Math.round(p.pipelineStats.publicado / p.pipelineStats.total * 100) : 0
-  const healthColor = healthPct >= 70 ? C.green : healthPct >= 40 ? C.gold : C.red
   const ckPct = p.ckTotal > 0 ? Math.round(p.ckFeitos / p.ckTotal * 100) : 0
   const presPct = p.equipeAtiva > 0 ? Math.round(p.emCampo.length / p.equipeAtiva * 100) : 0
   const totalHoje = p.conteudosPorDia.find(d => p.diasEvento[d.idx - 1]?.id === p.diaAtualId)
@@ -295,21 +334,22 @@ export function TVCarrossel(p: Props) {
   // ── 3 telas: Jogos (ao vivo+resultados+próximos) · Classificação (ranking+pódios)
   //    · Painel de dados. Esportivo intercalado com a tela de dados. ──
   const temJogos = p.jogosAoVivo.length + p.jogosEncerrados.length + proxJogos.length > 0
-  const temClass = p.rankingEquipes.length + p.podiosRecentes.length > 0
   const esportivas: Scene[] = []
   if (temJogos) esportivas.push({ kind: 'jogos' })
-  if (temClass) esportivas.push({ kind: 'classificacao' })
+  esportivas.push({ kind: 'classificacao' }) // sempre — mostra estado vazio até ter resultado
   const scenes: Scene[] = []
   esportivas.forEach(s => { scenes.push(s); scenes.push({ kind: 'painel' }) })
   if (scenes.length === 0) scenes.push({ kind: 'painel' })
   const scene = scenes[idx % scenes.length]
   const scenePos = idx % scenes.length
+  // Painel de dados fica mais tempo na tela (mais coisa pra ler).
+  const sceneDurMs = scene?.kind === 'painel' ? 20_000 : 12_000
 
-  // ── Rotação ──
+  // ── Rotação (duração por cena) ──
   useEffect(() => {
-    const id = setInterval(() => setIdx(i => i + 1), SCENE_MS)
-    return () => clearInterval(id)
-  }, [])
+    const t = setTimeout(() => setIdx(i => i + 1), sceneDurMs)
+    return () => clearTimeout(t)
+  }, [idx, sceneDurMs])
 
   // ── Refresh + realtime + fullscreen ──
   function doRefresh() { router.refresh() }
@@ -386,14 +426,19 @@ export function TVCarrossel(p: Props) {
           <SceneHead accent={C.gold} kicker="Cobertura · Tempo real" title="Painel de dados"
             right={diaIdx > 0 ? <span style={{ fontFamily: FS, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: C.creamMute }}>{p.velocidade}/h · {p.capturasCount} capturas</span> : undefined} />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: G, minHeight: 0 }}>
-            {/* KPIs */}
+            {/* Hero: donut do pipeline + KPIs */}
             <div style={{ display: 'flex', gap: G, flexShrink: 0 }}>
-              <MiniKpi label="Saúde" value={`${healthPct}%`} sub={`${p.pipelineStats.publicado}/${p.pipelineStats.total} pub`} accent={healthColor} />
-              <MiniKpi label="Publicados hoje" value={`${publicadosHoje}/${totalConteudosHoje}`} sub={`${p.velocidade}/h`} accent={C.goldHi} />
-              <MiniKpi label="Em campo" value={p.emCampo.length} sub={`${presPct}% presença`} accent={p.emCampo.length > 0 ? C.green : C.creamFade} />
-              <MiniKpi label="Setores" value={p.setoresCobertos} sub={p.setoresFrios.length > 0 ? `${p.setoresFrios.length} frios` : 'todos ok'} accent={p.setoresFrios.length > 0 ? C.gold : C.green} />
-              <MiniKpi label="Checklist" value={`${ckPct}%`} sub={`${p.ckFeitos}/${p.ckTotal}`} accent={ckPct >= 70 ? C.green : C.gold} />
-              <MiniKpi label="Capturas" value={p.capturasCount} sub="pendentes" accent={p.capturasCount > 0 ? C.gold : C.creamFade} />
+              <MiniPanel title="Pipeline · por status" accent={C.green} style={{ flex: 1.15, justifyContent: 'center' }}>
+                <PipelineDonut stats={p.pipelineStats} />
+              </MiniPanel>
+              <div style={{ flex: 1.7, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '1fr 1fr', gap: G }}>
+                <MiniKpi label="Publicados hoje" value={`${publicadosHoje}/${totalConteudosHoje}`} sub={`${p.velocidade}/h · ritmo`} accent={C.goldHi} />
+                <MiniKpi label="Em campo" value={p.emCampo.length} sub={`${presPct}% presença`} accent={p.emCampo.length > 0 ? C.green : C.creamFade} />
+                <MiniKpi label="Produzindo" value={p.funilProducao?.produzindoAgora ?? 0} sub="agora" accent={C.blue} />
+                <MiniKpi label="Setores" value={p.setoresCobertos} sub={p.setoresFrios.length > 0 ? `${p.setoresFrios.length} frios` : 'todos ok'} accent={p.setoresFrios.length > 0 ? C.gold : C.green} />
+                <MiniKpi label="Checklist" value={`${ckPct}%`} sub={`${p.ckFeitos}/${p.ckTotal}`} accent={ckPct >= 70 ? C.green : C.gold} />
+                <MiniKpi label="Capturas" value={p.capturasCount} sub="pendentes" accent={p.capturasCount > 0 ? C.gold : C.creamFade} />
+              </div>
             </div>
             {/* Meio: funil+dias · canais+tipos · patrocínio */}
             <div style={{ flex: 1.15, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: G, minHeight: 0 }}>
@@ -577,7 +622,7 @@ export function TVCarrossel(p: Props) {
 
       {/* Footer — progresso de cenas + barra */}
       <footer style={{ zIndex: 2, flexShrink: 0, borderTop: `1px solid ${C.border}` }}>
-        <div key={scenePos} className="tvc-prog" style={{ height: 2, background: `linear-gradient(90deg, ${C.gold}, ${C.green})`, animationDuration: `${SCENE_MS}ms` }} />
+        <div key={scenePos} className="tvc-prog" style={{ height: 2, background: `linear-gradient(90deg, ${C.gold}, ${C.green})`, animationDuration: `${sceneDurMs}ms` }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 28px' }}>
           {scenes.map((s, i) => (
             <span key={i} style={{

@@ -61,7 +61,7 @@ export default async function EscalaAVPage() {
     // o que torna o embed ambíguo e quebra a query. Resolvemos os joins em JS.
     supabase
       .from('turnos')
-      .select('id, dia_id, setor_id, funcao, user_id, prioridade, status_escala, parceiro_id, jogo_id')
+      .select('id, dia_id, setor_id, funcao, user_id, prioridade, status_escala, parceiro_id, jogo_id, foco_label')
       .in('funcao', ['foto', 'video']),
 
     // Jogos completos para vincular ao turno
@@ -118,6 +118,7 @@ export default async function EscalaAVPage() {
       status_escala: t.status_escala,
       parceiro_id:   t.parceiro_id,
       jogo_id:       t.jogo_id ?? null,
+      foco_label:    (t as { foco_label?: string | null }).foco_label ?? null,
       setor:    t.setor_id && setorNome.has(t.setor_id) ? { nome: setorNome.get(t.setor_id)! } : null,
       user:     prof
         ? { id: prof.id, nome: prof.nome, funcao_principal: prof.funcao_principal, foto_url: prof.foto_url }

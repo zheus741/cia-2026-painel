@@ -13,12 +13,25 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { createTurnoAV, updateTurnoAV, deleteTurnoAV, replicarDiaAV, type TurnoAVPayload } from './actions'
+import { BATERIAS } from '@/lib/eventos/baterias-cheer'
 import { toast } from '@/components/toast'
 import { confirmDialog } from '@/components/confirm-dialog'
 
 // ─── Brand colors Foto vs Vídeo ─────────────────────────────────────────────
 const FOTO_COLOR  = '#7c3aed'
 const VIDEO_COLOR = '#1a5c5c'
+
+// ─── Foco da cobertura: eventos sem agenda em `jogos` ───────────────────────
+// Individuais sem confronto (atletismo/natação/lutas/xadrez) não têm setor/dia
+// no sistema — viram opção fixa. Baterias/Cheer vêm da lista estática por dia.
+const FOCO_INDIVIDUAIS = [
+  { emoji: '🏃', label: 'Atletismo' },
+  { emoji: '🏊', label: 'Natação' },
+  { emoji: '🥋', label: 'Judô' },
+  { emoji: '🥋', label: 'Jiu-Jitsu' },
+  { emoji: '♟️', label: 'Xadrez' },
+]
+const CHEER_DATA = '2026-06-06' // Cheerleading acontece no sábado
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types — contrato consumido por page.tsx (NÃO alterar)
@@ -41,6 +54,7 @@ export interface TurnoAV {
   funcao: string; user_id: string | null
   prioridade: string | null; status_escala: string | null; parceiro_id: string | null
   jogo_id: string | null
+  foco_label: string | null
   setor: { nome: string } | null
   user: { id: string; nome: string; funcao_principal: string | null; foto_url: string | null } | null
   parceiro: { nome: string; cor_hex: string } | null
@@ -150,7 +164,8 @@ function TurnoDialog({
   const [parceiro, setParceiro]     = React.useState('')
   const [userId, setUserId]         = React.useState('')
   const [prioridade, setPrioridade] = React.useState<'alta' | 'media' | 'baixa'>('media')
-  const [jogoId, setJogoId]         = React.useState('')
+  // Foco unificado: '' (geral) | 'jogo:<id>' (jogo real) | 'label:<texto>' (bateria/cheer/individual)
+  const [focoValue, setFocoValue]   = React.useState('')
 
   React.useEffect(() => {
     if (!open) return
@@ -160,7 +175,11 @@ function TurnoDialog({
     setParceiro(editing?.parceiro_id ?? '')
     setUserId(editing?.user_id ?? '')
     setPrioridade((editing?.prioridade as 'alta' | 'media' | 'baixa') ?? 'media')
-    setJogoId(editing?.jogo_id ?? '')
+    setFocoValue(
+      editing?.jogo_id ? `jogo:${editing.jogo_id}`
+      : editing?.foco_label ? `label:${editing.foco_label}`
+      : '',
+    )
   }, [open, editing, defaultFuncao, defaultSetorId])
 
   // Filtra jogos pelo dia + setor selecionados
@@ -171,11 +190,20 @@ function TurnoDialog({
       .sort((a, b) => (a.inicio ?? '').localeCompare(b.inicio ?? ''))
   }, [jogos, dia.id, setorId])
 
-  // Se trocar setor e o jogo selecionado não pertence mais, limpa
+  // Baterias/Cheer do dia (lista estática, filtrada só pela data) + individuais fixos
+  const bateriasDoDia = React.useMemo(
+    () => BATERIAS.filter(b => b.data === dia.data),
+    [dia.data],
+  )
+  const temCheer = dia.data === CHEER_DATA
+
+  // Se trocar setor e o JOGO selecionado não pertence mais, limpa.
+  // (Labels de bateria/cheer/individual não dependem do setor — não limpa.)
   React.useEffect(() => {
-    if (!jogoId) return
-    if (!jogosDoContexto.some(j => j.id === jogoId)) setJogoId('')
-  }, [jogosDoContexto, jogoId])
+    if (!focoValue.startsWith('jogo:')) return
+    const id = focoValue.slice(5)
+    if (!jogosDoContexto.some(j => j.id === id)) setFocoValue('')
+  }, [jogosDoContexto, focoValue])
 
   const setorSel  = setores.find(s => s.id === setorId) ?? null
   const colabSel  = profiles.find(p => p.id === userId) ?? null
@@ -188,6 +216,8 @@ function TurnoDialog({
     setLoading(true)
     setError(null)
     try {
+      const jogo_id    = focoValue.startsWith('jogo:')  ? focoValue.slice(5) : null
+      const foco_label = focoValue.startsWith('label:') ? focoValue.slice(6) : null
       const payload: TurnoAVPayload = {
         dia_id:      dia.id,
         setor_id:    setorId || null,
@@ -195,7 +225,8 @@ function TurnoDialog({
         parceiro_id: parceiro && parceiro !== '__none__' ? parceiro : null,
         user_id:     userId || null,
         prioridade,
-        jogo_id:     jogoId || null,
+        jogo_id,
+        foco_label,
       }
       const res = editing
         ? await updateTurnoAV(editing.id, payload)
@@ -348,93 +379,100 @@ function TurnoDialog({
             </div>
           </div>
 
-          {/* ── Jogo vinculado (opcional) ───────────────────────────────── */}
-          {setorId && (
-            <div>
-              <Label className="mb-1.5 flex items-center gap-1 text-xs">
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-2 w-2 rounded-full"
-                  style={{ background: '#dc2626' }}
-                />
-                Jogo em foco
-                <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">
-                  (opcional)
-                </span>
-              </Label>
+          {/* ── Foco da cobertura (opcional) ────────────────────────────── */}
+          {setorId && (() => {
+            // Rótulo do item selecionado (pro trigger)
+            const focoSel = (() => {
+              if (focoValue.startsWith('jogo:')) {
+                const j = jogosDoContexto.find(x => x.id === focoValue.slice(5))
+                return j
+                  ? `${fmtHora(j.inicio)} · ${(j.equipe_a_nome ?? 'A definir')} × ${(j.equipe_b_nome ?? 'A definir')}`
+                  : null
+              }
+              if (focoValue.startsWith('label:')) return focoValue.slice(6)
+              return null
+            })()
+            const temOutros = bateriasDoDia.length > 0 || temCheer
 
-              {jogosDoContexto.length === 0 ? (
-                <div
-                  className="rounded-lg border border-dashed px-3 py-2.5 text-[11px]"
-                  style={{
-                    borderColor: 'var(--border)',
-                    color: 'var(--muted-foreground)',
-                    background: 'var(--muted)',
-                  }}
-                >
-                  Nenhum jogo deste setor neste dia. A cobertura será geral.
-                </div>
-              ) : (
-                <>
-                  <Select value={jogoId || '__none__'} onValueChange={v => setJogoId(v === '__none__' ? '' : v)}>
-                    <SelectTrigger className="h-auto min-h-[44px] py-2 text-left text-sm">
-                      <SelectValue placeholder="— selecione o jogo —">
-                        {jogoId && (() => {
-                          const j = jogosDoContexto.find(x => x.id === jogoId)
-                          if (!j) return null
-                          return (
-                            <div className="flex w-full flex-col gap-0.5">
-                              <span className="text-[11px] font-semibold text-[var(--muted-foreground)]">
-                                {fmtHora(j.inicio)}
-                                {j.modalidade_nome ? ` · ${j.modalidade_nome}` : ''}
-                                {j.divisao ? ` · ${j.divisao}` : ''}
+            return (
+              <div>
+                <Label className="mb-1.5 flex items-center gap-1 text-xs">
+                  <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full" style={{ background: '#dc2626' }} />
+                  Foco da cobertura
+                  <span className="ml-1 text-[10px] font-normal text-[var(--muted-foreground)]">(opcional)</span>
+                </Label>
+
+                <Select value={focoValue || '__none__'} onValueChange={v => setFocoValue(v === '__none__' ? '' : v)}>
+                  <SelectTrigger className="h-auto min-h-[44px] py-2 text-left text-sm">
+                    <SelectValue placeholder="— selecione o foco —">
+                      {focoSel && <span className="text-sm font-semibold">{focoSel}</span>}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">
+                      <span className="text-[var(--muted-foreground)]">Sem foco · cobertura geral</span>
+                    </SelectItem>
+
+                    {/* Jogos do setor/dia */}
+                    {jogosDoContexto.length > 0 && (
+                      <div className="px-2 pb-1 pt-2 text-[9px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        Jogos deste setor
+                      </div>
+                    )}
+                    {jogosDoContexto.map(j => (
+                      <SelectItem key={j.id} value={`jogo:${j.id}`}>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] font-semibold tracking-wide text-[var(--muted-foreground)]">
+                            {fmtHora(j.inicio)}
+                            {j.modalidade_nome ? ` · ${j.modalidade_nome}` : ''}
+                            {j.divisao ? ` · ${j.divisao}` : ''}
+                            {j.status === 'ao_vivo' && (
+                              <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-600">
+                                ● ao vivo
                               </span>
-                              <span className="text-sm font-semibold">
-                                {(j.equipe_a_nome ?? 'A definir')}
-                                <span className="mx-1.5 text-[var(--muted-foreground)]">×</span>
-                                {(j.equipe_b_nome ?? 'A definir')}
-                              </span>
-                            </div>
-                          )
-                        })()}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">
-                        <span className="text-[var(--muted-foreground)]">Sem jogo · cobertura geral</span>
+                            )}
+                          </span>
+                          <span className="text-[12px] font-semibold">
+                            {(j.equipe_a_nome ?? 'A definir')}
+                            <span className="mx-1.5 text-[var(--muted-foreground)]">×</span>
+                            {(j.equipe_b_nome ?? 'A definir')}
+                          </span>
+                        </div>
                       </SelectItem>
-                      {jogosDoContexto.map(j => (
-                        <SelectItem key={j.id} value={j.id}>
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[10px] font-semibold tracking-wide text-[var(--muted-foreground)]">
-                              {fmtHora(j.inicio)}
-                              {j.modalidade_nome ? ` · ${j.modalidade_nome}` : ''}
-                              {j.divisao ? ` · ${j.divisao}` : ''}
-                              {j.status === 'ao_vivo' && (
-                                <span className="ml-1.5 inline-flex items-center gap-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-red-600">
-                                  ● ao vivo
-                                </span>
-                              )}
-                            </span>
-                            <span className="text-[12px] font-semibold">
-                              {(j.equipe_a_nome ?? 'A definir')}
-                              <span className="mx-1.5 text-[var(--muted-foreground)]">×</span>
-                              {(j.equipe_b_nome ?? 'A definir')}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="mt-1.5 text-[10px] text-[var(--muted-foreground)]">
-                    {jogoId
-                      ? 'O colaborador vê o jogo destacado na escala dele.'
-                      : `${jogosDoContexto.length} ${jogosDoContexto.length === 1 ? 'jogo' : 'jogos'} disponível${jogosDoContexto.length === 1 ? '' : 'is'} neste setor/dia.`}
-                  </p>
-                </>
-              )}
-            </div>
-          )}
+                    ))}
+
+                    {/* Baterias / Cheer do dia */}
+                    {temOutros && (
+                      <div className="px-2 pb-1 pt-2 text-[9px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+                        Baterias / Cheer (deste dia)
+                      </div>
+                    )}
+                    {bateriasDoDia.map(b => {
+                      const lbl = `🥁 Desafio de Baterias · ${b.divisao}`
+                      return <SelectItem key={lbl} value={`label:${lbl}`}><span className="text-[12px] font-semibold">{lbl}</span></SelectItem>
+                    })}
+                    {temCheer && (
+                      <SelectItem value="label:📣 Cheerleading"><span className="text-[12px] font-semibold">📣 Cheerleading</span></SelectItem>
+                    )}
+
+                    {/* Individuais (sem confronto / sem agenda) */}
+                    <div className="px-2 pb-1 pt-2 text-[9px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">
+                      Individuais (sem confronto)
+                    </div>
+                    {FOCO_INDIVIDUAIS.map(i => {
+                      const lbl = `${i.emoji} ${i.label}`
+                      return <SelectItem key={lbl} value={`label:${lbl}`}><span className="text-[12px] font-semibold">{lbl}</span></SelectItem>
+                    })}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1.5 text-[10px] text-[var(--muted-foreground)]">
+                  {focoSel
+                    ? 'O colaborador vê esse foco destacado na escala dele.'
+                    : 'Jogo, bateria, cheer ou individual — ou deixe em cobertura geral.'}
+                </p>
+              </div>
+            )
+          })()}
 
           {/* ── Prioridade ── */}
           <div>
@@ -704,6 +742,18 @@ function CoberturaCell({
             <span className="truncate">
               {fmtHora(turno.jogo.inicio)} · {turno.jogo.equipe_a_nome ?? '?'} × {turno.jogo.equipe_b_nome ?? '?'}
             </span>
+          </p>
+        )}
+
+        {/* Linha 2 alt: foco que não é jogo (bateria/cheer/individual) */}
+        {!turno.jogo && turno.foco_label && (
+          <p
+            className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-semibold"
+            style={{ color: '#b45309' }}
+            title={turno.foco_label}
+          >
+            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: '#f59e0b' }} />
+            <span className="truncate">{turno.foco_label}</span>
           </p>
         )}
       </div>

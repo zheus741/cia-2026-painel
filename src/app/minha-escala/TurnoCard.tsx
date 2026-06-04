@@ -42,6 +42,7 @@ export interface TurnoCardData {
     divisao: string | null
     status: string | null
   } | null
+  foco_label?: string | null
 }
 
 function fmtTime(ts: string) {
@@ -209,6 +210,24 @@ export function TurnoCard({ turno }: { turno: TurnoCardData }) {
               {(turno.jogo.equipe_a_nome ?? 'A definir')}
               <span className="mx-1.5 text-[var(--muted-foreground)]">×</span>
               {(turno.jogo.equipe_b_nome ?? 'A definir')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Foco que não é jogo (bateria / cheer / individual) ── */}
+      {!turno.jogo && turno.foco_label && (
+        <div
+          className="flex items-center gap-2 rounded-lg border px-3 py-2"
+          style={{ background: 'rgba(232,184,47,0.08)', borderColor: 'rgba(232,184,47,0.32)' }}
+        >
+          <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ background: '#f59e0b' }} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#b45309' }}>
+              Foco da cobertura
+            </p>
+            <p className="mt-0.5 truncate text-[13px] font-bold text-[var(--foreground)]">
+              {turno.foco_label}
             </p>
           </div>
         </div>

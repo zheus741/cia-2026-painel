@@ -50,7 +50,7 @@ export default async function MinhaEscalaPage() {
       .from('turnos')
       .select(`
         id, funcao, inicio, fim, is_roaming, observacoes,
-        prioridade, briefing_editorial, conteudos_esperados, status_escala,
+        prioridade, briefing_editorial, conteudos_esperados, status_escala, foco_label,
         comentarios_count:comentarios_turno(count),
         dia:dias_evento(nome_dia, data),
         setor:setores(nome, tem_wifi, maps_url, notas_acesso),

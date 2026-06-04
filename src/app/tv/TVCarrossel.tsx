@@ -109,20 +109,6 @@ function fmtTime(iso: string | null) {
   if (!iso) return '--:--'
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
 }
-function chunk<T>(arr: T[], n: number): T[][] {
-  const out: T[][] = []
-  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n))
-  return out
-}
-function interleave<T>(a: T[], b: T[]): T[] {
-  const out: T[] = []
-  const max = Math.max(a.length, b.length)
-  for (let i = 0; i < max; i++) {
-    if (i < a.length) out.push(a[i])
-    if (i < b.length) out.push(b[i])
-  }
-  return out
-}
 function subInfo(j: Jogo): string {
   const bits: string[] = []
   if (j.modalidade_nome) bits.push(j.modalidade_nome)
@@ -181,75 +167,63 @@ function SceneHead({ accent, kicker, title, right }: { accent: string; kicker: s
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Card de jogo (ao vivo / resultado / próximo)
+// Linha de jogo compacta (ao vivo / resultado / próximo) — usada nas colunas
 // ─────────────────────────────────────────────────────────────────────────────
-function GameCard({ j, mode, delay }: { j: Jogo; mode: 'live' | 'result' | 'next'; delay: number }) {
+function JogoMini({ j, mode }: { j: Jogo; mode: 'live' | 'result' | 'next' }) {
   const accent = mode === 'live' ? C.red : mode === 'result' ? C.green : C.gold
   const a = j.placar_a ?? 0, b = j.placar_b ?? 0
   const winA = mode === 'result' && a > b, winB = mode === 'result' && b > a
-  const showScore = mode !== 'next'
-
-  const Team = ({ name, align, win }: { name: string | null; align: 'right' | 'left'; win: boolean }) => (
-    <div style={{ flex: 1, minWidth: 0, textAlign: align }}>
-      <div style={{
-        fontFamily: FS, fontWeight: win ? 800 : 600,
-        fontSize: 'clamp(15px,1.5vw,26px)', lineHeight: 1.05,
-        color: win ? C.cream : (mode === 'result' ? C.creamDim : C.cream),
-        letterSpacing: '-0.01em',
-        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-      }}>{name ?? 'A definir'}</div>
-    </div>
-  )
-
+  const nameStyle = (win: boolean, align: 'right' | 'left'): React.CSSProperties => ({
+    flex: 1, minWidth: 0, textAlign: align,
+    fontFamily: FS, fontWeight: win ? 800 : 600, fontSize: 'clamp(12px,1.15vw,19px)',
+    color: win ? C.cream : (mode === 'result' ? C.creamDim : C.cream),
+    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  })
   return (
     <div className="tvc-card" style={{
-      animationDelay: `${delay}ms`,
-      background: mode === 'live' ? 'rgba(255,77,77,0.05)' : C.panel,
+      background: mode === 'live' ? 'rgba(255,77,77,0.06)' : C.panel,
       border: `1px solid ${mode === 'live' ? 'rgba(255,77,77,0.22)' : C.border}`,
-      borderRadius: 18, padding: 'clamp(12px,1.4vw,22px) clamp(14px,1.6vw,26px)',
-      display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center', position: 'relative', overflow: 'hidden',
+      borderRadius: 13, padding: 'clamp(7px,0.8vw,13px) clamp(11px,1.2vw,18px)',
+      display: 'flex', flexDirection: 'column', gap: 4, overflow: 'hidden',
     }}>
-      {mode === 'live' && (
-        <span style={{ position: 'absolute', top: 12, left: 0, right: 0, margin: '0 auto', width: 'fit-content',
-          fontFamily: FS, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.22em', color: C.red,
-          display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span className="tvc-ping" style={{ width: 6, height: 6, borderRadius: '50%', background: C.red }} />AO VIVO
-        </span>
-      )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px,1vw,20px)', marginTop: mode === 'live' ? 14 : 0 }}>
-        <Team name={j.equipe_a_nome} align="right" win={winA} />
-        {showScore ? (
-          <div style={{
-            fontFamily: FD, fontStyle: 'italic', fontVariationSettings: "'opsz' 144, 'SOFT' 0, 'WONK' 1",
-            fontSize: 'clamp(34px,4.4vw,68px)', fontWeight: 900, color: accent, letterSpacing: '-0.05em',
-            lineHeight: 0.85, fontVariantNumeric: NUM, flexShrink: 0, display: 'flex', alignItems: 'baseline', gap: 'clamp(6px,0.6vw,12px)',
-          }}>
-            <span style={{ opacity: winB ? 0.4 : 1 }}>{a}</span>
-            <span style={{ fontSize: '0.4em', color: C.creamFade, fontWeight: 400, fontStyle: 'normal' }}>×</span>
-            <span style={{ opacity: winA ? 0.4 : 1 }}>{b}</span>
-          </div>
-        ) : (
-          <div style={{
-            fontFamily: FD, fontStyle: 'italic', fontVariationSettings: "'opsz' 96, 'SOFT' 0, 'WONK' 1",
-            fontSize: 'clamp(22px,2.4vw,38px)', fontWeight: 800, color: C.gold, letterSpacing: '-0.02em',
-            flexShrink: 0, fontVariantNumeric: NUM,
-          }}>{fmtTime(j.inicio)}</div>
-        )}
-        <Team name={j.equipe_b_nome} align="left" win={winB} />
-      </div>
-      <div style={{ textAlign: 'center', fontFamily: FS, fontSize: 'clamp(9px,0.85vw,13px)', fontWeight: 600,
-        letterSpacing: '0.06em', color: C.creamMute, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-        {j.modalidade_icone && <span style={{ fontSize: '1.3em' }}>{j.modalidade_icone}</span>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: FS, fontSize: 'clamp(9px,0.78vw,12px)', fontWeight: 600, color: C.creamMute, letterSpacing: '0.03em' }}>
+        {j.modalidade_icone && <span style={{ fontSize: '1.15em' }}>{j.modalidade_icone}</span>}
         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subInfo(j)}</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(7px,0.8vw,12px)' }}>
+        <span style={nameStyle(winA, 'right')}>{j.equipe_a_nome ?? 'A definir'}</span>
+        {mode === 'next' ? (
+          <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,25px)', fontWeight: 800, color: C.gold, flexShrink: 0, fontVariantNumeric: NUM }}>{fmtTime(j.inicio)}</span>
+        ) : (
+          <span style={{ fontFamily: FD, fontStyle: 'italic', fontVariationSettings: "'opsz' 96, 'SOFT' 0, 'WONK' 1", fontSize: 'clamp(20px,2.1vw,36px)', fontWeight: 900, color: accent, letterSpacing: '-0.04em', flexShrink: 0, display: 'flex', alignItems: 'baseline', gap: 6, lineHeight: 1, fontVariantNumeric: NUM }}>
+            <span style={{ opacity: winB ? 0.4 : 1 }}>{a}</span>
+            <span style={{ fontSize: '0.42em', color: C.creamFade, fontWeight: 400, fontStyle: 'normal' }}>×</span>
+            <span style={{ opacity: winA ? 0.4 : 1 }}>{b}</span>
+          </span>
+        )}
+        <span style={nameStyle(winB, 'left')}>{j.equipe_b_nome ?? 'A definir'}</span>
       </div>
     </div>
   )
 }
 
-function gridCols(n: number) {
-  if (n <= 1) return '1fr'
-  if (n <= 4) return '1fr 1fr'
-  return '1fr 1fr'
+// Coluna de jogos (Ao vivo / Resultados / Próximos)
+function ColunaJogos({ icon, label, accent, games, mode, live }: { icon: string; label: string; accent: string; games: Jogo[]; mode: 'live' | 'result' | 'next'; live?: boolean }) {
+  const CAP = 9
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(7px,0.8vw,12px)', minHeight: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0, paddingBottom: 4, borderBottom: `2px solid ${accent}33` }}>
+        <span className={live ? 'tvc-ping' : undefined} style={{ fontSize: 'clamp(12px,1.1vw,17px)', flexShrink: 0, filter: live ? `drop-shadow(0 0 8px ${accent})` : 'none' }}>{icon}</span>
+        <span style={{ fontFamily: FS, fontSize: 'clamp(11px,1.05vw,16px)', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: accent }}>{label}</span>
+        <span style={{ marginLeft: 'auto', fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,24px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM }}>{games.length}</span>
+      </div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'clamp(6px,0.7vw,10px)', minHeight: 0, overflow: 'hidden' }}>
+        {games.slice(0, CAP).map(j => <JogoMini key={j.id} j={j} mode={mode} />)}
+        {games.length > CAP && <div style={{ fontFamily: FS, fontSize: 12, fontWeight: 700, color: C.creamMute, textAlign: 'center', paddingTop: 2 }}>+{games.length - CAP} jogos</div>}
+        {games.length === 0 && <div style={{ fontFamily: FS, fontSize: 13, color: C.creamFade, textAlign: 'center', paddingTop: 16 }}>—</div>}
+      </div>
+    </div>
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -296,11 +270,8 @@ function BarRow({ label, color, total, pub, max }: { label: string; color: strin
 // Componente principal
 // ─────────────────────────────────────────────────────────────────────────────
 type Scene =
-  | { kind: 'live'; games: Jogo[]; page: number; pages: number }
-  | { kind: 'result'; games: Jogo[]; page: number; pages: number }
-  | { kind: 'next'; games: Jogo[]; page: number; pages: number }
-  | { kind: 'ranking' }
-  | { kind: 'podios' }
+  | { kind: 'jogos' }
+  | { kind: 'classificacao' }
   | { kind: 'painel' }
 
 export function TVCarrossel(p: Props) {
@@ -322,17 +293,15 @@ export function TVCarrossel(p: Props) {
   const diaIdx = p.diaAtualId ? p.diasEvento.findIndex(d => d.id === p.diaAtualId) + 1 : 0
   const proxJogos = p.jogosHoje.filter(j => j.status === 'agendado')
 
-  // ── Cenas: esportivas (legíveis, em cenas próprias) intercaladas com UMA
-  //    tela de dados que mostra tudo de uma vez (Painel de dados). ──
-  const sports: Scene[] = []
-  chunk(p.jogosAoVivo, 6).forEach((g, i, arr) => sports.push({ kind: 'live', games: g, page: i + 1, pages: arr.length }))
-  chunk(p.jogosEncerrados, 8).forEach((g, i, arr) => sports.push({ kind: 'result', games: g, page: i + 1, pages: arr.length }))
-  chunk(proxJogos, 8).forEach((g, i, arr) => sports.push({ kind: 'next', games: g, page: i + 1, pages: arr.length }))
-  if (p.rankingEquipes.length > 0) sports.push({ kind: 'ranking' })
-  if (p.podiosRecentes.length > 0) sports.push({ kind: 'podios' })
-  // Tela de dados aparece entre cada cena esportiva.
+  // ── 3 telas: Jogos (ao vivo+resultados+próximos) · Classificação (ranking+pódios)
+  //    · Painel de dados. Esportivo intercalado com a tela de dados. ──
+  const temJogos = p.jogosAoVivo.length + p.jogosEncerrados.length + proxJogos.length > 0
+  const temClass = p.rankingEquipes.length + p.podiosRecentes.length > 0
+  const esportivas: Scene[] = []
+  if (temJogos) esportivas.push({ kind: 'jogos' })
+  if (temClass) esportivas.push({ kind: 'classificacao' })
   const scenes: Scene[] = []
-  sports.forEach(s => { scenes.push(s); scenes.push({ kind: 'painel' }) })
+  esportivas.forEach(s => { scenes.push(s); scenes.push({ kind: 'painel' }) })
   if (scenes.length === 0) scenes.push({ kind: 'painel' })
   const scene = scenes[idx % scenes.length]
   const scenePos = idx % scenes.length
@@ -389,17 +358,15 @@ export function TVCarrossel(p: Props) {
 
   // ── Render de cena ──
   function renderScene(s: Scene): React.ReactNode {
-    if (s.kind === 'live' || s.kind === 'result' || s.kind === 'next') {
-      const mode = s.kind === 'live' ? 'live' : s.kind === 'result' ? 'result' : 'next'
-      const accent = mode === 'live' ? C.red : mode === 'result' ? C.green : C.gold
-      const kicker = mode === 'live' ? 'Esportivo · Acontecendo' : mode === 'result' ? 'Esportivo · Encerrados' : 'Esportivo · A seguir'
-      const title = mode === 'live' ? 'No ar agora' : mode === 'result' ? 'Resultados' : 'Próximos jogos'
+    if (s.kind === 'jogos') {
       return (
         <>
-          <SceneHead accent={accent} kicker={kicker} title={title}
-            right={s.pages > 1 ? <span style={{ fontFamily: FS, fontSize: 12, fontWeight: 700, color: C.creamMute, letterSpacing: '0.1em' }}>{s.page}/{s.pages}</span> : undefined} />
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: gridCols(s.games.length), gridAutoRows: '1fr', gap: 'clamp(10px,1.1vw,18px)', minHeight: 0 }}>
-            {s.games.map((j, i) => <GameCard key={j.id} j={j} mode={mode} delay={i * 70} />)}
+          <SceneHead accent={C.red} kicker="Esportivo · Jogos de hoje" title="Placar geral"
+            right={<span style={{ fontFamily: FS, fontSize: 12, fontWeight: 700, color: C.creamMute, letterSpacing: '0.06em' }}>{p.jogosAoVivo.length} ao vivo · {p.jogosEncerrados.length} encerrados · {proxJogos.length} próximos</span>} />
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'clamp(12px,1.4vw,24px)', minHeight: 0 }}>
+            <ColunaJogos icon="🔴" label="No ar agora" accent={C.red} games={p.jogosAoVivo} mode="live" live />
+            <ColunaJogos icon="✓" label="Resultados" accent={C.green} games={p.jogosEncerrados} mode="result" />
+            <ColunaJogos icon="⏰" label="Próximos" accent={C.gold} games={proxJogos} mode="next" />
           </div>
         </>
       )
@@ -520,50 +487,51 @@ export function TVCarrossel(p: Props) {
         </>
       )
     }
-    if (s.kind === 'podios') {
+    if (s.kind === 'classificacao') {
+      const top = p.rankingEquipes.slice(0, 8)
+      const max = top[0]?.total_pontos || 1
       const medal = (c: number) => c === 1 ? '🥇' : c === 2 ? '🥈' : c === 3 ? '🥉' : `${c}º`
       return (
         <>
-          <SceneHead accent={C.gold} kicker="Esportivo · Resultados" title="Pódios" />
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: p.podiosRecentes.length > 4 ? '1fr 1fr' : '1fr', gridAutoRows: '1fr', gap: 'clamp(8px,0.9vw,14px)', minHeight: 0 }}>
-            {p.podiosRecentes.map((pd, i) => (
-              <div key={i} className="tvc-card" style={{ animationDelay: `${i * 50}ms`, display: 'flex', alignItems: 'center', gap: 16, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, padding: '0 clamp(14px,1.5vw,24px)', overflow: 'hidden' }}>
-                <span style={{ fontSize: 'clamp(22px,2.4vw,40px)', flexShrink: 0, width: '1.6em', textAlign: 'center' }}>{pd.modalidade_icone ?? medal(pd.colocacao)}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: FS, fontWeight: 700, fontSize: 'clamp(13px,1.3vw,21px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pd.equipe_nome}</div>
-                  <div style={{ fontFamily: FS, fontSize: 11, color: C.creamMute }}>{pd.modalidade_nome}</div>
-                </div>
-                <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(16px,1.6vw,26px)', fontWeight: 800, color: pd.colocacao === 1 ? C.goldHi : C.cream, flexShrink: 0 }}>{medal(pd.colocacao)}</span>
-                <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,24px)', fontWeight: 800, color: C.green, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '2.4em', textAlign: 'right' }}>+{pd.pontos}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )
-    }
-    if (s.kind === 'ranking') {
-      const top = p.rankingEquipes.slice(0, 10)
-      const max = top[0]?.total_pontos || 1
-      return (
-        <>
-          <SceneHead accent={C.lavender} kicker="Esportivo · Classificação" title="Ranking das atléticas" />
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: top.length > 5 ? '1fr 1fr' : '1fr', gridAutoRows: '1fr', gap: 'clamp(8px,0.9vw,14px)', minHeight: 0 }}>
-            {top.map((e, i) => (
-              <div key={e.id} className="tvc-card" style={{ animationDelay: `${i * 50}ms`, display: 'flex', alignItems: 'center', gap: 16, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, padding: '0 clamp(14px,1.4vw,24px)', overflow: 'hidden' }}>
-                <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(22px,2.4vw,40px)', fontWeight: 800, color: i === 0 ? C.goldHi : i === 1 ? C.cream : i === 2 ? C.gold : C.creamFade, width: '1.6em', textAlign: 'center', fontVariantNumeric: NUM, flexShrink: 0 }}>{i + 1}</span>
-                <span style={{ width: 6, height: '46%', borderRadius: 99, background: e.cor_primaria || C.greenDeep, flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: FS, fontWeight: 700, fontSize: 'clamp(13px,1.3vw,22px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.nome}</div>
-                  {e.divisao && <div style={{ fontFamily: FS, fontSize: 10, color: C.creamMute, letterSpacing: '0.08em' }}>{e.divisao}</div>}
-                </div>
-                <div style={{ width: '24%', flexShrink: 0 }}>
-                  <div style={{ height: 5, borderRadius: 99, background: 'rgba(250,247,240,0.07)', overflow: 'hidden', marginBottom: 4 }}>
-                    <div style={{ height: '100%', width: `${Math.round(e.total_pontos / max * 100)}%`, background: C.lavender, borderRadius: 99 }} />
+          <SceneHead accent={C.lavender} kicker="Esportivo · Classificação" title="Ranking & pódios" />
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 'clamp(12px,1.4vw,22px)', minHeight: 0 }}>
+            {/* Ranking */}
+            <MiniPanel title="Ranking das atléticas" accent={C.lavender}>
+              <div style={{ flex: 1, display: 'grid', gridAutoRows: '1fr', gap: 'clamp(5px,0.6vw,9px)', minHeight: 0 }}>
+                {top.map((e, i) => (
+                  <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 13, overflow: 'hidden' }}>
+                    <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(18px,1.9vw,32px)', fontWeight: 800, color: i === 0 ? C.goldHi : i === 1 ? C.cream : i === 2 ? C.gold : C.creamFade, width: '1.5em', textAlign: 'center', fontVariantNumeric: NUM, flexShrink: 0 }}>{i + 1}</span>
+                    <span style={{ width: 5, height: '60%', borderRadius: 99, background: e.cor_primaria || C.greenDeep, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: FS, fontWeight: 700, fontSize: 'clamp(12px,1.2vw,19px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.nome}</div>
+                      {e.divisao && <div style={{ fontFamily: FS, fontSize: 9.5, color: C.creamMute, letterSpacing: '0.06em' }}>{e.divisao}</div>}
+                    </div>
+                    <div style={{ width: '22%', height: 5, borderRadius: 99, background: 'rgba(250,247,240,0.07)', overflow: 'hidden', flexShrink: 0 }}>
+                      <div style={{ height: '100%', width: `${Math.round(e.total_pontos / max * 100)}%`, background: C.lavender, borderRadius: 99 }} />
+                    </div>
+                    <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.6vw,26px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '1.7em', textAlign: 'right' }}>{e.total_pontos}</span>
                   </div>
-                </div>
-                <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(18px,2vw,32px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '1.8em', textAlign: 'right' }}>{e.total_pontos}</span>
+                ))}
+                {top.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 13, alignSelf: 'center' }}>Sem pontuação ainda.</span>}
               </div>
-            ))}
+            </MiniPanel>
+            {/* Pódios */}
+            <MiniPanel title="Pódios recentes" accent={C.gold}>
+              <div style={{ flex: 1, display: 'grid', gridAutoRows: '1fr', gap: 'clamp(5px,0.6vw,9px)', minHeight: 0 }}>
+                {p.podiosRecentes.slice(0, 8).map((pd, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 13, overflow: 'hidden' }}>
+                    <span style={{ fontSize: 'clamp(18px,1.9vw,30px)', flexShrink: 0, width: '1.5em', textAlign: 'center' }}>{pd.modalidade_icone ?? medal(pd.colocacao)}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: FS, fontWeight: 700, fontSize: 'clamp(12px,1.2vw,19px)', color: C.cream, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pd.equipe_nome}</div>
+                      <div style={{ fontFamily: FS, fontSize: 9.5, color: C.creamMute }}>{pd.modalidade_nome}</div>
+                    </div>
+                    <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(14px,1.4vw,22px)', fontWeight: 800, color: pd.colocacao === 1 ? C.goldHi : C.cream, flexShrink: 0 }}>{medal(pd.colocacao)}</span>
+                    <span style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(13px,1.4vw,21px)', fontWeight: 800, color: C.green, fontVariantNumeric: NUM, flexShrink: 0, minWidth: '2.2em', textAlign: 'right' }}>+{pd.pontos}</span>
+                  </div>
+                ))}
+                {p.podiosRecentes.length === 0 && <span style={{ fontFamily: FS, color: C.creamMute, fontSize: 13, alignSelf: 'center' }}>Sem pódios ainda.</span>}
+              </div>
+            </MiniPanel>
           </div>
         </>
       )

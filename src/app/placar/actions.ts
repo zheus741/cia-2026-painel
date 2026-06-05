@@ -50,6 +50,19 @@ export async function encerrarJogo(id: string): Promise<ActionResult> {
     await requireSportEditor()
     const supabase = await createClient()
 
+    // GUARD: não encerra SEM placar (nem W.O.). Era a causa de jogos
+    // "encerrado sem placar" — alguém clicava Encerrar antes de pôr o placar,
+    // e isso quebra a apuração de pontos da chave (jogo encerrado não rastreável).
+    const { data: atual } = await supabase
+      .from('jogos')
+      .select('placar_a, placar_b, wo, status')
+      .eq('id', id)
+      .maybeSingle()
+    if (atual && atual.status !== 'encerrado'
+        && atual.placar_a == null && atual.placar_b == null && !atual.wo) {
+      return { ok: false, error: 'Defina o placar (ou declare W.O.) antes de encerrar o jogo.' }
+    }
+
     // Detecção SOFT de edição concorrente — avisa se outro coord editou
     // este jogo nos últimos 3s.
     const concurrent = await detectConcurrentEdit(id, supabase)

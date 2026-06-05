@@ -411,7 +411,6 @@ export function TVCarrossel(p: Props) {
       )
     }
     if (s.kind === 'painel') {
-      const f = p.funilProducao
       const maxC = Math.max(1, ...p.canalBreakdown.map(c => c.total))
       const maxT = Math.max(1, ...p.tipoBreakdown.map(t => t.total))
       const patroc = [...p.patrocStats].sort((a, b) => (b.total > 0 ? b.publicados / b.total : 0) - (a.total > 0 ? a.publicados / a.total : 0)).slice(0, 6)
@@ -421,6 +420,8 @@ export function TVCarrossel(p: Props) {
         ...p.festasHoje.map(f2 => ({ t: f2.inicio, label: f2.nome ?? 'Festa', tag: 'Festa', color: C.blue, live: false })),
       ].filter(x => x.t).sort((x, y) => (x.t! < y.t! ? -1 : 1)).slice(0, 6)
       const G = 'clamp(8px,0.9vw,14px)'
+      const geralPub = p.conteudosPorDia.reduce((s, d) => s + d.publicados, 0)
+      const geralTot = p.conteudosPorDia.reduce((s, d) => s + d.total, 0)
       return (
         <>
           <SceneHead accent={C.gold} kicker="Cobertura · Tempo real" title="Painel de dados"
@@ -442,20 +443,25 @@ export function TVCarrossel(p: Props) {
             </div>
             {/* Meio: funil+dias · canais+tipos · patrocínio */}
             <div style={{ flex: 1.15, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: G, minHeight: 0 }}>
-              <MiniPanel title="Funil de produção" accent={C.green} style={{ justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(7px,0.8vw,12px)' }}>
-                  {f?.etapas.map(et => <BarRow key={et.etapa} label={et.label} color={et.pct >= 70 ? C.green : C.gold} total={Math.max(1, et.total)} pub={et.concluido} max={Math.max(1, et.total)} />)}
-                </div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+              <MiniPanel title="Conteúdos por dia" accent={C.gold} style={{ justifyContent: 'space-between' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'clamp(7px,0.85vw,13px)', justifyContent: 'center' }}>
                   {p.conteudosPorDia.map(d => {
                     const isHoje = p.diasEvento[d.idx - 1]?.id === p.diaAtualId
+                    const pct = d.total > 0 ? Math.round(d.publicados / d.total * 100) : 0
                     return (
-                      <div key={d.idx} style={{ flex: 1, textAlign: 'center', background: isHoje ? C.panelHi : 'transparent', border: `1px solid ${isHoje ? C.gold + '55' : C.border}`, borderRadius: 10, padding: '6px 3px' }}>
-                        <div style={{ fontFamily: FS, fontSize: 9, color: isHoje ? C.gold : C.creamMute, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(d.label.split(' ')[0]) || `D${d.idx}`}</div>
-                        <div style={{ fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(13px,1.3vw,19px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM }}>{d.publicados}<span style={{ color: C.creamFade, fontSize: '0.62em' }}>/{d.total}</span></div>
+                      <div key={d.idx} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ width: '4.4em', flexShrink: 0, fontFamily: FS, fontSize: 'clamp(10px,0.95vw,14px)', fontWeight: 700, color: isHoje ? C.goldHi : C.creamDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label}{isHoje ? ' •' : ''}</span>
+                        <div style={{ flex: 1, height: 9, borderRadius: 99, background: 'rgba(250,247,240,0.06)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, borderRadius: 99, background: isHoje ? C.goldHi : pct >= 70 ? C.green : C.gold }} />
+                        </div>
+                        <span style={{ flexShrink: 0, minWidth: '3em', textAlign: 'right', fontFamily: FD, fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,24px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM }}>{d.publicados}<span style={{ color: C.creamFade, fontSize: '0.62em' }}>/{d.total}</span></span>
                       </div>
                     )
                   })}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderTop: `1px solid ${C.border}`, paddingTop: 9, marginTop: 6 }}>
+                  <span style={{ fontFamily: FS, fontSize: 'clamp(10px,0.9vw,13px)', fontWeight: 800, letterSpacing: '0.16em', textTransform: 'uppercase', color: C.gold }}>Geral · evento</span>
+                  <span style={{ fontFamily: FD, fontStyle: 'italic', fontVariationSettings: "'opsz' 96, 'SOFT' 0, 'WONK' 1", fontSize: 'clamp(26px,2.8vw,46px)', fontWeight: 800, color: C.cream, fontVariantNumeric: NUM, lineHeight: 1 }}>{geralPub}<span style={{ color: C.creamFade, fontSize: '0.5em' }}>/{geralTot}</span></span>
                 </div>
               </MiniPanel>
 

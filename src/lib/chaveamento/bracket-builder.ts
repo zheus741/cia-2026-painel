@@ -206,6 +206,13 @@ const ALIASES: Record<string, string> = {
   // Sem isso o fuzzy falha: o sufixo "UFU" não bate contra o nome curto.
   'FAEFI':               'FAEFI UFU',
   'BIOLOGICAS':          'BIOLOGICAS UFU',
+  // Erros de digitação na planilha de resultados (sufixo não bate no fuzzy).
+  'UNIFRAM':             'UNIFRAN',
+  'DEREITO PUC':         'DIREITO PUC',
+  'MOENTARIA UFU':       'MONETARIA UFU',
+  'FAEIF UFU':           'FAEFI UFU',
+  'FAEIF':               'FAEFI UFU',
+  'UNICAMO LIMEIRA':     'UNICAMP LIMEIRA',
 }
 
 export function canonTeamName(s: string | null | undefined): string {

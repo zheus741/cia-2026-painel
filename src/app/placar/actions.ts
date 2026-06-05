@@ -505,26 +505,38 @@ export async function sincronizarPlanilhaAgora(): Promise<
     await requireSportEditor()
     const supabase = await createClient()
 
-    const { data: jogosRaw } = await supabase.from('jogos').select(JOGO_SELECT_COLS)
-    const jogos = (jogosRaw ?? []) as JogoRow[]
-
+    // Lê a planilha UMA vez.
     const { resultados } = await buscarResultadosDasAbas()
-    const itens = casarResultados(jogos, resultados)
 
-    let aplicados = 0, jaIguais = 0, semCasar = 0, ambiguos = 0, erros = 0
-    const naoCasados: string[] = []
-    for (const it of itens) {
-      if (it.status === 'sem_jogo' || it.status === 'sem_modalidade' || it.status === 'ambiguo') {
-        if (it.status === 'ambiguo') ambiguos++; else semCasar++
-        const motivo = it.status === 'ambiguo' ? 'ambíguo' : it.status === 'sem_modalidade' ? 'modalidade?' : 'sem jogo'
-        naoCasados.push(`${it.res.timeA} ${it.res.placarA}×${it.res.placarB} ${it.res.timeB} · ${it.res.modalidadeLabel} · ${it.res.aba} (${motivo})`)
-        continue
+    // Loop até estabilizar: cada resultado aplicado propaga o vencedor e CRIA a
+    // fase seguinte (quartas→semi→final). Relendo os jogos a cada rodada, os
+    // confrontos que só passaram a existir agora também casam — assim um clique
+    // cascateia a chave inteira (antes precisava clicar "Sincronizar" N vezes).
+    let aplicados = 0, erros = 0
+    let jaIguais = 0, semCasar = 0, ambiguos = 0
+    let naoCasados: string[] = []
+    for (let iter = 0; iter < 6; iter++) {
+      const { data: jogosRaw } = await supabase.from('jogos').select(JOGO_SELECT_COLS)
+      const jogos = (jogosRaw ?? []) as JogoRow[]
+      const itens = casarResultados(jogos, resultados)
+
+      let aplicadosRodada = 0
+      // Contadores de estado refletem a ÚLTIMA rodada (situação estável).
+      jaIguais = 0; semCasar = 0; ambiguos = 0; naoCasados = []
+      for (const it of itens) {
+        if (it.status === 'sem_jogo' || it.status === 'sem_modalidade' || it.status === 'ambiguo') {
+          if (it.status === 'ambiguo') ambiguos++; else semCasar++
+          const motivo = it.status === 'ambiguo' ? 'ambíguo' : it.status === 'sem_modalidade' ? 'modalidade?' : 'sem jogo'
+          naoCasados.push(`${it.res.timeA} ${it.res.placarA}×${it.res.placarB} ${it.res.timeB} · ${it.res.modalidadeLabel} · ${it.res.aba} (${motivo})`)
+          continue
+        }
+        if (it.status === 'igual') { jaIguais++; continue }
+        const r = await aplicarResultadoNoJogo(supabase, it)
+        if (r === 'aplicado') { aplicados++; aplicadosRodada++ }
+        else if (r === 'erro') erros++
+        else jaIguais++
       }
-      if (it.status === 'igual') { jaIguais++; continue }
-      const r = await aplicarResultadoNoJogo(supabase, it)
-      if (r === 'aplicado') aplicados++
-      else if (r === 'erro') erros++
-      else jaIguais++
+      if (aplicadosRodada === 0) break // estabilizou — nada novo a aplicar
     }
 
     revalidatePath('/placar')

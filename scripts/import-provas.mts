@@ -7,20 +7,30 @@ const APPLY=process.argv.includes('--apply')
 async function rt<T>(fn:()=>Promise<T>){let e;for(let i=0;i<40;i++){try{return await fn()}catch(x){e=x;if(!/fetch|timeout|socket|EAI/i.test(String((x as any)?.message)))throw x;await new Promise(r=>setTimeout(r,2000))}}throw e}
 const PTS:Record<number,number>={1:13,2:10,3:7,4:6,5:4,6:3,7:2,8:1}
 // (modalidade_id, divisao, label, [atléticas em ordem 1º..8º])
+const JIUF='8b4539b6-4970-4191-86a2-16d7bc2914c5', JIUM='f2d35b0e-0056-4384-a1f3-124e3539f70f'
+const XADREZ='00000000-0000-0003-0000-000000000012'
+const NATF='fcbba93e-2f55-4894-ac7e-78ccc382eb0d', NATM='d035bafd-21a5-4a97-ab95-b9ab43041ea2'
 const TABELAS:[string,string,string,string[]][]=[
   ['1f164aa3-42d8-4b0f-a59e-3bcff4d8b598','Conferências','TM Fem Conf',['IFTM','X DE OUTUBRO','FILUS','PUC POÇOS','MED PUC','UNIFESP','ODONTO UFU','XARADA UFLA']],
   ['62aba979-27c1-4c5e-a4a4-33c860dfba97','Conferências','TM Masc Conf',['LAU UFLA','GUAXINIM','ARARAS','LIGA CEM','DIREITO FDF','ECAD','FEA USP','FILUS']],
-  ['fcbba93e-2f55-4894-ac7e-78ccc382eb0d','Conferências','Natação Fem Conf',['AAAJAS-S JOSE','COMP UFU','FZEA USP','LIGA CEM','MAQUINADA UNB','FILOS','IF SUL DE MINAS','FEARP USP']],
-  ['d035bafd-21a5-4a97-ab95-b9ab43041ea2','Conferências','Natação Masc Conf',['FACECA','COMP UFU','ODONTO UFU','LIGA CEM','X DE OUTUBRO','AAAJA S JOSE','URSÃO','MIASMA']],
+  [NATF,'Conferências','Natação Fem Conf',['AAAJAS-S JOSE','COMP UFU','FZEA USP','LIGA CEM','MAQUINADA UNB','FILOS','IF SUL DE MINAS','FEARP USP']],
+  [NATM,'Conferências','Natação Masc Conf',['FACECA','COMP UFU','ODONTO UFU','LIGA CEM','X DE OUTUBRO','AAAJA S JOSE','URSÃO','MIASMA']],
+  // novas
+  [JIUF,'Conferências','Jiu Fem Conf',['ARARAS','TOURO PUC','ALFA PUC','AAA IFTM','X DE OUTUBRO','FISIO UNIUBE','MED PUC','DIREITO UNIUBE']],
+  [JIUM,'Conferências','Jiu Masc Conf',['FEA','TENEBROSA','COMP UFU','TOUROS PUC','MED PUC','ODONTO UFU','DIREITO UNIUBE','LAU UFLA']],
+  [JIUF,'1ª Divisão','Jiu Fem 1ª',['FACE UFMG','DIREITO PUC','UNIFRAN','UNIPAM','DIREITO UFMG','LAUCB','AGRARIAS UFU','MED UNIFENAS']],
+  [XADREZ,'2ª Divisão','Xadrez 2ª',['FACE UFMG','DIREITO PUC','CAAP UFABC','DIREITO UFMG','LAUNAERP','AGRARIAS','UNICAMP','MED UNIFENAS']],
+  [NATF,'2ª Divisão','Natação Fem 2ª',['LAUNAERP','UNIFRAN','FAEFI UFU','DIREITO UFMG','FACE UFMG','DIREITO USP','AGRÁRIA','LAU UNIPAM']],
+  [NATM,'2ª Divisão','Natação Masc 2ª',['LAUNAERP','DIREITO USP','FACE UFMG','FAEFI UFU','UNIFRAN','AGRARIAS UFU','DIREITO UFMG','LAU UNIPAM']],
 ]
 const{data:reAmostra}=await rt(async()=>{const r=await sb.from('resultados_externos').select('edicao_id').limit(1);if(r.error)throw r.error;return r})
 const edicao=reAmostra?.[0]?.edicao_id
 const{data:eqs}=await rt(async()=>{const r=await sb.from('equipes').select('id,nome,edicao_id,divisao,conferencia');if(r.error)throw r.error;return r})
 const pool=(eqs||[]).filter((e:any)=>e.edicao_id===edicao)
 // nomes que NÃO devem auto-casar (atlética não cadastrada — aguardando confirmação)
-const BLOCK=new Set(['AAAJAS-S JOSE','AAAJA S JOSE','FILOS'])
+const BLOCK=new Set(['AAAJAS-S JOSE','AAAJA S JOSE'])
 // aliases confirmados pelo usuário
-const ALIAS:Record<string,string>={'FEARP USP':'FEA USP'}
+const ALIAS:Record<string,string>={'FEARP USP':'FEA USP','FILOS':'FILUS','AAA IFTM':'IFTM','UNIPAM':'LAU UNIPAM','AGRÁRIA':'AGRÁRIAS UFU'}
 const resolve=(n0:string)=>{
   const n=ALIAS[n0]??n0
   if(BLOCK.has(n0)) return {id:null,nome:undefined}

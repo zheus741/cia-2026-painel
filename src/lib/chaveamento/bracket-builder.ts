@@ -213,6 +213,10 @@ const ALIASES: Record<string, string> = {
   'FAEIF UFU':           'FAEFI UFU',
   'FAEIF':               'FAEFI UFU',
   'UNICAMO LIMEIRA':     'UNICAMP LIMEIRA',
+  'EEFTO UFMG':          'EEFFTO UFMG',
+  'ODONTO UINIUBE':      'ODONTO UNIUBE',
+  'TENERBOSA':           'TENEBROSA',
+  'APLICADA':            'APLICADA UFU',
 }
 
 export function canonTeamName(s: string | null | undefined): string {

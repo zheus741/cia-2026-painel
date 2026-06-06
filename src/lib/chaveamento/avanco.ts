@@ -383,6 +383,31 @@ export async function propagarVencedorNaChave(
   const targetNomField = slotIndex === 0 ? 'equipe_a_nome' : 'equipe_b_nome'
   const parentSlot: 'a' | 'b' = slotIndex === 0 ? 'a' : 'b'
 
+  // 8b. BYE: o OUTRO slot do parent pode ser um seed DIRETO (bye) que nunca é
+  //     alimentado por feeder (chaves não-2ⁿ: 6 times → seeds 1,2 vão direto às
+  //     semis). Sem pré-preencher, a fase seguinte nasce "(null) vs vencedor" e o
+  //     resultado real da planilha não casa. Resolve o time do seed pela posição.
+  const otherIdx = slotIndex === 0 ? 1 : 0
+  const otherSlot = parent.slots[otherIdx]
+  const byeField    = otherIdx === 0 ? 'equipe_a_id'   : 'equipe_b_id'
+  const byeNomField = otherIdx === 0 ? 'equipe_a_nome' : 'equipe_b_nome'
+  let byeNome: string | null = null
+  let byeId: string | null = null
+  if (otherSlot && otherSlot.type === 'direct' && otherSlot.pos != null) {
+    byeNome = config.seeds[otherSlot.pos - 1] ?? null
+    // Guard: nunca preencher o bye com o MESMO time que está avançando como
+    // vencedor (geraria "X vs X"). Acontece se a seed do bye coincide com o
+    // vencedor por nome canônico (dado inconsistente / seed repetida).
+    if (byeNome && winner.equipeNome && canonTeamName(byeNome) === canonTeamName(winner.equipeNome)) {
+      byeNome = null
+    }
+    if (byeNome && jogo.edicao_id) {
+      const { data: eqByeRaw } = await supabase
+        .from('equipes').select('id, nome').eq('edicao_id', jogo.edicao_id)
+      byeId = resolveEquipeId(byeNome, (eqByeRaw ?? []) as EquipeRef[])
+    }
+  }
+
   // 9. Identifica o jogo do banco correspondente ao parent — ou cria se não existe.
   let parentDbGame = findDbGameForLogical(parent, bracketGames, config.seeds, jogosChave)
 
@@ -402,6 +427,7 @@ export async function propagarVencedorNaChave(
       [targetField]:    winnerId,
       [targetNomField]: winner.equipeNome,
     }
+    if (byeNome) { insertPayload[byeField] = byeId; insertPayload[byeNomField] = byeNome }
     const { data: created, error: insErr } = await supabase
       .from('jogos')
       .insert(insertPayload)
@@ -428,21 +454,25 @@ export async function propagarVencedorNaChave(
     parentDbGame = reread as JogoMin
   }
 
-  // 10. Idempotência — se o slot já tem o vencedor correto, no-op.
+  // Slot do BYE no banco (pra preencher se faltar mesmo com vencedor já presente).
+  const byeCurId   = otherIdx === 0 ? parentDbGame.equipe_a_id   : parentDbGame.equipe_b_id
+  const byeCurNome = otherIdx === 0 ? parentDbGame.equipe_a_nome : parentDbGame.equipe_b_nome
+  const byeFalta = !!byeNome && !byeCurId && !byeCurNome
+
+  // 10. Idempotência — vencedor já no slot E bye (se houver) já preenchido → no-op.
   const currentIdInSlot   = slotIndex === 0 ? parentDbGame.equipe_a_id   : parentDbGame.equipe_b_id
   const currentNomeInSlot = slotIndex === 0 ? parentDbGame.equipe_a_nome : parentDbGame.equipe_b_nome
-  if (winnerId && currentIdInSlot === winnerId) {
+  const winnerJaOk =
+    (!!winnerId && currentIdInSlot === winnerId) ||
+    (!winnerId && !!winner.equipeNome && currentNomeInSlot === winner.equipeNome)
+  if (winnerJaOk && !byeFalta) {
     return { ok: true, reason: 'already', parentJogoId: parentDbGame.id, parentSlot, vencedorNome: winner.equipeNome ?? undefined }
   }
-  if (!winnerId && winner.equipeNome && currentNomeInSlot === winner.equipeNome) {
-    return { ok: true, reason: 'already', parentJogoId: parentDbGame.id, parentSlot, vencedorNome: winner.equipeNome }
-  }
 
-  // 11. Atualiza o slot do parent com o vencedor (+ ancora bracket_num se faltava).
-  const updatePayload: Record<string, string | number | null> = {
-    [targetField]:    winnerId,
-    [targetNomField]: winner.equipeNome,
-  }
+  // 11. Atualiza slot do vencedor (se faltava) + slot do BYE (se faltava) + âncora.
+  const updatePayload: Record<string, string | number | null> = {}
+  if (!winnerJaOk) { updatePayload[targetField] = winnerId; updatePayload[targetNomField] = winner.equipeNome }
+  if (byeFalta) { updatePayload[byeField] = byeId; updatePayload[byeNomField] = byeNome }
   if (parentDbGame.bracket_num == null) updatePayload.bracket_num = parent.num
 
   const { error: updErr } = await supabase

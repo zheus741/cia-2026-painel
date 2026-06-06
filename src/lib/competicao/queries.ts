@@ -702,6 +702,12 @@ function famModalidade(nome: string | null | undefined): string {
   if (n.includes('tenis')) return 'teniscampo'
   if (n.includes('natac')) return 'natacao'
   if (n.includes('atletismo')) return 'atletismo'
+  // Provas/individuais com gênero no nome ("Judô Fem." vs inscrição "Judô"):
+  // normaliza p/ a família sem gênero, senão o de-dup contra resultados_externos
+  // não casa e a modalidade aparece duplicada (card "aguardando" + card "prova").
+  if (n.includes('judo')) return 'judo'
+  if (n.includes('jiu')) return 'jiujitsu'
+  if (n.includes('xadrez')) return 'xadrez'
   return n.trim() || '?'
 }
 

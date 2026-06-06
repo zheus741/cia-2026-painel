@@ -733,6 +733,17 @@ export function computePrevisaoAtletica(
     // + gênero), pois inscrições (seed) e jogos (import) usam modalidade_id e
     // formato de categoria diferentes.
     const fam = famModalidade(insc.modalidade_nome)
+
+    // Modalidade lançada via resultado_externo (natação, judô, atletismo, xadrez,
+    // tênis, jiu, peteca): a pontuação vem do bloco de externos abaixo. Pula o
+    // card baseado em JOGOS (que daria sempre 0 e duplicaria a modalidade).
+    const generoExterno = (nome: string | null) => /fem/i.test(nome ?? '') ? 'F' : /masc/i.test(nome ?? '') ? 'M' : ''
+    const temExterno = resultadosExternos.some(r =>
+      r.equipe_id === equipeId && famModalidade(r.modalidade_nome) === fam &&
+      (generoExterno(r.modalidade_nome) === '' || categoriaIgual(generoExterno(r.modalidade_nome), insc.categoria)),
+    )
+    if (temExterno) continue
+
     const jogosMod = todosJogos.filter(j =>
       famModalidade(j.modalidade_nome) === fam && categoriaIgual(j.categoria, insc.categoria),
     )

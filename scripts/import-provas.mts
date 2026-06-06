@@ -18,7 +18,7 @@ const TABELAS:[string,string,string,string[]][]=[
   // novas
   [JIUF,'Conferências','Jiu Fem Conf',['ARARAS','TOURO PUC','ALFA PUC','AAA IFTM','X DE OUTUBRO','FISIO UNIUBE','MED PUC','DIREITO UNIUBE']],
   [JIUM,'Conferências','Jiu Masc Conf',['FEA','TENEBROSA','COMP UFU','TOUROS PUC','MED PUC','ODONTO UFU','DIREITO UNIUBE','LAU UFLA']],
-  [JIUF,'1ª Divisão','Jiu Fem 1ª',['FACE UFMG','DIREITO PUC','UNIFRAN','UNIPAM','DIREITO UFMG','LAUCB','AGRARIAS UFU','MED UNIFENAS']],
+  [JIUF,'2ª Divisão','Jiu Fem 2ª',['FACE UFMG','DIREITO PUC','UNIFRAN','UNIPAM','DIREITO UFMG','LAUCB','AGRARIAS UFU','MED UNIFENAS']],
   [XADREZ,'2ª Divisão','Xadrez 2ª',['FACE UFMG','DIREITO PUC','CAAP UFABC','DIREITO UFMG','LAUNAERP','AGRARIAS','UNICAMP','MED UNIFENAS']],
   [NATF,'2ª Divisão','Natação Fem 2ª',['LAUNAERP','UNIFRAN','FAEFI UFU','DIREITO UFMG','FACE UFMG','DIREITO USP','AGRÁRIA','LAU UNIPAM']],
   [NATM,'2ª Divisão','Natação Masc 2ª',['LAUNAERP','DIREITO USP','FACE UFMG','FAEFI UFU','UNIFRAN','AGRARIAS UFU','DIREITO UFMG','LAU UNIPAM']],
@@ -45,6 +45,8 @@ for(const[mod,div,label,lista]of TABELAS){
 }
 console.log(`\nresolvidos: ${all.length-semId}/${all.length}${semId?' ⚠️ '+semId+' sem id':''}`)
 if(APPLY){
+  // limpa entrada errada anterior (Jiu Fem foi importada como 1ª por engano)
+  await rt(async()=>{const{error}=await sb.from('resultados_externos').delete().eq('modalidade_id',JIUF).eq('divisao','1ª Divisão');if(error)throw error})
   const mods=[...new Set(TABELAS.map(t=>t[0]+'|'+t[1]))]
   for(const mk of mods){const[m,d]=mk.split('|');await rt(async()=>{const{error}=await sb.from('resultados_externos').delete().eq('modalidade_id',m).eq('divisao',d);if(error)throw error})}
   // só os resolvidos (pula os sem equipe_id — pendentes)

@@ -17,10 +17,13 @@ const{data:reAmostra}=await rt(async()=>{const r=await sb.from('resultados_exter
 const edicao=reAmostra?.[0]?.edicao_id
 const{data:eqs}=await rt(async()=>{const r=await sb.from('equipes').select('id,nome,edicao_id,divisao,conferencia');if(r.error)throw r.error;return r})
 const pool=(eqs||[]).filter((e:any)=>e.edicao_id===edicao)
-// nomes que NÃO devem auto-casar (fuzzy erraria — atlética diferente/inexistente)
-const BLOCK=new Set(['FEARP USP','AAAJAS-S JOSE','AAAJA S JOSE','FILOS'])
-const resolve=(n:string)=>{
-  if(BLOCK.has(n)) return {id:null,nome:undefined}
+// nomes que NÃO devem auto-casar (atlética não cadastrada — aguardando confirmação)
+const BLOCK=new Set(['AAAJAS-S JOSE','AAAJA S JOSE','FILOS'])
+// aliases confirmados pelo usuário
+const ALIAS:Record<string,string>={'FEARP USP':'FEA USP'}
+const resolve=(n0:string)=>{
+  const n=ALIAS[n0]??n0
+  if(BLOCK.has(n0)) return {id:null,nome:undefined}
   let id=resolveEquipeId(n,pool as any[])
   if(!id){const cn=canonTeamName(n);const hit=pool.find((e:any)=>{const ce=canonTeamName(e.nome);return ce===cn||ce.startsWith(cn+' ')||cn.startsWith(ce+' ')||fuzzyMatchTeam(ce,cn)});id=hit?.id??null}
   const e=(eqs||[]).find((x:any)=>x.id===id);return{id,nome:e?.nome}

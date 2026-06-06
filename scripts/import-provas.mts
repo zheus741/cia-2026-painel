@@ -19,6 +19,7 @@ const TABELAS:[string,string,string,string[]][]=[
   [JIUF,'Conferências','Jiu Fem Conf',['ARARAS','TOURO PUC','ALFA PUC','AAA IFTM','X DE OUTUBRO','FISIO UNIUBE','MED PUC','DIREITO UNIUBE']],
   [JIUM,'Conferências','Jiu Masc Conf',['FEA','TENEBROSA','COMP UFU','TOUROS PUC','MED PUC','ODONTO UFU','DIREITO UNIUBE','LAU UFLA']],
   [JIUF,'2ª Divisão','Jiu Fem 2ª',['FACE UFMG','DIREITO PUC','UNIFRAN','UNIPAM','DIREITO UFMG','LAUCB','AGRARIAS UFU','MED UNIFENAS']],
+  [JIUF,'1ª Divisão','Jiu Fem 1ª',['MED UFMG','MED UFTM','MONETÁRIA UFU','EFFTTO UFMG','MED UNIUBE','ENG UFU','DIREITO UFU','ENG UFMG']],
   [XADREZ,'2ª Divisão','Xadrez 2ª',['FACE UFMG','DIREITO PUC','CAAP UFABC','DIREITO UFMG','LAUNAERP','AGRARIAS','UNICAMP','MED UNIFENAS']],
   [NATF,'2ª Divisão','Natação Fem 2ª',['LAUNAERP','UNIFRAN','FAEFI UFU','DIREITO UFMG','FACE UFMG','DIREITO USP','AGRÁRIA','LAU UNIPAM']],
   [NATM,'2ª Divisão','Natação Masc 2ª',['LAUNAERP','DIREITO USP','FACE UFMG','FAEFI UFU','UNIFRAN','AGRARIAS UFU','DIREITO UFMG','LAU UNIPAM']],
@@ -30,7 +31,7 @@ const pool=(eqs||[]).filter((e:any)=>e.edicao_id===edicao)
 // nomes que NÃO devem auto-casar (atlética não cadastrada — aguardando confirmação)
 const BLOCK=new Set(['AAAJAS-S JOSE','AAAJA S JOSE'])
 // aliases confirmados pelo usuário
-const ALIAS:Record<string,string>={'FEARP USP':'FEA USP','FILOS':'FILUS','AAA IFTM':'IFTM','UNIPAM':'LAU UNIPAM','AGRÁRIA':'AGRÁRIAS UFU'}
+const ALIAS:Record<string,string>={'FEARP USP':'FEA USP','FILOS':'FILUS','AAA IFTM':'IFTM','UNIPAM':'LAU UNIPAM','AGRÁRIA':'AGRÁRIAS UFU','EFFTTO UFMG':'EEFFTO UFMG'}
 const resolve=(n0:string)=>{
   const n=ALIAS[n0]??n0
   if(BLOCK.has(n0)) return {id:null,nome:undefined}

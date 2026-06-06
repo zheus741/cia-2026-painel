@@ -20,26 +20,35 @@ export default async function PlacarPage() {
   const canEdit = CAN_EDIT_ROLES.includes(profile.role)
   const supabase = await createClient()
 
-  const [diasRes, jogosRes] = await Promise.all([
-    supabase.from('dias_evento').select('id, nome_dia, data').order('data'),
-    supabase
-      .from('jogos')
-      .select(`
+  const JOGOS_SELECT = `
         id, equipe_a_id, equipe_b_id, equipe_a_nome, equipe_b_nome,
         placar_a, placar_b, penaltis_a, penaltis_b, sets, ao_vivo_em, status, wo, inicio, dia_id, setor_id, divisao, fase, categoria, teste,
         modalidade:modalidades(nome, icone),
         setor:setores(nome),
         equipe_a:equipe_a_id(slug, divisao, conferencia, cor_primaria, universidade, logo_url),
         equipe_b:equipe_b_id(slug, divisao, conferencia, cor_primaria, universidade, logo_url)
-      `)
-      .order('inicio', { ascending: true, nullsFirst: false }),
-  ])
+      `
 
-  // Falha explícita: error.tsx mostra mensagem clara em vez de tela vazia silenciosa.
-  if (jogosRes.error) throw new Error(`Falha ao carregar jogos: ${jogosRes.error.message}`)
+  const diasRes = await supabase.from('dias_evento').select('id, nome_dia, data').order('data')
+
+  // Paginação: PostgREST corta em 1000 linhas/request. Com >1000 jogos a query
+  // sem range truncava silenciosamente (jogos sumiam da tela). Busca em páginas.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const jogosDB: any[] = []
+  for (let off = 0; ; off += 1000) {
+    const { data, error } = await supabase
+      .from('jogos')
+      .select(JOGOS_SELECT)
+      .order('inicio', { ascending: true, nullsFirst: false })
+      .range(off, off + 999)
+    // Falha explícita: error.tsx mostra mensagem clara em vez de tela vazia.
+    if (error) throw new Error(`Falha ao carregar jogos: ${error.message}`)
+    if (!data?.length) break
+    jogosDB.push(...data)
+    if (data.length < 1000) break
+  }
 
   const diasDB = diasRes.data
-  const jogosDB = jogosRes.data
 
   // PERF: pre-fetch de eventos_jogo em UMA query para todos os jogos
   // ao_vivo/encerrado. Antes cada card disparava 1 query no useEffect (N+1).
@@ -47,7 +56,7 @@ export default async function PlacarPage() {
   const jogosComEventos = (jogosDB ?? [])
     .filter(j => j.status === 'ao_vivo' || j.status === 'encerrado')
     .map(j => j.id)
-  let eventosPorJogo: Record<string, unknown[]> = {}
+  const eventosPorJogo: Record<string, unknown[]> = {}
   if (jogosComEventos.length > 0) {
     const { data: eventosDB } = await supabase
       .from('eventos_jogo')

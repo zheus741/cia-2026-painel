@@ -13,7 +13,7 @@ const DIAS_FIXOS = [
   { id: '00000000-0000-0001-0000-000000000004', nome_dia: 'Domingo', data: '2026-06-07' },
 ]
 
-export const maxDuration = 30  // server action "Sincronizar planilha" (rede + DB)
+export const maxDuration = 60  // server action "Sincronizar planilha" (rede + DB)
 
 export default async function PlacarPage() {
   const profile = await requireProfile()

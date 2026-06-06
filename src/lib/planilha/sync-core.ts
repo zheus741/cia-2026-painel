@@ -129,9 +129,15 @@ export function casarResultados(jogos: JogoRow[], resultados: ResultadoPlanilha[
     const penAplicB = swapped ? res.penA : res.penB
 
     const placarAtual = (j.placar_a != null && j.placar_b != null) ? `${j.placar_a}×${j.placar_b}` : null
+    // Pênalti só conta como diferença se a PLANILHA traz pênalti. Se a planilha
+    // não tem pênalti (penAplic null) mas o banco tem, NÃO é conflito — senão o
+    // sync re-aplica o mesmo jogo toda rodada (nunca vira "igual") e o loop roda
+    // as 6 iterações inteiras + propaga sempre → estoura o timeout do server.
+    const penaltisIgual =
+      (penAplicA == null && penAplicB == null) ||
+      ((j.penaltis_a ?? null) === (penAplicA ?? null) && (j.penaltis_b ?? null) === (penAplicB ?? null))
     const jaIgual =
-      j.status === 'encerrado' && j.placar_a === aplicA && j.placar_b === aplicB &&
-      (j.penaltis_a ?? null) === (penAplicA ?? null) && (j.penaltis_b ?? null) === (penAplicB ?? null)
+      j.status === 'encerrado' && j.placar_a === aplicA && j.placar_b === aplicB && penaltisIgual
 
     return {
       ...base,

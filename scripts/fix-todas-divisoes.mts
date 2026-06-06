@@ -30,7 +30,18 @@ const TBD = (n: string) => !((n || '').trim())
 let jogos = await rt(async () => { const j: any[] = []; for (let o = 0; ; o += 500) { const { data, error } = await sb.from('jogos').select('id,modalidade_id,edicao_id,dia_id,categoria,divisao,fase,status,placar_a,placar_b,penaltis_a,penaltis_b,equipe_a_id,equipe_a_nome,equipe_b_id,equipe_b_nome,modalidade:modalidades(nome)').range(o, o + 499); if (error) throw error; if (!data?.length) break; j.push(...data); if (data.length < 500) break } return j })
 const { data: eqs } = await rt(async () => { const r = await sb.from('equipes').select('id,nome,edicao_id'); if (r.error) throw r.error; return r })
 const { data: modsRaw } = await rt(async () => { const r = await sb.from('modalidades').select('id,nome'); if (r.error) throw r.error; return r })
+const { data: diasRaw } = await rt(async () => { const r = await sb.from('dias_evento').select('id,data'); if (r.error) throw r.error; return r })
+const dataById: Record<string, string> = {}; for (const d of diasRaw || []) dataById[d.id] = d.data
+const createDiaTally: Record<string, number> = {}
 const ed = (() => { const c: Record<string, number> = {}; for (const j of jogos) if (j.edicao_id) c[j.edicao_id] = (c[j.edicao_id] || 0) + 1; return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] })()
+// dia dominante por (modalidade,cat,div,fase) — pra dar data certa aos CREATE
+const diaMap: Record<string, Record<string, number>> = {}   // (mod,cat,div,fase)
+const diaMapDiv: Record<string, Record<string, number>> = {} // (div,fase) fallback
+const SABADO = '00000000-0000-0001-0000-000000000003'
+for (const j of jogos) { if (!j.dia_id) continue; const k = `${j.modalidade_id}|${norm(j.categoria || '')}|${normDiv(j.divisao || '')}|${j.fase || 'null'}`; (diaMap[k] ??= {})[j.dia_id] = (diaMap[k][j.dia_id] || 0) + 1; const kd = `${normDiv(j.divisao || '')}|${j.fase || 'null'}`; (diaMapDiv[kd] ??= {})[j.dia_id] = (diaMapDiv[kd][j.dia_id] || 0) + 1 }
+const domOf = (m: Record<string, number> | undefined) => m ? Object.entries(m).sort((a, b) => b[1] - a[1])[0][0] : null
+const diaDom = (modId: string, cat: string, divN: string, fase: string | null) =>
+  domOf(diaMap[`${modId}|${norm(cat)}|${normDiv(divN)}|${fase || 'null'}`]) ?? domOf(diaMapDiv[`${normDiv(divN)}|${fase || 'null'}`]) ?? ((fase === 'semifinal' || fase === 'final' || fase === '3lugar') ? SABADO : null)
 const eqR = (n: string) => { const id = resolveEquipeId(n, (eqs || []).filter((e: any) => e.edicao_id === ed) as any[]); const e = (eqs || []).find((x: any) => x.id === id); return { id: id || null, nome: e?.nome || n } }
 
 const tot: Record<string, number> = { OK: 0, APPLY: 0, FIX: 0, FIX_ENC: 0, SETVAZIO: 0, CREATE: 0, CONFLITO_SKIP: 0 }
@@ -52,8 +63,13 @@ for (const [aba, divNome] of ABAS) {
   for (const r of [...pend]) { const c = candsFor(r).map(j => ({ j, ov: (teamEq(j.equipe_a_nome, r.timeA) || teamEq(j.equipe_b_nome, r.timeA) ? 1 : 0) + (teamEq(j.equipe_a_nome, r.timeB) || teamEq(j.equipe_b_nome, r.timeB) ? 1 : 0) })).sort((a, b) => b.ov - a.ov); if (c[0]?.ov === 2) { const j = c[0].j; claimed.add(j.id); const ap = mkApply(j, r); if (j.status === 'encerrado' && j.placar_a === ap.pa && j.placar_b === ap.pb) plan.push({ a: 'OK' }); else plan.push({ a: 'APPLY', j, r, ...ap }); pend.splice(pend.indexOf(r), 1) } }
   // PASSADA 2: 1 lado (corrige slot, inclusive encerrado Frankenstein)
   for (const r of [...pend]) { const c = candsFor(r).map(j => ({ j, ov: (teamEq(j.equipe_a_nome, r.timeA) || teamEq(j.equipe_b_nome, r.timeA) ? 1 : 0) + (teamEq(j.equipe_a_nome, r.timeB) || teamEq(j.equipe_b_nome, r.timeB) ? 1 : 0), vaz: [j.equipe_a_nome, j.equipe_b_nome].filter(TBD).length })).sort((a, b) => b.ov - a.ov || b.vaz - a.vaz); if (c[0]?.ov === 1) { const j = c[0].j; claimed.add(j.id); plan.push({ a: j.status === 'encerrado' ? 'FIX_ENC' : 'FIX', j, r }); pend.splice(pend.indexOf(r), 1) } }
-  // PASSADA 3: vazio ou cria
-  for (const r of [...pend]) { const c = candsFor(r).map(j => ({ j, vaz: [j.equipe_a_nome, j.equipe_b_nome].filter(TBD).length })).sort((a, b) => b.vaz - a.vaz); const v = c.find(s => s.vaz === 2 && s.j.status !== 'encerrado'); if (v) { claimed.add(v.j.id); plan.push({ a: 'SETVAZIO', j: v.j, r }) } else plan.push({ a: 'CREATE', r }) }
+  // PASSADA 3: reaproveita QUALQUER slot agendado da mesma (mod,cat,div,fase),
+  // mantendo o dia_id original; só cria se não houver slot livre.
+  for (const r of [...pend]) {
+    const c = candsFor(r).filter(j => j.status !== 'encerrado').sort((a, b) => ([b.equipe_a_nome, b.equipe_b_nome].filter(TBD).length) - ([a.equipe_a_nome, a.equipe_b_nome].filter(TBD).length))
+    if (c.length) { claimed.add(c[0].id); plan.push({ a: 'CLAIMSLOT', j: c[0], r }) }
+    else { const dd = diaDom('', r.categoria || '', divNome, r.fase); createDiaTally[dd ? (dataById[dd] || dd) : 'SEM DIA'] = (createDiaTally[dd ? (dataById[dd] || dd) : 'SEM DIA'] || 0) + 1; plan.push({ a: 'CREATE', r }) }
+  }
 
   const by: Record<string, number> = {}; for (const p of plan) by[p.a] = (by[p.a] || 0) + 1
   for (const k in by) tot[k] = (tot[k] || 0) + by[k]
@@ -64,7 +80,7 @@ for (const [aba, divNome] of ABAS) {
       try {
         const r = p.r
         if (p.a === 'APPLY') { await rt(async () => { const { error } = await sb.from('jogos').update({ placar_a: p.pa, placar_b: p.pb, status: 'encerrado', ...(p.pna != null && p.pnb != null ? { penaltis_a: p.pna, penaltis_b: p.pnb } : {}) }).eq('id', p.j.id); if (error) throw error }); totUpd++; const j = jogos.find((x: any) => x.id === p.j.id); if (j) { j.status = 'encerrado'; j.placar_a = p.pa; j.placar_b = p.pb } }
-        else if (p.a === 'FIX' || p.a === 'FIX_ENC' || p.a === 'SETVAZIO' || p.a === 'CREATE') {
+        else if (p.a === 'FIX' || p.a === 'FIX_ENC' || p.a === 'SETVAZIO' || p.a === 'CLAIMSLOT' || p.a === 'CREATE') {
           const ra = eqR(r.timeA), rb = eqR(r.timeB)
           const body: any = { equipe_a_id: ra.id, equipe_a_nome: ra.nome, equipe_b_id: rb.id, equipe_b_nome: rb.nome, placar_a: r.placarA, placar_b: r.placarB, status: 'encerrado', ...(r.penA != null && r.penB != null ? { penaltis_a: r.penA, penaltis_b: r.penB } : {}) }
           if (p.a === 'CREATE') {
@@ -74,7 +90,9 @@ for (const [aba, divNome] of ABAS) {
             if (!modId) { totErr++; if (totErr <= 8) console.log('   ERR CREATE sem modalidade', r.modalidadeLabel, r.categoria); continue }
             const divisao = sib && normDiv(sib.divisao || '') === wantDiv ? sib.divisao : divNome
             const modalidadeRef = sib?.modalidade ?? (modsRaw || []).find((m: any) => m.id === modId)
-            await rt(async () => { const { data, error } = await sb.from('jogos').insert({ edicao_id: sib?.edicao_id ?? ed, modalidade_id: modId, categoria: r.categoria, divisao, fase: r.fase, dia_id: sib?.dia_id ?? null, bracket_num: null, ...body }).select('id,modalidade_id,categoria,divisao,fase').single(); if (error) throw error; if (data) jogos.push({ ...data, ...body, modalidade: modalidadeRef }) }); totIns++
+            // dia: dominante da chave (mesma mod,cat,div,fase) — NÃO do sibling genérico
+            const diaId = diaDom(modId, r.categoria || '', divisao, r.fase) ?? null
+            await rt(async () => { const { data, error } = await sb.from('jogos').insert({ edicao_id: sib?.edicao_id ?? ed, modalidade_id: modId, categoria: r.categoria, divisao, fase: r.fase, dia_id: diaId, bracket_num: null, ...body }).select('id,modalidade_id,categoria,divisao,fase,dia_id').single(); if (error) throw error; if (data) jogos.push({ ...data, ...body, modalidade: modalidadeRef }) }); totIns++
           }
           else { await rt(async () => { const { error } = await sb.from('jogos').update(body).eq('id', p.j.id); if (error) throw error }); totUpd++; const j = jogos.find((x: any) => x.id === p.j.id); if (j) Object.assign(j, body) }
         }
@@ -83,4 +101,5 @@ for (const [aba, divNome] of ABAS) {
   }
 }
 console.log('\nPLANO TOTAL:', JSON.stringify(tot))
+console.log('CREATE → datas:', JSON.stringify(createDiaTally))
 if (APPLY) console.log(`APLICADO: atualizados=${totUpd} criados=${totIns} erros=${totErr}`)

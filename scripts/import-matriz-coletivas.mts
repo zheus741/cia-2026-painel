@@ -11,7 +11,7 @@ async function rt<T>(fn:()=>Promise<T>){let e;for(let i=0;i<40;i++){try{return a
 const args=process.argv.slice(2)
 const APPLY=args.includes('--apply')
 const CONF=(args.find(a=>a!=='--apply')||'ALL').toUpperCase()
-const matrix=JSON.parse(readFileSync('/tmp/matrix_coletivas.json','utf8')) as any[]
+const matrix=JSON.parse(readFileSync('/tmp/matrix_full.json','utf8')) as any[]
 const rows=matrix.filter(r=>CONF==='ALL'||r.conf.toUpperCase()===CONF)
 
 const norm=(s:string)=>(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim()

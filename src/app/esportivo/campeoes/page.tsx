@@ -138,6 +138,25 @@ export default async function CampeoesPage() {
       return ord(a.grupo) - ord(b.grupo) || a.grupo.localeCompare(b.grupo)
     })
 
+  // ── Finais em disputa (1ª/2ª coletivas — títulos saindo agora) ───────────────
+  const TBD = (n: string | null) => !n || /vencedor|perdedor|definir|tbd|^[—-]$/i.test(n.trim())
+  const finaisMap = new Map<string, JogoDetalhe>()
+  for (const j of todosJogos) {
+    if (j.divisao !== '1ª Divisão' && j.divisao !== '2ª Divisão') continue
+    if (!/final/i.test(j.fase ?? '') || j.status === 'encerrado') continue
+    if (TBD(j.equipe_a_nome) || TBD(j.equipe_b_nome)) continue
+    const k = `${j.divisao}|${j.modalidade_nome}|${j.categoria}`
+    const cur = finaisMap.get(k)
+    if (!cur || (j.inicio ?? '') > (cur.inicio ?? '')) finaisMap.set(k, j)
+  }
+  const finais = [...finaisMap.values()]
+    .map(j => ({
+      divisao: j.divisao as string, modalidade: j.modalidade_nome ?? '?',
+      categoria: j.categoria, inicio: j.inicio, aoVivo: j.status === 'ao_vivo',
+      a: j.equipe_a_nome ?? '?', b: j.equipe_b_nome ?? '?',
+    }))
+    .sort((a, b) => (a.aoVivo === b.aoVivo ? (a.inicio ?? '').localeCompare(b.inicio ?? '') : a.aoVivo ? -1 : 1))
+
   // ── Super 08 (liga) ──────────────────────────────────────────────────────────
   let super8: { standings: ReturnType<typeof computeSuper8Standings>; resumo: ReturnType<typeof summarizeSuper8> } | null = null
   if (edicao?.id) {
@@ -153,6 +172,7 @@ export default async function CampeoesPage() {
       conferencias={conferencias}
       modalidades={modalidades}
       super8={super8}
+      finais={finais}
       totalModalidades={totalModalidades}
     />
   )

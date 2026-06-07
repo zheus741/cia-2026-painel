@@ -16,7 +16,7 @@ import {
   UserCircle, ClipboardList, Aperture, Swords, MapPin, Music, PartyPopper,
   Heart, Settings, Calendar, Map, Trophy, Users, GitBranch, Tag, UserCog,
   FileSpreadsheet, Users2, Home, Search, BarChart2, Share2, Globe, Navigation,
-  AlignLeft, Medal,
+  AlignLeft, Medal, Crown,
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -161,6 +161,7 @@ const COORD_ESPORTIVO_GROUPS: NavGroup[] = [
       { label: 'Guia AV',          href: '/esportivo/av',                 icon: Camera },
       { label: 'Placar Ao Vivo',   href: '/placar',                       icon: Radio },
       { label: 'Liga Super 8',     href: '/esportivo/super-8',            icon: Trophy },
+      { label: 'Campeões',         href: '/esportivo/campeoes',           icon: Crown },
       { label: 'Escala',           href: '/esportivo/escala',             icon: ClipboardList },
     ],
   },
@@ -196,6 +197,7 @@ const OP_ESPORTIVO_GROUPS: NavGroup[] = [
       { label: 'Guia AV',          href: '/esportivo/av',            icon: Camera },
       { label: 'Placar Ao Vivo',   href: '/placar',                  icon: Radio },
       { label: 'Liga Super 8',     href: '/esportivo/super-8',       icon: Trophy },
+      { label: 'Campeões',         href: '/esportivo/campeoes',      icon: Crown },
       { label: 'Minha Escala',     href: '/esportivo/escala',        icon: ClipboardList },
     ],
   },

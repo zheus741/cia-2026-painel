@@ -1140,6 +1140,14 @@ export function EsportivoClient({
       span: 'sm' as const,
     },
     {
+      href: '/esportivo/campeoes',
+      label: 'Campeões',
+      meta: 'Títulos · divisões · modalidades',
+      tone: 'gold' as const,
+      icon: Trophy,
+      span: 'sm' as const,
+    },
+    {
       href: '/esportivo/baterias',
       label: 'Desafio de Baterias',
       meta: '40 baterias · 3 divisões',

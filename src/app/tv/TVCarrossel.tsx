@@ -355,7 +355,7 @@ export function TVCarrossel(p: Props) {
   function doRefresh() { router.refresh() }
   doRefreshRef.current = doRefresh
   useEffect(() => {
-    const id = setInterval(() => doRefreshRef.current(), 15_000)
+    const id = setInterval(() => doRefreshRef.current(), 6_000)
     return () => clearInterval(id)
   }, [])
   useEffect(() => {

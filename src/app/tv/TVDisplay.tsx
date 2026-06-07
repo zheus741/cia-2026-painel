@@ -961,7 +961,7 @@ export function TVDisplay({
   const router    = useRouter()
   const [fullscreen, setFullscreen]   = useState(false)
   const [celebrate, setCelebrate]     = useState(false)
-  const [refreshIn, setRefreshIn]     = useState(15)
+  const [refreshIn, setRefreshIn]     = useState(6)
   const [lastRefresh, setLastRefresh] = useState(Date.now())
   const [realtimeOk, setRealtimeOk]  = useState(true)
 
@@ -983,20 +983,20 @@ export function TVDisplay({
   function doRefresh() {
     router.refresh()
     setLastRefresh(Date.now())
-    setRefreshIn(15)
+    setRefreshIn(6)
   }
   doRefreshRef.current = doRefresh
 
-  // Auto-refresh every 15s
+  // Auto-refresh every 6s
   useEffect(() => {
-    const id = setInterval(() => doRefreshRef.current(), 15_000)
+    const id = setInterval(() => doRefreshRef.current(), 6_000)
     return () => clearInterval(id)
   }, [])
 
   // Countdown UI
   useEffect(() => {
     const id = setInterval(() => {
-      setRefreshIn(Math.max(0, 15 - Math.floor((Date.now() - lastRefresh) / 1000)))
+      setRefreshIn(Math.max(0, 6 - Math.floor((Date.now() - lastRefresh) / 1000)))
     }, 1000)
     return () => clearInterval(id)
   }, [lastRefresh])

@@ -93,8 +93,11 @@ export const PONTOS_POR_COLOCACAO: Record<number, number> = {
   5: 4,  6: 3,  7: 2, 8: 1,
 }
 
-/** Penalidade automática por W.O. — Art. 59 inciso I. */
-export const PENALIDADE_WO = -13
+/** Pontos da modalidade quando a atlética toma W.O. — PISO 0 (não pontua e não
+ *  fica negativa). A planilha oficial mostra 0 na célula do W.O., não -13; o
+ *  ponto negativo distorcia o ranking ao vivo (ex: atlética com -16). A punição
+ *  por W.O. (se houver) é controlada à parte, fora da pontuação por modalidade. */
+export const PENALIDADE_WO = 0
 
 /**
  * @deprecated Regra de Brasileirão (3·V + 1·E) — não se aplica à CIA.

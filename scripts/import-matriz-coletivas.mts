@@ -29,7 +29,7 @@ for(const r of rows){
   const mid=modId(r.mod); const eq=resolve(r.atletica)
   if(!mid){semMod++;console.log(`  ⚠️ modalidade não achada: ${r.mod}`);continue}
   if(!eq.id){semEq++;console.log(`  ⚠️ atlética não resolveu: ${r.atletica} (${r.conf})`);continue}
-  payload.push({edicao_id:edicao,modalidade_id:mid,divisao:r.conf,equipe_id:eq.id,colocacao:r.colocacao,pontos:r.pontos,observacoes:null})
+  payload.push({edicao_id:edicao,modalidade_id:mid,divisao:r.conf,equipe_id:eq.id,colocacao:r.colocacao??9,pontos:r.pontos,observacoes:null})
   byConf[r.conf]=(byConf[r.conf]||0)+1
 }
 console.log(`\nCONF=${CONF} · linhas=${rows.length} · resolvidas=${payload.length}${semMod?' · semMod '+semMod:''}${semEq?' · semEq '+semEq:''}`)

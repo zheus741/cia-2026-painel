@@ -107,7 +107,7 @@ export default async function Home() {
     // All active conteudos — inclui campos de análise + status de produção
     supabase
       .from('conteudos')
-      .select('id, status, tipo, dia_id, horario_previsto, jogo_id, responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, status_captacao, status_design, status_edicao')
+      .select('id, status, tipo, canal_publicacao, patrocinador_id, dia_id, horario_previsto, jogo_id, responsavel_captacao_id, responsavel_design_id, responsavel_edicao_id, status_captacao, status_design, status_edicao')
       .not('status', 'in', '(arquivado,cancelado)'),
 
     // Event days to map dia_id → day index 1–4
@@ -169,6 +169,7 @@ export default async function Home() {
   let analyticsVolumePorHora: { hora: number; count: number }[]                                                       = []
   let analyticsAtleticas:     { nome: string; jogos: number; coberta: boolean }[]                                     = []
   let analyticsPracas:        import('@/lib/competicao/pracas').PracaStats[]                                          = []
+  let analyticsExtras:        import('@/lib/conteudos/analytics-extras').AnalyticsExtras | null                       = null
   let analyticsFunil:         import('@/lib/conteudos/funil-producao').FunilProducao | null                          = null
 
   {
@@ -360,6 +361,17 @@ export default async function Home() {
         }>,
         staticData.atleticas,
       )
+
+      // ── Extras de análise (mix, por-dia, patrocínio, equipe) ────────────
+      const { buildAnalyticsExtras } = await import('@/lib/conteudos/analytics-extras')
+      analyticsExtras = buildAnalyticsExtras({
+        conteudos: (conteudosRes.data ?? []) as Array<{ status: string; tipo: string | null; dia_id: string | null; canal_publicacao: string | null; patrocinador_id: string | null }>,
+        dias: (diasRes.data ?? []) as Array<{ id: string; data: string }>,
+        patrocinadores: coordPatrocinadores as Array<{ id: string; nome: string }>,
+        conteudosPorPatroc: coordConteudosPorPatroc,
+        escopoItens: coordEscopoItens.map(e => ({ patrocinador_id: e.patrocinador_id, quantidade_prevista: e.quantidade_prevista })),
+        ranking: analyticsRanking.map(r => ({ funcao: r.funcao, publicados: r.publicados })),
+      })
     }
   }
 
@@ -519,6 +531,7 @@ export default async function Home() {
         analyticsVolumePorHora={analyticsVolumePorHora}
         analyticsAtleticas={analyticsAtleticas}
         analyticsPracas={analyticsPracas}
+        analyticsExtras={analyticsExtras ?? undefined}
         analyticsFunil={analyticsFunil}
         asanaData={asanaData ?? undefined}
       />

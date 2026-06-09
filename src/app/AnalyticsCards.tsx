@@ -31,6 +31,7 @@ interface Props {
   atleticas:     AtleticaItem[]
   pracas?:       import('@/lib/competicao/pracas').PracaStats[]
   funil?:        import('@/lib/conteudos/funil-producao').FunilProducao | null
+  extras?:       import('@/lib/conteudos/analytics-extras').AnalyticsExtras
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -653,7 +654,7 @@ function AtleticasCard({ atleticas }: { atleticas: AtleticaItem[] }) {
 // Main export
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function AnalyticsCards({ ranking, lacunas, volumePorHora, atleticas, pracas = [], funil = null }: Props) {
+export function AnalyticsCards({ ranking, lacunas, volumePorHora, atleticas, pracas = [], funil = null, extras }: Props) {
   return (
     <div
       className="grid"
@@ -669,11 +670,152 @@ export function AnalyticsCards({ ranking, lacunas, volumePorHora, atleticas, pra
       <div className="cia-metrics-col-6"><LacunasCard      lacunas={lacunas} /></div>
       <div className="cia-metrics-col-6"><VolumeHoraCard   volumePorHora={volumePorHora} /></div>
       <div className="cia-metrics-col-6"><AtleticasCard    atleticas={atleticas} /></div>
+      {extras && (
+        <>
+          <div className="cia-metrics-col-6"><MixCard        extras={extras} /></div>
+          <div className="cia-metrics-col-6"><PorDiaCard     extras={extras} /></div>
+          <div className="cia-metrics-col-6"><PatrocinioCard extras={extras} /></div>
+          <div className="cia-metrics-col-6"><EquipeCard     extras={extras} /></div>
+        </>
+      )}
       {pracas.length > 0 && (
         <div style={{ gridColumn: 'span 12' }}>
           <PracasCard pracas={pracas} />
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Cards extras: mix / por dia / patrocínio / equipe ────────────────────────
+
+type Extras = import('@/lib/conteudos/analytics-extras').AnalyticsExtras
+
+const CANAL_LABEL: Record<string, string> = {
+  instagram_cia: 'Instagram CIA', instagram_jogo_rapido: 'IG Jogo Rápido', tiktok_cia: 'TikTok CIA',
+  instagram_exp: 'Instagram EXP', instagram_nix: 'Instagram Nix', x_cia: 'X CIA', x_exp: 'X EXP',
+}
+const FMT_LABEL: Record<string, string> = {
+  reels: 'Reels', stories: 'Stories', feed: 'Feed', foto: 'Foto', video: 'Vídeo',
+}
+
+function ExtraBars({ items, labelMap, color = '#2e6b42' }: { items: { label: string; count: number }[]; labelMap?: Record<string, string>; color?: string }) {
+  const max = Math.max(...items.map(i => i.count), 1)
+  return (
+    <div className="space-y-1.5">
+      {items.map(it => (
+        <div key={it.label} className="flex items-center gap-2" style={{ fontSize: 12.5 }}>
+          <span style={{ width: 116, flexShrink: 0, textAlign: 'right', color: 'rgba(10,15,11,0.6)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{labelMap?.[it.label] ?? it.label}</span>
+          <span style={{ flex: 1, height: 14, borderRadius: 4, background: 'rgba(10,15,11,0.06)', overflow: 'hidden' }}>
+            <span style={{ display: 'block', height: '100%', width: `${Math.max(3, it.count / max * 100)}%`, background: color, borderRadius: 4 }} />
+          </span>
+          <span style={{ width: 32, textAlign: 'right', fontWeight: 800, color: '#0A0F0B', fontVariantNumeric: 'tabular-nums' }}>{it.count}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function MixCard({ extras }: { extras: Extras }) {
+  return (
+    <div className="cia-edit-card cia-edit-card--cream cia-metrics-cell" style={{ minHeight: 320 }}>
+      <CardHeader eyebrow="mix de conteúdo" heading="Pra onde foi" subheading="Plataformas e formatos publicados" />
+      <div className="mt-4 space-y-4">
+        <div>
+          <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(10,15,11,0.4)', marginBottom: 6 }}>Plataformas</p>
+          <ExtraBars items={extras.canais} labelMap={CANAL_LABEL} color="#2e6b42" />
+        </div>
+        <div>
+          <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(10,15,11,0.4)', marginBottom: 6 }}>Formatos</p>
+          <ExtraBars items={extras.formatos} labelMap={FMT_LABEL} color="#B58812" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PorDiaCard({ extras }: { extras: Extras }) {
+  const max = Math.max(...extras.porDia.map(d => d.total), 1)
+  return (
+    <div className="cia-edit-card cia-edit-card--cream cia-metrics-cell" style={{ minHeight: 320 }}>
+      <CardHeader eyebrow="ritmo de produção" heading="Produção por dia" subheading="Total e publicados em cada dia" />
+      <div className="mt-6 flex items-end justify-around gap-3" style={{ height: 190 }}>
+        {extras.porDia.map(d => {
+          const hTotal = Math.max(4, d.total / max * 150)
+          const hPub = d.total > 0 ? d.publicados / d.total * hTotal : 0
+          return (
+            <div key={d.dia} className="flex flex-col items-center gap-1.5" style={{ flex: 1 }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: '#0A0F0B' }}>{d.total}</span>
+              <div style={{ width: 40, height: hTotal, borderRadius: '6px 6px 0 0', background: 'rgba(46,107,66,0.18)', display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: hPub, background: '#2e6b42' }} />
+              </div>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: 'rgba(10,15,11,0.55)' }}>{d.label}</span>
+            </div>
+          )
+        })}
+      </div>
+      <p style={{ fontSize: 10.5, color: 'rgba(10,15,11,0.45)', textAlign: 'center', marginTop: 10 }}>
+        <span style={{ color: '#2e6b42', fontWeight: 700 }}>■</span> publicados · <span style={{ color: 'rgba(46,107,66,0.4)', fontWeight: 700 }}>■</span> total
+      </p>
+    </div>
+  )
+}
+
+function PatrocinioCard({ extras }: { extras: Extras }) {
+  return (
+    <div className="cia-edit-card cia-edit-card--cream cia-metrics-cell" style={{ minHeight: 320 }}>
+      <CardHeader eyebrow="comercial" heading="Entregas por patrocinador" subheading={`${extras.patrocinio.length} patrocinadores`} />
+      <div className="flex-1 mt-4 space-y-2.5 overflow-y-auto pr-1" style={{ maxHeight: 280 }}>
+        {extras.patrocinio.length === 0 ? (
+          <p style={{ fontSize: 14, color: 'rgba(10,15,11,0.4)', textAlign: 'center', padding: '24px 0' }}>Sem dados de patrocínio.</p>
+        ) : extras.patrocinio.map(p => {
+          const pct = p.contratado > 0 ? Math.round(p.entregues / p.contratado * 100) : null
+          const w = p.contratado > 0 ? Math.min(100, p.entregues / p.contratado * 100) : (p.entregues > 0 ? 100 : 0)
+          const ok = pct != null && pct >= 100
+          return (
+            <div key={p.nome}>
+              <div className="flex items-baseline justify-between mb-1 gap-2">
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0A0F0B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nome}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: ok ? '#2e6b42' : 'rgba(10,15,11,0.55)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                  {p.entregues}{p.contratado > 0 && <span style={{ color: 'rgba(10,15,11,0.35)' }}>/{p.contratado}</span>}
+                  {pct != null && <span style={{ marginLeft: 4, color: ok ? '#2e6b42' : pct >= 50 ? '#B58812' : '#c0392b' }}>{pct}%</span>}
+                </span>
+              </div>
+              <div style={{ height: 5, borderRadius: 999, background: 'rgba(10,15,11,0.06)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${w}%`, background: ok ? '#2e6b42' : '#B58812', borderRadius: 999 }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function EquipeCard({ extras }: { extras: Extras }) {
+  const maxPub = Math.max(...extras.equipe.map(e => e.publicados), 1)
+  return (
+    <div className="cia-edit-card cia-edit-card--cream cia-metrics-cell" style={{ minHeight: 320 }}>
+      <CardHeader eyebrow="equipe" heading="Por função" subheading="Pessoas e publicações" />
+      <div className="flex-1 mt-4 space-y-2.5 overflow-y-auto pr-1" style={{ maxHeight: 280 }}>
+        {extras.equipe.map(e => {
+          const w = Math.max(3, e.publicados / maxPub * 100)
+          return (
+            <div key={e.funcao}>
+              <div className="flex items-baseline justify-between mb-1 gap-2">
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0A0F0B' }}>
+                  {FUNCAO_LABEL[e.funcao] ?? e.funcao}
+                  <span style={{ fontSize: 11, color: 'rgba(10,15,11,0.4)', marginLeft: 6 }}>{e.pessoas} {e.pessoas === 1 ? 'pessoa' : 'pessoas'}</span>
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#2e6b42', fontVariantNumeric: 'tabular-nums' }}>{e.publicados}</span>
+              </div>
+              <div style={{ height: 5, borderRadius: 999, background: 'rgba(10,15,11,0.06)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${w}%`, background: 'linear-gradient(90deg,#2e6b42,#4aa066)', borderRadius: 999 }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

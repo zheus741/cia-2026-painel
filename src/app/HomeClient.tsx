@@ -96,6 +96,7 @@ interface Props {
   analyticsAtleticas?:     AtleticaItem[]
   analyticsPracas?:        import('@/lib/competicao/pracas').PracaStats[]
   analyticsFunil?:         import('@/lib/conteudos/funil-producao').FunilProducao | null
+  analyticsExtras?:        import('@/lib/conteudos/analytics-extras').AnalyticsExtras
   asanaData?:              AsanaCIAData
 }
 
@@ -456,6 +457,7 @@ export function HomeClient({
   analyticsAtleticas      = [],
   analyticsPracas         = [],
   analyticsFunil          = null,
+  analyticsExtras,
   asanaData,
 }: Props) {
   const [tab, setTab] = useState<'comandos' | 'analises'>('comandos')
@@ -635,6 +637,7 @@ export function HomeClient({
               atleticas={analyticsAtleticas}
               pracas={analyticsPracas}
               funil={analyticsFunil}
+              extras={analyticsExtras}
             />
           )}
         </div>

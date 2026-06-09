@@ -16,7 +16,7 @@ import {
   UserCircle, ClipboardList, Aperture, Swords, MapPin, Music, PartyPopper,
   Heart, Settings, Calendar, Map, Trophy, Users, GitBranch, Tag, UserCog,
   FileSpreadsheet, Users2, Home, Search, BarChart2, Share2, Globe, Navigation,
-  AlignLeft, Medal, Crown,
+  AlignLeft, Medal, Crown, Activity,
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -50,6 +50,7 @@ const ADMIN_GROUPS: NavGroup[] = [
       { label: 'Pautas',         href: '/pautas',             icon: Lightbulb },
       { label: 'Agenda',         href: '/agenda',             icon: LayoutList },
       { label: 'Wiki',           href: '/wiki',               icon: BookOpen },
+      { label: 'Análise de Operação', href: '/analise',       icon: Activity },
     ],
   },
   {
@@ -168,6 +169,7 @@ const COORD_ESPORTIVO_GROUPS: NavGroup[] = [
   {
     label: 'Consulta',
     items: [
+      { label: 'Análise de Operação', href: '/analise',     icon: Activity },
       { label: 'Patrocinadores',   href: '/patrocinadores', icon: Heart },
       { label: 'Line Up',          href: '/lineup',         icon: Music },
       { label: 'Cronograma',       href: '/cronograma',     icon: Calendar },

@@ -9,7 +9,11 @@
  */
 
 export interface MixItem { label: string; count: number }
-export interface ProducaoDia { dia: number; label: string; total: number; publicados: number }
+export interface ProducaoDia {
+  dia: number; label: string; data: string
+  total: number; publicados: number; emProducao: number; rascunho: number
+  patrocinados: number; topCanal: string | null; topCanalN: number
+}
 export interface PatrocinioItem { nome: string; entregues: number; contratado: number }
 export interface EquipeFuncao { funcao: string; pessoas: number; publicados: number }
 
@@ -68,20 +72,32 @@ export function buildAnalyticsExtras(params: {
     .sort((a, b) => a.data.localeCompare(b.data))
     .filter(d => d.data >= '2026-06-04' && d.data <= '2026-06-07')
   const diaIdx = new Map(diasEvento.map((d, i) => [d.id, i + 1]))
-  const porDiaAcc = new Map<number, { total: number; pub: number }>()
+  type DiaAcc = { total: number; pub: number; prod: number; rasc: number; patroc: number; canais: Record<string, number> }
+  const novo = (): DiaAcc => ({ total: 0, pub: 0, prod: 0, rasc: 0, patroc: 0, canais: {} })
+  const porDiaAcc = new Map<number, DiaAcc>()
   for (const c of conteudos) {
     if (!c.dia_id) continue
     const idx = diaIdx.get(c.dia_id)
     if (!idx) continue
-    const cur = porDiaAcc.get(idx) ?? { total: 0, pub: 0 }
+    const cur = porDiaAcc.get(idx) ?? novo()
     cur.total++
     if (c.status === 'publicado') cur.pub++
+    else if (c.status === 'em_producao') cur.prod++
+    else if (c.status === 'rascunho') cur.rasc++
+    if (c.patrocinador_id) cur.patroc++
+    if (c.canal_publicacao) for (const part of String(c.canal_publicacao).split(',')) { const x = part.trim(); if (x) cur.canais[x] = (cur.canais[x] || 0) + 1 }
     porDiaAcc.set(idx, cur)
   }
-  const porDia: ProducaoDia[] = diasEvento.map((_, i) => {
+  const porDia: ProducaoDia[] = diasEvento.map((d, i) => {
     const idx = i + 1
-    const v = porDiaAcc.get(idx) ?? { total: 0, pub: 0 }
-    return { dia: idx, label: DIA_LABEL[idx] ?? `D${idx}`, total: v.total, publicados: v.pub }
+    const v = porDiaAcc.get(idx) ?? novo()
+    const top = Object.entries(v.canais).sort((a, b) => b[1] - a[1])[0]
+    return {
+      dia: idx, label: DIA_LABEL[idx] ?? `D${idx}`,
+      data: `${d.data.slice(8, 10)}/${d.data.slice(5, 7)}`,
+      total: v.total, publicados: v.pub, emProducao: v.prod, rascunho: v.rasc,
+      patrocinados: v.patroc, topCanal: top?.[0] ?? null, topCanalN: top?.[1] ?? 0,
+    }
   })
 
   // Patrocínio — entregue (publicado) vs contratado (escopo)

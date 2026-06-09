@@ -735,28 +735,41 @@ function MixCard({ extras }: { extras: Extras }) {
 }
 
 function PorDiaCard({ extras }: { extras: Extras }) {
-  const max = Math.max(...extras.porDia.map(d => d.total), 1)
   return (
     <div className="cia-edit-card cia-edit-card--cream cia-metrics-cell" style={{ minHeight: 320 }}>
-      <CardHeader eyebrow="ritmo de produção" heading="Produção por dia" subheading="Total e publicados em cada dia" />
-      <div className="mt-6 flex items-end justify-around gap-3" style={{ height: 190 }}>
+      <CardHeader eyebrow="ritmo de produção" heading="Produção por dia" subheading="Detalhe de cada dia do evento" />
+      <div className="flex-1 mt-4 space-y-3 overflow-y-auto pr-1" style={{ maxHeight: 300 }}>
         {extras.porDia.map(d => {
-          const hTotal = Math.max(4, d.total / max * 150)
-          const hPub = d.total > 0 ? d.publicados / d.total * hTotal : 0
+          const pct = d.total > 0 ? Math.round((d.publicados / d.total) * 100) : 0
+          const seg = (n: number) => (d.total > 0 ? (n / d.total) * 100 : 0)
           return (
-            <div key={d.dia} className="flex flex-col items-center gap-1.5" style={{ flex: 1 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#0A0F0B' }}>{d.total}</span>
-              <div style={{ width: 40, height: hTotal, borderRadius: '6px 6px 0 0', background: 'rgba(46,107,66,0.18)', display: 'flex', alignItems: 'flex-end', overflow: 'hidden' }}>
-                <div style={{ width: '100%', height: hPub, background: '#2e6b42' }} />
+            <div key={d.dia} style={{ paddingBottom: 8, borderBottom: '1px dashed rgba(10,15,11,0.08)' }}>
+              <div className="flex items-baseline justify-between mb-1.5">
+                <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0A0F0B' }}>
+                  {d.label} <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(10,15,11,0.4)' }}>{d.data}</span>
+                </span>
+                <span style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <span style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif', fontSize: 18, fontWeight: 800, color: '#0A0F0B' }}>{d.total}</span>
+                  <span style={{ fontSize: 10.5, color: 'rgba(10,15,11,0.4)' }}>conteúdos</span>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: pct >= 70 ? '#2e6b42' : pct >= 40 ? '#B58812' : 'rgba(10,15,11,0.4)', marginLeft: 4 }}>{pct}%</span>
+                </span>
               </div>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: 'rgba(10,15,11,0.55)' }}>{d.label}</span>
+              <div style={{ height: 8, borderRadius: 999, overflow: 'hidden', background: 'rgba(10,15,11,0.06)', display: 'flex' }}>
+                {seg(d.publicados) > 0 && <div style={{ width: `${seg(d.publicados)}%`, background: '#2e6b42' }} title={`${d.publicados} publicados`} />}
+                {seg(d.emProducao) > 0 && <div style={{ width: `${seg(d.emProducao)}%`, background: '#3b82f6' }} title={`${d.emProducao} em produção`} />}
+                {seg(d.rascunho) > 0 && <div style={{ width: `${seg(d.rascunho)}%`, background: 'rgba(10,15,11,0.2)' }} title={`${d.rascunho} rascunho`} />}
+              </div>
+              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5" style={{ fontSize: 10.5, fontWeight: 600 }}>
+                <span style={{ color: '#1f7a52' }}>{d.publicados} publicados</span>
+                {d.emProducao > 0 && <span style={{ color: '#2563eb' }}>{d.emProducao} em produção</span>}
+                {d.rascunho > 0 && <span style={{ color: 'rgba(10,15,11,0.45)' }}>{d.rascunho} rascunho</span>}
+                {d.patrocinados > 0 && <span style={{ color: '#B58812' }}>♦ {d.patrocinados} patroc.</span>}
+                {d.topCanal && <span style={{ marginLeft: 'auto', color: 'rgba(10,15,11,0.5)' }}>top: {CANAL_LABEL[d.topCanal] ?? d.topCanal} ({d.topCanalN})</span>}
+              </div>
             </div>
           )
         })}
       </div>
-      <p style={{ fontSize: 10.5, color: 'rgba(10,15,11,0.45)', textAlign: 'center', marginTop: 10 }}>
-        <span style={{ color: '#2e6b42', fontWeight: 700 }}>■</span> publicados · <span style={{ color: 'rgba(46,107,66,0.4)', fontWeight: 700 }}>■</span> total
-      </p>
     </div>
   )
 }
